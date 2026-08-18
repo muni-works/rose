@@ -30,17 +30,23 @@ python3 family.py --pack    # + re-run the packing check on each scaled skeleton
 
 ## Where each one stands
 
-**mini** — 1150 mm, 17.4 kg. Geometrically within 2 % of the validated pro layout,
-so it inherits its packing with margin. Was `toad`, a separate 950 mm design on
-generic A/B/C actuator SKUs; that geometry is superseded by this line's, and what
-survives from it is in [`mini/`](mini) — the vcad kinematic tree, DFM pass and
-actuator sizing.
+**mini** — 1150 mm, 17.4 kg. **Packing re-verified, PASS**: tightest pair is ankle
+pitch↔roll at +6.1 mm, then hip pitch↔roll at +6.5 mm and the near-tangent hip
+yaw↔knee at +8.5 mm — all above the 4 mm floor. Worth stating why that needed
+checking rather than assuming: scaling *up* does not automatically buy clearance
+here, because the actuator bodies stay the same size while the skeleton grows, and
+the hip yaw↔knee gap has moved the *wrong* way under a length increase before.
+Was `toad`, a separate 950 mm design on generic A/B/C actuator SKUs; that geometry
+is superseded, and what survives is in [`mini/`](mini) — the vcad kinematic tree,
+DFM pass and actuator sizing.
 
-**pro** — the sim-ready machine, and the only one with a verified body. 22 DOF on
-X6-60 hips and knees, X4-36 ankles and arms, X4-10 neck; 40 bent-sheet plates,
-0 bend-rule violations, 17.58 kg, ~$9,410 of actuators. Loads in `phyz` and stands.
-Growing it 1130 → 1450 mm is the open work: the skeleton scales, the actuator
-envelopes do not, so the packing check has to be re-run rather than assumed.
+**pro** — 1450 mm, 22.5 kg. 22 DOF on X6-60 hips and knees, X4-36 ankles and arms,
+X4-10 neck; 40 bent-sheet plates, 0 bend-rule violations. **Packing re-verified at
+1450 mm, PASS** — every pair clears by more than 20 mm, so the growth from 1130 is
+geometrically free. What is *not* yet redone at 1450: the bent-sheet plate table,
+the mass measurement, and the phyz stand. The 1130 mm build is the one that stands
+at +0.0 % today, 17.58 kg, ~$9,410 of actuators; re-exporting the line at 1450 is
+the next concrete task.
 
 **max** — 1750 mm, ~49 kg, rana-190 hips and knees, rana-140 ankles, rana-100 arms,
 0.9 kWh at 48 V, Jetson AGX Thor. Pre-geometry: [`max/INTERFACES.md`](max/INTERFACES.md)
@@ -98,7 +104,9 @@ It ignores the hip and ankle contributions that would raise it and the transmiss
 losses that would lower it. Both bounds it reports are *ceilings*: the real machine
 lands under the lower one.
 
-`family.py --pack` re-runs pro's real packing check on each scaled skeleton, but it
-**cannot check max** — only rana-100 rev D has a detailed housing (⌀100 × 44), and
+The packing checks above are real — `family.py --pack` re-runs pro's own
+sampled-surface clearance test on each scaled skeleton — but they check *actuator
+body against actuator body only*. Plates, fasteners and harness are not in that
+test. And it **cannot check max** — only rana-100 rev D has a detailed housing (⌀100 × 44), and
 rana-140/190 envelopes are not modelled. Inventing them would make the check a lie,
 so max's packing is blocked on those two drawings.
