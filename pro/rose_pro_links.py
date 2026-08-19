@@ -57,6 +57,9 @@ IFACE = {
     'X6-60':   dict(od=80.0,  ln=67.54, sb=72.5,  sh=3.4, sn=12, ob=44.0,  oh=4.5, on=12, pilot=32.0,  spig=53.0),
     'X4-36':   dict(od=55.0,  ln=61.0,  sb=48.0,  sh=3.4, sn=6,  ob=26.0,  oh=3.4, on=6,  pilot=35.0,  spig=35.0),
     'X4-10':   dict(od=55.0,  ln=55.5,  sb=48.0,  sh=3.4, sn=6,  ob=26.0,  oh=3.4, on=6,  pilot=35.0,  spig=35.0),
+    # the pushrod ankle's pins: not actuators, but bodies the checks must see
+    'PIN':     dict(od=12.0,  ln=50.5,  sb=0, sh=0, sn=0, ob=0, oh=0, on=0, pilot=0, spig=0),
+    'PINX':    dict(od=12.0,  ln=135.0, sb=0, sh=0, sn=0, ob=0, oh=0, on=0, pilot=0, spig=0),
 }
 
 # ---- layout, in mm ----
@@ -64,6 +67,7 @@ mm = lambda v: round(v * 1000.0, 2)
 HIP_Y, LEG_Y, SHO_Y = mm(LAY.HIP_Y), mm(LAY.LEG_Y), mm(LAY.SHO_Y)
 ZHP, ZHR, ZHY, ZK = mm(LAY.Z_HIP_P), mm(LAY.Z_HIP_R), mm(LAY.Z_HIP_Y), mm(LAY.Z_KNEE)
 ZAP, ZAR, ZS = mm(LAY.Z_ANK_P), mm(LAY.Z_ANK_R), mm(LAY.Z_SOLE)
+ZMA, ZMB = mm(LAY.Z_ANK_MA), mm(LAY.Z_ANK_MB)
 ZSP, ZSR, ZE, ZW = mm(LAY.Z_SHO_P), mm(LAY.Z_SHO_R), mm(LAY.Z_ELB), mm(LAY.Z_WRIST)
 ZHEY, ZHEP, ZCROWN = mm(LAY.Z_HEAD_Y), mm(LAY.Z_HEAD_P), mm(LAY.Z_CROWN)
 ZWAIST = mm(LAY.Z_WAIST)
@@ -81,8 +85,10 @@ JOINTS = {
     'hip_roll':  dict(c=(ROLL_X, LEG_Y, ZHR),  ax='x', m='X12-320', bd=-1, mode='mid'),
     'hip_yaw':   dict(c=(0, LEG_Y, ZHY),       ax='z', m='X10-200', bd=-1, mode='end'),
     'knee':      dict(c=(-KB, LEG_Y, ZK),      ax='y', m='X15-450', bd=-1, mode='end'),
-    'ank_pitch': dict(c=(-KB, LEG_Y, ZAP),     ax='y', m='X8-120',  bd=-1, mode='end'),
-    'ank_roll':  dict(c=(-KB, LEG_Y, ZAR),     ax='x', m='X6-60',   bd=-1, mode='mid'),
+    'ank_mA':    dict(c=(-KB, LEG_Y + T, ZMA), ax='y', m='X8-120',  bd=-1, mode='end'),
+    'ank_mB':    dict(c=(-KB, LEG_Y + T, ZMB), ax='y', m='X8-120',  bd=-1, mode='end'),
+    'ank_pitch': dict(c=(-KB, LEG_Y - 4.25, ZAP), ax='y', m='PIN',  bd=-1, mode='mid'),
+    'ank_roll':  dict(c=(-KB + 2.5, LEG_Y, ZAR), ax='x', m='PINX', bd=-1, mode='mid'),
     'sho_pitch': dict(c=(0, SHO_Y, ZSP),       ax='y', m='X8-120',  bd=-1, mode='end'),
     'sho_roll':  dict(c=(SHR_X, SHO_Y, ZSR),   ax='x', m='X6-60',   bd=-1, mode='mid'),
     'elb_pitch': dict(c=(0, SHO_Y, ZE),        ax='y', m='X6-60',   bd=+1, mode='end'),
@@ -449,31 +455,77 @@ kf.poly = [(kf.u0 + KC, kf.v0), (kf.u1 - KC, kf.v0), (kf.u1, kf.v0 + KC), (kf.u1
 P('thigh', 'knee_gus', 'x', -KB - KNEE_R - 5.0 - T, -KB - KNEE_R - 5.0, LEG_Y - 64.0, LEG_Y, kf.v0 + KC, kf.v1 - KC)
 P('thigh', 'web_lo', 'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, kf.v0 + KC, TH_FLG_BOT - T)
 
-# ---- shank: knee OUTPUT -> ankle pitch STATOR ----
-SH_FR = -KB + 20.0                                     # shank front flange inner face, behind the knee body front (23)
-ko = L('shank', 'knee_out', 'knee', 'output', -KB - 66.0, SH_FR + T, ZK - 66.0, ZK + 66.0, outset=T)
-sw = P('shank', 'web', 'y', ko.n0, ko.n1, -KB - 50.0, SH_FR + T, ZAP + 52.0, ko.v0)   # stops above the ankle output plate's sweep
-# front flange folds OUTBOARD (y 170..240): folded inboard it would share the knee stator
-# plate's slab and sweep through it at 44 deg of flexion
-P('shank', 'flange_fr', 'x', SH_FR, SH_FR + T, ko.n1, ko.n1 + 70.0, ZAP + rad('X8-120') + 5.0, ZK - KNEE_R - 5.0)
-lap = L('shank', 'ank_lap', 'ank_pitch', 'stator', -KB - 40.0, -KB + 40.0, ZAP - 40.0, ZAP + 68.0)
-for p_ in (lap, sw):
-    p_.holes += [(-KB - 22.0, ZAP + 60.0, 4.5), (-KB + 12.0, ZAP + 60.0, 4.5)]    # lap bolts, M4
-lap.fit()
+# ---- shank: knee OUTPUT -> ankle motors -> pushrod ankle ----
+# (d) of the H3 programme. No actuator at the ankle: both ankle motors are
+# X8-120s on the shank's inner face at z -627 / -729 (bodies inboard like the
+# knee's), their output CRANKS on the outer face, two vertical pushrods down to
+# a sheet YOKE on a pitch pin held by two fork brackets, the foot on a roll pin
+# through the yoke. ONE web plate, y 167..170: it is the knee output plate at
+# the top, both motors' stator plate in the middle (their faces are at y 167),
+# and it stops 85 over the pitch pin - the yoke's jaws sweep r 77 about that
+# pin and nothing in their y-band may be inside it. What the sweeps placed:
+# motors with their tops 114 under the knee axis (the knee stator plate's
+# octagon reaches r 110 and the shank folds 132 deg past it).
+MR = rad('X8-120')
+WEB_Y0 = face_n('knee', 'output', T)[0]                  # 167
+assert abs(face_n('ank_mA', 'stator')[0] - WEB_Y0) < 0.01, 'motor faces must lie in the web plane'
+SW_POLY = [(-KB - 30.0, ZAP + 90.0), (-KB + 30.0, ZAP + 90.0), (-KB + 66.0, ZMB - 51.0),
+           (-KB + 66.0, ZK + 66.0), (-KB - 66.0, ZK + 66.0), (-KB - 66.0, ZMB - 51.0)]
+sw = P('shank', 'web', 'y', WEB_Y0, WEB_Y0 + T, 0, 0, 0, 0, poly=SW_POLY)
+for j_, role in (('knee', 'output'), ('ank_mA', 'stator'), ('ank_mB', 'stator')):
+    j = JOINTS[j_]
+    ifc = IFACE[j['m']]
+    bcd = ifc['sb'] if role == 'stator' else ifc['ob']
+    dia = ifc['sh'] if role == 'stator' else ifc['oh']
+    n_ = ifc['sn'] if role == 'stator' else ifc['on']
+    sw.holes += ring(bcd, -KB, j['c'][2], dia + 1.1, n_, clock=180.0 / n_)
+    sw.holes.append((-KB, j['c'][2], (ifc['spig'] if role == 'stator' else ifc['pilot']) + 1.0))
+# front flange folds OUTBOARD off the web's straight front edge (x 6)
+P('shank', 'flange_fr', 'x', -KB + 66.0, -KB + 66.0 + T, WEB_Y0 + T, WEB_Y0 + T + 70.0, ZMB - 51.0, ZK - KNEE_R - 5.0)
+# fork brackets, inboard and outboard: each laps the web, bends under at z ZAP+82
+# (4 over the jaws' swept top), bends down into a fork plate carrying the pin.
+FK_Z = ZAP + 87.0                                       # 4 over the jaws' swept top (r 83 about the pitch pin)
+FORK_IN_Y = WEB_Y0 - 29.5                              # inboard fork outer face (137.5): spine starts at 143.5
+FORK_OUT_Y = WEB_Y0 + 15.0                             # outboard fork inner face (182): jaws end at 178
+for tag, lap_y0, f_y0, br_y0, br_y1 in (('in', WEB_Y0 - T, FORK_IN_Y - T, FORK_IN_Y, WEB_Y0),
+                                        ('out', WEB_Y0 + T, FORK_OUT_Y, WEB_Y0 + T, FORK_OUT_Y)):
+    P('shank', 'fork_lap_' + tag, 'y', lap_y0, lap_y0 + T, -KB - 30.0, -KB + 30.0, FK_Z, FK_Z + 50.0,
+      holes=[(-KB - 15.0, FK_Z + 30.0, 4.5), (-KB + 15.0, FK_Z + 30.0, 4.5)])
+    P('shank', 'fork_bridge_' + tag, 'z', FK_Z - T, FK_Z, -KB - 30.0, -KB + 30.0, br_y0, br_y1)
+    P('shank', 'fork_' + tag, 'y', f_y0, f_y0 + T, -KB - 30.0, -KB + 30.0, ZAP - 10.0, FK_Z - T,
+      holes=[(-KB, ZAP, 13.0)])
+sw.holes += [(-KB - 15.0, FK_Z + 30.0, 4.5), (-KB + 15.0, FK_Z + 30.0, 4.5)]
+# cranks: the motors' output plates, as bars to the pushrod pins (A forward, B back)
+PIN_A_X, PIN_B_X = -KB + 68.0, -KB - 60.0
+ca = L('crankA', 'bar', 'ank_mA', 'output', -KB - 20.0, PIN_A_X + 12.0, ZMA - 20.0, ZMA + 20.0, outset=T)
+cb = L('crankB', 'bar', 'ank_mB', 'output', PIN_B_X - 12.0, -KB + 20.0, ZMB - 20.0, ZMB + 20.0, outset=T)
+ca.holes.append((PIN_A_X, ZMA, 6.5))
+cb.holes.append((PIN_B_X, ZMB, 6.5))
+ROD_Y = ca.n0 + T / 2.0
+# pushrods (emitted by the loon as D10 steel cylinders; not plates, not swept -
+# they are the one part of the ankle the sweeps do not see)
+RODS = [('rodA', PIN_A_X, ROD_Y, ZAP + 15.0, ZMA), ('rodB', PIN_B_X, ROD_Y, ZAP + 15.0, ZMB)]
 
-# ---- ankle: ankle pitch OUTPUT -> ankle roll STATOR. Lapped pair, L-tab. ----
-ARF_X0 = face_n('ank_roll', 'stator')[0]               # ankle roll stator plate x0
-apo = L('ankle', 'ankp_out', 'ank_pitch', 'output', ARF_X0, -KB + 30.0, ZAP - 36.0, ZAP + 36.0, outset=T)
-arf = L('ankle', 'ankr_face', 'ank_roll', 'stator', LEG_Y - 44.0, LEG_Y + 44.0, ZAR - 44.0, ZAR + 44.0)
-# lap ear above the foot's output plate, outboard of it
-EAR_Y0, EAR_Y1 = LEG_Y + 46.0, LEG_Y + 76.0
-EAR_Z0, EAR_Z1 = ZAR + 20.0, ZAP - 20.0
-P('ankle', 'ankr_lapear', 'x', ARF_X0, ARF_X0 + T, EAR_Y0, EAR_Y1, EAR_Z0, EAR_Z1,
-  holes=[((EAR_Y0 + EAR_Y1) / 2, EAR_Z0 + 14.0, 4.5), ((EAR_Y0 + EAR_Y1) / 2, EAR_Z1 - 14.0, 4.5)])
+# ---- ankle: the YOKE on the pitch pin; carries the roll pin ----
+YK_Y0 = FORK_IN_Y + 6.0                                 # spine inner face (143.5), 6 off the inboard fork: the foot
+                                                        # column's top corners swing 3.7 inboard at 23 deg of roll
+YK_Y1 = FORK_OUT_Y - 4.0                                # jaws' outer edge (178), 4 off the outboard fork
+ys = P('ankle', 'spine', 'y', YK_Y0, YK_Y0 + T, PIN_B_X - 1.5, PIN_A_X + 1.5, ZAP - 10.0, ZAP + 25.0,
+       holes=[(-KB, ZAP, 13.0)])
+for tag, x_ in (('jaw_fr', PIN_A_X), ('jaw_rr', PIN_B_X)):
+    P('ankle', tag, 'x', x_ - 1.5, x_ + 1.5, YK_Y0, YK_Y1, ZAP - 45.0, ZAP + 25.0,
+      holes=[(ROD_Y, ZAP + 15.0, 6.5), (LEG_Y, ZAR, 13.0)])
 
-# ---- foot: ankle roll OUTPUT -> sole. One blank: output plate bends into the sole. ----
-fo = L('foot', 'ankr_out', 'ank_roll', 'output', LEG_Y - 32.0, LEG_Y + 32.0, ZS + T, ZAR + 32.0, outset=T)
-P('foot', 'sole', 'z', ZS, ZS + T, fo.n0, -KB + 170.0, LEG_Y - 55.0, LEG_Y + 55.0)
+# ---- foot: a column on the roll pin, a foot flange, the sole ----
+# The column rides the roll pin between the jaws; its top stops 9.5 over the pin
+# (the hole's margin) and the pitch pin is 28 above, so its corners (r 14) clear.
+CY0, CY1 = LEG_Y - 9.5, YK_Y1                            # column y 154.5..178
+P('foot', 'column', 'x', -KB - 1.5, -KB + 1.5, CY0, CY1, ZS + T, ZAR + 9.5,
+  holes=[(LEG_Y, ZAR, 13.0), (LEG_Y - 4.0, ZS + 18.0, 4.5), (LEG_Y + 8.0, ZS + 18.0, 4.5)])
+P('foot', 'col_foot', 'z', ZS + T, ZS + 2 * T, -KB + 1.5, -KB + 45.0, CY0, CY1,
+  holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
+P('foot', 'sole', 'z', ZS, ZS + T, -KB - 60.0, -KB + 170.0, LEG_Y - 55.0, LEG_Y + 55.0,
+  holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
 
 # ---- arm ----
 # shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Lapped pair: the tab bends
@@ -601,9 +653,8 @@ OWNER = {
     ('hipA', 'pitch_face'): 'hip_pitch', ('hipA', 'roll_face'): 'hip_roll',
     ('hipB', 'roll_out'): 'hip_roll',    ('hipB', 'yaw_face'): 'hip_yaw',
     ('thigh', 'yaw_out'): 'hip_yaw',     ('thigh', 'knee_face'): 'knee', ('thigh', 'top'): 'hip_yaw',
-    ('shank', 'knee_out'): 'knee',       ('shank', 'ank_lap'): 'ank_pitch',
-    ('ankle', 'ankp_out'): 'ank_pitch',  ('ankle', 'ankr_face'): 'ank_roll',
-    ('foot', 'ankr_out'): 'ank_roll',
+    ('shank', 'web'): 'knee',
+    ('crankA', 'bar'): 'ank_mA',         ('crankB', 'bar'): 'ank_mB',
     ('shoA', 'shop_out'): 'sho_pitch',   ('shoA', 'shor_face'): 'sho_roll',
     ('shoB', 'shor_out'): 'sho_roll',    ('shoB', 'elb_face'): 'elb_pitch',
     ('elbA', 'elb_out'): 'elb_pitch',    ('elbA', 'wrist_face'): 'wrist_yaw',
@@ -622,9 +673,6 @@ ANGLES = []   # retired with the angle stock
 # edge with its neighbour. A tab with targets bends from them; one with none laps.
 BEND_TABS = [
     # link, tab normal, thickness span, u range, v range, bends_to (plate tags)
-    # ankle L-tab: bent off ankp_out's rear edge, outboard; lower lobe laps the ear
-    ('ankle', 'x', (ARF_X0 - T, ARF_X0), (apo.n1, EAR_Y1), (apo.v0, apo.v1), ('ankp_out',)),
-    ('ankle', 'x', (ARF_X0 - T, ARF_X0), (EAR_Y0, EAR_Y1), (EAR_Z0, apo.v0), ()),
     # shoA: upper lobe bends off shop_out inboard; lower lobe laps shor_face's inboard extension
     ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, spo.n0), (spo.v0, spo.v0 + 30.0), ('shop_out',)),
     ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, sro.u0 - 4.0), (srf.v0, spo.v0), ()),
@@ -642,8 +690,13 @@ BENDS = [
     ('thigh', 'z', TH_FLG_BOT - T / 2.0,         ('shelf',)),
     ('thigh', 'x', TH_LO_X + T / 2.0,            ('web_lo', 'knee_face')),
     ('thigh', 'x', -KB - KNEE_R - 5.0 - T / 2.0, ('knee_gus',)),
-    ('shank', 'x', SH_FR + T / 2.0,              ('flange_fr',)),
-    ('foot',  'z', ZS + T / 2.0,                 ('ankr_out', 'sole')),
+    ('shank', 'x', -KB + 66.0 + T / 2.0,         ('web', 'flange_fr')),
+    ('shank', 'z', FK_Z - T / 2.0,               ('fork_lap_in', 'fork_bridge_in', 'fork_lap_out', 'fork_bridge_out')),
+    ('shank', 'y', FORK_IN_Y - T / 2.0,          ('fork_bridge_in', 'fork_in')),
+    ('shank', 'y', FORK_OUT_Y + T / 2.0,         ('fork_bridge_out', 'fork_out')),
+    ('ankle', 'x', PIN_A_X - 1.5 + T / 2.0,      ('spine', 'jaw_fr')),
+    ('ankle', 'x', PIN_B_X - 1.5 + T / 2.0,      ('jaw_rr',)),
+    ('foot',  'z', ZS + T + T / 2.0,             ('column', 'col_foot')),
     ('shoB',  'y', SB_Y + T / 2.0,               ('shor_out', 'web')),
     ('shoB',  'x', SB_XF + T / 2.0,              ('flange_fr',)),
     ('shoB',  'z', ef.v1 + T / 2.0,              ('elb_face', 'elb_shelf')),
@@ -724,6 +777,7 @@ def main():
                 # a plate bolted to a face legitimately touches that actuator
                 own = OWNER.get((p.link, p.tag)) == n
                 own = own or SECOND_OWNER.get((p.link, p.tag)) == n
+                own = own or THIRD_OWNER.get((p.link, p.tag)) == n
                 if h[1] > 0.6 and not own:
                     print('  %-8s %-11s vs %-10s  %.1f mm deep' % (p.link, p.tag, n, h[1]))
                     clash += 1

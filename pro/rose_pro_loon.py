@@ -312,6 +312,12 @@ def main():
     for name, expr in actuator_exprs():
         lines.append('[let act_%s %s]' % (name, expr))
         roots.append(('act_%s' % name, 'actuator'))
+    # pushrods: D10 steel, vertical, crank pin to yoke lug (rose_pro_links.RODS)
+    for (nm, x, y, z0, z1) in getattr(L, 'RODS', []):
+        for side, sgn in (('L', 1), ('R', -1)):
+            lines.append('[let rod_%s_%s [act-z 10.0 %s %s %s %s]]'
+                         % (side, nm, fnum(z0), fnum(z1), fnum(x), fnum(sgn * y)))
+            roots.append(('rod_%s_%s' % (side, nm), 'actuator'))
 
     lines.append('\n[material "actuator" 0.10 0.10 0.11 0.6 0.5]')
     lines.append('\n; ---------------------------------------------------------- roots ----')

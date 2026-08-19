@@ -139,17 +139,20 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     add_box(r,  M['X10-200'] + 0.8, (0.130, 0.130, 0.070), (0.0, 0.0, (Z['hy'] - Z['hr']) / 2))
     # thigh (yaw link): carries the knee actuator, a wrapped channel
     add_cyl(y,  M['X15-450'] + 2.8, 0.075, THIGH, (-KNEE_BACK / 2, 0.0, -THIGH / 2))
-    # shank: carries the ankle pitch actuator
-    add_cyl(sh, M['X8-120'] + 1.8, 0.050, SHANK, (0.0, 0.0, -SHANK / 2))
-    add_box(ac, M['X6-60'] + 0.5, (0.100, 0.100, ANK_DZ), (0.0, 0.0, -ANK_DZ / 2))
+    # shank: carries BOTH ankle motors (pushrod ankle), high, at z -602 / -704: its COM
+    # sits in the upper third. The ankle cross is a pinned yoke, 0.4 kg.
+    add_cyl(sh, 2 * M['X8-120'] + 2.0, 0.050, SHANK, (0.0, 0.0, -SHANK * 0.38))
+    add_box(ac, 0.4, (0.120, 0.040, 0.050), (0.0, 0.0, -ANK_DZ / 2))
     add_box(ft, 0.6, (0.280, 0.110, 0.022), (0.040, 0.0, -(SOLE - 0.021)), shrink=False)
 
     add_joint(p,  'Pelvis', p, (0.0, s * HIP_Y, Z['hp'] - LAY.Z_WAIST), (0, 1, 0), -2.0, 1.6, 'X15-450')
     add_joint(r,  p, r, (0.0, dy, Z['hr'] - Z['hp']), (1, 0, 0), lo_roll, hi_roll, 'X12-320')
     add_joint(y,  r, y, (0.0, 0.0, Z['hy'] - Z['hr']), (0, 0, 1), -1.0, 1.0, 'X10-200')
     add_joint('%s_Knee_Pitch' % side, y, sh, (-KNEE_BACK, 0.0, Z['kn'] - Z['hy']), (0, 1, 0), 0.0, 2.3, 'X15-450')
+    # both ankle joints are driven through the pushrods by the two X8s (pitch by
+    # their sum, roll by their difference); effort/speed/armature of one X8 per axis
     add_joint('%s_Ankle_Pitch' % side, sh, ac, (0.0, 0.0, -SHANK), (0, 1, 0), -0.9, 0.5, 'X8-120')
-    add_joint('%s_Ankle_Roll' % side, ac, ft, (0.0, 0.0, -ANK_DZ), (1, 0, 0), -0.4, 0.4, 'X6-60')
+    add_joint('%s_Ankle_Roll' % side, ac, ft, (0.0, 0.0, -ANK_DZ), (1, 0, 0), -0.4, 0.4, 'X8-120')
 
     a1, a2, a3 = '%s_Arm_1' % side, '%s_Arm_2' % side, '%s_Arm_3' % side
     hd = '%s_hand_link' % ('left' if s > 0 else 'right')

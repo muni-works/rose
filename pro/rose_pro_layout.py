@@ -42,15 +42,17 @@ MODEL = {                       # diameter, axial length, mass, ratio, J_m (kg.m
     'X6-60':   (0.080, 0.0675, 0.82, 19.612, 0.66e-4),
     'X4-36':   (0.055, 0.0610, 0.36, 36.0,   0.30e-4),
     'X4-10':   (0.055, 0.0555, 0.26, 12.6,   0.30e-4),
+    'PIN':     (0.012, 0.0505, 0.05, 1.0, 0.0),      # a plain pin joint (the pushrod ankle's pitch pin, fork to fork)
+    'PINX':    (0.012, 0.135, 0.08, 1.0, 0.0),       # the ankle roll pin, across the yoke
 }
 # peak torque and max speed (rad/s) for the URDF limits
 PEAK = {'X15-450': (450.0, 11.3), 'X12-320': (320.0, 13.1), 'X10-200': (200.0, 8.4),
         'X8-120': (120.0, 16.5), 'X6-60': (60.0, 16.0), 'X4-36': (34.0, 11.6),
-        'X4-10': (10.0, 33.2)}
+        'X4-10': (10.0, 33.2), 'PIN': (0.0, 0.0), 'PINX': (0.0, 0.0)}
 
 JOINT_MODEL = {
     'hip_pitch': 'X15-450', 'hip_roll': 'X12-320', 'hip_yaw': 'X10-200',
-    'knee': 'X15-450', 'ank_pitch': 'X8-120', 'ank_roll': 'X6-60',
+    'knee': 'X15-450', 'ank_pitch': 'PIN', 'ank_roll': 'PINX', 'ank_mA': 'X8-120', 'ank_mB': 'X8-120',
     'sho_pitch': 'X8-120', 'sho_roll': 'X6-60', 'elb_pitch': 'X6-60',
     'wrist_yaw': 'X4-36', 'head_yaw': 'X4-36', 'head_pitch': 'X4-36',
     'waist_yaw': 'X8-120',
@@ -99,8 +101,13 @@ Z_HIP_R = Z_HIP_P - 0.040                                 # roll 40 below pitch 
 Z_HIP_Y = Z_HIP_R - R('X12-320') - 0.031                # under the roll body: hipB's bridge (3), gaps (4+5), yaw output plate (3) on its 6 mm spacer, stator plate (3) - see rose_pro_links hipB
 Z_KNEE = Z_HIP_P - THIGH
 Z_ANK_P = Z_KNEE - SHANK
-ANK_DZ = R('X8-120') + R('X6-60') + 0.028                 # serial ankle stack, 116: the roll stator plate's corners (r 61) swing under the
-                                                          # pitch stator plate (R51) through ankle pitch. (d) deletes this stack.
+# PUSHROD ANKLE (d): no actuator at the ankle. Both ankle motors are X8-120s
+# carried high in the shank (the calf), cranks at their outputs, two vertical
+# pushrods down to a yoke; pitch and roll are pins 20 mm apart (G1: 18).
+ANK_DZ = 0.028                 # pitch pin to roll pin: the foot column's top corners (r 14 about the roll pin) clear the pitch pin
+Z_ANK_MA = Z_KNEE - 0.114 - R('X8-120')                    # motor A: its top 114 under the knee axis - the knee stator
+                                                          # plate's octagon reaches r 110 and the shank folds 132 deg
+Z_ANK_MB = Z_ANK_MA - 2 * R('X8-120') - 0.006               # motor B: 6 under A
 Z_ANK_R = Z_ANK_P - ANK_DZ
 Z_SOLE = Z_ANK_R - SOLE
 Z_SHO_P = Z_HIP_P + TORSO
@@ -130,8 +137,11 @@ def leg(side):
         ('%s_hip_roll' % side,  (ROLL_X, s * LEG_Y, Z_HIP_R), (1, 0, 0), 'X12-320', (-1, 0, 0), 'mid'),
         ('%s_hip_yaw' % side,   (0, s * LEG_Y, Z_HIP_Y), (0, 0, 1), 'X10-200', (0, 0, -1), 'end'),
         ('%s_knee' % side,      (-KNEE_BACK, s * LEG_Y, Z_KNEE), (0, 1, 0), 'X15-450', (0, -s, 0), 'end'),
-        ('%s_ank_pitch' % side, (-KNEE_BACK, s * LEG_Y, Z_ANK_P), (0, 1, 0), 'X8-120', (0, -s, 0), 'end'),
-        ('%s_ank_roll' % side,  (-KNEE_BACK, s * LEG_Y, Z_ANK_R), (1, 0, 0), 'X6-60', (-1, 0, 0), 'mid'),
+        # faces 3 outboard of the leg column: the shank web (the knee OUTPUT plate, outset T) is their stator plate
+        ('%s_ank_mA' % side,    (-KNEE_BACK, s * (LEG_Y + 0.003), Z_ANK_MA), (0, 1, 0), 'X8-120', (0, -s, 0), 'end'),
+        ('%s_ank_mB' % side,    (-KNEE_BACK, s * (LEG_Y + 0.003), Z_ANK_MB), (0, 1, 0), 'X8-120', (0, -s, 0), 'end'),
+        ('%s_ank_pitch' % side, (-KNEE_BACK, s * (LEG_Y - 0.00425), Z_ANK_P), (0, 1, 0), 'PIN', (0, -s, 0), 'mid'),
+        ('%s_ank_roll' % side,  (-KNEE_BACK + 0.0025, s * LEG_Y, Z_ANK_R), (1, 0, 0), 'PINX', (-1, 0, 0), 'mid'),
     ]
 
 
@@ -228,7 +238,7 @@ def main():
             ('shoulder above sole', '%.0f = %.0f%%' % ((Z_SHO_P - Z_SOLE) * 1e3, 100 * (Z_SHO_P - Z_SOLE) / HEIGHT)),
             ('torso (hip->shoulder)', '%.0f' % (TORSO * 1e3)),
             ('arm (shoulder->wrist)', '%.0f' % ((UPPER_ARM + FOREARM) * 1e3)),
-            ('ankle stack / sole', '%.0f / %.0f' % (ANK_DZ * 1e3, SOLE * 1e3)),
+            ('ankle stack / sole', '%.0f / %.0f  (pushrod ankle; motors at z %.0f / %.0f)' % (ANK_DZ * 1e3, SOLE * 1e3, Z_ANK_MA * 1e3, Z_ANK_MB * 1e3)),
             ('shoulder y', '%.0f' % (SHO_Y * 1e3)),
             ('waist yaw face z', '%.0f' % (Z_WAIST * 1e3)),
             ('trunk origin: sole / crown', '%.0f / %.0f' % (Z_SOLE * 1e3, Z_CROWN * 1e3))]
@@ -239,6 +249,8 @@ def main():
     total = 0.0
     per = {}
     for label, _, _, _, model in segs:
+        if model in ('PIN', 'PINX'):
+            continue
         per[model] = per.get(model, 0) + 1
         total += MODEL[model][2]
     for m in sorted(per, key=lambda k: -MODEL[k][2]):

@@ -42,20 +42,20 @@ RANGES = {
 
 # which link's plates ride on the child side of each joint (everything distal)
 CHILD_LINKS = {
-    'knee':      ('shank', 'ankle', 'foot'),
+    'knee':      ('shank', 'crankA', 'crankB', 'ankle', 'foot'),
     'ank_pitch': ('ankle', 'foot'),
     'ank_roll':  ('foot',),
-    'hip_yaw':   ('thigh', 'shank', 'ankle', 'foot'),
+    'hip_yaw':   ('thigh', 'shank', 'crankA', 'crankB', 'ankle', 'foot'),
     'sho_roll':  ('shoB', 'elbA', 'hand'),
     'elb_pitch': ('elbA', 'hand'),
     'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA'),
 }
 # actuator BODIES fixed to the child side (their stator is on a child link)
 CHILD_BODIES = {
-    'knee':      ('ank_pitch',),
+    'knee':      ('ank_mA', 'ank_mB', 'ank_pitch', 'ank_roll'),
     'ank_pitch': ('ank_roll',),
     'ank_roll':  (),
-    'hip_yaw':   ('knee', 'ank_pitch'),
+    'hip_yaw':   ('knee', 'ank_mA', 'ank_mB', 'ank_pitch', 'ank_roll'),
     'sho_roll':  ('elb_pitch', 'wrist_yaw'),
     'elb_pitch': ('wrist_yaw',),
     'waist_yaw': ('sho_pitch', 'sho_roll', 'head_yaw', 'head_pitch'),
@@ -63,7 +63,7 @@ CHILD_BODIES = {
 # parent-side plates and bodies the child must clear
 PARENT_LINKS = {
     'knee':      ('thigh', 'hipB'),
-    'ank_pitch': ('shank', 'thigh'),
+    'ank_pitch': ('shank', 'crankA', 'crankB', 'thigh'),
     'ank_roll':  ('ankle', 'shank'),
     'hip_yaw':   ('hipB', 'hipA', 'pelvisS', 'pelvisC', 'trunkS', 'trunkC'),
     'sho_roll':  ('shoA', 'trunkS', 'trunkC'),
@@ -75,7 +75,7 @@ PARENT_LINKS = {
 }
 PARENT_BODIES = {
     'knee':      ('hip_yaw', 'knee'),
-    'ank_pitch': ('knee', 'ank_pitch'),
+    'ank_pitch': ('knee', 'ank_mA', 'ank_mB', 'ank_pitch'),
     'ank_roll':  ('ank_pitch', 'ank_roll'),
     'hip_yaw':   ('hip_yaw', 'hip_roll', 'hip_pitch'),
     'sho_roll':  ('sho_roll', 'sho_pitch'),
@@ -258,6 +258,15 @@ def d_cyl(p, ax, cu, cv, r, lo, hi):
     return max(dr, -min(p[i] - lo, hi - p[i]))    # inside: negative
 
 
+def passes_through(body, pl):
+    """A body whose axis runs through a clearance hole in the plate (a pin through
+    a fork, an actuator through a web) is not a clash with that plate."""
+    ax, cu, cv, r, lo, hi = body
+    if pl.normal != ax:
+        return False
+    return any(math.hypot(hu - cu, hv - cv) < 1.0 and hd / 2.0 >= r for (hu, hv, hd) in pl.holes)
+
+
 def bodies_by_name():
     out = {}
     for (n, ax, (cu, cv), r, (lo, hi)) in L.obstacles():
@@ -304,9 +313,9 @@ def sweep(joint, plates, verbose=True):
     moving = []      # (label, points)
     for p in plates:
         if p.link in CHILD_LINKS[joint]:
-            moving.append(('%s/%s' % (p.link, p.tag), plate_points(p)))
+            moving.append(('%s/%s' % (p.link, p.tag), plate_points(p), p))
     for bn in CHILD_BODIES[joint]:
-        moving.append(('body:%s' % bn, cyl_points(*B[bn])))
+        moving.append(('body:%s' % bn, cyl_points(*B[bn]), B[bn]))
 
     static_plates = [(p, plate_r(p))
                      for p in plates if p.link in PARENT_LINKS[joint]]
@@ -319,10 +328,12 @@ def sweep(joint, plates, verbose=True):
     for k in range(n + 1):
         th = lo + (hi - lo) * k / n
         R = rot(ax, th)
-        for (ml, pts) in moving:
+        for (ml, pts, mobj) in moving:
             for p0 in pts:
                 p = apply(R, c, p0)
                 for sp, sr in static_plates:
+                    if not isinstance(mobj, L.Plate) and passes_through(mobj, sp):
+                        continue
                     d = d_plate(p, sp, sr)
                     key = (ml, '%s/%s' % (sp.link, sp.tag))
                     if d < per_pair.get(key, (1e9,))[0]:
@@ -330,6 +341,8 @@ def sweep(joint, plates, verbose=True):
                     if d < worst[0]:
                         worst = (d, ml, key[1], math.degrees(th))
                 for (bn, cyl) in static_bodies:
+                    if isinstance(mobj, L.Plate) and passes_through(cyl, mobj):
+                        continue
                     d = d_cyl(p, *cyl)
                     key = (ml, 'body:%s' % bn)
                     if d < per_pair.get(key, (1e9,))[0]:
