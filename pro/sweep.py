@@ -31,6 +31,12 @@ RANGES = {
     'ank_pitch': (-0.9, 0.5),
     'ank_roll':  (-0.4, 0.4),
     'hip_yaw':   (-1.0, 1.0),
+    # Arms, added when the arms got structure. The URDF gives shoulder roll
+    # -1.7..1.6 rad on the left, i.e. it also permits adduction THROUGH the torso;
+    # that is a URDF limit problem, not a structure one, so only abduction
+    # (0..1.7, arm swinging out and up) is swept here. Elbow is the full range.
+    'sho_roll':  (0.0, 1.7),
+    'elb_pitch': (-2.3, 2.3),
 }
 
 # which link's plates ride on the child side of each joint (everything distal)
@@ -39,6 +45,8 @@ CHILD_LINKS = {
     'ank_pitch': ('ankle', 'foot'),
     'ank_roll':  ('foot',),
     'hip_yaw':   ('thigh', 'shank', 'ankle', 'foot'),
+    'sho_roll':  ('shoB', 'elbA', 'hand'),
+    'elb_pitch': ('elbA', 'hand'),
 }
 # actuator BODIES fixed to the child side (their stator is on a child link)
 CHILD_BODIES = {
@@ -46,6 +54,8 @@ CHILD_BODIES = {
     'ank_pitch': ('ank_roll',),
     'ank_roll':  (),
     'hip_yaw':   ('knee', 'ank_pitch'),
+    'sho_roll':  ('elb_pitch', 'wrist_yaw'),
+    'elb_pitch': ('wrist_yaw',),
 }
 # parent-side plates and bodies the child must clear
 PARENT_LINKS = {
@@ -53,12 +63,16 @@ PARENT_LINKS = {
     'ank_pitch': ('shank', 'thigh'),
     'ank_roll':  ('ankle', 'shank'),
     'hip_yaw':   ('hipB', 'hipA', 'trunkS', 'trunkC'),
+    'sho_roll':  ('shoA', 'trunkS', 'trunkC'),
+    'elb_pitch': ('shoB', 'shoA'),
 }
 PARENT_BODIES = {
     'knee':      ('hip_yaw', 'knee'),
     'ank_pitch': ('knee', 'ank_pitch'),
     'ank_roll':  ('ank_pitch', 'ank_roll'),
     'hip_yaw':   ('hip_yaw', 'hip_roll', 'hip_pitch'),
+    'sho_roll':  ('sho_roll', 'sho_pitch'),
+    'elb_pitch': ('elb_pitch', 'sho_roll'),
 }
 
 
@@ -338,7 +352,7 @@ def main():
     print('swept interference through the URDF joint ranges')
     print('=' * 72)
     ok = True
-    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw'):
+    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_roll', 'elb_pitch'):
         d, ml, sl, th = sweep(j, L.PLATES)
         if d < -0.05:
             ok = False

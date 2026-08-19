@@ -5,8 +5,13 @@
 # conversion first -- that is no longer true). Build the binary with:
 #   cargo build --release -p vcad-render     # in ~/Developer/vcad
 #
-# pro takes ~6 min (49 plates, each its own root, each with a bolt circle cut
-# out of it). mini is ~5 s, max ~9 s.
+# pro takes ~2 min now (66 plates / 115 roots, but one window instead of a
+# field of bores on each torso face - it was ~6 min with the hole fields).
+# mini is ~5 s, max ~9 s.
+#
+# zsh does NOT word-split an unquoted $VAR, so the OPTS below only works because
+# this file is #!/bin/sh. Typing the same line at a zsh prompt hands vcad-render
+# one argument and a usage error.
 #
 # Two vcad boolean pathologies cost real time finding, recorded so they are not
 # found twice: (1) plate corner radius is NOT monotonic in cost - r=25 was ~10x
@@ -21,3 +26,6 @@ OPTS="--view iso --size 1400 --fill 0.92 --auto-aspect"
 $R mini/cad/k1.loon        $OPTS -o mini/render/rose-mini-iso.png
 $R max/cad/rose1-v6.loon   $OPTS -o max/render/rose-max-iso.png
 $R pro/cad/rose-pro.loon   $OPTS -o pro/render/rose-pro-iso.png
+# profile and front, explicit camera (--view side is not a reliable profile)
+$R pro/cad/rose-pro.loon   --azimuth 90 --elevation 0 --size 1400 --fill 0.92 --auto-aspect -o pro/render/rose-pro-side.png
+$R pro/cad/rose-pro.loon   --azimuth 0  --elevation 0 --size 1400 --fill 0.92 --auto-aspect -o pro/render/rose-pro-front.png

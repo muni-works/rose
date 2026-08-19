@@ -38,6 +38,8 @@ IFACE = {
 
 HIP_Y, SHO_Y = 75.0, 150.0
 KB = 55.0                   # knee-back offset, mm; see KNEE_BACK in rose_pro_layout
+SLOT_R = 8.0                # corner radius of rectangular apertures (concave: not a strike edge)
+HEM = 8.0                   # width of the hem strip around a window edge
 
 # joint: name, centre, axis, model, body direction, mount-face offset along axis
 #   'mid'  -> body straddles the joint, mount face at -half along the axis dir
@@ -98,13 +100,21 @@ def hit(box, axis, uv, r, ext):
 
 
 class Plate:
-    """A flat plate: normal axis, thickness span, and in-plane rectangle."""
+    """A flat plate: normal axis, thickness span, and in-plane rectangle.
 
-    def __init__(self, link, tag, normal, n0, n1, u0, u1, v0, v1, holes=()):
+    `holes` are round bores (u, v, dia). `slots` are rectangular APERTURES
+    (u0, u1, v0, v1) with SLOT_R corners - the windows that replaced the round
+    lightening holes. A plate whose outline is a slot plus a narrow rim is a hem
+    frame: the 180-degree fold around a window edge, modelled as the 3 mm doubled
+    strip it becomes (see cobot.py rule 2).
+    """
+
+    def __init__(self, link, tag, normal, n0, n1, u0, u1, v0, v1, holes=(), slots=()):
         self.link, self.tag, self.normal = link, tag, normal
         self.n0, self.n1 = n0, n1
         self.u0, self.u1, self.v0, self.v1 = u0, u1, v0, v1
         self.holes = list(holes)      # (u, v, dia)
+        self.slots = list(slots)      # (u0, u1, v0, v1)
 
     def box(self):
         b = [None] * 3
@@ -128,7 +138,11 @@ class Plate:
             self.v1 = max(self.v1, v + d / 2 + m)
 
     def area(self):
-        return (self.u1 - self.u0) * (self.v1 - self.v0)
+        """Net area: outline minus windows minus bores (what the blank weighs)."""
+        a = (self.u1 - self.u0) * (self.v1 - self.v0)
+        a -= sum((s1 - s0) * (t1 - t0) for (s0, s1, t0, t1) in self.slots)
+        a -= sum(math.pi * (d / 2.0) ** 2 for (_, _, d) in self.holes)
+        return a
 
     def mass(self):
         return self.area() * T * 2.68e-3 / 1000.0   # kg, 5052
@@ -215,16 +229,42 @@ TH_YAW_BOT = -196.0 - IFACE['X6-60']['ln']   # yaw body bottom, -263.5
 TH_FLG_BOT = -310.0 + YAW_R + 5.0            # flange bottom clears the knee body top by 5
 
 L('thigh', 'yaw_out', 'hip_yaw', 'output', -YAW_R, TH_FRONT + T, TH_Y0 - T, TH_Y1 + T, outset=T)
-PLATES.append(Plate('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP))
-PLATES.append(Plate('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP))
+# The flanges carry a WINDOW each, over the yaw body: "expose what explains". The
+# window is a rounded rectangle with a hemmed edge (the hem strip sits on the outer
+# face: inward it would come within 2 mm of the connector boss sweep). H2's thigh
+# shell has the same move - one long aperture in the side - and it is what makes a
+# closed section read as a shell with something inside rather than a box.
+TH_WIN = (-25.0, 40.0, -253.0, -205.0)                       # x0, x1, z0, z1
+TH_HEMR = (TH_WIN[0] - HEM, TH_WIN[1] + HEM, TH_WIN[2] - HEM, TH_WIN[3] + HEM)
+PLATES.append(Plate('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP, slots=[TH_WIN]))
+PLATES.append(Plate('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP, slots=[TH_WIN]))
+PLATES.append(Plate('thigh', 'hem_in',     'y', TH_Y0 - 2 * T, TH_Y0 - T, *TH_HEMR, slots=[TH_WIN]))
+PLATES.append(Plate('thigh', 'hem_out',    'y', TH_Y1 + T, TH_Y1 + 2 * T, *TH_HEMR, slots=[TH_WIN]))
 PLATES.append(Plate('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, TH_Y0 - T, TH_Y1 + T, TH_FLG_BOT, TH_TOP))
-# below the yaw body the web narrows to what the knee stator plate needs
-PLATES.append(Plate('thigh', 'web_lo',     'x', TH_FRONT, TH_FRONT + T, 60.0, TH_Y1 + T, -355.0, TH_FLG_BOT))
-L('thigh', 'knee_face', 'knee', 'stator', -KB - 46.0, TH_FRONT + T, -350.0, -285.0)
-# the knee now hangs 111 mm behind the web's bend line, so the stator plate gets a
-# short flange bent down its REAR edge too - a gusset that turns a cantilever into a
-# channel. It sits 5 mm clear of the knee body and stays out of the shank's sweep
-# because it lives inboard of the shank web (y < 75).
+#
+# THE JOG. Below the yaw body the thigh STEPS BACK to the knee instead of bridging
+# to it with a 160 mm slab. The first cut carried the web straight down the front
+# (x = 56) and bent the knee stator plate off it, so the stator plate had to reach
+# from x = 59 back to the knee at x = -55 - 46: a 160 x 65 plate, and the leg's
+# widest, deepest section (126 x 162 mm) sat AT THE KNEE. The H2's leg is the
+# opposite: 143 x 128 under the hip tapering to 72 x 74 at the knee, with the knee a
+# pinch between two cones. Ours cannot taper (axis-aligned sheet) but it can step:
+#   web (front, x=56) -> bend at z=-265 -> shelf (z-normal, under the yaw body,
+#   running BACK to x=-6) -> bend -> lower web (x=-6, 30 wide) -> bend -> knee
+#   stator plate (x -101..-3) -> bend -> rear gusset.
+# Four bends in series on one blank, all about y-lines or z-lines. The knee plate
+# drops from 160 to 98 long; the section at the knee from 126 x 162 to 98 x 100 -
+# that is the G1's S-through-the-hip and the knee-back offset, expressed as folds.
+# The shelf top sits 1.5 below the yaw body (which rotates about z, so the gap is
+# constant); its front edge is the web's bend line.
+TH_LO_X = -6.0                               # lower web inner face (knee body front is -15)
+TH_LO_Y0, TH_LO_Y1 = 78.0, 108.0             # lower web: outboard of the knee stator plate
+PLATES.append(Plate('thigh', 'shelf',      'z', TH_FLG_BOT - T, TH_FLG_BOT, TH_LO_X, TH_FRONT + T, TH_LO_Y0, TH_Y1 + T))
+PLATES.append(Plate('thigh', 'web_lo',     'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, -355.0, TH_FLG_BOT - T))
+L('thigh', 'knee_face', 'knee', 'stator', -KB - 46.0, TH_LO_X + T, -350.0, -285.0)
+# the stator plate gets a short flange bent down its REAR edge too - a gusset that
+# turns a cantilever into a channel. It sits 5 mm clear of the knee body and stays
+# out of the shank's sweep because it lives inboard of the shank web (y < 75).
 PLATES.append(Plate('thigh', 'knee_gus', 'x', -KB - YAW_R - 5.0 - T, -KB - YAW_R - 5.0, 12.0, 78.0, -350.0, -285.0))
 
 # shank: knee OUTPUT -> ankle pitch STATOR.
@@ -280,13 +320,74 @@ PLATES.append(Plate('ankle', 'ankr_lapear', 'x',
 L('foot', 'ankr_out', 'ank_roll', 'output', 54.0, 96.0, -641.0, -599.0, outset=T)
 PLATES.append(Plate('foot', 'sole', 'z', -670.0, -667.0, -KB - 64.0, -KB + 116.0, 38.0, 112.0))
 
-# arm
-L('shoA', 'shop_out', 'sho_pitch', 'output', -26.0, 26.0, 204.0, 256.0, outset=T)
-L('shoA', 'shor_face', 'sho_roll', 'stator', 122.0, 178.0, 139.0, 191.0)
-L('shoB', 'shor_out', 'sho_roll', 'output', 124.0, 176.0, 141.0, 189.0, outset=T)
-L('shoB', 'elb_face', 'elb_pitch', 'stator', -28.0, 28.0, 14.0, 66.0)
-L('elbA', 'elb_out', 'elb_pitch', 'output', -26.0, 26.0, 16.0, 64.0, outset=T)
-L('elbA', 'wrist_face', 'wrist_yaw', 'stator', -28.0, 28.0, 122.0, 178.0)
+# ---- arm ----
+# The first cut left the arms as four bare cylinders: the upper arm was a 3 mm strip
+# that did not reach the shoulder it was meant to hang from, and the forearm had no
+# structure at all between the elbow output and the wrist stator. Both links are
+# now CHANNELS, the same move as the thigh. Every dimension below that looks odd
+# is a swept radius: sweep.py now rotates the arm through shoulder abduction and
+# the full elbow range, and the arm is shaped by what those sweeps allowed.
+#
+# shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Split pair, lapped. The lap
+# tab used to sit in the slab x -36.5..-33.5 outboard of the roll bolt circle - the
+# same slab the roll OUTPUT plate occupies, so the two were 1.5 mm inside each other
+# (sweep.py static, "REAL"). It now laps INBOARD of the bolt circle, y 106..121, on
+# a stator plate extended inboard to carry it: that is the one sector the rolling
+# upper arm never sweeps (abduction swings it outboard and up; the output plate's
+# inboard-top corner comes no closer than y 127). Two lobes, like the ankle tab:
+# the lower rect is the lap, the upper rect (z 208..236) bends off shop_out.
+L('shoA', 'shop_out', 'sho_pitch', 'output', -33.5, 26.0, 204.0, 256.0, outset=T)
+L('shoA', 'shor_face', 'sho_roll', 'stator', 106.0, 178.0, 139.0, 191.0)
+PLATES[-1].holes += [(113.0, 150.0, 4.5), (113.0, 180.0, 4.5)]        # lap bolts, M4
+#
+# shoB: shoulder roll OUTPUT -> elbow STATOR. A channel open INBOARD: rear = the roll
+# output plate (x -36.5..-33.5); outboard web bent from its outer edge at y 180
+# (2.5 clear of the roll body's end), running down past the elbow with a D58
+# clearance hole the elbow body passes THROUGH (the elbow body points outboard,
+# y 150..211); front flange bent from the web. Section 79.5 x 59 where there was
+# a 3 mm strip. Three things here are the shape of a sweep:
+#   * The web's top is 15 mm BELOW the roll axis. A corner at (dy=30, dz=-15)
+#     swept through 0..97 deg abduction stays outboard of y=180 the whole way
+#     (y' = 33.5 cos(th - 27 deg) >= 30); a top at the axis height landed in the
+#     shoulder outrigger at 89 deg. The roll body's outboard end shows above it.
+#   * The forearm is a bar offset 37 mm from the elbow axis, and through +/-132 deg
+#     it sweeps EVERYTHING within r=156 of that axis in its own y-band. So the
+#     upper arm's front flange (x 40) and the elbow stator's bridge both live
+#     OUTBOARD of y 147, where the forearm is not: the flange at y 148..183, and
+#     the stator plate bent at its top (z=75, r=45 from the elbow axis, clear of
+#     the 36.6 mm radius the output plate sweeps) into a shelf over the elbow
+#     body and a lap tab bolted to the inside of the web.
+SB_Y, SB_XF = 180.0, 40.0
+L('shoB', 'shor_out', 'sho_roll', 'output', 128.0, SB_Y, 141.0, 185.0, outset=T)
+PLATES.append(Plate('shoB', 'web',       'y', SB_Y, SB_Y + T, -36.5, SB_XF, 8.0, 150.0,
+                    holes=[(0.0, 40.0, 58.0), (-13.0, 97.0, 4.5), (13.0, 97.0, 4.5)]))
+PLATES.append(Plate('shoB', 'flange_fr', 'x', SB_XF, SB_XF + T, 148.0, SB_Y + T, 8.0, 150.0))
+L('shoB', 'elb_face', 'elb_pitch', 'stator', -28.5, 28.5, 8.0, 75.0)
+PLATES.append(Plate('shoB', 'elb_shelf', 'z', 75.0, 78.0, -28.5, 28.5, 147.0, SB_Y))
+PLATES.append(Plate('shoB', 'elb_lap',   'y', SB_Y - T, SB_Y, -28.5, 28.5, 78.0, 110.0,
+                    holes=[(-13.0, 97.0, 4.5), (13.0, 97.0, 4.5)]))
+#
+# elbA: elbow OUTPUT -> wrist STATOR. The elbow output plate is at y 144..147 (the
+# pancake stack: stator plate on the face, output plate outset inboard of it, body
+# outboard). Its front and rear edges bend INBOARD into two flanges, x +/-36..39,
+# y 122..144, hanging the full 176 mm to the wrist - a fork, like the H2's knee
+# clevis. Inboard, because outboard of y 147 is where the upper arm keeps its
+# flange and stator bridge, and the forearm sweeps its whole y-band; not further
+# inboard than 122 because the hip-pitch coupling's tab reaches y 118 at z -96. The wrist
+# stator plate (which needs y 118..182 for its ring, so it cannot be one blank
+# with the fork) bends tabs UP from its x-edges that lap inside the fork: the one
+# place on the arm where nothing sweeps. Section 78 x 22.
+L('elbA', 'elb_out', 'elb_pitch', 'output', -36.0, 36.0, 14.0, 64.5, outset=T)
+PLATES.append(Plate('elbA', 'flange_fr', 'x',  36.0,  39.0, 122.0, 144.0, -112.0, 64.5,
+                    holes=[(133.0, -85.0, 4.5), (133.0, -100.0, 4.5)]))
+PLATES.append(Plate('elbA', 'flange_rr', 'x', -39.0, -36.0, 122.0, 144.0, -112.0, 64.5,
+                    holes=[(133.0, -85.0, 4.5), (133.0, -100.0, 4.5)]))
+L('elbA', 'wrist_face', 'wrist_yaw', 'stator', -36.0, 36.0, 122.0, 178.0)
+_wf = PLATES[-1]
+PLATES.append(Plate('elbA', 'wtab_fr', 'x',  33.0,  36.0, _wf.v0, _wf.v1, -112.0, -70.0,
+                    holes=[(133.0, -85.0, 4.5), (133.0, -100.0, 4.5)]))
+PLATES.append(Plate('elbA', 'wtab_rr', 'x', -36.0, -33.0, _wf.v0, _wf.v1, -112.0, -70.0,
+                    holes=[(133.0, -85.0, 4.5), (133.0, -100.0, 4.5)]))
 PLATES.append(Plate('hand', 'palm', 'z', -179.0, -176.0, -22.0, 22.0, 128.0, 172.0))
 
 # ---- trunk ----
@@ -294,46 +395,62 @@ PLATES.append(Plate('hand', 'palm', 'z', -179.0, -176.0, -22.0, 22.0, 128.0, 172
 # the wall. Side plates sit at y +/-100 (200 mm wide) because the measured torso was
 # 27% narrower than human proportion, which is what made it read as a tall slab.
 # The hip-pitch stators mount inboard at y=75 on short brackets carried on standoffs.
-def lighten(u0, u1, v0, v1, d, du, dv):
-    """Staggered, graded lightening cutouts.
+# CHEST OVER WAIST, not one slab. The first cut's torso was 206 x 141 for 380 mm
+# with the hip stack continuing the same box downward - half the robot's height was
+# one unmodulated prism, and that is what read heavy, not the holes in it. The
+# H2 torso is 255 wide at the chest and ~160 at the waist (1.6:1) over a separate
+# 216-wide pelvis pod; it has a WAIST. Axis-aligned sheet cannot taper, but it
+# can step:
+#   waist  z -100..60   y +/-78   x -60..55    (156 x 115) - the pelvis. Its side
+#          walls ARE the hip-pitch stator plates, grown to the full wall: no
+#          standoffs, no bracket, and the hip output plates (y 78..81) now stand
+#          on the OUTSIDE of the pelvis, exactly where the H2 shows its hip rings.
+#          It encloses the hip-pitch bodies, which is rule 2 of UNITREE.md.
+#   chest  z 60..270    y +/-103  x -73..68    (206 x 141) - as wide as before,
+#          210 tall instead of 380, with the deck 40 above the shoulder axis
+#          instead of 70 so the shoulders are the top corners, not a hole in the
+#          side of a box that keeps going.
+#   ledge  z 60..63     the chest floor, a frame whose opening is the waist.
+# Chest : waist width 1.32 (H2 1.6); the step is 25 mm a side. A tilted chamfer
+# panel would do it better and is the next Plate-class extension.
+#
+# The round lightening fields are gone. Each chest face carries ONE rounded-
+# rectangle window with a hemmed edge (the hem strip on the inside face, so the
+# skin stays flush and the window reveal reads as a 6 mm folded edge). The waist
+# is closed: a pelvis is a pod.
+ZW, ZD = 60.0, 270.0
+WA_Y, CH_Y = 75.0, 100.0                     # inner faces of waist wall / chest side
+WA_X0, WA_X1 = -57.0, 52.0                   # waist front/rear inner faces
+CH_X0, CH_X1 = -70.0, 65.0                   # chest front/rear inner faces
 
-    A uniform square grid of identical holes reads as pegboard. Staggering alternate
-    columns and shrinking the holes toward the plate edges reads as engineered, and
-    is also closer to right: material wants to stay where the load paths run, i.e.
-    near the mounting faces at the ends."""
-    out = []
-    nu = max(int((u1 - u0) // du), 1)
-    span_u = nu * du
-    ou = u0 + ((u1 - u0) - span_u) / 2.0
-    for i in range(nu + 1):
-        u = ou + i * du
-        stagger = (dv / 2.0) if i % 2 else 0.0
-        v = v0 + stagger
-        while v <= v1:
-            # taper the hole toward the top and bottom of the plate
-            t = min(v - v0, v1 - v) / max((v1 - v0) / 2.0, 1.0)
-            dd = d * (0.62 + 0.38 * min(t, 1.0))
-            if dd > 16.0:
-                out.append((u, v, dd))
-            v += dv
-    return out
-
-L('trunkS', 'hip_mount', 'hip_pitch', 'stator', -50.0, 50.0, -100.0, -10.0)
-PLATES.append(Plate('trunkS', 'side', 'y', 100.0, 103.0, -70.0, 65.0, -80.0, 300.0,
-                    holes=lighten(-42.0, 37.0, -30.0, 185.0, 62.0, 62.0, 62.0)
-                          + [(0.0, 230.0, 62.0)]))
+# trunkS is mirrored: waist wall (= hip pitch stator), chest side, shoulder bracket
+L('trunkS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, -100.0, ZW)
+SIDE_WIN = (-45.0, 40.0, 95.0, 185.0)
+PLATES.append(Plate('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZW, ZD,
+                    holes=[(0.0, 230.0, 62.0)], slots=[SIDE_WIN]))
+PLATES.append(Plate('trunkS', 'side_hem', 'y', CH_Y - T, CH_Y,
+                    SIDE_WIN[0] - HEM, SIDE_WIN[1] + HEM, SIDE_WIN[2] - HEM, SIDE_WIN[3] + HEM,
+                    slots=[SIDE_WIN]))
 L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -30.0, 30.0, 200.0, 260.0)
-PLATES.append(Plate('trunkS', 'outrigger', 'z', 194.0, 197.0, -30.0, 30.0, 100.0, 153.0))
+PLATES.append(Plate('trunkS', 'outrigger', 'z', 197.0, 200.0, -30.0, 30.0, CH_Y, 153.0))
 
-# trunkC is centred and not mirrored: spine, front panel, deck and neck riser.
-PLATES.append(Plate('trunkC', 'rear', 'x', -73.0, -70.0, -103.0, 103.0, -80.0, 300.0,
-                    holes=lighten(-72.0, 72.0, -30.0, 250.0, 66.0, 62.0, 66.0)))
-PLATES.append(Plate('trunkC', 'front', 'x', 65.0, 68.0, -103.0, 103.0, -80.0, 300.0,
-                    holes=lighten(-72.0, 72.0, -30.0, 250.0, 66.0, 62.0, 66.0)))
-PLATES.append(Plate('trunkC', 'deck', 'z', 300.0, 303.0, -70.0, 65.0, -103.0, 103.0,
-                    holes=[(0.0, 0.0, 62.0)]))
-PLATES.append(Plate('trunkC', 'riser_l', 'x', 31.0, 34.0, -26.0, 26.0, 300.0, 330.0))
-PLATES.append(Plate('trunkC', 'riser_r', 'x', -34.0, -31.0, -26.0, 26.0, 300.0, 330.0))
+# trunkC is centred and not mirrored: waist front/rear, chest front/rear, ledge,
+# deck and neck riser.
+PLATES.append(Plate('trunkC', 'rear_lo',  'x', WA_X0 - T, WA_X0, -WA_Y, WA_Y, -100.0, ZW))
+PLATES.append(Plate('trunkC', 'front_lo', 'x', WA_X1, WA_X1 + T, -WA_Y, WA_Y, -100.0, ZW))
+FR_WIN = (-45.0, 45.0, 110.0, 200.0)
+FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
+PLATES.append(Plate('trunkC', 'rear',     'x', CH_X0 - T, CH_X0, -CH_Y - T, CH_Y + T, ZW, ZD, slots=[FR_WIN]))
+PLATES.append(Plate('trunkC', 'rear_hem', 'x', CH_X0, CH_X0 + T, *FR_HEMR, slots=[FR_WIN]))
+PLATES.append(Plate('trunkC', 'front',    'x', CH_X1, CH_X1 + T, -CH_Y - T, CH_Y + T, ZW, ZD, slots=[FR_WIN]))
+PLATES.append(Plate('trunkC', 'front_hem','x', CH_X1 - T, CH_X1, *FR_HEMR, slots=[FR_WIN]))
+PLATES.append(Plate('trunkC', 'ledge',    'z', ZW, ZW + T, CH_X0, CH_X1, -CH_Y, CH_Y,
+                    slots=[(WA_X0, WA_X1, -WA_Y, WA_Y)]))
+# the head-yaw body now stands clear above the deck (274.5 vs 273), so the deck
+# no longer needs a bore under it
+PLATES.append(Plate('trunkC', 'deck', 'z', ZD, ZD + T, CH_X0, CH_X1, -CH_Y - T, CH_Y + T))
+PLATES.append(Plate('trunkC', 'riser_l', 'x', 31.0, 34.0, -26.0, 26.0, ZD, 330.0))
+PLATES.append(Plate('trunkC', 'riser_r', 'x', -34.0, -31.0, -26.0, 26.0, ZD, 330.0))
 L('trunkC', 'hy_stat', 'head_yaw', 'stator', -30.0, 30.0, -30.0, 30.0)
 
 # head: a minimal open cage, not a shell - lightest option and consistent with the
@@ -347,7 +464,7 @@ PLATES.append(Plate('head', 'cage_top', 'z', HZ1, HZ1 + 3.0, -48.0, 40.0, -39.0,
                     holes=[(-4.0, 0.0, 44.0)]))
 # the face carries the stereo pair - the one element that gives the machine a front
 PLATES.append(Plate('head', 'cage_face', 'x', 40.0, 43.0, -39.0, 39.0, HZ0 + 8.0, HZ1 - 8.0,
-                    holes=[(-27.0, 452.0, 24.0), (27.0, 452.0, 24.0), (0.0, 415.0, 18.0)]))
+                    holes=[(-24.0, 452.0, 24.0), (24.0, 452.0, 24.0), (0.0, 415.0, 18.0)]))
 
 # head
 L('neck', 'hy_out', 'head_yaw', 'output', -28.0, 28.0, -28.0, 28.0, outset=T)
@@ -388,15 +505,24 @@ BEND_TABS = [
     # A tab listed with two targets is the middle flange of a TWO-BEND blank.
     # A tab with one target bends from that flange and LAPS (bolts) to the other -
     # used where the direct bend line would land inside a bolt circle.
-    ('hipA',  'z', (-99.0, -96.0), (-62.0, 32.0), (75.0, 118.0), ('pitch_face', 'roll_face')),
-    ('hipB',  'z', (-96.0, -93.0), (-62.0, -37.0), (45.0, 117.0), ('roll_out', 'yaw_face')),
+    # hipA's tab bends off pitch_face, so it starts at y=78 (the plate's inner
+    # face), not 75: at 75 it sat inside the hip stator plate's slab.
+    ('hipA',  'z', (-99.0, -96.0), (-62.0, 32.0), (78.0, 118.0), ('pitch_face', 'roll_face')),
+    # hipB's tab bends off the BOTTOM of roll_out (z=-184); it was recorded at
+    # z=-96, a hundred millimetres up, punching through the hip stator and output
+    # plates - two of sweep.py's four REAL overlaps. Where it belongs it is 3 mm
+    # above the thigh's yaw_out plate, which rotates about z and never closes that.
+    ('hipB',  'z', (-187.0, -184.0), (-62.0, -39.8), (45.0, 105.0), ('roll_out', 'yaw_face')),
     # split pairs: X-normal lap tab, bent off the output flange about a Z line
     # L-shaped: the upper rect crosses over the foot's output plate, the lower
     # rect is the lap onto ankr_lapear. Both listed so the rule sees both.
     ('ankle', 'x', (-KB - 36.5, -KB - 33.5), (78.0, 130.0), (-588.0, -538.0), ('ankp_out',)),
     ('ankle', 'x', (-KB - 36.5, -KB - 33.5), (108.0, 130.0), (-640.0, -588.0), ()),
-    ('shoA',  'x', (-36.5, -33.5), (151.5, 196.0), (128.0, 236.0), ('shop_out',)),
-    ('shoB',  'y', (144.0, 147.0), (-34.0, 34.0), (12.0, 100.0), ('elb_face',)),
+    # shoA: two lobes. Upper bends off shop_out's rear edge (z 208..236 sits above
+    # everything the rolling upper arm sweeps); lower is the lap onto shor_face's
+    # inboard extension, y 106..121, with two M4s.
+    ('shoA',  'x', (-36.5, -33.5), (106.0, 156.0), (208.0, 236.0), ('shop_out',)),
+    ('shoA',  'x', (-36.5, -33.5), (106.0, 121.0), (128.0, 208.0), ()),
 ]
 ANGLE_MASS = (ANGLE[0] + ANGLE[1] - ANGLE[2]) * ANGLE[2] * 2.70e-3 / 1000.0  # kg per mm
 
@@ -408,8 +534,18 @@ ANGLE_MASS = (ANGLE[0] + ANGLE[1] - ANGLE[2]) * ANGLE[2] * 2.70e-3 / 1000.0  # k
 #   shank: front flange bends from web_fr -> line at x = SH_FR + T/2
 BENDS = [
     ('thigh', 'z', -196.0 + T + T / 2.0, ('flange_in', 'flange_out', 'web')),
-    ('thigh', 'x', WRAP + T / 2.0,       ('knee_face',)),
+    ('thigh', 'z', TH_FLG_BOT - T / 2.0,  ('shelf',)),            # shelf off the web's bottom
+    ('thigh', 'x', TH_LO_X + T / 2.0,     ('web_lo', 'knee_face')),  # web_lo off the shelf; knee_face off web_lo
+    ('thigh', 'x', -KB - YAW_R - 5.0 - T / 2.0, ('knee_gus',)),
     ('shank', 'x', SH_FR + T / 2.0,      ('flange_fr',)),
+    ('shoB',  'y', SB_Y + T / 2.0,       ('shor_out', 'web')),     # web off shor_out's outboard edge
+    ('shoB',  'x', SB_XF + T / 2.0,      ('flange_fr',)),          # flange off the web's front edge
+    ('shoB',  'z', 75.0 + T / 2.0,       ('elb_face', 'elb_shelf')),  # shelf off the stator plate's top
+    ('shoB',  'y', SB_Y - T / 2.0,       ('elb_shelf', 'elb_lap')),
+    ('elbA',  'x',  37.5,                ('elb_out', 'flange_fr')),  # fork off the output plate's edges
+    ('elbA',  'x', -37.5,                ('flange_rr',)),
+    ('elbA',  'x',  34.5,                ('wrist_face', 'wtab_fr')), # wrist tabs off the stator plate
+    ('elbA',  'x', -34.5,                ('wtab_rr',)),
 ]
 
 
@@ -419,7 +555,7 @@ def dump_json(path):
     for p in PLATES:
         out['plates'].append(dict(link=p.link, tag=p.tag, normal=p.normal,
                                   n0=p.n0, n1=p.n1, u0=p.u0, u1=p.u1,
-                                  v0=p.v0, v1=p.v1, holes=p.holes))
+                                  v0=p.v0, v1=p.v1, holes=p.holes, slots=p.slots))
     for (lk, ax, org, ext, flip) in ANGLES:
         out['angles'].append(dict(link=lk, axis=ax, org=org, ext=ext, flip=flip))
     json.dump(out, open(path, 'w'), indent=1)
@@ -453,7 +589,13 @@ def main():
                 print('  %-8s %-11s hole d%.1f at (%.1f, %.1f): margin %.2f mm'
                       % (p.link, p.tag, d, u, v, m))
                 bad += 1
-    print('  holes with insufficient edge margin: %d' % bad)
+        for (su0, su1, sv0, sv1) in p.slots:
+            m = min(su0 - p.u0, p.u1 - su1, sv0 - p.v0, p.v1 - sv1)
+            if m < T:
+                print('  %-8s %-11s slot (%.0f..%.0f, %.0f..%.0f): margin %.2f mm'
+                      % (p.link, p.tag, su0, su1, sv0, sv1, m))
+                bad += 1
+    print('  holes/slots with insufficient edge margin: %d' % bad)
 
     print('\n=== plate vs actuator body clearance ===')
     obs = obstacles()
