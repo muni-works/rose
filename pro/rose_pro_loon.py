@@ -8,6 +8,8 @@ vcad conventions that shape the output:
   * Z-up, mm, degrees. cube corner at origin; cylinder axis +Z, base at z=0.
   * subject-last, so [difference tool subject] and [pipe base [difference tool] ...].
   * loon hardcodes 32 tessellation segments; nothing here depends on chord accuracy.
+  * the plate helpers are a loon module (hardware/rose-pro/plates.loon), imported
+    with [use plates [...]] - this file emits roots only.
   * bores are kept exiting PLANAR faces. Per vcad's boolean-fidelity matrix the
     degrading cells are through-cuts breaking out of ROUND walls, which would cost
     the analytic B-rep and hand us faceted STEP. Plate faces are flat, so we stay in
@@ -55,53 +57,15 @@ HEADER = '''; rose-pro - original 22-DOF humanoid, structure in 3 mm 5052 sheet.
 
 '''
 
-HELPERS = '''
-; ---------------------------------------------------------------- helpers ----
-; Rounded-rectangle plate, one per normal axis. u/v are the two in-plane axes in
-; x<y<z order, n0..n1 the thickness span. Corner radius r.
-; Built as two overlapping boxes plus four corner cylinders - the classic
-; rounded-rect, and every resulting face is planar or a simple cylinder.
-
-[let plate-x [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate n0 [+ u0 r] v0 [cube t [- [- u1 u0] [* 2.0 r]] [- v1 v0]]]]
-  [let cross [translate n0 u0 [+ v0 r] [cube t [- u1 u0] [- [- v1 v0] [* 2.0 r]]]]]
-  [let cn [fn [cu cv] [translate n0 cu cv [rotate 0.0 90.0 0.0 [cylinder r t]]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-[let plate-y [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate [+ u0 r] n0 v0 [cube [- [- u1 u0] [* 2.0 r]] t [- v1 v0]]]]
-  [let cross [translate u0 n0 [+ v0 r] [cube [- u1 u0] t [- [- v1 v0] [* 2.0 r]]]]]
-  [let cn [fn [cu cv] [translate cu n0 cv [rotate -90.0 0.0 0.0 [cylinder r t]]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-[let plate-z [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate [+ u0 r] v0 n0 [cube [- [- u1 u0] [* 2.0 r]] [- v1 v0] t]]]
-  [let cross [translate u0 [+ v0 r] n0 [cube [- u1 u0] [- [- v1 v0] [* 2.0 r]] t]]]
-  [let cn [fn [cu cv] [translate cu cv n0 [cylinder r t]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-; Through-bores, overshooting the plate both ways so the cut exits cleanly.
-[let bore-x [fn [d cu cv n0 n1]
-  [translate [- n0 2.0] cu cv [rotate 0.0 90.0 0.0 [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]]
-[let bore-y [fn [d cu cv n0 n1]
-  [translate cu [- n0 2.0] cv [rotate -90.0 0.0 0.0 [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]]
-[let bore-z [fn [d cu cv n0 n1]
-  [translate cu cv [- n0 2.0] [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]
-
-; Actuator envelope stand-ins - purchased parts, shown for fit not for manufacture.
-[let act-x [fn [d lo hi cu cv] [translate lo cu cv [rotate 0.0 90.0 0.0 [cylinder [/ d 2.0] [- hi lo]]]]]]
-[let act-y [fn [d lo hi cu cv] [translate cu lo cv [rotate -90.0 0.0 0.0 [cylinder [/ d 2.0] [- hi lo]]]]]]
-[let act-z [fn [d lo hi cu cv] [translate cu cv lo [cylinder [/ d 2.0] [- hi lo]]]]]
-'''
+# The plate/bore/actuator vocabulary is a loon MODULE, hand-maintained at
+# hardware/rose-pro/plates.loon next to the generated file (not pasted in here
+# as a preamble). The generated file names what it uses and vcad resolves the
+# module relative to the file — `vcad info`, `vcad export`, `vcad-render` and
+# the MCP load_document path all do the same lookup. See
+# crates/vcad-loon/src/modules.rs in vcad for the rules.
+USE = ('[use plates [plate-x plate-y plate-z bore-x bore-y bore-z '
+       'act-x act-y act-z]]')
+PLATES_MODULE = os.path.join(os.path.dirname(OUT), 'plates.loon')
 
 
 def fnum(v):
@@ -228,7 +192,13 @@ def main():
     lines.append('[defparam shoulder_y %s :unit "mm"]' % fnum(L.SHO_Y))
     lines.append('[defparam sheet_t    %s :unit "mm"]' % fnum(L.T))
     lines.append('[defparam bend_r     1.5 :unit "mm"]')
-    lines.append(HELPERS)
+    lines.append('')
+    lines.append('; Shared plate/bore/actuator vocabulary lives in plates.loon (a loon module,')
+    lines.append('; resolved next to this file). This file is roots only.')
+    lines.append(USE)
+    if not os.path.exists(PLATES_MODULE):
+        sys.exit('missing %s - the plate vocabulary module must sit beside the output'
+                 % PLATES_MODULE)
 
     no_mirror = ('neck', 'trunkC', 'head')
     roots = []
@@ -243,8 +213,17 @@ def main():
     for link in sorted(groups):
         sides = [(False, 'C')] if link in no_mirror else [(False, 'L'), (True, 'R')]
         for mirror, tag in sides:
+            # A link may carry several plates with the same tag (the ankle has
+            # two bend tabs). loon `let` rebinds, so identical names would make
+            # the later plate shadow the earlier one and both roots render the
+            # same plate - which is exactly what happened until vcad's root
+            # cache reported 2 hits on a cold run. Suffix repeats.
+            seen = {}
             for pl in groups[link]:
-                name = '%s_%s_%s' % (tag, link, pl['tag'])
+                n = seen.get(pl['tag'], 0) + 1
+                seen[pl['tag']] = n
+                suffix = '' if n == 1 else '_%d' % n
+                name = '%s_%s_%s%s' % (tag, link, pl['tag'], suffix)
                 lines.append('\n[let %s\n  %s]' % (name, plate_expr(pl, mirror)))
                 roots.append((name, 'aluminum'))
 
