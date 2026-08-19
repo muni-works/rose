@@ -9,8 +9,8 @@ The line has three variants, largest last:
 | | | |
 |---|---|---|
 | **rose mini** | 950 mm, 22 DOF, generic A/B/C actuator SKUs | `../rose-mini` |
-| **rose pro** | 1130 mm, 22 DOF on MyActuator X-series; sim-ready, stands at +0.0% force error | `ipse/scripts/rose_pro_*.py` + `vcad/hardware/rose-pro` |
-| **rose max** | full size on our own rana + torc; closed sections, pushrod ankles | here |
+| **rose pro** | **1800 mm**, 23 DOF on MyActuator X-series (X15-450 hip/knee); pushrod ankle, waist yaw; see `../pro/` | `../pro/` + `vcad/hardware/rose-pro` |
+| **rose max** | **2000 mm** on our own rana + torc; closed sections, pushrod ankles. Geometry here is rose-1, the 1210 mm study; the 2000 mm re-scope is in INTERFACES.md | here |
 
 rose pro is the one you can order parts for today; rose max is the one that is
 ours end to end. mini is the crashable one.

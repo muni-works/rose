@@ -22,6 +22,7 @@ family-wide decision recorded in rana/frog too.
 ## rose-specific assignments (PREDICTED — sized, not yet swept)
 
 Half-size first (**rose-1**: ~1.2 m, ~25 kg target), full-size (**rose-2**) later.
+**rose-2 is 2000 mm** — see "2000 mm re-scope" below; the table here is rose-1's.
 
 | joint | qty | actuator | why |
 |---|---|---|---|
@@ -31,6 +32,47 @@ Half-size first (**rose-1**: ~1.2 m, ~25 kg target), full-size (**rose-2**) late
 | Shoulder (3 DOF) | 2× | rana-100 ×3 | |
 | Elbow | 2 | rana-100 | |
 | Wrist/neck | — | rana-100 or direct | later |
+
+## 2000 mm re-scope (2026-08-19)
+
+"rose max 2000 mm." Everything in this file above the conventions is rose-1,
+the 1210 mm R1-class study, and its actuator table is rana-140 / rana-100. At
+2000 mm the numbers are a different machine (`pro/sizing.py 2000`, calibrated
+on the G1, H2 and rose pro URDFs — see `pro/SIZING.md`):
+
+| | design (H2 density 11.6 kg/m³) | pessimistic (G1 density 14.8) |
+|---|---:|---:|
+| mass | **93 kg** | 118 kg |
+| thigh / shank / torso | 450 / 540 / 580 mm | same |
+| hip pitch, knee | **533 N·m** | 679 |
+| hip roll / yaw | 410 / 287 | 523 / 366 |
+| ankle pitch | 93 | 118 |
+| shoulder pitch | 148 | 189 |
+| shoulder roll, elbow | 79 | 100 |
+
+rana-140 is 96 N·m peak. At 2000 mm it covers the **ankle drive and the arms
+only**. The hip and knee want a **rana-200-class unit, ~550 N·m peak** — the
+H2's 360 N·m joint scaled to 180 more millimetres and 23 more kilograms — and
+the shoulder pitch wants ~150 (two rana-140 in parallel, or a rana-160). That
+is a new line item in the rana family, with an envelope nobody has drawn, and
+nothing in `cad/gen-rose1.py` can be scaled until it exists: the layout
+knobs that moved rose pro to 1800 (height, proportions, envelopes) assume the
+envelopes are known. So the re-scope, in order:
+
+1. **rana-200** on the rana roadmap: ~550 N·m peak, ≥ 20:1, hollow shaft,
+   crossed-roller output, target ≤ 4.5 kg, envelope ≲ Ø170 × 80 (the X15-450
+   is Ø166 × 69 at 3.5 kg and 450 N·m; 72 V). Until its drawing exists, rose-2
+   has no hip.
+2. rose-2 targets replace the R1 row: 2000 mm, ~93 kg, leg (sole→hip) 1060,
+   leg/height 53 %, shoulder at 82 % (the H2's proportions the 1800 mm pro now
+   carries), waist 2 DOF kept, pushrod ankle kept, arms 514.
+3. `gen-rose1.py` → `gen-rose2.py` parametric on HEIGHT and envelopes, the
+   way `pro/rose_pro_layout.py` is; re-run its checker and sweeps.
+
+What transfers from pro's 1800 mm pass without change: the order of widths
+(chest > pelvis > thigh-top > knee > shank > ankle), the waist seam, the
+hip-roll column outboard of the pitch body, the shank carrying both ankle
+motors, and the rule that the sweep decides the section before taste does.
 
 ## Engineering conventions (process freeze)
 
