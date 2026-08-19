@@ -1,4 +1,4 @@
-"""Emit a simulation-ready robot description for rose-pro.
+"""Emit a simulation-ready robot description for rose-pro (1800 mm layout).
 
 Single source of truth for the kinematics is pro/rose_pro_layout.py; this
 module re-states the same joint origins in PARENT-RELATIVE form (URDF wants
@@ -32,17 +32,18 @@ import os
 import sys
 
 # ---------------------------------------------------------------- geometry ---
-HIP_Y, SHO_Y = 0.075, 0.150
-THIGH, SHANK, ANK_DZ = 0.250, 0.250, 0.060
-KNEE_BACK = 0.055    # knee axis behind the hip yaw axis; see rose_pro_layout.KNEE_BACK
-SOLE = 0.050
+# Single source: rose_pro_layout. Everything here is read from it.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rose_pro_layout as LAY
 
-# actuator data, verified from vendor STEP + the X-series V4 manual
-ACT = {                      # mass kg, ratio, rotor inertia kg.m^2, peak Nm, max rad/s
-    'X6-60': (0.82, 19.612, 0.66e-4, 60.0, 16.0),
-    'X4-36': (0.36, 36.0,   0.30e-4, 34.0, 11.6),
-    'X4-10': (0.26, 12.6,   0.30e-4, 10.0, 33.2),
-}
+HIP_Y, LEG_Y, SHO_Y = LAY.HIP_Y, LAY.LEG_Y, LAY.SHO_Y
+THIGH, SHANK, ANK_DZ = LAY.THIGH, LAY.SHANK, LAY.ANK_DZ
+KNEE_BACK = LAY.KNEE_BACK
+SOLE = LAY.SOLE
+
+# actuator data: mass kg, ratio, rotor inertia kg.m^2, peak Nm, max rad/s
+ACT = {m: (LAY.MODEL[m][2], LAY.MODEL[m][3], LAY.MODEL[m][4] or 6.0e-4,
+           LAY.PEAK[m][0], LAY.PEAK[m][1]) for m in LAY.MODEL}
 
 
 def armature(model):
@@ -104,11 +105,18 @@ def add_joint(name, parent, child, origin, axis, lo, hi, model):
 
 
 # --------------------------------------------------------------- the robot ---
-# Masses below are MEASURED from the Fusion solids in pro/rose_pro_links.py
-# (plate + angle stock, 2.70 g/cm3) plus the actuator each link carries.
-# Trunk = 1776 g frame + 2620 g of actuators it holds (2x hip pitch, 2x shoulder
-# pitch, head yaw) + 1500 g battery + 500 g compute.
-add_box('Trunk', 6.38, (0.130, 0.190, 0.350), (0.0, 0.0, 0.115))
+# Link masses at 1800: the actuator each link CARRIES (stator side) plus a
+# structure share from SIZING.md (68 kg design mass - 34 kg actuators = 34 kg of
+# structure, battery, compute, hands; the plate table will replace the structure
+# estimates when it exists). Trunk = 2x hip pitch + 2x shoulder pitch + head yaw
+# actuators (11.2 kg) + 6 kg sheet + 10 kg battery/compute + 1 kg head = 28 kg.
+J = {lab: org for (lab, org, *_r) in LAY.JOINTS}
+Z = dict(hp=LAY.Z_HIP_P, hr=LAY.Z_HIP_R, hy=LAY.Z_HIP_Y, kn=LAY.Z_KNEE, ap=LAY.Z_ANK_P,
+         ar=LAY.Z_ANK_R, sp=LAY.Z_SHO_P, sr=LAY.Z_SHO_R, el=LAY.Z_ELB, wr=LAY.Z_WRIST,
+         hy2=LAY.Z_HEAD_Y, hp2=LAY.Z_HEAD_P)
+M = {m: LAY.MODEL[m][2] for m in LAY.MODEL}
+
+add_box('Trunk', 28.0, (0.200, 0.300, 0.560), (0.0, 0.0, 0.200))
 
 for side, s in (('Left', 1.0), ('Right', -1.0)):
     lo_roll, hi_roll = (-0.5, 1.5) if s > 0 else (-1.5, 0.5)
@@ -118,39 +126,44 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     sh = '%s_Shank' % side
     ac = '%s_Ankle_Cross' % side
     ft = '%s_foot_link' % ('left' if s > 0 else 'right')
+    dy = s * (LEG_Y - HIP_Y)           # the pitch link reaches OUTBOARD to the leg column
 
-    # link masses = the actuator each link carries (stator side) + its structure
-    add_box(p,  0.94, (0.090, 0.090, 0.085), (0.0, 0.0, -0.0425))
-    add_box(r,  0.91, (0.090, 0.090, 0.051), (0.0, 0.0, -0.0255))
-    add_cyl(y,  0.92, 0.045, 0.114, (0.0, 0.0, -0.057))
-    add_cyl(sh, 0.54, 0.038, 0.250, (0.0, 0.0, -0.125))
-    add_box(ac, 0.44, (0.060, 0.060, 0.060), (0.0, 0.0, -0.030))
-    add_box(ft, 0.17, (0.180, 0.075, 0.022), (0.026, 0.0, -(ANK_DZ - 0.021)), shrink=False)
+    # hip pitch link: carries the roll actuator (X12) 70 mm outboard of the pitch axis
+    add_box(p,  M['X12-320'] + 1.2, (0.130, 0.150, 0.130), (0.0, dy / 2, (Z['hr'] - Z['hp']) / 2))
+    # hip roll link: carries the yaw actuator
+    add_box(r,  M['X10-200'] + 0.8, (0.130, 0.130, 0.070), (0.0, 0.0, (Z['hy'] - Z['hr']) / 2))
+    # thigh (yaw link): carries the knee actuator, a wrapped channel
+    add_cyl(y,  M['X15-450'] + 2.8, 0.075, THIGH, (-KNEE_BACK / 2, 0.0, -THIGH / 2))
+    # shank: carries the ankle pitch actuator
+    add_cyl(sh, M['X8-120'] + 1.8, 0.050, SHANK, (0.0, 0.0, -SHANK / 2))
+    add_box(ac, M['X6-60'] + 0.5, (0.100, 0.100, ANK_DZ), (0.0, 0.0, -ANK_DZ / 2))
+    add_box(ft, 0.6, (0.280, 0.110, 0.022), (0.040, 0.0, -(SOLE - 0.021)), shrink=False)
 
-    add_joint(p,  'Trunk', p, (0.0, s*HIP_Y, -0.060), (0, 1, 0), -2.0, 1.6, 'X6-60')
-    add_joint(r,  p, r, (0.0, 0.0, -0.085), (1, 0, 0), lo_roll, hi_roll, 'X6-60')
-    add_joint(y,  r, y, (0.0, 0.0, -0.051), (0, 0, 1), -1.0, 1.0, 'X6-60')
-    add_joint('%s_Knee_Pitch' % side, y, sh, (-KNEE_BACK, 0.0, -0.114), (0, 1, 0), 0.0, 2.3, 'X6-60')
-    add_joint('%s_Ankle_Pitch' % side, sh, ac, (0.0, 0.0, -SHANK), (0, 1, 0), -0.9, 0.5, 'X4-36')
-    add_joint('%s_Ankle_Roll' % side, ac, ft, (0.0, 0.0, -ANK_DZ), (1, 0, 0), -0.4, 0.4, 'X4-36')
+    add_joint(p,  'Trunk', p, (0.0, s * HIP_Y, Z['hp']), (0, 1, 0), -2.0, 1.6, 'X15-450')
+    add_joint(r,  p, r, (0.0, dy, Z['hr'] - Z['hp']), (1, 0, 0), lo_roll, hi_roll, 'X12-320')
+    add_joint(y,  r, y, (0.0, 0.0, Z['hy'] - Z['hr']), (0, 0, 1), -1.0, 1.0, 'X10-200')
+    add_joint('%s_Knee_Pitch' % side, y, sh, (-KNEE_BACK, 0.0, Z['kn'] - Z['hy']), (0, 1, 0), 0.0, 2.3, 'X15-450')
+    add_joint('%s_Ankle_Pitch' % side, sh, ac, (0.0, 0.0, -SHANK), (0, 1, 0), -0.9, 0.5, 'X8-120')
+    add_joint('%s_Ankle_Roll' % side, ac, ft, (0.0, 0.0, -ANK_DZ), (1, 0, 0), -0.4, 0.4, 'X6-60')
 
     a1, a2, a3 = '%s_Arm_1' % side, '%s_Arm_2' % side, '%s_Arm_3' % side
     hd = '%s_hand_link' % ('left' if s > 0 else 'right')
-    add_box(a1, 0.43, (0.060, 0.060, 0.065), (0.0, 0.0, -0.0325))
-    add_cyl(a2, 0.44, 0.028, 0.125, (0.0, 0.0, -0.0625))
-    add_cyl(a3, 0.39, 0.025, 0.155, (0.0, 0.0, -0.0775))
-    add_box(hd, 0.065, (0.050, 0.030, 0.075), (0.0, 0.0, -0.0375))
+    add_box(a1, M['X6-60'] + 0.4, (0.100, 0.100, Z['sp'] - Z['sr']), (0.0, 0.0, -(Z['sp'] - Z['sr']) / 2))
+    add_cyl(a2, M['X6-60'] + 0.7, 0.040, Z['sr'] - Z['el'], (0.0, 0.0, -(Z['sr'] - Z['el']) / 2))
+    add_cyl(a3, M['X4-36'] + 0.6, 0.036, Z['el'] - Z['wr'], (0.0, 0.0, -(Z['el'] - Z['wr']) / 2))
+    add_box(hd, 0.4, (0.080, 0.040, 0.150), (0.0, 0.0, -0.075))
     lo_sr, hi_sr = (-1.7, 1.6) if s > 0 else (-1.6, 1.7)
-    add_joint('%s_Shoulder_Pitch' % side, 'Trunk', a1, (0.0, s*SHO_Y, 0.230), (0, 1, 0), -3.0, 1.5, 'X4-36')
-    add_joint('%s_Shoulder_Roll' % side, a1, a2, (0.0, 0.0, -0.065), (1, 0, 0), lo_sr, hi_sr, 'X4-36')
-    add_joint('%s_Elbow_Pitch' % side, a2, a3, (0.0, 0.0, -0.125), (0, 1, 0), -2.3, 2.3, 'X4-36')
-    add_joint('%s_Wrist_Yaw' % side, a3, hd, (0.0, 0.0, -0.155), (0, 0, 1), -2.4, 2.4, 'X4-36')
+    add_joint('%s_Shoulder_Pitch' % side, 'Trunk', a1, (0.0, s * SHO_Y, Z['sp']), (0, 1, 0), -3.0, 1.5, 'X8-120')
+    add_joint('%s_Shoulder_Roll' % side, a1, a2, (0.0, 0.0, Z['sr'] - Z['sp']), (1, 0, 0), lo_sr, hi_sr, 'X6-60')
+    # elbow flexes FORWARD only (human; H2 -0.99..3.07): folded back 132 deg the forearm
+    # passes through the shoulder-roll pod behind the shoulder (sweep.py found it).
+    add_joint('%s_Elbow_Pitch' % side, a2, a3, (0.0, 0.0, Z['el'] - Z['sr']), (0, 1, 0), -2.3, 0.3, 'X6-60')
+    add_joint('%s_Wrist_Yaw' % side, a3, hd, (0.0, 0.0, Z['wr'] - Z['el']), (0, 0, 1), -2.4, 2.4, 'X4-36')
 
-add_cyl('Head_1', 0.30, 0.030, 0.060, (0.0, 0.0, 0.030))
-# head = 201 g cage + stereo pair + interface board
-add_box('Head_2', 0.41, (0.078, 0.088, 0.108), (0.0, 0.0, 0.056))
-add_joint('Head_Yaw', 'Trunk', 'Head_1', (0.0, 0.0, 0.330), (0, 0, 1), -1.0, 1.0, 'X4-10')
-add_joint('Head_Pitch', 'Head_1', 'Head_2', (0.0, 0.0, 0.060), (0, 1, 0), -0.35, 0.85, 'X4-10')
+add_cyl('Head_1', M['X4-36'] + 0.2, 0.030, 0.060, (0.0, 0.0, 0.030))
+add_box('Head_2', 1.2, (0.120, 0.140, 0.170), (0.0, 0.0, 0.085))
+add_joint('Head_Yaw', 'Trunk', 'Head_1', (0.0, 0.0, Z['hy2']), (0, 0, 1), -1.0, 1.0, 'X4-36')
+add_joint('Head_Pitch', 'Head_1', 'Head_2', (0.0, 0.0, Z['hp2'] - Z['hy2']), (0, 1, 0), -0.35, 0.85, 'X4-36')
 
 
 # ------------------------------------------------------------------- URDF ----
@@ -214,7 +227,7 @@ def mjcf():
         kids.setdefault(j.parent, []).append(j)
     by_name = {l.name: l for l in LINKS}
     # sole depth below the trunk origin, accumulated down the leg chain
-    sole = 0.060 + 0.085 + 0.051 + 0.114 + SHANK + ANK_DZ + 0.021
+    sole = -LAY.Z_SOLE - (SOLE - 0.021)
     spawn = sole + 0.02
 
     def body(name, joint, depth):
@@ -283,8 +296,7 @@ def main():
           % ([n for n in names if names.count(n) > 1] or 'none'))
     print('foot links: %s'
           % [l.name for l in LINKS if l.name.endswith('foot_link')])
-    print('armature: X6-60 %.4f  X4-36 %.4f  X4-10 %.5f kg.m2'
-          % (armature('X6-60'), armature('X4-36'), armature('X4-10')))
+    print('armature: ' + '  '.join('%s %.4f' % (m, armature(m)) for m in ('X15-450', 'X12-320', 'X10-200', 'X8-120', 'X6-60', 'X4-36')))
 
 
 if __name__ == '__main__':

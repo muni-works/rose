@@ -117,6 +117,24 @@ too. The knob is in ipse's `k1_summary`, default unchanged.
 **6. rose pro is 3.9 kg of sheet now, up from 3.5.** The wrap costs ~370 g a
 side. Worth it; that is the difference between parts and a body.
 
+## 1800 mm
+
+2026-08-19, after the H2 pass: "rose pro should be about 1800 mm, rose max
+2000." `SIZING.md` is the decision (X15-450 hip pitch and knee, X12/X10 hip
+roll/yaw, X8 ankle and shoulder pitch; ~68 kg), `rose_pro_layout.py` is now
+parametric on HEIGHT and the actuator envelopes, and `rose_pro_links.py`
+derives every plate from it. What the bigger actuators forced, each found by a
+gate and recorded in the code: the hip roll/yaw/knee column moved OUTBOARD of
+the D166 pitch body (y 164, as the H2 does); the hip-roll pod sits behind the
+hip (its output plate must stand outside the r-104 sweep of the thigh flanges);
+hipB is a Z-bracket (stator plate -> leg up through the channel top inside
+r 81 -> bridge -> roll output); the yaw output plate sits on a 6 mm spacer; the
+thigh's channel top is its own plate, rear-clipped, and the flanges no longer
+wrap the yaw body's rear half; the elbow flexes forward only; the arm hangs at
+y 255 to clear the hip pods; the chest is +/-165 (chest:waist 1.70).
+The `cobot.py` height map is no longer perverse: at 1800 the head cage meets a
+standing adult's head. The 1173 mm body is commit 6999477.
+
 ## What "she's starting to look heavy" turned into
 
 The wrap made it one body, and one body read heavy. The second pass measured

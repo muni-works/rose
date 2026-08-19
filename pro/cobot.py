@@ -46,7 +46,7 @@ REGIONS = [
     ('skull / forehead',      1660,  1800,   130),
 ]
 
-SOLE_Z = -670.0        # trunk-origin frame: the sole plane, from the layout
+SOLE_Z = L.ZS          # trunk-origin frame: the sole plane, from the layout
 SHIELD = 6.0           # an edge with structure this close is buried, not exposed
 T = L.T                # 3 mm plate
 

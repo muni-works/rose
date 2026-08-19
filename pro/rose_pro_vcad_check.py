@@ -67,17 +67,15 @@ def main():
           % (vol / analytic))
     print('\nbbox mm   x %8.1f .. %-8.1f  y %8.1f .. %-8.1f  z %8.1f .. %-8.1f'
           % (lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]))
-    print('expected  x    -73.0 .. 68.0      y   -196.0 .. 196.0    z   -670.0 .. 503.0')
+    print('expected  z %.1f .. %.1f (sole .. crown, from the layout)' % (L.ZS, L.ZCROWN))
 
     ok = True
     if not (0.60 < vol / analytic < 1.0):
         print('\nFAIL: volume ratio outside the plausible band - suspect a boolean fault')
         ok = False
-    if abs(lo[2] - (-670.0)) > 2.0:
-        print('\nFAIL: sole is not at z = -670')
+    if abs(lo[2] - L.ZS) > 2.0:
+        print('\nFAIL: sole is not at z = %.0f' % L.ZS)
         ok = False
-    if abs(hi[1] - 196.0) > 8.0 or abs(lo[1] + 196.0) > 8.0:
-        print('\nNOTE: lateral extent differs from the expected +/-196 mm')
     print('\n%s' % ('volume cross-check PASSED' if ok else 'CROSS-CHECK FAILED'))
     return 0 if ok else 1
 

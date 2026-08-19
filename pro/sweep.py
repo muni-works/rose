@@ -36,7 +36,7 @@ RANGES = {
     # that is a URDF limit problem, not a structure one, so only abduction
     # (0..1.7, arm swinging out and up) is swept here. Elbow is the full range.
     'sho_roll':  (0.0, 1.7),
-    'elb_pitch': (-2.3, 2.3),
+    'elb_pitch': (-2.3, 0.3),      # forward flexion only (export has the same): folded back it meets the shoulder roll pod
 }
 
 # which link's plates ride on the child side of each joint (everything distal)
@@ -102,7 +102,7 @@ def plate_points(pl, pitch=6.0):
     r = min(25.0, (pl.u1 - pl.u0) / 2.5, (pl.v1 - pl.v0) / 2.5)
     # back off where a hole would break through the rounded corner, like the loon does
     from rose_pro_loon import corner_radius
-    r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes)
+    r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes, want=pl.r_want)
     def outline():
         # perimeter of a rounded rect, as points
         out = []
@@ -216,7 +216,7 @@ def d_plate(p, pl, r=None):
     """
     if r is None:
         from rose_pro_loon import corner_radius
-        r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes)
+        r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes, want=pl.r_want)
     i = L.AXI[pl.normal]
     ui, vi = [k for k in range(3) if k != i]
     ax, ay = (pl.u1 - pl.u0) / 2.0, (pl.v1 - pl.v0) / 2.0
@@ -264,8 +264,8 @@ def static_check(plates):
         d = [min(a[k][1], b[k][1]) - max(a[k][0], b[k][0]) for k in range(3)]
         if not all(v > 0.25 for v in d):
             continue
-        rq = corner_radius(q.u0, q.u1, q.v0, q.v1, q.holes)
-        rp = corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes)
+        rq = corner_radius(q.u0, q.u1, q.v0, q.v1, q.holes, want=q.r_want)
+        rp = corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes, want=p.r_want)
         depth = 0.0
         for pt in plate_points(p, pitch=3.0):
             depth = min(depth, d_plate(pt, q, rq))
@@ -291,7 +291,7 @@ def sweep(joint, plates, verbose=True):
         moving.append(('body:%s' % bn, cyl_points(*B[bn])))
 
     from rose_pro_loon import corner_radius
-    static_plates = [(p, corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes))
+    static_plates = [(p, corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes, want=p.r_want))
                      for p in plates if p.link in PARENT_LINKS[joint]]
     static_bodies = [(bn, B[bn]) for bn in PARENT_BODIES[joint]]
 
