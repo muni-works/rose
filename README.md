@@ -32,7 +32,24 @@ Proportions scale from rose pro's **verified** 1130 mm layout, which stands in
 ```bash
 python3 family.py           # proportions, mass, static holding, jump ceiling
 python3 family.py --pack    # + re-run the packing check on each scaled skeleton
+./render.sh                 # re-render all three from the geometry in this repo
 ```
+
+## As they exist today
+
+These are renders of the **geometry actually in this repo**, not of the sizes in
+the table above. Each is at whatever height its CAD was authored at — mini 1150,
+pro 1130, max ~1750 — because the 1200/1750/2000 ladder is a sizing decision that
+the geometry has not been re-cut to yet.
+
+| | | |
+|---|---|---|
+| ![rose mini](mini/render/rose-mini-iso.png) | ![rose pro](pro/render/rose-pro-iso.png) | ![rose max](max/render/rose-max-iso.png) |
+| **mini** — massed volumes, 22 DOF, sheet torso and a cube head. The oldest geometry here. | **pro** — graded lightening cutouts, exposed X-series bodies, the head as an open cage. 40 bent plates. | **max** — full actuator detail, pancake rana bodies, pushrod ankle four-bar, battery in red. |
+
+What the three renders show, side by side, is that the *design language* is not
+yet shared: mini is massed volumes, pro is cut sheet, max is detailed mechanism.
+Bringing mini and max into pro's bent-sheet language is exactly the open work.
 
 ## Where each one stands
 
