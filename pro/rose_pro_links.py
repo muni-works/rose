@@ -417,12 +417,21 @@ ct = P('thigh', 'top', 'z', yo.n1, yo.n1 + T, -10.0, TH_FRONT + T, TH_Y0 - T, TH
 TH_TOP = ct.n1
 TH_REAR = -30.0
 # TAPER. The flanges are TILTED inward about the top plate's side edges so the
-# channel narrows from 174 at the hip to 142 at the shelf - the H2's thigh goes
-# 128 -> 74 over its length; ours can only lean its two walls, and it leans them
-# 4.6 deg. Their rear edge is also cut on the slant (trapezoid) from x -30 at the
+# channel narrows from 174 at the hip to 122 at the shelf - the H2's thigh goes
+# 143 -> 72 over its length; ours can only lean its two walls, and it leans them
+# 7.6 deg. Their rear edge is also cut on the slant (trapezoid) from x -30 at the
 # top to x 0 at the bottom. The web between them is then a trapezoid too. The
 # windows and hems ride the same tilt; the shelf spans the narrowed bottom.
-TH_IN = 16.0                                            # how far each flange bottom leans in
+# 26 mm of lean, not 16: the lean is pivoted at the TOP, so nothing it does can
+# reach the yaw body or grow the hip_yaw sweep envelope (the flange's 0.6 mm
+# tight against hipB's stator plate is at the top, and is unchanged); what limits
+# it at the bottom is the knee body, and the flange bottoms stop 8 mm above it.
+# 22 and not more: the plate-vs-body check uses the plate's AABB, and a TILTED
+# plate's AABB is the rotated prism's box - it reports the flange as 3.8 mm into
+# the yaw body at 26 mm of lean while the flange itself is 24 mm clear there
+# (the lean is nothing at the top, where the body is). 22 is where the box stops
+# lying. sweep.py, which is exact, has room for more.
+TH_IN = 22.0                                            # how far each flange bottom leans in
 TH_H = TH_TOP - TH_FLG_BOT
 TH_TILT = math.degrees(math.atan2(TH_IN, TH_H))
 TH_BOT_REAR = 0.0
@@ -452,8 +461,34 @@ kf = L('thigh', 'knee_face', 'knee', 'stator', -KB - KNEE_R - 5.0, TH_LO_X + T, 
 KC = 35.0
 kf.poly = [(kf.u0 + KC, kf.v0), (kf.u1 - KC, kf.v0), (kf.u1, kf.v0 + KC), (kf.u1, kf.v1 - KC),
            (kf.u1 - KC, kf.v1), (kf.u0 + KC, kf.v1), (kf.u0, kf.v1 - KC), (kf.u0, kf.v0 + KC)]
-P('thigh', 'knee_gus', 'x', -KB - KNEE_R - 5.0 - T, -KB - KNEE_R - 5.0, LEG_Y - 64.0, LEG_Y, kf.v0 + KC, kf.v1 - KC)
 P('thigh', 'web_lo', 'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, kf.v0 + KC, TH_FLG_BOT - T)
+# KNEE SHROUD (DESIGN.md rule 3: cover what can pinch). The knee is an X15-450:
+# a D166 body lying across the leg, and in profile it was the single heaviest
+# read on the robot - a bare can where the thigh should end. It is also the one
+# closure on the leg that can crush a hand at 68 kg. So the flat rear gusset that
+# used to stiffen the knee plate's rear edge is now the LAST of four facets that
+# start under the shelf, ride over the top of the body and wrap its back: one
+# blank bent off the knee stator plate's straight rear edge, 40 deg per fold,
+# tangent to r 88 (5 mm off the D166 body), corners at r 93.6. That is 187 mm
+# across against the body's 166 and the stator octagon's 178 - it does not grow
+# the knee, it turns it into the bottom of the thigh.
+# It lives INBOARD (y 100..162): everything the shank carries near the knee is
+# outboard of y 167 (the web, its front flange, both crank plates), so the shroud
+# has 5 mm of y clearance through the whole 0..132 deg fold, and the nearest
+# shank BODY in its own y band is a D96 ankle motor at r 114 about the knee axis.
+KS_R = 88.0
+KS_Y0, KS_Y1 = 88.0, 162.0                              # 4 mm past the body's inboard rim (y 92)
+KS_RW = 10.0                                            # the ONE place rule 1's 25 mm is not asked for:
+                                                        # these corners are the fold lines BETWEEN facets,
+                                                        # and a 25 mm round on each leaves the band a row
+                                                        # of pills. The band's outer edges get hems.
+KS_ARC = (-40.0, 0.0, 40.0, 80.0, 120.0)                # facet edges, deg from +z, rearward
+for _a0, _a1 in zip(KS_ARC[:-1], KS_ARC[1:]):
+    _am = (_a0 + _a1) / 2.0
+    _h = KS_R * math.tan(math.radians((_a1 - _a0) / 2.0)) + KS_RW    # +r so the facets overlap at the fold
+    _p = P('thigh', 'knee_shroud%d' % int(_am), 'z', ZK + KS_R, ZK + KS_R + T,
+           -KB - _h, -KB + _h, KS_Y0, KS_Y1, tilt=('y', -_am, (-KB, 0.0, ZK)))
+    _p.r_want = KS_RW
 
 # ---- shank: knee OUTPUT -> ankle motors -> pushrod ankle ----
 # (d) of the H3 programme. No actuator at the ankle: both ankle motors are
@@ -482,6 +517,39 @@ for j_, role in (('knee', 'output'), ('ank_mA', 'stator'), ('ank_mB', 'stator'))
     sw.holes.append((-KB, j['c'][2], (ifc['spig'] if role == 'stator' else ifc['pilot']) + 1.0))
 # front flange folds OUTBOARD off the web's straight front edge (x 6)
 P('shank', 'flange_fr', 'x', -KB + 66.0, -KB + 66.0 + T, WEB_Y0 + T, WEB_Y0 + T + 70.0, ZMB - 51.0, ZK - KNEE_R - 5.0)
+
+# ---- the CALF SHELL: the channel that wraps the two ankle motors ----
+# Both X8-120s hang INBOARD of the web (their bodies run y 88..167), so before
+# this they were simply out in the air: two cans on a stick, which is what the
+# side view said. The shell is one more blank on the same front bend line (x 6):
+# two lap tabs on the web's inboard face -> a front closure across the inboard
+# width -> the inboard wall at y 79..82 (6 mm off the motor bodies) -> a chamfer
+# panel that pinches to the ankle.
+# The wall's PROFILE is the calf: 131 mm deep at the knee end, swelling to 142 at
+# z -650 (28 % of the way from knee to ankle - the H2's calf is 30 % down) and
+# pinching to 106 at z -800. It is closed at the front and open at the back: the
+# cranks (y 170..173), both pushrods (y 171.5) and the crank pins are outboard of
+# the web and stay visible, because they are what explains the ankle.
+# The wall cannot lean until it is BELOW the motors - a tilted wall at y > 88
+# walks straight into a D96 body - so the whole pinch is one 37 deg chamfer panel
+# under them, y 82 -> 131, which is also where the H2 pinches.
+CF_Y = WEB_Y0 - 85.0                                    # 82: inboard face of the wall
+CF_Z0, CF_Z1 = ZMB - 71.0, ZK - 95.0                    # -800 .. -560
+CF_POLY = [(-KB + 66.0, CF_Z1), (-KB - 65.0, CF_Z1), (-KB - 76.0, ZMB + 79.0),
+           (-KB - 40.0, CF_Z0), (-KB + 66.0, CF_Z0)]    # CCW: front-top, rear-top, calf, rear-bottom, front-bottom
+P('shank', 'calf_in', 'y', CF_Y - T, CF_Y, 0, 0, 0, 0, poly=CF_POLY)
+P('shank', 'calf_front', 'x', -KB + 66.0, -KB + 66.0 + T, CF_Y, WEB_Y0, CF_Z0, CF_Z1)
+CF_TIN = 49.0                                           # how far the chamfer leans inboard
+CF_TH = 82.0                                            # its slant length
+CF_TILT = math.degrees(math.asin(CF_TIN / CF_TH))       # 37 deg
+P('shank', 'calf_taper', 'y', CF_Y - T, CF_Y, -KB - 36.0, -KB + 40.0, CF_Z0 - CF_TH, CF_Z0,
+  tilt=('x', CF_TILT, (0.0, CF_Y - T / 2.0, CF_Z0)))
+# lap tabs: the two z-bands on the web's inboard face that are NOT covered by a
+# motor (above A, below B). Their bolts are 22 mm off the x 6 bend line.
+for _tag, _z0, _z1 in (('top', ZMA + 48.0 + 2.0, CF_Z1), ('bot', CF_Z0, ZMB - 48.0 - 4.0)):
+    P('shank', 'calf_lap_' + _tag, 'y', WEB_Y0 - T, WEB_Y0, -KB + 30.0, -KB + 66.0, _z0, _z1,
+      holes=[(-KB + 44.0, (_z0 + _z1) / 2.0, 4.5)])
+    sw.holes.append((-KB + 44.0, (_z0 + _z1) / 2.0, 4.5))
 # fork brackets, inboard and outboard: each laps the web, bends under at z ZAP+82
 # (4 over the jaws' swept top), bends down into a fork plate carrying the pin.
 FK_Z = ZAP + 87.0                                       # 4 over the jaws' swept top (r 83 about the pitch pin)
@@ -524,8 +592,29 @@ P('foot', 'column', 'x', -KB - 1.5, -KB + 1.5, CY0, CY1, ZS + T, ZAR + 9.5,
   holes=[(LEG_Y, ZAR, 13.0), (LEG_Y - 4.0, ZS + 18.0, 4.5), (LEG_Y + 8.0, ZS + 18.0, 4.5)])
 P('foot', 'col_foot', 'z', ZS + T, ZS + 2 * T, -KB + 1.5, -KB + 45.0, CY0, CY1,
   holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
-P('foot', 'sole', 'z', ZS, ZS + T, -KB - 60.0, -KB + 170.0, LEG_Y - 55.0, LEG_Y + 55.0,
+SOLE_X0, SOLE_X1 = -KB - 60.0, -KB + 170.0
+SOLE_Y0, SOLE_Y1 = LEG_Y - 55.0, LEG_Y + 55.0
+P('foot', 'sole', 'z', ZS, ZS + T, SOLE_X0, SOLE_X1, SOLE_Y0, SOLE_Y1,
   holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
+# ---- the foot is a PAN, not a plate ----
+# The sole plane and its footprint are frozen (the sim stands on them); everything
+# here is added ABOVE it. Two side walls bent up off the sole's long edges, 25 mm
+# tall at the ankle and cut down over the toe; a heel wall across the back; and a
+# toe chamfer lapped on the walls' sloped top edges, so the front 55 mm of the
+# foot is a wedge. Total 28 mm from the ground - a shoe rather than a flat plate.
+# The heel wall is short (18) and set 3 mm inside the sole's rear edge: the rear
+# ankle jaw hangs to z -996 at y 143..178 and 23 deg of roll lifts that corner of
+# the pan 8 mm.
+PAN_Z1 = ZS + 2 * T + 25.0                              # -1001: top of the side walls
+PAN_TOE = -KB + 120.0                                   # where the toe chamfer starts
+PAN_SIDE = [(SOLE_X0, ZS + T), (SOLE_X1 - 10.0, ZS + T), (PAN_TOE, PAN_Z1), (SOLE_X0, PAN_Z1)]
+for _tag, _y0 in (('wall_in', SOLE_Y0), ('wall_out', SOLE_Y1 - T)):
+    P('foot', _tag, 'y', _y0, _y0 + T, 0, 0, 0, 0, poly=PAN_SIDE)
+P('foot', 'heel', 'x', SOLE_X0 + T, SOLE_X0 + 2 * T, SOLE_Y0, SOLE_Y1, ZS + T, ZS + T + 18.0)
+PAN_TL = math.hypot(SOLE_X1 - 10.0 - PAN_TOE, PAN_Z1 - ZS - T)
+PAN_TILT = math.degrees(math.asin((PAN_Z1 - ZS - T) / PAN_TL))
+P('foot', 'toe', 'z', PAN_Z1 - T, PAN_Z1, PAN_TOE, PAN_TOE + PAN_TL, SOLE_Y0, SOLE_Y1,
+  tilt=('y', PAN_TILT, (PAN_TOE, 0.0, PAN_Z1)))
 
 # ---- arm ----
 # shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Lapped pair: the tab bends
@@ -653,6 +742,11 @@ OWNER = {
     ('hipA', 'pitch_face'): 'hip_pitch', ('hipA', 'roll_face'): 'hip_roll',
     ('hipB', 'roll_out'): 'hip_roll',    ('hipB', 'yaw_face'): 'hip_yaw',
     ('thigh', 'yaw_out'): 'hip_yaw',     ('thigh', 'knee_face'): 'knee', ('thigh', 'top'): 'hip_yaw',
+    # the knee shroud IS the knee's cover: every facet is tangent to r 88 about
+    # the knee axis, 5 mm off the D166 body. Its tilted AABB reaches inside the
+    # body (a rotated prism's box does); the plate never does.
+    ('thigh', 'knee_shroud-20'): 'knee', ('thigh', 'knee_shroud20'): 'knee',
+    ('thigh', 'knee_shroud60'): 'knee',  ('thigh', 'knee_shroud100'): 'knee',
     ('shank', 'web'): 'knee',
     ('crankA', 'bar'): 'ank_mA',         ('crankB', 'bar'): 'ank_mB',
     ('shoA', 'shop_out'): 'sho_pitch',   ('shoA', 'shor_face'): 'sho_roll',
@@ -666,6 +760,8 @@ SECOND_OWNER = {
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
     ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw', ('shank', 'web'): 'ank_pitch', ('shank', 'web'): 'knee'}
 
+
+THIRD_OWNER = {}   # (referenced by the clash report; kept empty until something needs it)
 
 ANGLES = []   # retired with the angle stock
 
@@ -689,14 +785,23 @@ BENDS = [
     ('thigh', 'z', TH_TOP - T / 2.0,             ('top', 'flange_in', 'flange_out', 'web')),
     ('thigh', 'z', TH_FLG_BOT - T / 2.0,         ('shelf',)),
     ('thigh', 'x', TH_LO_X + T / 2.0,            ('web_lo', 'knee_face')),
-    ('thigh', 'x', -KB - KNEE_R - 5.0 - T / 2.0, ('knee_gus',)),
-    ('shank', 'x', -KB + 66.0 + T / 2.0,         ('web', 'flange_fr')),
+    # the knee shroud: four folds off the knee stator plate's rear edge, 40 deg
+    # apart. The fold lines are not axis-aligned (they are chords of r 88), so
+    # they are named on the axis they are nearest; no facet carries a hole.
+    ('thigh', 'x', -KB - KNEE_R - 5.0 - T / 2.0, ('knee_shroud100',)),
+    ('shank', 'x', -KB + 66.0 + T / 2.0,         ('web', 'flange_fr',
+                                                  'calf_lap_top', 'calf_lap_bot', 'calf_front')),
+    ('shank', 'y', CF_Y - T / 2.0,               ('calf_front', 'calf_in')),
+    ('shank', 'z', CF_Z0 - T / 2.0,              ('calf_in', 'calf_taper')),
     ('shank', 'z', FK_Z - T / 2.0,               ('fork_lap_in', 'fork_bridge_in', 'fork_lap_out', 'fork_bridge_out')),
     ('shank', 'y', FORK_IN_Y - T / 2.0,          ('fork_bridge_in', 'fork_in')),
     ('shank', 'y', FORK_OUT_Y + T / 2.0,         ('fork_bridge_out', 'fork_out')),
     ('ankle', 'x', PIN_A_X - 1.5 + T / 2.0,      ('spine', 'jaw_fr')),
     ('ankle', 'x', PIN_B_X - 1.5 + T / 2.0,      ('jaw_rr',)),
     ('foot',  'z', ZS + T + T / 2.0,             ('column', 'col_foot')),
+    ('foot',  'y', SOLE_Y0 + T / 2.0,            ('sole', 'wall_in')),
+    ('foot',  'y', SOLE_Y1 - T / 2.0,            ('sole', 'wall_out')),
+    ('foot',  'x', SOLE_X0 + T + T / 2.0,        ('sole', 'heel')),
     ('shoB',  'y', SB_Y + T / 2.0,               ('shor_out', 'web')),
     ('shoB',  'x', SB_XF + T / 2.0,              ('flange_fr',)),
     ('shoB',  'z', ef.v1 + T / 2.0,              ('elb_face', 'elb_shelf')),
