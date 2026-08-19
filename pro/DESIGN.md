@@ -117,20 +117,44 @@ too. The knob is in ipse's `k1_summary`, default unchanged.
 **6. rose pro is 3.9 kg of sheet now, up from 3.5.** The wrap costs ~370 g a
 side. Worth it; that is the difference between parts and a body.
 
+## What "she's starting to look heavy" turned into
+
+The wrap made it one body, and one body read heavy. The second pass measured
+the Unitree H2 from its own meshes (`UNITREE.md`, "H2, measured") and found the
+heaviness was three specific things, none of them "boxy": the leg was widest at
+the *knee* (126 × 162 mm, where the H2's is a 46-wide pinch); torso + hip stack
++ thigh wrap was one prism with no width reversal for 48 % of the height; and
+the chest kept its full width 70 mm above the shoulder axis. The cut that
+answered it — thigh jog, chest over a closed pelvis pod, deck down, windows
+with hemmed edges for hole fields, arms as channels — is in `rose_pro_links.py`
+and the lineup is `render/lineup-{iso,front,side}.png`.
+
+Two rules came out of it:
+
+- **Every axis-aligned step is a chance to reverse the width.** The H2 reverses
+  four times between chest and knee. We cannot taper, but each fold is a step,
+  and steps in the right order read as a figure. Order: chest > pelvis >
+  thigh-top > knee > shank > ankle.
+- **A sweep decides the shape before taste does.** Every odd number in the new
+  arm (web top 15 below the roll axis, front flange at y 148, fork inboard)
+  is where `sweep.py`'s two new arm sweeps put it. Draw the structure, sweep
+  it, and let the clearance tell you what the section is.
+
 ## The open geometry work
 
-From the renders, three faults that are shape rather than safety:
-
-- **The arms have no mass.** Four bare actuator cylinders with tab-sized plates
-  between them. The proportions pass fixed the *lengths* (upper arm 150→190,
-  forearm 130→155) and never gave them *section*.
-- **The torso is a perforated slab.** Grading the lightening cutouts was right,
-  but it is still a field of holes on a flat plane, and it reads as decoration.
-  Replace it with folded ribs that visibly follow load paths into the mounting
-  faces: same mass saving, and the pattern explains the structure.
-- **Shoulder line too high relative to the head.** A human torso is ~30% of
-  height. Shortening and deepening the torso rather than scaling it tall is what
-  stops it reading as a fridge with a hat.
+- **Tilted plates.** Chest:waist is 1.32 against the H2's 1.6 and nothing
+  tapers; that is the axis-aligned `Plate` class. One plate tilted about an
+  in-plane axis buys chamfered shoulders, a chamfered waist, trapezoid thigh
+  flanges and knocked-off hip corners. `sweep.py` is all SDFs; a tilt is one
+  transform on the way in.
+- **The hip stack and the ankle stack** still read as piles of cylinders. Both
+  are layout (three X6-60 bodies between hip pitch and thigh; two X4-36 at the
+  ankle). UNITREE.md items B and C — pushrod ankle, pelvis hub — are what fix
+  them, not the generator.
+- **The head** is a cube on a neck. It was always meant to be understated; it
+  now reads as the heaviest thing on the robot next to the H2's.
+- **Hip couplings.** hipA's tab is not geometrically connected and hipB cannot
+  be one two-bend blank; `rose_pro_bent.py` is owed a pass.
 
 ## One finding worth carrying forward
 
