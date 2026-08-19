@@ -9,6 +9,14 @@
 # field of bores on each torso face - it was ~6 min with the hole fields).
 # mini is ~5 s, max ~9 s.
 #
+# pro/cad is MODULES: rose-pro.loon is the roots-only assembly; links/<link>.loon
+# is one module per link (its own roots render standalone, and an importer does
+# not see them); actuators.loon the envelopes and pushrods; plates.loon the plate
+# vocabulary (vcad repo, hardware/rose-pro, on VCAD_LOON_PATH below). vcad's
+# root-mesh cache is keyed per root, so a one-link edit re-cuts that link only:
+#   $R pro/cad/links/thigh.loon --azimuth 30 --elevation 15 --size 800 --fill 0.9 --auto-aspect -o /tmp/thigh.png
+# is 0.3 s warm. A cold cache (new kernel build) is ~5 min for the whole body.
+#
 # zsh does NOT word-split an unquoted $VAR, so the OPTS below only works because
 # this file is #!/bin/sh. Typing the same line at a zsh prompt hands vcad-render
 # one argument and a usage error.
