@@ -21,6 +21,11 @@
 # generator now emits one root per plate and never unions plates.
 set -e
 R="${VCAD_RENDER:-$HOME/Developer/vcad/target/release/vcad-render}"
+# pro/cad/rose-pro.loon is roots only; its plate vocabulary is the loon module
+# hardware/rose-pro/plates.loon in vcad. [use plates] finds it on the lib path.
+export VCAD_LOON_PATH="${VCAD_LOON_PATH:-$HOME/Developer/vcad/hardware/rose-pro}"
+# Evaluated roots are cached under ~/.cache/vcad (keyed on expression + kernel
+# build), so a re-render after a one-plate edit is seconds, not minutes.
 OPTS="--view iso --size 1400 --fill 0.92 --auto-aspect"
 
 $R mini/cad/k1.loon        $OPTS -o mini/render/rose-mini-iso.png
