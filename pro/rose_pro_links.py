@@ -633,21 +633,128 @@ P('trunkC', 'front',     'x', CH_X1, CH_X1 + T, 0, 0, 0, 0, slots=[FR_WIN], poly
 P('trunkC', 'front_hem', 'x', CH_X1 - T, CH_X1, *FR_HEMR, slots=[FR_WIN])
 L('trunkC', 'deck', 'head_yaw', 'stator', CH_X0, CH_X1, -NK_Y - T, NK_Y + T)
 
-# ---- head: an open cage on the pitch output ----
-HZ0, HZ1 = ZHEP - 8.0, ZCROWN - T
-HW = 60.0
-P('head', 'cage_l', 'y', HW - T, HW, -70.0, 55.0, HZ0, HZ1, holes=[(-8.0, ZHEP + 42.0, 60.0)])
-P('head', 'cage_r', 'y', -HW, -HW + T, -70.0, 55.0, HZ0, HZ1, holes=[(-8.0, ZHEP + 42.0, 60.0)])
-P('head', 'cage_top', 'z', HZ1, HZ1 + T, -70.0, 55.0, -HW, HW, holes=[(-8.0, 0.0, 50.0)])
-P('head', 'cage_face', 'x', 55.0, 55.0 + T, -HW, HW, HZ0 + 10.0, HZ1 - 10.0,
-  holes=[(-32.0, ZHEP + 52.0, 28.0), (32.0, ZHEP + 52.0, 28.0), (0.0, ZHEP + 18.0, 20.0)])
+# ---- head: a FACETED HELMET on the pitch output. (H3 programme, item e) ----
+# The old head was a 198 mm open cage - four plates, a die on a visible neck
+# stack, and the single biggest "H2 vs ours" difference in profile. The H2's is a
+# small closed helmet sitting straight on the shoulders. This is that, in bent
+# sheet: 156 tall x 170 wide x 167 deep, closed on every face a person can see.
+#
+# The sagittal profile is ONE convex polygon and every panel is an edge of it, so
+# the side plates are that polygon and the front/top/rear plates are the folds
+# between its vertices. Seven brake hits round the section:
+#   jaw (42,553) -> face (66,588) -> crown_fr (79,681) -> top (38,706)
+#   -> crown_bk (-55,706) -> rear (-88,671) -> underside (-88,559) -> jaw
+# and the flanks themselves tilt inward 6.3 deg, so the crown is 136 not 170.
+#
+# EVERY number on the underside is the head_pitch sweep, not taste. The rim
+# swings about the pitch axis (z 581.4, 57 over the deck) through the URDF's own
+# -20..+49 deg, and the deck is 4 mm below the lowest point it reaches:
+#   chin  (42, 553): at +49 deg it drops to z 531.1 - 3.7 over the yaw output plate
+#   rear  (-88, 559): at -20 deg it drops to z 530.2 - 5.8 over the deck
+# That is why the underside RISES to the rear and why the chin is where it is:
+# a lower chin looks better standing still and shears on the deck looking down.
+# Resting gap chin-to-deck is 28.6 mm (sweep.py measures it), against 49 for the
+# cage - and the cage's
+# 198 mm of box above it is now 156.
+#
+# The cost, recorded: the crown lands at z 709, not the Z_CROWN marker's 771, so
+# the robot stands 1738 mm rather than 1800. The head shrank and nothing below it
+# grew. Putting it back is a rose_pro_layout change (TORSO / leg proportions),
+# not a head one, and a taller neck to reach 1800 would undo this whole pass.
+HD_Y = 85.0                              # flank half-width (helmet 170 wide)
+HD_YT = 68.0                             # ... narrowing to this at the crown (136 across)
+HD_CHIN, HD_FACE0 = (42.0, 553.0), (66.0, 588.0)
+HD_FACE1, HD_BROW = (79.0, 681.0), (38.0, 706.0)
+HD_NAPE, HD_REAR1, HD_REAR0 = (-55.0, 706.0), (-88.0, 671.0), (-88.0, 559.0)
+HD_TOP = HD_BROW[1]
+
+
+def pan(tag, p0, p1, hw, n_in, **kw):
+    """A head panel spanning two points of the sagittal profile: an x-normal
+    plate defined flat at p0 and tilted about y until its far edge lands on p1.
+    n_in picks which side of the fold line the 3 mm sits on. `hw` is a half-width,
+    or a (near, far) pair - a TRAPEZOID blank, which is how the crown panels
+    follow the flanks as those fold inward."""
+    (xa, za), (xb, zb) = p0, p1
+    dx, dz = xb - xa, zb - za
+    Ln = math.hypot(dx, dz)
+    if isinstance(hw, tuple):
+        w0, w1 = hw
+        kw['poly'] = [(-w0, za), (w0, za), (w1, za + Ln), (-w1, za + Ln)]
+        hw = max(w0, w1)
+    return P('head', tag, 'x', xa + n_in, xa + n_in + T, -hw, hw, za, za + Ln,
+             tilt=('y', math.degrees(math.atan2(dx, dz)), (xa, 0.0, za)), **kw)
+
+
+# The flanks are the profile polygon itself, TILTED inward about x so the helmet
+# loses width going up - 170 across the jaw, 136 at the crown. One tilt instead
+# of a separate crown-chamfer strip a side: a strip 28 mm across the fold is all
+# corner at any useful radius, and it left the shell reading as stacked slabs.
+HD_POLY = [HD_CHIN, HD_FACE0, HD_FACE1, HD_BROW, HD_NAPE, HD_REAR1, HD_REAR0]
+HD_TA = math.degrees(math.atan2(HD_Y - HD_YT, HD_TOP - HD_CHIN[1]))
+P('head', 'flank_l', 'y', HD_Y - T, HD_Y, 0, 0, 0, 0, poly=HD_POLY,
+  tilt=('x', HD_TA, (0.0, HD_Y, HD_CHIN[1])))
+P('head', 'flank_r', 'y', -HD_Y, -HD_Y + T, 0, 0, 0, 0, poly=HD_POLY,
+  tilt=('x', -HD_TA, (0.0, -HD_Y, HD_CHIN[1])))
+# every other panel is a trapezoid cut to meet the flanks where it lands
+hw = lambda z: HD_Y - (HD_Y - HD_YT) * (z - HD_CHIN[1]) / (HD_TOP - HD_CHIN[1]) - 1.0
+# the face, tilted 8 deg so the resting gaze is slightly DOWN (DESIGN.md rule 4).
+# One hemmed visor slot across it - a raw 3 mm edge at eye height on a machine
+# that leans in to look at you is exactly what rule 2 is about - with the stereo
+# pair on a plate 20 mm behind it, 66 mm apart (a person's interpupillary
+# distance), so the bores read as eyes set INTO the visor rather than as a face.
+VIS = (-60.0, 60.0, 616.0, 640.0)
+fc = pan('face', HD_FACE0, HD_FACE1, (hw(HD_FACE0[1]), hw(HD_FACE1[1])), -T, slots=[VIS])
+FACE_TILT = fc.tilt
+P('head', 'visor_hem', 'x', HD_FACE0[0] - 2 * T, HD_FACE0[0] - T, VIS[0] - HEM, VIS[1] + HEM,
+  VIS[2] - HEM, VIS[3] + HEM, slots=[VIS], tilt=FACE_TILT)
+P('head', 'eyes', 'x', HD_FACE0[0] - 20.0 - T, HD_FACE0[0] - 20.0, -54.0, 54.0, 606.0, 650.0,
+  holes=[(-33.0, 628.0, 28.0), (33.0, 628.0, 28.0)], tilt=FACE_TILT)
+pan('jaw',      HD_CHIN,  HD_FACE0, (hw(HD_CHIN[1]), hw(HD_FACE0[1])), -T)
+pan('crown_fr', HD_FACE1, HD_BROW,  (hw(HD_FACE1[1]), hw(HD_TOP)), -T)
+P('head', 'crown_top', 'z', HD_TOP, HD_TOP + T, HD_NAPE[0], HD_BROW[0], -hw(HD_TOP), hw(HD_TOP))
+pan('crown_bk', HD_REAR1, HD_NAPE,  (hw(HD_REAR1[1]), hw(HD_TOP)), 0.0)
+P('head', 'rear', 'x', HD_REAR0[0], HD_REAR0[0] + T, 0, 0, 0, 0,
+  poly=[(-hw(HD_REAR0[1]), HD_REAR0[1]), (hw(HD_REAR0[1]), HD_REAR0[1]),
+        (hw(HD_REAR1[1]), HD_REAR1[1]), (-hw(HD_REAR1[1]), HD_REAR1[1])])
+# rule 1's 25 mm is for the corners that strike a person. A fold panel 40 mm
+# across the fold is all corner at r 25 - it stops meeting its neighbours and the
+# shell reads as stacked slabs. The SILHOUETTE keeps 25; the seams get 6.
+for _p in PLATES:
+    if _p.link == 'head' and _p.tag in ('jaw', 'crown_fr', 'crown_bk', 'visor_hem',
+                                        'eyes', 'shelf'):
+        _p.r_want = 6.0
+# the head's own output plate, and the shelf that carries the shell off it. The
+# shelf sits at x -78..-32: inboard of -32 it would foul the pitch body's r 27.5,
+# and behind -78 it drops under the rim and into the deck at -20 deg.
+# hp_out is trimmed to +/-42 x 56: any bigger and the output plate hangs BELOW the
+# jaw line in profile, which is the gap this whole pass exists to close.
+ho = L('head', 'hp_out', 'head_pitch', 'output', -42.0, 42.0, ZHEP - 28.0, ZHEP + 28.0, outset=T)
+P('head', 'shelf', 'z', 559.0, 559.0 + T, -78.0, -34.0, -78.0, 78.0)
+
+# ---- neck: the yaw output, and a bracket that stands the pitch actuator in it ----
+# Both neck actuators are hidden: the X4-36 yaw hangs BELOW the deck inside the
+# chest (it was always there), and the X4-36 pitch is inside the helmet - the
+# flanks come down to z 555 at x 0 and the body's underside is 553.9. What is
+# left showing is 29 mm of bracket, which is a neck.
 L('neck', 'hy_out', 'head_yaw', 'output', -28.0, 28.0, -28.0, 28.0, outset=T)
-L('neck', 'hp_face', 'head_pitch', 'stator', -30.0, 30.0, ZHEP - 30.0, ZHEP + 30.0)
+hp = L('neck', 'hp_face', 'head_pitch', 'stator', -30.0, 30.0, ZHEP - 30.0, ZHEP + 30.0)
+NK_FOOT = face_n('head_yaw', 'output', outset=T)[1]     # top of the yaw output plate
+hp.v0 = NK_FOOT + T                                     # one blank: the stator plate runs down to the foot
+# and its FRONT-bottom corner is chamfered off, because that corner is the one
+# place the helmet's jaw comes back to. Everything closer to the pitch axis than
+# the chin (r 50.7) is safe at any pitch; that corner square would sit at r 59.9,
+# inside the annulus the jaw sweeps, and the swept check caught it at 19 deg.
+NK_CH = (4.0, 25.6)
+hp.poly = [(hp.u0, hp.v0), (NK_CH[0], hp.v0), (hp.u1, hp.v0 + NK_CH[1]), (hp.u1, hp.v1), (hp.u0, hp.v1)]
+hp.u0, hp.u1 = min(q[0] for q in hp.poly), max(q[0] for q in hp.poly)
+hp.v0, hp.v1 = min(q[1] for q in hp.poly), max(q[1] for q in hp.poly)
+P('neck', 'foot', 'z', NK_FOOT, NK_FOOT + T, -30.0, NK_CH[0], face_n('head_pitch', 'stator')[0], -6.0)
 
 
+HEAD_SHELL = ('flank_l', 'flank_r', 'face', 'visor_hem', 'eyes', 'jaw',
+              'crown_fr', 'crown_top', 'crown_bk', 'rear', 'hp_out', 'shelf')
 OWNER = {
-    ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
-    ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
     ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw',
     ('hipA', 'pitch_face'): 'hip_pitch', ('hipA', 'roll_face'): 'hip_roll',
@@ -659,12 +766,14 @@ OWNER = {
     ('shoB', 'shor_out'): 'sho_roll',    ('shoB', 'elb_face'): 'elb_pitch',
     ('elbA', 'elb_out'): 'elb_pitch',    ('elbA', 'wrist_face'): 'wrist_yaw',
     ('neck', 'hy_out'): 'head_yaw',      ('neck', 'hp_face'): 'head_pitch',
+    ('neck', 'foot'): 'head_yaw',
 }
+OWNER.update({('head', t): 'head_pitch' for t in HEAD_SHELL})
 SECOND_OWNER = {
-    ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
-    ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
     ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw', ('shank', 'web'): 'ank_pitch', ('shank', 'web'): 'knee'}
+SECOND_OWNER.update({('head', t): 'head_pitch' for t in HEAD_SHELL})
+SECOND_OWNER[('neck', 'foot')] = 'head_pitch'
 
 
 ANGLES = []   # retired with the angle stock
@@ -705,6 +814,13 @@ BENDS = [
     ('elbA',  'x', eo.u0 - T / 2.0,              ('flange_rr',)),
     ('elbA',  'x', eo.u1 - T / 2.0,              ('wrist_face', 'wtab_fr')),
     ('elbA',  'x', eo.u0 + T / 2.0,              ('wtab_rr',)),
+    # the helmet: every fold of the sagittal profile, plus the flank's inward one.
+    # The only holes in the shell are the eye bores, 50+ mm off the nearest line.
+    ('head',  'z', HD_FACE0[1],                  ('jaw', 'face', 'visor_hem', 'eyes')),
+    ('head',  'z', HD_FACE1[1],                  ('face', 'crown_fr')),
+    ('head',  'z', HD_TOP,                       ('crown_fr', 'crown_top', 'crown_bk')),
+    ('head',  'z', HD_REAR1[1],                  ('crown_bk', 'rear')),
+    ('neck',  'z', NK_FOOT + T / 2.0,            ('foot', 'hp_face')),
 ]
 
 
