@@ -8,11 +8,17 @@ control stack arrives here already debugged.
 
 ## The line
 
-| | height | actuators | compute | what it is |
-|---|---:|---|---|---|
-| [**rose mini**](mini) | 1150 mm | MyActuator X-series | Orin NX | Booster K1 size. The crashable one. |
-| [**rose pro**](pro) | 1450 mm | MyActuator X-series | Orin NX | The workhorse. Sim-validated at 1130 mm today. |
-| [**rose max**](max) | 1750 mm | our own rana + torc | **Jetson AGX Thor** | Beefy. Built to jump. |
+Each height is anchored to something real and rounded to the nearest 50 mm.
+
+| | height | mass | actuators | compute | anchor |
+|---|---:|---:|---|---|---|
+| [**rose mini**](mini) | 1200 mm | 18.0 kg | X6-60 / X4-36 / X4-10 | Orin NX | Booster K1 class (K1 is 1150) |
+| [**rose pro**](pro) | 1750 mm | 55.5 kg *(est)* | X12 / X8 / X4-36 | Orin NX | a standard adult human |
+| [**rose max**](max) | 2000 mm | 64.3 kg | rana-190 / -140 / -100 | **Jetson AGX Thor** | a lumberjack — taller *and* broader |
+
+max carries a **×1.15 bulk factor** on top of the height scale, so it is broad
+rather than merely tall: 305 mm stance against pro's 232 mm, and structure that
+goes as `length³ × bulk²`. A lumberjack is not a tall thin person.
 
 One design language across all three: **bent 3 mm 5052 sheet** primary structure
 (laser blanks + press brake + bolts, no angle stock and no machined blocks),
@@ -20,38 +26,53 @@ exposed-skeleton limbs against a shaped torso that *is* the structure, staggered
 and graded lightening cutouts, and contact geometry on the feet only. 22 DOF
 everywhere — 6 per leg, 4 per arm, 2 in the neck.
 
-Proportions for every variant scale from rose pro's **verified** 1130 mm layout,
-which stands in `phyz` at **+0.0 %** ground-force error with COM→COP 0.6 mm.
+Proportions scale from rose pro's **verified** 1130 mm layout, which stands in
+`phyz` at **+0.0 %** ground-force error with COM→COP 0.6 mm.
 
 ```bash
-python3 family.py           # proportions, mass, actuator selection, jump ceiling
+python3 family.py           # proportions, mass, static holding, jump ceiling
 python3 family.py --pack    # + re-run the packing check on each scaled skeleton
 ```
 
 ## Where each one stands
 
-**mini** — 1150 mm, 17.4 kg. **Packing re-verified, PASS**: tightest pair is ankle
-pitch↔roll at +6.1 mm, then hip pitch↔roll at +6.5 mm and the near-tangent hip
-yaw↔knee at +8.5 mm — all above the 4 mm floor. Worth stating why that needed
-checking rather than assuming: scaling *up* does not automatically buy clearance
-here, because the actuator bodies stay the same size while the skeleton grows, and
-the hip yaw↔knee gap has moved the *wrong* way under a length increase before.
-Was `toad`, a separate 950 mm design on generic A/B/C actuator SKUs; that geometry
-is superseded, and what survives is in [`mini/`](mini) — the vcad kinematic tree,
-DFM pass and actuator sizing.
+| | single-leg 90° squat | packing check |
+|---|---|---|
+| mini | 33 N·m needed, 60 available — torque never binds at any angle | **PASS**, tightest +8.7 mm |
+| pro | 149 N·m needed, 320 available — holds full range | **BLOCKED** |
+| max | 197 N·m needed, 262 available — holds to 140° of bend | **BLOCKED** |
 
-**pro** — 1450 mm, 22.5 kg. 22 DOF on X6-60 hips and knees, X4-36 ankles and arms,
-X4-10 neck; 40 bent-sheet plates, 0 bend-rule violations. **Packing re-verified at
-1450 mm, PASS** — every pair clears by more than 20 mm, so the growth from 1130 is
-geometrically free. What is *not* yet redone at 1450: the bent-sheet plate table,
-the mass measurement, and the phyz stand. The 1130 mm build is the one that stands
-at +0.0 % today, 17.58 kg, ~$9,410 of actuators; re-exporting the line at 1450 is
-the next concrete task.
+Single leg is the case that matters. Two-legged standing halves the load, but
+walking spends most of its time on one foot and every landing lands on one.
 
-**max** — 1750 mm, ~49 kg, rana-190 hips and knees, rana-140 ankles, rana-100 arms,
-0.9 kWh at 48 V, Jetson AGX Thor. Pre-geometry: [`max/INTERFACES.md`](max/INTERFACES.md)
-is deliberately the first artifact, and geometry starts only against frozen
-interfaces.
+**mini** — the only variant that is geometrically verified end to end. Was `toad`,
+a separate 950 mm design on generic A/B/C actuator SKUs; that geometry is
+superseded, and what survives is in [`mini/`](mini) — the vcad kinematic tree, DFM
+pass and actuator sizing.
+
+**pro** — growing 1130 → 1750 mm broke the actuator selection, which is the useful
+thing this pass found. **X6-60 cannot hold a single-leg squat at 1750 mm**: it needs
+149 N·m and has 60, so it runs out at about 67° of knee bend — enough for walking
+stance, not for squatting, landing or jumping. The fix is X12 knees and X8 ankles,
+and it is expensive: actuator mass goes 11.4 → 37.8 kg and the robot roughly
+doubles to ~55 kg.
+
+**max** — 2000 mm, 64.3 kg, rana-190 hips and knees, rana-140 ankles, rana-100 arms,
+1.2 kWh at 48 V, Jetson AGX Thor. Pre-geometry: [`max/INTERFACES.md`](max/INTERFACES.md)
+is deliberately the first artifact, and geometry starts only against frozen interfaces.
+
+### Why two of the three say BLOCKED
+
+Moving pro and max onto bigger actuators cost us the packing check, and that is
+worth stating plainly rather than burying. Only four actuators have verified
+envelopes: **X6-60, X4-36, X4-10** (vendor STEP + the X-series V4 manual) and
+**rana-100 rev D** (⌀100 × 44). For X8, X12, X15, rana-140 and rana-190 the vendor
+or our own design log gives *torque* but no dimensions, so `--pack` fails closed
+instead of inventing housings.
+
+Unblocking is concrete: pull vendor STEP for X8/X12, and produce housing drawings
+for rana-140/190. Until then, pro's and max's masses are estimates too — the X8/X12
+figures are scaled from X6-60 by torque, not measured.
 
 ## What we learned sizing max to jump
 
@@ -62,8 +83,8 @@ it is the number to design against, so [`family.py`](family.py) puts vendor limi
 against it rather than picking a target by feel.
 
 The result is not the one we expected. **rose max is speed-limited, not
-torque-limited.** rana-190 has torque to spare — the energy bound alone permits
-0.97 m — but its 9.9 rad/s no-load output speed caps the jump at **0.38 m**.
+torque-limited.** rana-190 has torque to spare — the energy bound permits 0.65 m —
+but its 9.9 rad/s no-load output speed caps the jump at **0.49 m**.
 
 And the reason is electrical, not mechanical. At peak current,
 
@@ -73,23 +94,28 @@ P = (Kt · I) · (V − I·R)/Kt = I · (V − I·R)
 
 **Kt cancels.** Every actuator in the rana family delivers the same 1.3 kW peak
 mechanical power, because peak power is set by the bus and the current limit alone
-— 48 V × 30 A — and gearing only trades torque against speed inside that envelope.
-The ladder from rana-100 to rana-190 is a *torque* ladder, not a *power* ladder.
+— 48 V × 30 A — and gearing only trades torque against speed inside that envelope:
 
+| | Kt | output torque | no-load speed | peak mech |
+|---|---:|---:|---:|---:|
+| rana-100 | 0.1657 | 36 N·m | 36.2 rad/s | 1.30 kW |
+| rana-140 | 0.3326 | 96 N·m | 18.0 rad/s | 1.30 kW |
+| rana-190 | 0.6055 | 262 N·m | 9.9 rad/s | 1.30 kW |
+
+The ladder from rana-100 to rana-190 is a *torque* ladder, not a *power* ladder.
 So jump height on this machine is an electrical spec:
 
 | target | takeoff | knee rate | knee torque | both knees | vs available |
 |---:|---:|---:|---:|---:|---:|
-| 0.3 m | 2.43 m/s | 8.9 rad/s | 153 N·m | 2.7 kW | 1.0× |
-| 0.5 m | 3.13 m/s | 11.4 rad/s | 211 N·m | 4.8 kW | 1.8× |
-| 1.0 m | 4.43 m/s | 16.2 rad/s | 356 N·m | 11.5 kW | 4.4× |
-| 2.0 m | 6.26 m/s | 22.9 rad/s | 646 N·m | 29.6 kW | 11.3× |
+| 0.3 m | 2.43 m/s | 7.8 rad/s | 213 N·m | 3.3 kW | 1.3× |
+| 0.5 m | 3.13 m/s | 10.0 rad/s | 289 N·m | 5.8 kW | 2.2× |
+| 1.0 m | 4.43 m/s | 14.2 rad/s | 479 N·m | 13.6 kW | 5.2× |
+| 2.0 m | 6.26 m/s | 20.0 rad/s | 860 N·m | 34.4 kW | 13.2× |
 
-Three levers, and a bigger rana is not one of them: **raise the bus** (100 V+ leg
-drive), **raise the current limit**, or **store energy in series elastics** so the
-motors can work slowly and release fast — which is how every good biological and
-robotic jumper does it, and the only lever that beats the V·I ceiling instead of
-paying for it.
+Three levers, and a bigger rana is not one of them: a **100 V / 60 A leg drive**
+gets you to 1 m, a **150 V / 120 A** one to 2 m, or **series elastics** let the
+motors work slowly and release fast — the only lever that beats the V·I ceiling
+instead of paying for it, and how every good biological and robotic jumper does it.
 
 Worth noting what this says about Superman: 360 N·m at ~21 rad/s is ~7.5 kW *per
 knee*, roughly 6× a rana-190. Their actuators are power-dense where ours are
@@ -104,9 +130,13 @@ It ignores the hip and ankle contributions that would raise it and the transmiss
 losses that would lower it. Both bounds it reports are *ceilings*: the real machine
 lands under the lower one.
 
-The packing checks above are real — `family.py --pack` re-runs pro's own
-sampled-surface clearance test on each scaled skeleton — but they check *actuator
-body against actuator body only*. Plates, fasteners and harness are not in that
-test. And it **cannot check max** — only rana-100 rev D has a detailed housing (⌀100 × 44), and
-rana-140/190 envelopes are not modelled. Inventing them would make the check a lie,
-so max's packing is blocked on those two drawings.
+The static check is **one pass, not a fixed point** — a heavier actuator makes the
+robot heavier, which raises the torque it has to hold. Treat a marginal PASS as
+marginal.
+
+The packing check is real — it re-runs pro's own sampled-surface clearance test on
+each scaled skeleton, and it needed running rather than assuming, because actuator
+bodies stay the same size while the skeleton grows and the near-tangent hip
+yaw↔knee gap has moved the *wrong* way under a length increase before. But it
+compares *actuator body against actuator body only*: plates, fasteners and harness
+are not in it.

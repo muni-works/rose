@@ -41,6 +41,13 @@ ACT = {
     'X6-60':   dict(tau=60.0, kg=0.82, kt=None, n=19.612, amp=None),
     'X4-36':   dict(tau=34.0, kg=0.36, kt=None, n=36.0,   amp=None),
     'X4-10':   dict(tau=10.0, kg=0.26, kt=None, n=12.6,   amp=None),
+    # Bigger X-series SKUs exist and the vendor publishes their torque, but we have
+    # no STEP for them, so mass is ESTIMATED (scaled from X6-60 by torque) and the
+    # envelope is unmodelled - which means any variant using these cannot have its
+    # packing checked. Torque is real; everything else here is a placeholder.
+    'X8':      dict(tau=110.0, kg=1.4, kt=None, n=None, amp=None, est=True),
+    'X12':     dict(tau=320.0, kg=3.6, kt=None, n=None, amp=None, est=True),
+    'X15':     dict(tau=450.0, kg=5.2, kt=None, n=None, amp=None, est=True),
     'rana-100': dict(tau=36.0,  kg=0.5, kt=0.1657, n=8.0, amp=30.0),
     'rana-140': dict(tau=96.0,  kg=1.1, kt=0.3326, n=8.0, amp=30.0),
     'rana-190': dict(tau=262.0, kg=2.4, kt=0.6055, n=8.0, amp=30.0),
@@ -84,13 +91,22 @@ REF_THIGH = 0.250
 REF_SHANK = 0.250
 REF_STANCE = 0.150
 
+# Each height is anchored to something real rather than picked off a curve, and
+# rounded to the nearest 50 mm.
+#
+#   mini 1200   Booster K1 is 1150 - same class, squarer number
+#   pro  1750   a standard adult human
+#   max  2000   a lumberjack: taller AND broader, so it carries a bulk factor too
+#
+# `bulk` widens stance and shoulders beyond the height scale and thickens the
+# structure with it. A lumberjack is not a tall thin person.
 VARIANT = {
-    'mini': dict(h=1.150, leg='X6-60',   ankle='X4-36',   arm='X4-36',
+    'mini': dict(h=1.200, bulk=1.00, leg='X6-60',   ankle='X4-36',   arm='X4-36',
                  head='X4-10', batt_kwh=0.30, compute=0.4, compute_name='Jetson Orin NX'),
-    'pro':  dict(h=1.450, leg='X6-60',   ankle='X4-36',   arm='X4-36',
-                 head='X4-10', batt_kwh=0.50, compute=0.4, compute_name='Jetson Orin NX'),
-    'max':  dict(h=1.750, leg='rana-190', ankle='rana-140', arm='rana-100',
-                 head='rana-100', batt_kwh=0.90, compute=1.4, compute_name='Jetson AGX Thor'),
+    'pro':  dict(h=1.750, bulk=1.00, leg='X12',     ankle='X8',      arm='X4-36',
+                 head='X4-10', batt_kwh=0.60, compute=0.4, compute_name='Jetson Orin NX'),
+    'max':  dict(h=2.000, bulk=1.15, leg='rana-190', ankle='rana-140', arm='rana-100',
+                 head='rana-100', batt_kwh=1.20, compute=1.4, compute_name='Jetson AGX Thor'),
 }
 
 # 48 V pouch packs land around 180 Wh/kg at pack level once cells, BMS, case and
@@ -99,10 +115,14 @@ PACK_WH_PER_KG = 180.0
 
 
 def geometry(v):
-    """Scale rose pro's verified proportions to this variant's height."""
-    s = v['h'] / REF_H
-    return dict(scale=s, thigh=REF_THIGH * s, shank=REF_SHANK * s,
-                stance=REF_STANCE * s, seg=REF_SHANK * s)
+    """Scale rose pro's verified proportions to this variant's height.
+
+    Segment lengths follow height. Lateral spacing follows height AND bulk, which
+    is what makes max broad rather than merely tall.
+    """
+    s, b = v['h'] / REF_H, v.get('bulk', 1.0)
+    return dict(scale=s, bulk=b, thigh=REF_THIGH * s, shank=REF_SHANK * s,
+                stance=REF_STANCE * s * b, seg=REF_SHANK * s)
 
 
 def mass(v):
@@ -112,10 +132,38 @@ def mass(v):
            + 4 * ACT[v['ankle']]['kg']   # 2 ankle actuators x 2 legs
            + 8 * ACT[v['arm']]['kg']     # 4 arm actuators x 2 arms
            + 2 * ACT[v['head']]['kg'])
-    struct = REF_STRUCT * s ** 3
+    # Structure goes as length^3; bulk widens two of those three dimensions.
+    struct = REF_STRUCT * s ** 3 * v.get('bulk', 1.0) ** 2
     batt = v['batt_kwh'] * 1000.0 / PACK_WH_PER_KG
     return dict(act=act, struct=struct, batt=batt, compute=v['compute'],
                 total=act + struct + batt + v['compute'])
+
+
+def static(v, theta_k=math.radians(90.0)):
+    """Can the knee hold a SINGLE-LEG squat, and how deep?
+
+    Single leg is the case that matters: two-legged standing halves the load, but
+    walking spends most of its time on one foot, and every landing lands on one.
+
+    With interior knee angle theta the knee axis sits L*sin(theta/2) horizontally
+    off the hip-foot line, so a vertical ground reaction F produces
+        tau = F * L * sin(theta/2)
+    NOT iterated: a heavier actuator makes the robot heavier, which raises the torque
+    it has to hold. The selections below are one pass, not a fixed point, so treat a
+    marginal PASS as marginal.
+
+    and the deepest holdable angle inverts it:
+        theta_max = 2 * asin(tau_peak / (m*g*L)),  undefined (= full range) if the
+    actuator can carry it all the way to the fold.
+    """
+    g, m = geometry(v), mass(v)['total']
+    L, tau = g['seg'], ACT[v['leg']]['tau']
+    need_1leg = m * G * L * math.sin(theta_k / 2)
+    need_2leg = need_1leg / 2.0
+    ratio = tau / (m * G * L)
+    theta_max = math.pi if ratio >= 1.0 else 2 * math.asin(ratio)
+    return dict(m=m, L=L, tau=tau, need_1leg=need_1leg, need_2leg=need_2leg,
+                theta_max=theta_max, ok=need_1leg <= tau)
 
 
 def jump(v, theta_k=math.radians(90.0), tau_derate=0.70):
@@ -179,10 +227,23 @@ def main():
               % (g['thigh'] * 1000, g['shank'] * 1000, g['stance'] * 1000))
         print('  actuators       leg %s   ankle %s   arm %s'
               % (v['leg'], v['ankle'], v['arm']))
-        print('  mass            %5.1f kg total  = %.1f actuators + %.1f structure'
+        est = any(ACT[v[k]].get('est') for k in ('leg', 'ankle', 'arm', 'head'))
+        print('  mass            %5.1f kg total%s = %.1f actuators + %.1f structure'
               '  + %.1f battery (%.2f kWh) + %.1f %s'
-              % (m['total'], m['act'], m['struct'], m['batt'], v['batt_kwh'],
-                 m['compute'], v['compute_name']))
+              % (m['total'], ' (EST)' if est else '      ', m['act'], m['struct'],
+                 m['batt'], v['batt_kwh'], m['compute'], v['compute_name']))
+        if g['bulk'] != 1.0:
+            print('  bulk            x%.2f lateral - broader than a pure scale-up'
+                  % g['bulk'])
+
+        st = static(v)
+        print('  single-leg 90 squat  needs %.0f N.m at the knee, have %.0f  ->  %s'
+              % (st['need_1leg'], st['tau'], 'OK' if st['ok'] else 'SHORT'))
+        if st['theta_max'] >= math.pi:
+            print('  deepest single-leg squat: full range - torque never binds')
+        else:
+            print('  deepest single-leg squat the knee holds: %.0f deg of knee bend'
+                  % math.degrees(st['theta_max']))
 
         w = out_speed_noload(v['leg'])
         p = peak_power(v['leg'])
@@ -247,20 +308,21 @@ def main():
               % (tgt, bus, amp, bus * amp / 1000.0))
 
 
-def clearance(scale, label):
+def clearance(scale, label, lat=1.0):
     """Re-run pro's verified packing check on a scaled skeleton. ~30 s."""
     import itertools
     import sys
     sys.path.insert(0, 'pro')
     import rose_pro_layout as L
 
-    segs = [L.seg(j) for j in L.joints(scale)]
+    segs = [L.seg(j) for j in L.joints(scale, lat)]
     worst = []
     for (l1, a1, b1, r1, _), (l2, a2, b2, r2, _) in itertools.combinations(segs, 2):
         gap = L.cyl_gap(a1, b1, r1, a2, b2, r2) * 1000
         if gap < 20:
             worst.append((gap, l1, l2))
-    print('\n--- packing check: %s (scale %.3f) ---' % (label, scale))
+    print('\n--- packing check: %s (scale %.3f, lateral x%.2f) ---'
+          % (label, scale, lat))
     if not worst:
         print('  all pairs clear by >20 mm')
     for gap, l1, l2 in sorted(worst):
@@ -278,8 +340,17 @@ if __name__ == '__main__':
         print('\n' + '=' * 74)
         print('packing re-verification (actuator envelopes do NOT scale)')
         print('=' * 74)
-        for n in ('mini', 'pro'):
-            clearance(VARIANT[n]['h'] / REF_H, 'rose ' + n)
-        print('\n  rose max is NOT checked here: only rana-100 rev D has a detailed')
-        print('  housing (D100 x 44). rana-140 and rana-190 envelopes are not modelled,')
-        print('  and inventing them would make this check a lie. Blocked on those.')
+        for n in ('mini', 'pro', 'max'):
+            v = VARIANT[n]
+            unmodelled = sorted({v[k] for k in ('leg', 'ankle', 'arm', 'head')
+                                 if ACT[v[k]].get('est') or v[k].startswith('rana-1')
+                                 and v[k] != 'rana-100'})
+            if unmodelled:
+                print('\n--- packing check: rose %s --- BLOCKED' % n)
+                print('  no modelled envelope for %s. Only these have verified'
+                      % ', '.join(unmodelled))
+                print('  dimensions: X6-60, X4-36, X4-10 (vendor STEP + V4 manual) and')
+                print('  rana-100 rev D (D100 x 44). Inventing the rest would make this')
+                print('  check a lie, so it fails closed instead.')
+                continue
+            clearance(v['h'] / REF_H, 'rose ' + n, v.get('bulk', 1.0))

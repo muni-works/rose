@@ -82,18 +82,22 @@ HEAD = [
     ('head_pitch', (0, 0, 0.390), (0, 1, 0), 'X4-10', (0, -1, 0), 'mid'),
 ]
 
-def joints(scale=1.0):
+def joints(scale=1.0, lat=1.0):
     """All 22 joints, optionally scaled to another variant of the line.
 
     Scaling the SKELETON but not the actuator ENVELOPES is the whole point: the
     bodies are fixed lumps of vendor hardware, so a variant's packing is a genuinely
-    different problem and has to be re-checked, not assumed. Do not trust monotonicity
+    different problem and has to be re-checked, not assumed. `lat` widens the Y axis
+    only, which is how max gets to be broader than a pure scale-up rather than just
+    a taller copy - and widening Y moves the two hip-pitch bodies APART, so it can
+    only help that pair while doing nothing for the in-plane ones. Do not trust monotonicity
     here - the hip-yaw/knee pair is near-tangent and its gap has moved the WRONG way
     under a length increase before.
     """
     def sc(j):
         label, org, axis, model, bdir, mode = j
-        return (label, tuple(c * scale for c in org), axis, model, bdir, mode)
+        k = (scale, scale * lat, scale)      # lat widens Y only: broader, not taller
+        return (label, tuple(c * k[i] for i, c in enumerate(org)), axis, model, bdir, mode)
     return [sc(j) for j in leg('L') + leg('R') + arm('L') + arm('R') + HEAD]
 
 
