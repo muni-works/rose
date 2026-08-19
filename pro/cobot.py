@@ -59,28 +59,22 @@ def region_at(height_mm):
 
 
 def edges(pl):
-    """The four perimeter edges of a plate, as (mid_u, mid_v, length, label).
+    """The perimeter edges of a plate, as (mid_u, mid_v, length, label).
 
     In-plane only. The plate is 3 mm thick, so each perimeter edge is a 3 mm-wide
-    square-cut strip -- the thing a person actually contacts.
+    square-cut strip -- the thing a person actually contacts. Rect or polygon.
     """
-    return [
-        ((pl.u0 + pl.u1) / 2, pl.v0, pl.u1 - pl.u0, 'v0'),
-        ((pl.u0 + pl.u1) / 2, pl.v1, pl.u1 - pl.u0, 'v1'),
-        (pl.u0, (pl.v0 + pl.v1) / 2, pl.v1 - pl.v0, 'u0'),
-        (pl.u1, (pl.v0 + pl.v1) / 2, pl.v1 - pl.v0, 'u1'),
-    ]
+    poly = pl.outline()
+    out = []
+    for k in range(len(poly)):
+        a, b = poly[k], poly[(k + 1) % len(poly)]
+        out.append(((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, math.hypot(b[0] - a[0], b[1] - a[1]), 'e%d' % k))
+    return out
 
 
 def to_world(pl, u, v):
-    """Map an in-plane (u, v) on this plate back to world x, y, z."""
-    i = L.AXI[pl.normal]
-    ui, vi = [k for k in range(3) if k != i]
-    p = [0.0, 0.0, 0.0]
-    p[i] = (pl.n0 + pl.n1) / 2.0
-    p[ui] = u
-    p[vi] = v
-    return p
+    """Map an in-plane (u, v) on this plate back to world x, y, z (through its tilt)."""
+    return list(pl.local_to_world((pl.n0 + pl.n1) / 2.0, u, v))
 
 
 def shielded(pt, me):

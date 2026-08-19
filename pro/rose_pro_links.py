@@ -128,38 +128,153 @@ def hit(box, axis, uv, r, ext):
     return None if d >= r else (a1 - a0, r - d)
 
 
+def _rot_axis(axis, deg):
+    """3x3 rotation about a world axis ('x'|'y'|'z'), degrees."""
+    c, s_ = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    if axis == 'x':
+        return ((1, 0, 0), (0, c, -s_), (0, s_, c))
+    if axis == 'y':
+        return ((c, 0, s_), (0, 1, 0), (-s_, 0, c))
+    return ((c, -s_, 0), (s_, c, 0), (0, 0, 1))
+
+
+def _apply(R, c, p):
+    d = [p[i] - c[i] for i in range(3)]
+    return tuple(c[i] + sum(R[i][k] * d[k] for k in range(3)) for i in range(3))
+
+
+def poly_sdf(pt, poly):
+    """Signed distance from an in-plane point to a CONVEX polygon (CCW), <0 inside."""
+    n = len(poly)
+    inside = -1e9
+    outside = 1e9
+    for i in range(n):
+        (ax, ay), (bx, by) = poly[i], poly[(i + 1) % n]
+        ex, ey = bx - ax, by - ay
+        L2 = ex * ex + ey * ey or 1e-9
+        # outward normal for CCW is (ey, -ex)
+        nl = math.sqrt(L2)
+        sdist = ((pt[0] - ax) * ey - (pt[1] - ay) * ex) / nl
+        inside = max(inside, sdist)
+        t = max(0.0, min(1.0, ((pt[0] - ax) * ex + (pt[1] - ay) * ey) / L2))
+        outside = min(outside, math.hypot(pt[0] - ax - t * ex, pt[1] - ay - t * ey))
+    return inside if inside <= 0 else outside
+
+
+def poly_inset(poly, r):
+    """Inset a CONVEX CCW polygon by r (edge-offset); the rounded outline is its
+    Minkowski sum with a disc of r, so sdf_rounded = sdf(inset) - r."""
+    n = len(poly)
+    lines = []
+    for i in range(n):
+        (ax, ay), (bx, by) = poly[i], poly[(i + 1) % n]
+        ex, ey = bx - ax, by - ay
+        nl = math.hypot(ex, ey) or 1e-9
+        nx, ny = ey / nl, -ex / nl          # outward
+        lines.append((nx, ny, nx * ax + ny * ay - r))    # n.p = d - r
+    out = []
+    for i in range(n):
+        (a1, b1, c1), (a2, b2, c2) = lines[i - 1], lines[i]
+        det = a1 * b2 - a2 * b1
+        if abs(det) < 1e-12:
+            out.append(poly[i])
+            continue
+        out.append(((c1 * b2 - c2 * b1) / det, (a1 * c2 - a2 * c1) / det))
+    return out
+
+
 class Plate:
-    """A flat plate: normal axis, thickness span, and in-plane rectangle.
+    """A flat plate: normal axis, thickness span, and an in-plane outline.
+
+    The outline is a rectangle u0..u1 x v0..v1 with rounded corners, or - if
+    `poly` is given - a CONVEX polygon (list of (u, v), CCW) with every vertex
+    rounded by the same radius; u0..u1/v0..v1 are then its bounding box. A
+    plate may be TILTED: `tilt = (axis, deg, pivot_xyz)` rotates the finished
+    plate about the world axis through `pivot`. Every check that used to read
+    the rectangle now asks `sdf_uv` / `to_world` / `to_local`, so a tilted
+    trapezoid is checked exactly, not as a box.
 
     `holes` are round bores (u, v, dia). `slots` are rectangular APERTURES
-    (u0, u1, v0, v1) with SLOT_R corners - the windows that replaced the round
-    lightening holes. A plate whose outline is a slot plus a narrow rim is a hem
-    frame: the 180-degree fold around a window edge, modelled as the 3 mm doubled
-    strip it becomes (see cobot.py rule 2).
+    (u0, u1, v0, v1) with SLOT_R corners. A plate whose outline is a slot plus
+    a narrow rim is a hem frame: the 180-degree fold around a window edge,
+    modelled as the 3 mm doubled strip it becomes (see cobot.py rule 2).
     """
 
-    def __init__(self, link, tag, normal, n0, n1, u0, u1, v0, v1, holes=(), slots=(), r_want=20.0):
+    def __init__(self, link, tag, normal, n0, n1, u0, u1, v0, v1, holes=(), slots=(),
+                 r_want=20.0, poly=None, tilt=None):
         self.link, self.tag, self.normal = link, tag, normal
         self.r_want = r_want          # corner radius asked for (rose_pro_loon.corner_radius backs off)
         self.n0, self.n1 = n0, n1
         self.u0, self.u1, self.v0, self.v1 = u0, u1, v0, v1
         self.holes = list(holes)      # (u, v, dia)
         self.slots = list(slots)      # (u0, u1, v0, v1)
+        self.poly = [tuple(p) for p in poly] if poly else None
+        self.tilt = tilt              # (axis, deg, (px, py, pz)) or None
+        if self.poly:
+            us = [p[0] for p in self.poly]
+            vs = [p[1] for p in self.poly]
+            self.u0, self.u1, self.v0, self.v1 = min(us), max(us), min(vs), max(vs)
 
-    def box(self):
-        b = [None] * 3
+    # ---- frames ----
+    def axes(self):
         i = AXI[self.normal]
         ui, vi = [k for k in range(3) if k != i]
-        b[i] = (self.n0, self.n1)
-        b[ui] = (self.u0, self.u1)
-        b[vi] = (self.v0, self.v1)
-        return tuple(b)
+        return i, ui, vi
+
+    def local_to_world(self, n, u, v):
+        """(n, u, v) in the plate's own frame -> world xyz (applies the tilt)."""
+        i, ui, vi = self.axes()
+        p = [0.0, 0.0, 0.0]
+        p[i], p[ui], p[vi] = n, u, v
+        if self.tilt:
+            ax, deg, piv = self.tilt
+            return _apply(_rot_axis(ax, deg), piv, p)
+        return tuple(p)
+
+    def world_to_local(self, p):
+        """world xyz -> (n, u, v) in the plate's own frame (undoes the tilt)."""
+        if self.tilt:
+            ax, deg, piv = self.tilt
+            p = _apply(_rot_axis(ax, -deg), piv, p)
+        i, ui, vi = self.axes()
+        return p[i], p[ui], p[vi]
+
+    def outline(self):
+        """The in-plane outline as a CCW polygon (rect or poly), unrounded."""
+        if self.poly:
+            return list(self.poly)
+        return [(self.u0, self.v0), (self.u1, self.v0), (self.u1, self.v1), (self.u0, self.v1)]
+
+    def sdf_uv(self, u, v, r):
+        """Signed distance to the ROUNDED outline in-plane (<0 inside), corner radius r."""
+        if self.poly:
+            return poly_sdf((u, v), poly_inset(self.poly, r)) - r
+        ax, ay = (self.u1 - self.u0) / 2.0, (self.v1 - self.v0) / 2.0
+        cx, cy = (self.u0 + self.u1) / 2.0, (self.v0 + self.v1) / 2.0
+        qx, qy = abs(u - cx) - ax + r, abs(v - cy) - ay + r
+        return min(max(qx, qy), 0.0) + math.hypot(max(qx, 0.0), max(qy, 0.0)) - r
+
+    def box(self):
+        """World AABB. Exact for an untilted plate; the rotated prism's AABB otherwise."""
+        if not self.tilt:
+            b = [None] * 3
+            i, ui, vi = self.axes()
+            b[i] = (self.n0, self.n1)
+            b[ui] = (self.u0, self.u1)
+            b[vi] = (self.v0, self.v1)
+            return tuple(b)
+        pts = [self.local_to_world(n, u, v) for n in (self.n0, self.n1)
+               for (u, v) in self.outline()]
+        return tuple((min(p[k] for p in pts), max(p[k] for p in pts)) for k in range(3))
 
     def fit(self):
-        """Grow the outline until every hole clears the edge by MIN_EDGE.
+        """Grow a RECT outline until every hole clears the edge by MIN_EDGE.
 
         Hand-picked plate extents were repeatedly too small for the bolt circle
-        they had to carry, so the outline is derived from the holes instead."""
+        they had to carry, so the outline is derived from the holes instead. A
+        polygon outline is not grown; its containment is checked instead."""
+        if self.poly:
+            return
         for (u, v, d) in self.holes:
             m = MIN_EDGE(d)
             self.u0 = min(self.u0, u - d / 2 - m)
@@ -169,15 +284,20 @@ class Plate:
 
     def area(self):
         """Net area: outline minus windows minus bores (what the blank weighs)."""
-        a = (self.u1 - self.u0) * (self.v1 - self.v0)
+        if self.poly:
+            a = 0.0
+            for i in range(len(self.poly)):
+                (x0, y0), (x1, y1) = self.poly[i], self.poly[(i + 1) % len(self.poly)]
+                a += x0 * y1 - x1 * y0
+            a = abs(a) / 2.0
+        else:
+            a = (self.u1 - self.u0) * (self.v1 - self.v0)
         a -= sum((s1 - s0) * (t1 - t0) for (s0, s1, t0, t1) in self.slots)
         a -= sum(math.pi * (d / 2.0) ** 2 for (_, _, d) in self.holes)
         return a
 
     def mass(self):
         return self.area() * T * 2.68e-3 / 1000.0   # kg, 5052
-
-
 
 
 def ring(bcd, cu, cv, dia, n, clock=0.0):
@@ -288,20 +408,44 @@ ct = P('thigh', 'top', 'z', yo.n1, yo.n1 + T, -10.0, TH_FRONT + T, TH_Y0 - T, TH
        holes=[h for h in yo.holes if h[2] < 10.0 and h[0] > -10.0 + 8.0])   # the front six of the ring
 TH_TOP = ct.n1
 TH_REAR = -30.0
-TH_WIN = (TH_REAR + 15.0, TH_FRONT - 20.0, TH_FLG_BOT + 18.0, TH_TOP - 18.0)
+# TAPER. The flanges are TILTED inward about the top plate's side edges so the
+# channel narrows from 174 at the hip to 142 at the shelf - the H2's thigh goes
+# 128 -> 74 over its length; ours can only lean its two walls, and it leans them
+# 4.6 deg. Their rear edge is also cut on the slant (trapezoid) from x -30 at the
+# top to x 0 at the bottom. The web between them is then a trapezoid too. The
+# windows and hems ride the same tilt; the shelf spans the narrowed bottom.
+TH_IN = 16.0                                            # how far each flange bottom leans in
+TH_H = TH_TOP - TH_FLG_BOT
+TH_TILT = math.degrees(math.atan2(TH_IN, TH_H))
+TH_BOT_REAR = 0.0
+TH_WIN = (TH_BOT_REAR + 12.0, TH_FRONT - 20.0, TH_FLG_BOT + 18.0, TH_TOP - 18.0)
 TH_HEMR = (TH_WIN[0] - HEM, TH_WIN[1] + HEM, TH_WIN[2] - HEM, TH_WIN[3] + HEM)
-P('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, TH_REAR, TH_FRONT + T, TH_FLG_BOT, TH_TOP, slots=[TH_WIN])
-P('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, TH_REAR, TH_FRONT + T, TH_FLG_BOT, TH_TOP, slots=[TH_WIN])
-P('thigh', 'hem_in',     'y', TH_Y0 - 2 * T, TH_Y0 - T, *TH_HEMR, slots=[TH_WIN])
-P('thigh', 'hem_out',    'y', TH_Y1 + T, TH_Y1 + 2 * T, *TH_HEMR, slots=[TH_WIN])
-P('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, TH_Y0 - T, TH_Y1 + T, TH_FLG_BOT, TH_TOP)
+FL_POLY = [(TH_BOT_REAR, TH_FLG_BOT), (TH_FRONT + T, TH_FLG_BOT), (TH_FRONT + T, TH_TOP), (TH_REAR, TH_TOP)]
+PIV_IN = (0.0, TH_Y0 - T / 2.0, TH_TOP)
+PIV_OUT = (0.0, TH_Y1 + T / 2.0, TH_TOP)
+# a y-normal plate tilted about x: +deg rotates +z toward -y... we want the BOTTOM
+# (which is at -z from the pivot) to move toward +y for the inner flange (y small)
+# and toward -y for the outer. Rotation about x by a: y' = y cos a - z sin a; for a
+# point below the pivot (dz < 0), y' - y = -dz sin a > 0 when a > 0. So inner +, outer -.
+P('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', TH_TILT, PIV_IN))
+P('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', -TH_TILT, PIV_OUT))
+P('thigh', 'hem_in',     'y', TH_Y0 - 2 * T, TH_Y0 - T, *TH_HEMR, slots=[TH_WIN], tilt=('x', TH_TILT, PIV_IN))
+P('thigh', 'hem_out',    'y', TH_Y1 + T, TH_Y1 + 2 * T, *TH_HEMR, slots=[TH_WIN], tilt=('x', -TH_TILT, PIV_OUT))
+WEB_POLY = [(TH_Y0 - T + TH_IN, TH_FLG_BOT), (TH_Y1 + T - TH_IN, TH_FLG_BOT), (TH_Y1 + T, TH_TOP), (TH_Y0 - T, TH_TOP)]
+P('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, 0, 0, 0, 0, poly=WEB_POLY)
 # the jog: shelf under the yaw body back to the knee plate's front, lower web, knee plate
 TH_LO_X = -KB + KNEE_R + 4.0                           # lower web inner face, 4 clear of the knee body front
 TH_LO_Y0, TH_LO_Y1 = LEG_Y + T, LEG_Y + T + 40.0
-P('thigh', 'shelf',  'z', TH_FLG_BOT - T, TH_FLG_BOT, TH_LO_X, TH_FRONT + T, TH_LO_Y0, TH_Y1 + T)
-P('thigh', 'web_lo', 'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, ZK - KNEE_R - 8.0, TH_FLG_BOT - T)
+P('thigh', 'shelf',  'z', TH_FLG_BOT - T, TH_FLG_BOT, TH_LO_X, TH_FRONT + T, TH_LO_Y0, TH_Y1 + T - TH_IN)
 kf = L('thigh', 'knee_face', 'knee', 'stator', -KB - KNEE_R - 5.0, TH_LO_X + T, ZK - 70.0, ZK + 70.0)
-P('thigh', 'knee_gus', 'x', -KB - KNEE_R - 5.0 - T, -KB - KNEE_R - 5.0, LEG_Y - 64.0, LEG_Y, kf.v0, kf.v1)
+# the knee stator plate - the biggest flat face on the leg - is an OCTAGON: 35 mm
+# corner cuts, which leaves its front and rear edges straight where web_lo and
+# the gusset bend off them
+KC = 35.0
+kf.poly = [(kf.u0 + KC, kf.v0), (kf.u1 - KC, kf.v0), (kf.u1, kf.v0 + KC), (kf.u1, kf.v1 - KC),
+           (kf.u1 - KC, kf.v1), (kf.u0 + KC, kf.v1), (kf.u0, kf.v1 - KC), (kf.u0, kf.v0 + KC)]
+P('thigh', 'knee_gus', 'x', -KB - KNEE_R - 5.0 - T, -KB - KNEE_R - 5.0, LEG_Y - 64.0, LEG_Y, kf.v0 + KC, kf.v1 - KC)
+P('thigh', 'web_lo', 'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, kf.v0 + KC, TH_FLG_BOT - T)
 
 # ---- shank: knee OUTPUT -> ankle pitch STATOR ----
 SH_FR = -KB + 20.0                                     # shank front flange inner face, behind the knee body front (23)
@@ -368,32 +512,64 @@ P('elbA', 'wtab_rr', 'x', eo.u0, eo.u0 + T, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
 WR_BOT = ZW - ln('X4-36')
 P('hand', 'palm', 'z', WR_BOT - 2 * T, WR_BOT - T, -30.0, 30.0, SHO_Y - 30.0, SHO_Y + 30.0)
 
-# ---- trunk: chest over pelvis ----
+# ---- trunk: chest over pelvis, with CHAMFERS ----
 # waist/pelvis: encloses the two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23).
 # Side walls ARE the hip-pitch stator plates; the output plates stand outside.
-ZW_STEP = 100.0
+# The chest is no longer a box on a box: its front and rear are ONE convex
+# octagon each (waist width at the bottom, flaring to the chest over 60 mm,
+# full width to z 420, chamfering in to the neck), and the side is three
+# plates - a waist chamfer panel tilted 51 deg, the flat side with its window,
+# and a shoulder chamfer tilted 28 deg. That is the H2's torso (widest at
+# two-thirds height, narrowing to waist and neck) in four folds a side.
+ZW_STEP = 100.0                                         # waist top
+ZC0 = 160.0                                             # chest full width from here
+ZC1 = 420.0                                             # ... to here
 WA_Y = face_n('hip_pitch', 'stator')[0]                # 94
 WA_X0, WA_X1 = -rad('X15-450') - 10.0, rad('X15-450') + 5.0
 CH_Y = 165.0
 CH_X0, CH_X1 = -102.0, 97.0
+NK_Y = 115.0                                            # half-width at the deck
 ZD = ZHEY - T                                           # deck top = head yaw face (the deck is its stator plate)
 hm = L('trunkS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, ZHP - rad('X15-450') - 7.0, ZW_STEP)
-SIDE_WIN = (-60.0, 55.0, ZW_STEP + 50.0, ZW_STEP + 230.0)
-P('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZW_STEP, ZD, slots=[SIDE_WIN])
+SIDE_WIN = (-60.0, 55.0, ZC0 + 40.0, ZC1 - 40.0)
+P('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZC0, ZC1, slots=[SIDE_WIN])
 P('trunkS', 'side_hem', 'y', CH_Y - T, CH_Y, SIDE_WIN[0] - HEM, SIDE_WIN[1] + HEM,
   SIDE_WIN[2] - HEM, SIDE_WIN[3] + HEM, slots=[SIDE_WIN])
+# chamfer panels: defined flat (y-normal at the side's plane) hanging DOWN from the
+# pivot edge by the slant length, then tilted about x so the far edge lands on the
+# waist wall top (y WA_Y, z ZW_STEP) / the deck edge (y NK_Y, z ZD).
+def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
+    """A side chamfer panel from the side plate's edge (y_edge, z_edge) to (y_far, z_far)."""
+    dy, dz = y_far - y_edge, z_far - z_edge
+    L_ = math.hypot(dy, dz)
+    ang = math.degrees(math.atan2(dy, dz))             # from +z toward +y
+    # flat: from the pivot, running toward +z by L_ ; then rotate about x by ang
+    # (about x: y' = y cos a - z sin a, z' = y sin a + z cos a; a point at +L along z
+    # lands at (-L sin a, L cos a) -> for dy>0 we need a<0: a = -ang... sign checked
+    # by the assertion below.)
+    for a_ in (-ang, ang):
+        R_ = _rot_axis('x', a_)
+        q = _apply(R_, (0.0, y_edge, z_edge), (0.0, y_edge, z_edge + L_))
+        if abs(q[1] - y_far) < 0.5 and abs(q[2] - z_far) < 0.5:
+            return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, CH_X0, CH_X1, z_edge, z_edge + L_,
+                     tilt=('x', a_, (0.0, y_edge, z_edge)))
+    raise AssertionError('chamfer %s: tilt sign' % tag)
+chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, WA_Y + T / 2.0, ZW_STEP, -T / 2.0)
+chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0)
 ss = L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -52.0, 52.0, ZSP - 52.0, ZSP + 52.0)
 P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -30.0, 30.0, CH_Y, ss.n1)
+# waist front/rear: rects below the octagon
 P('trunkC', 'rear_lo',  'x', WA_X0 - T, WA_X0, -WA_Y, WA_Y, hm.v0, ZW_STEP)
 P('trunkC', 'front_lo', 'x', WA_X1, WA_X1 + T, -WA_Y, WA_Y, hm.v0, ZW_STEP)
-FR_WIN = (-60.0, 60.0, ZW_STEP + 80.0, ZW_STEP + 260.0)
+FR_WIN = (-60.0, 60.0, ZC0 + 20.0, ZC1 - 20.0)
 FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
-P('trunkC', 'rear',      'x', CH_X0 - T, CH_X0, -CH_Y - T, CH_Y + T, ZW_STEP, ZD, slots=[FR_WIN])
+OCT = [(-WA_Y, ZW_STEP), (WA_Y, ZW_STEP), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
+       (NK_Y + T, ZD), (-NK_Y - T, ZD), (-CH_Y - T, ZC1), (-CH_Y - T, ZC0)]
+P('trunkC', 'rear',      'x', CH_X0 - T, CH_X0, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
 P('trunkC', 'rear_hem',  'x', CH_X0, CH_X0 + T, *FR_HEMR, slots=[FR_WIN])
-P('trunkC', 'front',     'x', CH_X1, CH_X1 + T, -CH_Y - T, CH_Y + T, ZW_STEP, ZD, slots=[FR_WIN])
+P('trunkC', 'front',     'x', CH_X1, CH_X1 + T, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
 P('trunkC', 'front_hem', 'x', CH_X1 - T, CH_X1, *FR_HEMR, slots=[FR_WIN])
-P('trunkC', 'ledge', 'z', ZW_STEP, ZW_STEP + T, CH_X0, CH_X1, -CH_Y, CH_Y, slots=[(WA_X0, WA_X1, -WA_Y, WA_Y)])
-L('trunkC', 'deck', 'head_yaw', 'stator', CH_X0, CH_X1, -CH_Y - T, CH_Y + T)
+L('trunkC', 'deck', 'head_yaw', 'stator', CH_X0, CH_X1, -NK_Y - T, NK_Y + T)
 
 # ---- head: an open cage on the pitch output ----
 HZ0, HZ1 = ZHEP - 8.0, ZCROWN - T
@@ -466,7 +642,6 @@ BENDS = [
     ('elbA',  'x', eo.u0 - T / 2.0,              ('flange_rr',)),
     ('elbA',  'x', eo.u1 - T / 2.0,              ('wrist_face', 'wtab_fr')),
     ('elbA',  'x', eo.u0 + T / 2.0,              ('wtab_rr',)),
-    ('trunkC', 'z', ZW_STEP + T / 2.0,           ('ledge',)),
 ]
 
 
@@ -476,7 +651,8 @@ def dump_json(path):
     for p in PLATES:
         out['plates'].append(dict(link=p.link, tag=p.tag, normal=p.normal,
                                   n0=p.n0, n1=p.n1, u0=p.u0, u1=p.u1,
-                                  v0=p.v0, v1=p.v1, holes=p.holes, slots=p.slots, r_want=p.r_want))
+                                  v0=p.v0, v1=p.v1, holes=p.holes, slots=p.slots, r_want=p.r_want,
+                                  poly=p.poly, tilt=p.tilt))
     for (lk, ax, org, ext, flip) in ANGLES:
         out['angles'].append(dict(link=lk, axis=ax, org=org, ext=ext, flip=flip))
     json.dump(out, open(path, 'w'), indent=1)
@@ -505,7 +681,10 @@ def main():
     for p in PLATES:
         i = AXI[p.normal]
         for (u, v, d) in p.holes:
-            m = min(u - p.u0, p.u1 - u, v - p.v0, p.v1 - v) - d / 2.0
+            if p.poly:
+                m = -poly_sdf((u, v), p.poly) - d / 2.0
+            else:
+                m = min(u - p.u0, p.u1 - u, v - p.v0, p.v1 - v) - d / 2.0
             if m < T:
                 print('  %-8s %-11s hole d%.1f at (%.1f, %.1f): margin %.2f mm'
                       % (p.link, p.tag, d, u, v, m))

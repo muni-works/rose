@@ -65,6 +65,8 @@ HEADER = '''; rose-pro - original 22-DOF humanoid, structure in 3 mm 5052 sheet.
 # crates/vcad-loon/src/modules.rs in vcad for the rules.
 USE = ('[use plates [plate-x plate-y plate-z bore-x bore-y bore-z '
        'act-x act-y act-z]]')
+# sketch / line / arc / extrude come from lib.loon (vcad's prelude), used for
+# polygon plates; hole-in-poly plates also need the bores, which are planar cuts
 PLATES_MODULE = os.path.join(os.path.dirname(OUT), 'plates.loon')
 
 
@@ -86,7 +88,7 @@ def rrect_inside(hu, hv, u0, u1, v0, v1, r):
     return -(min(max(qx, qy), 0.0) + outside - r)
 
 
-def corner_radius(u0, u1, v0, v1, holes, want=20.0):
+def corner_radius(u0, u1, v0, v1, holes, want=20.0, poly=None):
     """Largest corner radius up to `want` that still clears every hole.
 
     COBOT RULE: corners are what strike a person first, and contact pressure is
@@ -103,6 +105,21 @@ def corner_radius(u0, u1, v0, v1, holes, want=20.0):
     filing against vcad with the numbers above.
     """
     r = min(want, (u1 - u0) / 2.5, (v1 - v0) / 2.5)
+    if poly:
+        # polygon: a vertex arc of radius r must not swallow a hole; every edge
+        # must stay longer than 2r (the inset must not fold)
+        import rose_pro_links as _L
+        n = len(poly)
+        emin = min(math.hypot(poly[(i + 1) % n][0] - poly[i][0], poly[(i + 1) % n][1] - poly[i][1])
+                   for i in range(n))
+        r = min(r, emin / 2.5)
+        while r > 2.0:
+            ins = _L.poly_inset(poly, r)
+            if all(-(_L.poly_sdf((hu, hv), ins) - r) >= hd / 2.0 + MIN_EDGE(hd)
+                   for (hu, hv, hd) in holes if _L.poly_sdf((hu, hv), poly) < 0):
+                return r
+            r -= 0.5
+        return r
     while r > 2.0:
         if all(rrect_inside(hu, hv, u0, u1, v0, v1, r) >= hd / 2.0 + MIN_EDGE(hd)
                for (hu, hv, hd) in holes
@@ -110,6 +127,50 @@ def corner_radius(u0, u1, v0, v1, holes, want=20.0):
             return r
         r -= 0.5
     return r
+
+
+def poly_sketch_expr(nm, n0, n1, poly, r):
+    """A polygon plate as [extrude [sketch ...]]: the rounded convex outline drawn
+    as lines and arcs in the plate's plane, extruded through its thickness.
+
+    Sketch frame: origin at (n0 on the normal axis, 0, 0); x_dir = the plate's
+    u axis, y_dir = its v axis, both world-axis unit vectors, so the extrude
+    direction (x_dir cross y_dir) is the plate normal - which is +axis for
+    (u, v) in x<y<z order except normal y, where (x, z) cross gives -y; there
+    we extrude downward from n1.
+    """
+    import rose_pro_links as _L
+    i = AXI[nm]
+    ui, vi = [k for k in range(3) if k != i]
+    ax = lambda k: ['1.0 0.0 0.0', '0.0 1.0 0.0', '0.0 0.0 1.0'][k]
+    n = len(poly)
+    ins = _L.poly_inset(poly, r)
+    segs = []
+    for k in range(n):
+        a, b_ = poly[k], poly[(k + 1) % n]
+        ex, ey = b_[0] - a[0], b_[1] - a[1]
+        ln = math.hypot(ex, ey) or 1e-9
+        nx, ny = ey / ln, -ex / ln
+        c0, c1 = ins[k], ins[(k + 1) % n]
+        p0 = (c0[0] + nx * r, c0[1] + ny * r)
+        p1 = (c1[0] + nx * r, c1[1] + ny * r)
+        segs.append('[line %s %s %s %s]' % (fnum(p0[0]), fnum(p0[1]), fnum(p1[0]), fnum(p1[1])))
+        nxt = poly[(k + 2) % n]
+        fx, fy = nxt[0] - b_[0], nxt[1] - b_[1]
+        fl = math.hypot(fx, fy) or 1e-9
+        mx, my = fy / fl, -fx / fl
+        p2 = (c1[0] + mx * r, c1[1] + my * r)
+        # arc from p1 to p2 about c1, counter-clockwise (CCW polygon, convex corners)
+        segs.append('[arc %s %s %s %s %s %s true]'
+                    % (fnum(p1[0]), fnum(p1[1]), fnum(p2[0]), fnum(p2[1]), fnum(c1[0]), fnum(c1[1])))
+    origin = [0.0, 0.0, 0.0]
+    flip = (nm == 'y')                   # x cross z = -y
+    origin[i] = n1 if flip else n0
+    dvec = [0.0, 0.0, 0.0]
+    dvec[i] = (n0 - n1) if flip else (n1 - n0)
+    sk = '[sketch %s %s %s  %s  %s  #[%s]]' % (fnum(origin[0]), fnum(origin[1]), fnum(origin[2]),
+                                              ax(ui), ax(vi), ' '.join(segs))
+    return '[extrude %s %s %s %s]' % (fnum(dvec[0]), fnum(dvec[1]), fnum(dvec[2]), sk)
 
 
 def plate_expr(pl, mirror):
@@ -120,6 +181,8 @@ def plate_expr(pl, mirror):
     u0, u1, v0, v1 = pl['u0'], pl['u1'], pl['v0'], pl['v1']
     holes = [tuple(h) for h in pl['holes']]
     slots = [tuple(sl) for sl in pl.get('slots', [])]
+    poly = [tuple(q) for q in pl['poly']] if pl.get('poly') else None
+    tilt = pl.get('tilt')
     if mirror:
         if i == 1:
             n0, n1 = -n1, -n0
@@ -127,13 +190,24 @@ def plate_expr(pl, mirror):
             u0, u1 = -u1, -u0
             holes = [(-h[0], h[1], h[2]) for h in holes]
             slots = [(-s1, -s0, t0, t1) for (s0, s1, t0, t1) in slots]
+            if poly:
+                poly = [(-q[0], q[1]) for q in reversed(poly)]    # keep CCW
         elif vi == 1:
             v0, v1 = -v1, -v0
             holes = [(h[0], -h[1], h[2]) for h in holes]
             slots = [(s0, s1, -t1, -t0) for (s0, s1, t0, t1) in slots]
-    r = corner_radius(u0, u1, v0, v1, holes, want=pl.get('r_want', 20.0))
-    base = '[plate-%s %s %s %s %s %s %s %s]' % (
-        nm, fnum(n0), fnum(n1), fnum(u0), fnum(u1), fnum(v0), fnum(v1), fnum(r))
+            if poly:
+                poly = [(q[0], -q[1]) for q in reversed(poly)]
+        if tilt:
+            # a reflection in y flips the sense of rotations about x and z
+            ax_, deg, piv = tilt
+            tilt = (ax_, -deg if ax_ in ('x', 'z') else deg, (piv[0], -piv[1], piv[2]))
+    r = corner_radius(u0, u1, v0, v1, holes, want=pl.get('r_want', 20.0), poly=poly)
+    if poly:
+        base = poly_sketch_expr(nm, n0, n1, poly, r)
+    else:
+        base = '[plate-%s %s %s %s %s %s %s %s]' % (
+            nm, fnum(n0), fnum(n1), fnum(u0), fnum(u1), fnum(v0), fnum(v1), fnum(r))
     # ONE difference against a unioned tool, not a chain of them. Chaining costs
     # ~27 s for a 13-hole plate because every cut re-processes the whole accumulated
     # mesh; the holes are disjoint, so unioning them first is nearly free.
@@ -150,12 +224,19 @@ def plate_expr(pl, mirror):
         cuts.append('[plate-%s %s %s %s %s %s %s %s]'
                     % (nm, fnum(n0 - 2.0), fnum(n1 + 2.0), fnum(s0), fnum(s1),
                        fnum(t0), fnum(t1), fnum(L.SLOT_R)))
-    if not cuts:
-        return base
-    tool = cuts[0]
-    for c in cuts[1:]:
-        tool = '[union %s %s]' % (c, tool)
-    return '[difference %s\n    %s]' % (tool, base)
+    expr = base
+    if cuts:
+        tool = cuts[0]
+        for c in cuts[1:]:
+            tool = '[union %s %s]' % (c, tool)
+        expr = '[difference %s\n    %s]' % (tool, base)
+    if tilt:
+        ax_, deg, piv = tilt
+        rot = {'x': (deg, 0.0, 0.0), 'y': (0.0, deg, 0.0), 'z': (0.0, 0.0, deg)}[ax_]
+        expr = ('[translate %s %s %s [rotate %s %s %s [translate %s %s %s\n    %s]]]'
+                % (fnum(piv[0]), fnum(piv[1]), fnum(piv[2]), fnum(rot[0]), fnum(rot[1]), fnum(rot[2]),
+                   fnum(-piv[0]), fnum(-piv[1]), fnum(-piv[2]), expr))
+    return expr
 
 
 def actuator_exprs():

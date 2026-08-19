@@ -90,36 +90,60 @@ def apply(R, c, p):
     return [c[i] + sum(R[i][k] * d[k] for k in range(3)) for i in range(3)]
 
 
-def plate_points(pl, pitch=6.0):
-    """Sample a plate as the ROUNDED rectangle it actually is.
-
-    The loon gives every plate up to 25 mm corner radii (rose_pro_loon.corner_radius);
-    a plain box over-reports the corners, and a plate corner is exactly what sweeps
-    furthest. So sample the rounded outline in-plane, on both faces and the edge.
-    """
-    i = L.AXI[pl.normal]
-    ui, vi = [k for k in range(3) if k != i]
-    r = min(25.0, (pl.u1 - pl.u0) / 2.5, (pl.v1 - pl.v0) / 2.5)
-    # back off where a hole would break through the rounded corner, like the loon does
+def plate_r(pl):
+    """The corner radius the loon gives this plate (backs off where a hole says no)."""
     from rose_pro_loon import corner_radius
-    r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes, want=pl.r_want)
-    def outline():
-        # perimeter of a rounded rect, as points
-        out = []
+    return corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes, want=pl.r_want, poly=pl.poly)
+
+
+def plate_points(pl, pitch=6.0):
+    """Sample a plate as the ROUNDED outline it actually is, in WORLD coordinates.
+
+    The loon gives every plate rounded corners (rose_pro_loon.corner_radius); a
+    plain box over-reports the corners, and a plate corner is exactly what sweeps
+    furthest. So sample the rounded outline in-plane (rect or polygon), on both
+    faces and the edge, then map through the plate's own frame - which applies
+    its tilt, if it has one.
+    """
+    r = plate_r(pl)
+    per = []
+    if pl.poly:
+        poly = pl.outline()
+        n = len(poly)
+        ins = L.poly_inset(poly, r)                     # arc centres sit at the inset vertices
+        for i in range(n):
+            a, b_ = poly[i], poly[(i + 1) % n]
+            ex, ey = b_[0] - a[0], b_[1] - a[1]
+            ln = math.hypot(ex, ey) or 1e-9
+            nx, ny = ey / ln, -ex / ln                  # outward normal (CCW polygon)
+            c0, c1 = ins[i], ins[(i + 1) % n]
+            p0 = (c0[0] + nx * r, c0[1] + ny * r)       # straight part between tangent points
+            p1 = (c1[0] + nx * r, c1[1] + ny * r)
+            m = max(1, int(round(math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / pitch)))
+            per += [(p0[0] + (p1[0] - p0[0]) * t / m, p0[1] + (p1[1] - p0[1]) * t / m) for t in range(m + 1)]
+            nxt = poly[(i + 2) % n]                     # arc at vertex i+1, this normal -> next normal
+            fx, fy = nxt[0] - b_[0], nxt[1] - b_[1]
+            fl = math.hypot(fx, fy) or 1e-9
+            mx, my = fy / fl, -fx / fl
+            a0, a1 = math.atan2(ny, nx), math.atan2(my, mx)
+            while a1 < a0:
+                a1 += 2 * math.pi
+            k = max(2, int(round(r * (a1 - a0) / pitch)))
+            per += [(c1[0] + r * math.cos(a0 + (a1 - a0) * t / k), c1[1] + r * math.sin(a0 + (a1 - a0) * t / k))
+                    for t in range(k + 1)]
+    else:
         cx0, cx1, cy0, cy1 = pl.u0 + r, pl.u1 - r, pl.v0 + r, pl.v1 - r
         n_arc = max(3, int(round(r * 1.5708 / pitch)))
         segs = [((cx1, pl.v0), (cx0, pl.v0)), ((pl.u0, cy0), (pl.u0, cy1)),
                 ((cx0, pl.v1), (cx1, pl.v1)), ((pl.u1, cy1), (pl.u1, cy0))]
         corners = [((cx1, cy0), -90.0), ((cx0, cy0), 180.0), ((cx0, cy1), 90.0), ((cx1, cy1), 0.0)]
         for (a, b_) in segs:
-            n = max(1, int(round(math.hypot(b_[0] - a[0], b_[1] - a[1]) / pitch)))
-            out += [(a[0] + (b_[0] - a[0]) * t / n, a[1] + (b_[1] - a[1]) * t / n) for t in range(n + 1)]
+            m = max(1, int(round(math.hypot(b_[0] - a[0], b_[1] - a[1]) / pitch)))
+            per += [(a[0] + (b_[0] - a[0]) * t / m, a[1] + (b_[1] - a[1]) * t / m) for t in range(m + 1)]
         for ((cx, cy), a0) in corners:
             for k in range(n_arc + 1):
                 th = math.radians(a0 + 90.0 * k / n_arc)
-                out.append((cx + r * math.cos(th), cy + r * math.sin(th)))
-        return out
-    per = outline()
+                per.append((cx + r * math.cos(th), cy + r * math.sin(th)))
     # interior grid on both faces (the edge points already cover the rim)
     inner = []
     nu = max(1, int(round((pl.u1 - pl.u0) / pitch)))
@@ -128,24 +152,17 @@ def plate_points(pl, pitch=6.0):
         for b_ in range(nv + 1):
             u = pl.u0 + (pl.u1 - pl.u0) * a / nu
             v = pl.v0 + (pl.v1 - pl.v0) * b_ / nv
-            if rrect_ok(u, v, pl, r):
+            if pl.sdf_uv(u, v, r) <= 0.0:
                 inner.append((u, v))
     pts = []
-    for n in (pl.n0, pl.n1, (pl.n0 + pl.n1) / 2.0):
-        for (u, v) in per + (inner if n != (pl.n0 + pl.n1) / 2.0 else []):
-            p = [0.0] * 3
-            p[i] = n
-            p[ui] = u
-            p[vi] = v
-            pts.append(tuple(p))
+    for nn in (pl.n0, pl.n1, (pl.n0 + pl.n1) / 2.0):
+        for (u, v) in per + (inner if nn != (pl.n0 + pl.n1) / 2.0 else []):
+            pts.append(pl.local_to_world(nn, u, v))
     return pts
 
 
 def rrect_ok(u, v, pl, r):
-    ax, ay = (pl.u1 - pl.u0) / 2.0, (pl.v1 - pl.v0) / 2.0
-    cx, cy = (pl.u0 + pl.u1) / 2.0, (pl.v0 + pl.v1) / 2.0
-    qx, qy = abs(u - cx) - ax + r, abs(v - cy) - ay + r
-    return (min(max(qx, qy), 0.0) + math.hypot(max(qx, 0.0), max(qy, 0.0)) - r) <= 0.0
+    return pl.sdf_uv(u, v, r) <= 0.0
 
 
 def box_points(b, pitch=6.0):
@@ -208,25 +225,19 @@ def d_box(p, b):
 
 
 def d_plate(p, pl, r=None):
-    """Distance from a point to a plate modelled as a ROUNDED-rect slab.
-
-    In-plane rounded-rect SDF combined with the thickness: the corners are what
-    the box model gets wrong, and static plates deserve the same honesty as
-    moving ones.
+    """Distance from a WORLD point to a plate: its rounded outline (rect or
+    polygon) combined with its thickness, in the plate's own (possibly tilted)
+    frame. The corners are what the box model gets wrong, and static plates
+    deserve the same honesty as moving ones.
     """
     if r is None:
-        from rose_pro_loon import corner_radius
-        r = corner_radius(pl.u0, pl.u1, pl.v0, pl.v1, pl.holes, want=pl.r_want)
-    i = L.AXI[pl.normal]
-    ui, vi = [k for k in range(3) if k != i]
-    ax, ay = (pl.u1 - pl.u0) / 2.0, (pl.v1 - pl.v0) / 2.0
-    cx, cy = (pl.u0 + pl.u1) / 2.0, (pl.v0 + pl.v1) / 2.0
-    qx, qy = abs(p[ui] - cx) - ax + r, abs(p[vi] - cy) - ay + r
-    dxy = min(max(qx, qy), 0.0) + math.hypot(max(qx, 0.0), max(qy, 0.0)) - r
-    dn = max(pl.n0 - p[i], 0.0, p[i] - pl.n1)
+        r = plate_r(pl)
+    n, u, v = pl.world_to_local(p)
+    dxy = pl.sdf_uv(u, v, r)
+    dn = max(pl.n0 - n, 0.0, n - pl.n1)
     if dxy > 0 or dn > 0:
         return math.hypot(max(dxy, 0.0), dn)
-    return max(dxy, -min(p[i] - pl.n0, pl.n1 - p[i]))
+    return max(dxy, -min(n - pl.n0, pl.n1 - n))
 
 
 def d_cyl(p, ax, cu, cv, r, lo, hi):
@@ -255,7 +266,6 @@ def static_check(plates):
     Returns (depth_mm, a, b, box_overlap_dims).
     """
     import itertools
-    from rose_pro_loon import corner_radius
     hits = []
     for p, q in itertools.combinations(plates, 2):
         if p.link == q.link:
@@ -264,8 +274,8 @@ def static_check(plates):
         d = [min(a[k][1], b[k][1]) - max(a[k][0], b[k][0]) for k in range(3)]
         if not all(v > 0.25 for v in d):
             continue
-        rq = corner_radius(q.u0, q.u1, q.v0, q.v1, q.holes, want=q.r_want)
-        rp = corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes, want=p.r_want)
+        rq = plate_r(q)
+        rp = plate_r(p)
         depth = 0.0
         for pt in plate_points(p, pitch=3.0):
             depth = min(depth, d_plate(pt, q, rq))
@@ -290,8 +300,7 @@ def sweep(joint, plates, verbose=True):
     for bn in CHILD_BODIES[joint]:
         moving.append(('body:%s' % bn, cyl_points(*B[bn])))
 
-    from rose_pro_loon import corner_radius
-    static_plates = [(p, corner_radius(p.u0, p.u1, p.v0, p.v1, p.holes, want=p.r_want))
+    static_plates = [(p, plate_r(p))
                      for p in plates if p.link in PARENT_LINKS[joint]]
     static_bodies = [(bn, B[bn]) for bn in PARENT_BODIES[joint]]
 
