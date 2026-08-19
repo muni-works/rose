@@ -158,6 +158,39 @@ Two rules came out of it:
   is where `sweep.py`'s two new arm sweeps put it. Draw the structure, sweep
   it, and let the clearance tell you what the section is.
 
+## What an H3 would be
+
+The H2 is the first humanoid from Unitree that is shaped like a person rather
+than a crash-test dummy — and it is shaped by cast aluminium and injected
+shells. An "H3" is that silhouette taken one step further *toward* the human
+figure, made in our process, and more honest about what it is. In order of
+what the eye reads at 3 m:
+
+1. **Widths in human order, four reversals.** Chest widest at the shoulder
+   line; a visible waist with the yaw ring exposed; a closed pelvis pod wider
+   than the waist; thigh widest under the hip; knee a pinch; calf a swell;
+   ankle a pinch; a shoe. The H2 does all of it with continuous taper. We do it
+   with **trapezoid flanges and chamfers** — plates tilted about one in-plane
+   axis — so every taper is a fold you can see. That is the one thing an H3 in
+   sheet does *better* than the H2: the surface tells you how it was made.
+2. **The joints you see are the ones that explain.** Shoulder, hip, wrist and
+   the knee's output ring show as dark discs. The knee stator and the hip roll
+   bodies — the two scissor closures that can pinch — get faceted shrouds
+   (rule 3). Nothing else is covered.
+3. **A head that is a helmet, not a die.** Small, closed, low on a collar that
+   hides the neck actuators, a visor slot with a real stereo pair behind it,
+   resting gaze slightly down. Understated: the H2's head is where it stops
+   looking like a machine; ours should still look like one.
+4. **Hands.** A faceted mitt with a thumb, hemmed, legible as a hand. A robot
+   with no hands reads as a rig.
+5. **Arms and shins that are shells, not sticks.** Tapered channels shoulder to
+   wrist and knee to ankle, the actuators inside them, the pushrods visible
+   because they explain.
+
+What an H3 is *not*: cast, smooth, white plastic, faceless, or pretending.
+Every fold is a brake hit; every opening has a hem; every shroud covers a
+pinch and nothing else.
+
 ## The open geometry work
 
 - **Tilted plates.** Chest:waist is 1.32 against the H2's 1.6 and nothing
