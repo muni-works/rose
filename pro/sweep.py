@@ -31,11 +31,18 @@ RANGES = {
     'ank_pitch': (-0.9, 0.5),
     'ank_roll':  (-0.4, 0.4),
     'hip_yaw':   (-1.0, 1.0),
-    # Arms, added when the arms got structure. The URDF gives shoulder roll
-    # -1.7..1.6 rad on the left, i.e. it also permits adduction THROUGH the torso;
-    # that is a URDF limit problem, not a structure one, so only abduction
-    # (0..1.7, arm swinging out and up) is swept here. Elbow is the full range.
-    'sho_roll':  (0.0, 1.7),
+    # Arms, added when the arms got structure. The URDF used to give shoulder
+    # roll -1.7..1.6 rad on the left, i.e. it permitted adduction THROUGH the
+    # torso, and the sweep dodged it by starting at 0. The H3 pass CAPPED it
+    # instead: rose_pro_export now says -0.21..1.7 (left; mirrored right), and
+    # -0.21 rad (-12 deg) is swept here like any other limit. -12 deg is where
+    # the FOREARM's side walls close on the chest side plate (they hang 362 mm
+    # under the roll axis, so every degree of adduction moves them 6.3 mm); the
+    # second limiter, 1 deg behind it, is the upper arm's web against the roll
+    # stator plate. The arm can lie against the body and no further.
+    'sho_roll':  (-0.21, 1.7),
+    'sho_pitch': (-3.0, 1.5),      # the whole arm about the shoulder, never swept before
+    'wrist_yaw': (-2.4, 2.4),
     'elb_pitch': (-2.3, 0.3),      # forward flexion only (export has the same): folded back it meets the shoulder roll pod
     'waist_yaw': (-1.0, 1.0),
 }
@@ -48,6 +55,8 @@ CHILD_LINKS = {
     'hip_yaw':   ('thigh', 'shank', 'crankA', 'crankB', 'ankle', 'foot'),
     'sho_roll':  ('shoB', 'elbA', 'hand'),
     'elb_pitch': ('elbA', 'hand'),
+    'sho_pitch': ('shoA', 'shoB', 'elbA', 'hand'),
+    'wrist_yaw': ('hand',),
     'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA'),
 }
 # actuator BODIES fixed to the child side (their stator is on a child link)
@@ -58,6 +67,8 @@ CHILD_BODIES = {
     'hip_yaw':   ('knee', 'ank_mA', 'ank_mB', 'ank_pitch', 'ank_roll'),
     'sho_roll':  ('elb_pitch', 'wrist_yaw'),
     'elb_pitch': ('wrist_yaw',),
+    'sho_pitch': ('sho_roll', 'elb_pitch', 'wrist_yaw'),
+    'wrist_yaw': (),
     'waist_yaw': ('sho_pitch', 'sho_roll', 'head_yaw', 'head_pitch'),
 }
 # parent-side plates and bodies the child must clear
@@ -66,7 +77,10 @@ PARENT_LINKS = {
     'ank_pitch': ('shank', 'crankA', 'crankB', 'thigh'),
     'ank_roll':  ('ankle', 'shank'),
     'hip_yaw':   ('hipB', 'hipA', 'pelvisS', 'pelvisC', 'trunkS', 'trunkC'),
-    'sho_roll':  ('shoA', 'trunkS', 'trunkC'),
+    'sho_roll':  ('shoA', 'shoC', 'trunkS', 'trunkC'),
+    # the whole arm about the shoulder pitch, against the trunk and the new cap
+    'sho_pitch': ('shoC', 'trunkS', 'trunkC', 'neck', 'head'),
+    'wrist_yaw': ('elbA',),
     # the torso over the pelvis. Arms EXCLUDED: hanging straight down they are
     # beside the hip-roll pods and a 25 deg waist yaw swings them into the pods -
     # true of a person too, and a pose the controller lifts the arms out of.
@@ -80,6 +94,8 @@ PARENT_BODIES = {
     'hip_yaw':   ('hip_yaw', 'hip_roll', 'hip_pitch'),
     'sho_roll':  ('sho_roll', 'sho_pitch'),
     'elb_pitch': ('elb_pitch', 'sho_roll'),
+    'sho_pitch': ('sho_pitch',),
+    'wrist_yaw': ('wrist_yaw',),
     'waist_yaw': ('waist_yaw', 'hip_pitch', 'hip_roll'),
 }
 
@@ -382,7 +398,8 @@ def main():
     print('swept interference through the URDF joint ranges')
     print('=' * 72)
     ok = True
-    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_roll', 'elb_pitch', 'waist_yaw'):
+    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_pitch', 'sho_roll',
+              'elb_pitch', 'wrist_yaw', 'waist_yaw'):
         d, ml, sl, th = sweep(j, L.PLATES)
         if d < -0.05:
             ok = False

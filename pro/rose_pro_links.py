@@ -92,7 +92,11 @@ JOINTS = {
     'sho_pitch': dict(c=(0, SHO_Y, ZSP),       ax='y', m='X8-120',  bd=-1, mode='end'),
     'sho_roll':  dict(c=(SHR_X, SHO_Y, ZSR),   ax='x', m='X6-60',   bd=-1, mode='mid'),
     'elb_pitch': dict(c=(0, SHO_Y, ZE),        ax='y', m='X6-60',   bd=+1, mode='end'),
-    'wrist_yaw': dict(c=(0, SHO_Y, ZW),        ax='z', m='X4-36',   bd=-1, mode='end'),
+    # wrist yaw stands UP into the forearm (bd=+1): its can lives INSIDE the
+    # forearm shell and its mount face is the forearm's lower end, so the hand
+    # bolts BELOW it. With bd=-1 the can hung below the wrist and both rings
+    # faced up - the hand would have had to reach back over its own actuator.
+    'wrist_yaw': dict(c=(0, SHO_Y, ZW),        ax='z', m='X4-36',   bd=+1, mode='end'),
     'waist_yaw': dict(c=(0, 0.0, ZWAIST),      ax='z', m='X8-120',  bd=-1, mode='end'),
     'head_yaw':  dict(c=(0, 0.0, ZHEY),        ax='z', m='X4-36',   bd=-1, mode='end'),
     'head_pitch':dict(c=(0, 0.0, ZHEP),        ax='y', m='X4-36',   bd=-1, mode='mid'),
@@ -527,44 +531,159 @@ P('foot', 'col_foot', 'z', ZS + T, ZS + 2 * T, -KB + 1.5, -KB + 45.0, CY0, CY1,
 P('foot', 'sole', 'z', ZS, ZS + T, -KB - 60.0, -KB + 170.0, LEG_Y - 55.0, LEG_Y + 55.0,
   holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
 
-# ---- arm ----
+# ---- arm: the H3 pass ----
+# The arm was three sticks and a bare can: shoulder pitch naked on the side of
+# the chest, a parallel upper-arm channel, a thin forearm fork with the wrist
+# actuator hanging off its end, and a 60 x 60 palm plate. The H2's arm is a
+# tapered shell shoulder-to-wrist ending in something that reads as a hand. In
+# sheet that is: a faceted cap over the pitch body, a channel that narrows to
+# the elbow, a forearm channel closed OUTBOARD with the wrist yaw inside it,
+# and a faceted mitt. Every number below is either an actuator envelope plus a
+# clearance or a place sweep.py put it.
+#
+# ---- shoC: the shoulder cap. Fixed to the trunk (pitch STATOR side). ----
+# The pitch X8 stands proud of the chest side (y 168) all the way to y 255: 87 mm
+# of bare can. The cap covers its TOP and FRONT as three facets tangent to r 51
+# (body r 48 + 3) - top plate, 45 deg chamfer, front plate - and stops at y 251,
+# short of the pitch stator plate's slab (y 252..255, trunkS) and of shoA's
+# output plate (y 258). The OUTBOARD end stays open: that is where the roll pod
+# and its dark disc are, and rule 3 says expose what explains.
+CAP_Y0, CAP_Y1 = 169.0, 211.0
+CAP_TOPZ = ZSP + rad('X8-120') + 1.0                  # 511: 1 over the can
+CAP_FRX = rad('X8-120') + 3.0                         # 51
+CAP_RX = 34.0                                         # rear edge: shoA's lap tab sweeps r 72.2
+CAP_TX = 22.0                                         # top plate's front edge: the 45 deg facet
+CAP_C = CAP_TX + (CAP_TOPZ - ZSP)                     # facet line x + (z - axis) = c, at r 50.2
+CAP_FZ = ZSP + CAP_C - CAP_FRX                        # front plate's top edge (482)
+CAP_L = math.hypot(CAP_FRX - CAP_TX, CAP_TOPZ - CAP_FZ)
+P('shoC', 'cowl_top', 'z', CAP_TOPZ, CAP_TOPZ + T, -CAP_RX, CAP_TX, CAP_Y0, CAP_Y1)
+P('shoC', 'cowl_chf', 'z', CAP_TOPZ, CAP_TOPZ + T, CAP_TX, CAP_TX + CAP_L, CAP_Y0, CAP_Y1,
+  tilt=('y', 45.0, (CAP_TX, 0.0, CAP_TOPZ + T / 2.0)))
+P('shoC', 'cowl_fr', 'x', CAP_FRX, CAP_FRX + T, CAP_Y0, CAP_Y1, ZSP - 30.0, CAP_FZ + T / 2.0)
+# hems: the cap's two free edges are exactly the ones a person walks into
+P('shoC', 'hem_fr', 'x', CAP_FRX - T, CAP_FRX, CAP_Y0, CAP_Y1, ZSP - 30.0, ZSP - 22.0)
+P('shoC', 'hem_rr', 'z', CAP_TOPZ - T, CAP_TOPZ, -CAP_RX, -CAP_RX + 8.0, CAP_Y0, CAP_Y1)
+
 # shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Lapped pair: the tab bends
 # off shop_out's rear edge INBOARD (y 140..218 at the bend, lobed down beside the
 # roll body), onto a stator plate extended inboard to carry it. The roll body sits
 # forward (x -55..12.5) so the shoulder pitch body (R48) clears the tab plane.
 SRF_X0 = SHR_X - ln('X6-60') / 2.0 - T                # -58.02: shoulder roll stator plate x0
 spo = L('shoA', 'shop_out', 'sho_pitch', 'output', SRF_X0, 36.0, ZSP - 36.0, ZSP + 36.0, outset=T)
+TAB_H = 5.0                           # see BEND_TABS: BOTH shoulder sweeps set it
 SA_Y0 = 172.0                         # inboard limit of the shoA lap: chest side is at y 165..168
 srf = L('shoA', 'shor_face', 'sho_roll', 'stator', SA_Y0, SHO_Y + 44.0, ZSR - 44.0, ZSR + 44.0)
 srf.holes += [(SA_Y0 + 12.0, ZSR - 15.0, 4.5), (SA_Y0 + 12.0, ZSR + 15.0, 4.5)]   # lap bolts
 # shoB: shoulder roll OUTPUT -> elbow STATOR. Channel open inboard; web 15 below the
 # roll axis; elbow body passes through the web; stator bridged over the body.
-SB_Y = SHO_Y + 46.0                   # outboard of the roll stator plate's fitted edge (R43.75) by 2
-SB_XF = 46.0                          # web front edge: elbow clearance hole R41 + 5
-sro = L('shoB', 'shor_out', 'sho_roll', 'output', SHO_Y - 30.0, SB_Y, ZSR - 30.0, ZSR + 30.0, outset=T)
+# 305: 6.25 outboard of the roll stator plate's fitted edge (R43.75), not 2.
+# Adduction is what sets this. Rotating the upper arm inboard, every point of
+# the web dips in y by |dz| sin(theta); the roll STATOR plate (shoA, x -58..-55,
+# y out to 298.75, z 318..406) is fixed, and the web has to be at x < -55 there
+# because it bends off the roll output plate. Each 4 mm of standoff buys ~4 deg
+# of adduction before the two slabs meet.
+SB_Y = SHO_Y + 50.0
 ELB_R = rad('X6-60')
-web = P('shoB', 'web', 'y', SB_Y, SB_Y + T, sro.n0, SB_XF, ZE - ELB_R - 6.0, ZSR - 15.0,
+# The web's front edge and bottom edge were R41+5 and R41+6 off the elbow
+# clearance hole - and `corner_radius` insets a rounded rect until every hole
+# clears its own edge by MIN_EDGE, so a hole 46 from an edge that wants 50
+# drove the whole plate's corner radius to the 2 mm floor. The biggest flat
+# face on the arm had square corners. Both edges now stand R41+11, and the web
+# rounds at the full 20 mm (cobot rule 1).
+SB_XF = ELB_R + 12.0                  # 52: web front edge
+sro = L('shoB', 'shor_out', 'sho_roll', 'output', SHO_Y - 30.0, SB_Y, ZSR - 30.0, ZSR + 30.0, outset=T)
+web = P('shoB', 'web', 'y', SB_Y, SB_Y + T, sro.n0, SB_XF, ZE - ELB_R - 10.0, ZSR - 15.0,
         holes=[(0.0, ZE, 2 * ELB_R + 2.0), (-14.0, ZE + 60.0, 4.5), (14.0, ZE + 60.0, 4.5)])
-P('shoB', 'flange_fr', 'x', SB_XF, SB_XF + T, SHO_Y + 4.0, SB_Y + T, web.v0, web.v1)
+# TAPER. Both flanges are TRAPEZOIDS: 45 mm of channel at the shoulder closing
+# to 29 at the elbow, so the upper arm narrows the way the H2's does (78 -> 61)
+# without a compound curve - the fold lines stay straight, only the blank is
+# cut on the slant. The rear flange bends off the web's rear edge and stands
+# 3 mm outboard of the roll output plate's slab.
+SB_YIN_TOP, SB_YIN_BOT = SHO_Y + 4.0, SHO_Y + 20.0    # inboard edge, shoulder end / elbow end
+def _fl_poly(y_top, y_bot, v0, v1):
+    return [(y_bot, v0), (SB_Y + T, v0), (SB_Y + T, v1), (y_top, v1)]
+P('shoB', 'flange_fr', 'x', SB_XF, SB_XF + T, 0, 0, 0, 0,
+  poly=_fl_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+P('shoB', 'flange_rr', 'x', sro.n0 - T, sro.n0, 0, 0, 0, 0,
+  poly=_fl_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+# 8 mm hem band along each flange's slanted inboard edge (person-facing)
+def _hem_poly(y_top, y_bot, v0, v1):
+    return [(y_bot, v0), (y_bot + HEM, v0), (y_top + HEM, v1), (y_top, v1)]
+P('shoB', 'hem_fr', 'x', SB_XF - T, SB_XF, 0, 0, 0, 0,
+  poly=_hem_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+P('shoB', 'hem_rr', 'x', sro.n0 - 2 * T, sro.n0 - T, 0, 0, 0, 0,
+  poly=_hem_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
 ef = L('shoB', 'elb_face', 'elb_pitch', 'stator', -32.0, 32.0, ZE - 32.0, ZE + ELB_R + 6.0)
 P('shoB', 'elb_shelf', 'z', ef.v1, ef.v1 + T, ef.u0, ef.u1, ef.n0, SB_Y)
 P('shoB', 'elb_lap', 'y', SB_Y - T, SB_Y, ef.u0, ef.u1, ef.v1 + T, ef.v1 + T + 30.0,
   holes=[(-14.0, ZE + 60.0, 4.5), (14.0, ZE + 60.0, 4.5)])
-# elbA: elbow OUTPUT -> wrist STATOR. A fork bent inboard off the output plate,
-# lapped at the wrist by tabs bent up from the wrist stator plate.
-eo = L('elbA', 'elb_out', 'elb_pitch', 'output', -36.0, 36.0, ZE - 30.0, ZE + 30.0, outset=T)
-FK_Y0 = SHO_Y - 28.0
-P('elbA', 'flange_fr', 'x',  eo.u1, eo.u1 + T, FK_Y0, eo.n0, ZW + 3.0, eo.v1,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-P('elbA', 'flange_rr', 'x', eo.u0 - T, eo.u0, FK_Y0, eo.n0, ZW + 3.0, eo.v1,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-wf = L('elbA', 'wrist_face', 'wrist_yaw', 'stator', eo.u0, eo.u1, SHO_Y - 30.0, SHO_Y + 30.0)
-P('elbA', 'wtab_fr', 'x', eo.u1 - T, eo.u1, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-P('elbA', 'wtab_rr', 'x', eo.u0, eo.u0 + T, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-WR_BOT = ZW - ln('X4-36')
-P('hand', 'palm', 'z', WR_BOT - 2 * T, WR_BOT - T, -30.0, 30.0, SHO_Y - 30.0, SHO_Y + 30.0)
+# elbA: elbow OUTPUT -> wrist STATOR. A CHANNEL, closed outboard, with the wrist
+# yaw can standing inside it; the wrist stator plate is the channel's closed end
+# and the hand's output disc shows at it. The old fork was two 3 mm strips with
+# the wrist actuator hanging off the bottom.
+#
+# The section is set by two things and nothing else. Depth (x): the elbow can is
+# R40 and the upper arm's front flange now stands at x 52, so the side walls sit
+# at |x| 45..48 - inside the upper-arm channel, 5 off the can. Width (y): at the
+# wrist the shell must ENCLOSE the D55 can (y 227.5..282.5), at the elbow it must
+# stay INBOARD of the upper arm's flanges (y 259) because elb_pitch swings the
+# forearm forward through everything the flanges occupy within r 125 of the elbow
+# axis. So the forearm is 33 wide at the elbow and 72 at the wrist, flaring over
+# a 47 mm chamfer that crosses y 259 at r 132 - 7 clear of the flange corner.
+# The H2's forearm does the same thing for the same reason (64 -> 78).
+FA_X = 45.0                                            # side wall inner face
+FA_Y1 = SHO_Y + rad('X4-36') + 8.5                     # 291: outboard shell, 8.5 off the wrist can
+FA_Y0 = SHO_Y - 36.0                                   # 219: inboard edge of the walls
+FA_ZC0, FA_ZC1 = 65.0, 112.0                           # the flare chamfer, bottom / top
+eo = L('elbA', 'elb_out', 'elb_pitch', 'output', -FA_X, FA_X, ZE - 30.0, ZE + 30.0, outset=T)
+FA_ZT = eo.v1                                          # walls run up to the output plate's top edge
+for tag, x0 in (('fr', FA_X), ('rr', -FA_X - T)):
+    # upper wall: the narrow part, inboard of the upper arm's flanges
+    P('elbA', 'wall_' + tag, 'x', x0, x0 + T, FA_Y0, eo.n1, FA_ZC1, FA_ZT)
+    # lower wall: flares outboard to wrap the wrist can
+    P('elbA', 'wall_lo_' + tag, 'x', x0, x0 + T, 0, 0, 0, 0,
+      poly=[(FA_Y0, ZW), (FA_Y1, ZW), (FA_Y1, FA_ZC0), (eo.n1, FA_ZC1), (FA_Y0, FA_ZC1)])
+    # hem on the inboard (open) edge - the forearm is the part that brushes a person
+    P('elbA', 'hem_' + tag, 'x', x0 - T, x0, FA_Y0, FA_Y0 + HEM, ZW, FA_ZT)
+# the outboard shell: vertical over the can, then a 39.7 deg chamfer up to the
+# elbow output plate's plane. Two facets, one fold - no compound curve.
+P('elbA', 'shell', 'y', FA_Y1, FA_Y1 + T, -FA_X - T, FA_X + T, ZW, FA_ZC0)
+SH_L = math.hypot(FA_Y1 - eo.n1, FA_ZC1 - FA_ZC0)
+SH_A = math.degrees(math.asin((FA_Y1 - eo.n1) / SH_L))
+P('elbA', 'shell_chf', 'y', FA_Y1, FA_Y1 + T, -FA_X - T, FA_X + T, FA_ZC0, FA_ZC0 + SH_L,
+  tilt=('x', SH_A, (0.0, FA_Y1, FA_ZC0)))
+wf = L('elbA', 'wrist_face', 'wrist_yaw', 'stator', -FA_X, FA_X, FA_Y0, FA_Y1)
+
+# ---- hand: a faceted mitt on the wrist output ----
+# 180 long x 90 deep x 35 thick plus a thumb block: legible as a hand at 3 m,
+# which is the whole point of a cobot's hand. Back plate outboard, palm inboard
+# facing the thigh, a 31 deg chamfer off the wrist disc into the palm plane,
+# and a U-section thumb standing 33 mm forward of the palm's front edge. Every
+# free edge that can reach a person is hemmed (cobot rule 2).
+HD_Z1 = wf.n0 - T                                      # top of the hand = under the wrist disc
+HD_Z0 = HD_Z1 - 180.0
+HD_X = 45.0
+# The back plate stands at the forearm shell's own outboard face and the palm
+# 38 inboard of it - NOT centred on the wrist axis. The thigh decides: its outer
+# flange tops out at y 251 and the fingertips hang 8 mm past the hip yaw plate,
+# so a hand centred on y 255 puts its palm inside the thigh at rest. Offset
+# outboard, the palm clears it by 2 mm and the hand sits where a hand sits.
+HD_YB1 = FA_Y1
+HD_YP0 = HD_YB1 - 35.0 - T                             # palm inner face (253): 35 thick
+ho = L('hand', 'wrist_out', 'wrist_yaw', 'output', -HD_X, HD_X, FA_Y0, FA_Y1, outset=T)
+HD_MITT = [(-HD_X, HD_Z0 + 26.0), (-HD_X + 15.0, HD_Z0), (HD_X - 15.0, HD_Z0),
+           (HD_X, HD_Z0 + 26.0), (HD_X, HD_Z1), (-HD_X, HD_Z1)]
+P('hand', 'back', 'y', HD_YB1 - T, HD_YB1, 0, 0, 0, 0, poly=HD_MITT)
+P('hand', 'palm', 'y', HD_YP0, HD_YP0 + T, 0, 0, 0, 0, poly=HD_MITT)
+HD_CL = math.hypot(HD_YP0 - ho.v0, 23.4)
+P('hand', 'chamfer', 'y', ho.v0, ho.v0 + T, -HD_X, HD_X, HD_Z1 - HD_CL, HD_Z1,
+  tilt=('x', math.degrees(math.asin((HD_YP0 - ho.v0) / HD_CL)), (0.0, ho.v0, HD_Z1)))
+P('hand', 'hem_back', 'y', HD_YB1 - 2 * T, HD_YB1 - T, -HD_X + 15.0, HD_X - 15.0, HD_Z0, HD_Z0 + HEM)
+P('hand', 'hem_palm', 'y', HD_YP0 + T, HD_YP0 + 2 * T, -HD_X + 15.0, HD_X - 15.0, HD_Z0, HD_Z0 + HEM)
+TH_X1 = HD_X + 33.0
+P('hand', 'thumb_top', 'z', HD_Z1 - 22.0, HD_Z1 - 19.0, HD_X, TH_X1, HD_YP0, HD_YB1)
+P('hand', 'thumb_out', 'x', TH_X1 - T, TH_X1, HD_YP0, HD_YB1, HD_Z1 - 82.0, HD_Z1 - 19.0)
+P('hand', 'thumb_bot', 'z', HD_Z1 - 82.0, HD_Z1 - 79.0, HD_X, TH_X1, HD_YP0, HD_YB1)
 
 # ---- pelvis: a PART, on the waist yaw ----
 # The two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23) live in it; its
@@ -622,7 +741,12 @@ def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
 chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, FL_Y + T / 2.0, ZF, -T / 2.0)
 chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0)
 ss = L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -52.0, 52.0, ZSP - 52.0, ZSP + 52.0)
-P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -30.0, 30.0, CH_Y, ss.n1)
+# 44 wide, not 60: the shoulder-pitch sweep (new in the H3 arm pass) found the
+# roll CAN's inner surface - r 60 about the pitch axis - grazing this gusset's
+# corners at r 62.6, 0.17 mm deep at -24 deg. Nothing on the arm can move; the
+# actuator is where the layout puts it. Corners in to x +/-22 (r 59.2) and the
+# whole 258 deg of shoulder pitch is clean.
+P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -22.0, 22.0, CH_Y, ss.n1)
 FR_WIN = (-60.0, 60.0, ZC0 + 20.0, ZC1 - 20.0)
 FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
 OCT = [(-FL_Y - T, ZF), (FL_Y + T, ZF), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
@@ -658,6 +782,11 @@ OWNER = {
     ('shoA', 'shop_out'): 'sho_pitch',   ('shoA', 'shor_face'): 'sho_roll',
     ('shoB', 'shor_out'): 'sho_roll',    ('shoB', 'elb_face'): 'elb_pitch',
     ('elbA', 'elb_out'): 'elb_pitch',    ('elbA', 'wrist_face'): 'wrist_yaw',
+    ('hand', 'wrist_out'): 'wrist_yaw',
+    # the 45 deg facet of the shoulder cap: its AABB (which is what the body
+    # check sees for a tilted plate) dips inside the can it caps; the facet
+    # itself stands 3 mm off it all the way round.
+    ('shoC', 'cowl_chf'): 'sho_pitch',
     ('neck', 'hy_out'): 'head_yaw',      ('neck', 'hp_face'): 'head_pitch',
 }
 SECOND_OWNER = {
@@ -674,8 +803,22 @@ ANGLES = []   # retired with the angle stock
 BEND_TABS = [
     # link, tab normal, thickness span, u range, v range, bends_to (plate tags)
     # shoA: upper lobe bends off shop_out inboard; lower lobe laps shor_face's inboard extension
-    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, spo.n0), (spo.v0, spo.v0 + 30.0), ('shop_out',)),
-    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, sro.u0 - 4.0), (srf.v0, spo.v0), ()),
+    # SHOULDER PITCH decides how TALL this tab is, and nothing else does. It is
+    # on the OUTPUT side and it reaches inboard to y 172 to lap the roll stator
+    # plate, so it sweeps a disc straight through the y band that the trunk's
+    # shoulder-pitch stator plate and its outrigger occupy - and those two reach
+    # r 59.7 and r 59.2 about the pitch axis. The tab's closest corner to the
+    # axis is its TOP one, at (x -58, z), so its top edge sets its own minimum
+    # radius. At z 456 that was r 58.3 and the tab drove 1.4 mm into the stator
+    # plate over a third of the range - invisible until sho_pitch was swept for
+    # the first time in this pass. At z 435 it is r 64.0, and all 258 deg of
+    # shoulder pitch is clean. TAB_H is the shoulder's whole range of motion.
+    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, spo.n0), (spo.v0, spo.v0 + TAB_H), ('shop_out',)),
+        # ... and SHOULDER ROLL sets how far outboard the lapped lower lobe may
+    # reach. The roll OUTPUT plate is coplanar with this tab (both x -61..-58)
+    # and abduction swings its upper-inboard corner down to y 212.6 at 45 deg.
+    # 208 is 4.6 clear of that. It used to stop at 221 and the two slabs met.
+    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, 208.0), (srf.v0, spo.v0), ()),
 ]
 ANGLE_MASS = (ANGLE[0] + ANGLE[1] - ANGLE[2]) * ANGLE[2] * 2.70e-3 / 1000.0  # kg per mm
 
@@ -699,12 +842,14 @@ BENDS = [
     ('foot',  'z', ZS + T + T / 2.0,             ('column', 'col_foot')),
     ('shoB',  'y', SB_Y + T / 2.0,               ('shor_out', 'web')),
     ('shoB',  'x', SB_XF + T / 2.0,              ('flange_fr',)),
+    ('shoB',  'x', sro.n0 - T / 2.0,             ('flange_rr',)),
     ('shoB',  'z', ef.v1 + T / 2.0,              ('elb_face', 'elb_shelf')),
     ('shoB',  'y', SB_Y - T / 2.0,               ('elb_shelf', 'elb_lap')),
-    ('elbA',  'x', eo.u1 + T / 2.0,              ('elb_out', 'flange_fr')),
-    ('elbA',  'x', eo.u0 - T / 2.0,              ('flange_rr',)),
-    ('elbA',  'x', eo.u1 - T / 2.0,              ('wrist_face', 'wtab_fr')),
-    ('elbA',  'x', eo.u0 + T / 2.0,              ('wtab_rr',)),
+    ('shoC',  'x', CAP_TX,                       ('cowl_top', 'cowl_chf')),
+    ('shoC',  'x', CAP_FRX + T / 2.0,            ('cowl_fr',)),
+    ('elbA',  'x', eo.u1 + T / 2.0,              ('elb_out', 'wall_fr')),
+    ('elbA',  'x', eo.u0 - T / 2.0,              ('wall_rr',)),
+    ('elbA',  'z', ZW - T / 2.0,                 ('wall_lo_fr', 'wall_lo_rr', 'wrist_face')),
 ]
 
 
