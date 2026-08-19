@@ -67,7 +67,7 @@ CHILD_LINKS = {
     'elb_pitch': ('elbA', 'hand'),
     'sho_pitch': ('shoA', 'shoB', 'elbA', 'hand'),
     'wrist_yaw': ('hand',),
-    'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA'),
+    'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA', 'shoC'),
     'head_yaw':   ('neck', 'head'),
     'head_pitch': ('head',),
 }
