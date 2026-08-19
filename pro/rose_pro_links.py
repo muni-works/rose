@@ -566,47 +566,120 @@ P('elbA', 'wtab_rr', 'x', eo.u0, eo.u0 + T, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
 WR_BOT = ZW - ln('X4-36')
 P('hand', 'palm', 'z', WR_BOT - 2 * T, WR_BOT - T, -30.0, 30.0, SHO_Y - 30.0, SHO_Y + 30.0)
 
-# ---- pelvis: a PART, on the waist yaw ----
+# ---- profile panels: an x-normal plate tilted about y ----
+# The chest was a rectangle in profile because `Plate` is axis-aligned and the
+# front/rear panels are x-normal: their outline lives in (y, z), so a polygon
+# there shapes the FRONT view and nothing shapes the SIDE view. A tilt about y
+# is what shapes the side view - the panel leans, and the outline's v axis
+# becomes slant length up the lean. Same trick `chamfer` plays about x, one
+# axis over. (H3 (a): the chest is deep at the sternum and tapers to the waist.)
+def xpanel(link, tag, x0, z0, x1, z1, wfun, brk, out, **kw):
+    """A profile panel running from (x0, z0) to (x1, z1) in side view (z1 > z0),
+    half-width wfun(z) with breakpoints `brk`, material on the +x side of the
+    fold line if out > 0 else the -x side. Returns the Plate."""
+    dx, dz = x1 - x0, z1 - z0
+    assert dz > 0.0, tag
+    Lp = math.hypot(dx, dz)
+    ang = math.degrees(math.atan2(dx, dz))
+    zs = [z0] + [z for z in brk if z0 < z < z1] + [z1]
+    rim = [(wfun(z), z0 + (z - z0) / dz * Lp) for z in zs]
+    poly = ([(-rim[0][0], rim[0][1])] + rim
+            + [(-w, v) for (w, v) in reversed(rim[1:])])
+    n0, n1 = (x0, x0 + T) if out > 0 else (x0 - T, x0)
+    return P(link, tag, 'x', n0, n1, 0, 0, 0, 0, poly=poly,
+             tilt=('y', ang, (x0, 0.0, z0)), **kw)
+
+
+# ---- pelvis: a closed faceted pod, on the waist yaw ----
 # The two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23) live in it; its
 # side walls ARE their stator plates; its top plate is the waist-yaw stator
-# plate (the X8 stands face-up inside it, 4 over the hip bodies). Front and
-# rear are hexagons - the bottom corners chamfered off, which lets the hip
-# bodies' lower rims show through at the corners, the way the H2's pelvis pod
-# shows its hip rings. (c) of the H3 programme.
+# plate (the X8 stands face-up inside it, 4 over the hip bodies). The walls are
+# square down to z -110 and then the pod CHAMFERS IN, fore and aft, to a 136 mm
+# crotch at z -150 - a tilted panel each way, matched by the same cut in the
+# side wall's outline, so the pod tapers toward the thighs in profile and the
+# hip rings still show on its sides. How far in is not taste: at z -110 the
+# hip-pitch body still reaches x 66, so the fold line starts at x +/-68.
 WA_Y = face_n('hip_pitch', 'stator')[0]                # 94
 WA_X0, WA_X1 = -rad('X15-450') - 10.0, rad('X15-450') + 5.0
 PV_Z0 = ZHP - rad('X15-450') - 7.0
 pt = L('pelvisC', 'top', 'waist_yaw', 'stator', WA_X0 - T, WA_X1 + T, -WA_Y - T, WA_Y + T)
 PV_Z1 = pt.n0                                           # waist stator plate bottom = wall top
+PV_ZB = -110.0                                          # the pod goes square to here, then chamfers
+PV_XF, PV_XR = 68.0, -68.0                              # crotch fold lines, front and rear
 hm = L('pelvisS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, PV_Z0, PV_Z1)
-PV_C = 30.0
-PV_HEX = [(-WA_Y + PV_C, PV_Z0), (WA_Y - PV_C, PV_Z0), (WA_Y, PV_Z0 + PV_C), (WA_Y, PV_Z1),
-          (-WA_Y, PV_Z1), (-WA_Y, PV_Z0 + PV_C)]
-P('pelvisC', 'rear_lo',  'x', WA_X0 - T, WA_X0, 0, 0, 0, 0, poly=PV_HEX)
-P('pelvisC', 'front_lo', 'x', WA_X1, WA_X1 + T, 0, 0, 0, 0, poly=PV_HEX)
+# The side wall's TOP-FRONT corner is cut on a hard diagonal and the front wall
+# stops at z 25 - both are the new hip_pitch sweep talking. At full flexion
+# (-107..-115 deg) the thigh's top plate, web and inboard flange fold up THROUGH
+# the volume in front of the pod at z 33..67, and a square pelvis put 1.5 mm of
+# aluminium in it. So the front wall covers the hip-pitch bodies (z -143..23)
+# and stops where they stop - which leaves the waist-yaw body showing above it:
+# the exposed waist reversal, arrived at by a clearance rather than by taste.
+PV_ZTF = 18.0                                           # front wall top (5 under the hip bodies' rim)
+PV_XT = 40.0                                            # side wall's top-front corner
+hm.poly = [(WA_X0 - T, PV_ZB), (PV_XR, PV_Z0), (PV_XF, PV_Z0), (WA_X1 + T, PV_ZB),
+           (WA_X1 + T, PV_ZTF), (PV_XT, PV_Z1), (WA_X0 - T, PV_Z1)]
+# r 10 and not the house 25 on the four pod panels: at 25 the wall's bottom edge
+# and the chamfer's top edge each round away from the fold they share and the
+# chamfer reads as a loose lip. These are fold edges, not edges a person meets.
+P('pelvisC', 'rear_lo',  'x', WA_X0 - T, WA_X0, -WA_Y, WA_Y, PV_ZB, PV_Z1, r_want=10.0)
+P('pelvisC', 'front_lo', 'x', WA_X1, WA_X1 + T, -WA_Y, WA_Y, PV_ZB, PV_ZTF, r_want=10.0)
+xpanel('pelvisC', 'rear_ch',  PV_XR, PV_Z0, WA_X0, PV_ZB, lambda z: WA_Y, (), -1, r_want=10.0)
+xpanel('pelvisC', 'front_ch', PV_XF, PV_Z0, WA_X1, PV_ZB, lambda z: WA_Y, (), +1, r_want=10.0)
 
-# ---- trunk: a chest with CHAMFERS, standing on the waist yaw OUTPUT ----
+# ---- trunk: a chest that is deep at the sternum, on an exposed waist ----
 # The chest floor is the waist-yaw output plate (stacked on the pelvis top, the
-# pancake). Front and rear are ONE convex octagon each (floor width at the seam,
-# flaring to the chest over 48 mm, full width to z 420, chamfering in to the
-# neck); the side is three plates - a waist chamfer panel, the flat side with
-# its window, a shoulder chamfer. That is the H2's torso (widest at two-thirds
-# height, narrowing to waist and neck) in four folds a side.
+# pancake). Above it the shell does NOT start: a 38 mm WAIST COLLAR - two side
+# plates 166 wide bent up off the floor, open front and back - carries the chest
+# and leaves the waist-yaw stack showing between the pelvis (194 wide) and the
+# chest (336). That is the H2's exposed waist link and the second of its four
+# width reversals; the ratio chest:waist is 336:166 = 2.02.
+# From z 150 the shell flares to full width at 230 and holds it to 470 - 8 mm
+# above the shoulder-pitch axis, so the shoulders ARE the chest's top corners -
+# then chamfers to the neck. In PROFILE the front is two tilted panels breaking
+# at the sternum (x 73 -> 100 -> 72) and the rear two breaking at the lumbar
+# (x -78 -> -105 -> -92): 151 mm deep at the waist, 205 at the sternum, 164 at
+# the deck. Per face: one hemmed window, laid along the panel's own lean.
 fl = L('trunkC', 'floor', 'waist_yaw', 'output', -WA_X0 - 0.0, 0.0, 0.0, 0.0, outset=T)
 ZF = fl.n1                                              # chest floor top
-FL_Y = 108.0                                            # floor half-width (the seam)
-fl.u0, fl.u1, fl.v0, fl.v1 = -102.0, 97.0, -FL_Y, FL_Y
-ZC0 = 160.0                                             # chest full width from here
-ZC1 = 420.0                                             # ... to here
+WY = 80.0                                               # waist half-width (X8-120 is D96)
+fl.u0, fl.u1, fl.v0, fl.v1 = -75.0, 70.0, -WY, WY
+ZWT = 150.0                                             # waist collar top = chest shell base
+ZC0 = 230.0                                             # chest full width from here
+ZC1 = 470.0                                             # ... to here (sho pitch axis 462)
 CH_Y = 165.0
-CH_X0, CH_X1 = -102.0, 97.0
 NK_Y = 115.0                                            # half-width at the deck
 ZD = ZHEY - T                                           # deck top = head yaw face (the deck is its stator plate)
-SIDE_WIN = (-60.0, 55.0, ZC0 + 40.0, ZC1 - 40.0)
-P('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZC0, ZC1, slots=[SIDE_WIN])
+# the profile: (x at the waist, at the break, at the deck) and the break height
+XF_W, XF_S, XF_D, ZSTERN = 73.0, 100.0, 72.0, 360.0
+XR_W, XR_L, XR_D, ZLUMBAR = -78.0, -105.0, -92.0, 330.0
+lerp = lambda a, b, t: a + (b - a) * t
+def chest_w(z):
+    """Chest half-width at height z, at the FRONT/REAR panels' fold line."""
+    if z <= ZWT:
+        return WY + T
+    if z < ZC0:
+        return lerp(WY + T, CH_Y + T, (z - ZWT) / (ZC0 - ZWT))
+    if z <= ZC1:
+        return CH_Y + T
+    return lerp(CH_Y + T, NK_Y + T, (z - ZC1) / (ZD - ZC1))
+def chest_x(z):
+    """(rear, front) fold-line x at height z - the chest's profile."""
+    xf = lerp(XF_W, XF_S, (z - ZWT) / (ZSTERN - ZWT)) if z <= ZSTERN else \
+         lerp(XF_S, XF_D, (z - ZSTERN) / (ZD - ZSTERN))
+    xr = lerp(XR_W, XR_L, (z - ZWT) / (ZLUMBAR - ZWT)) if z <= ZLUMBAR else \
+         lerp(XR_L, XR_D, (z - ZLUMBAR) / (ZD - ZLUMBAR))
+    return xr, xf
+P('trunkS', 'waist', 'y', WY, WY + T, -75.0, 70.0, ZF, ZWT)
+# the side plate's outline IS the profile: its front and rear edges follow the
+# tilted panels' fold lines (0.5 inside, so the shell laps instead of overlapping).
+SIDE_WIN = (-45.0, 40.0, ZC0 + 60.0, ZC1 - 50.0)
+SIDE_POLY = [(chest_x(ZC0)[0] + 0.5, ZC0), (chest_x(ZC0)[1] - 0.5, ZC0),
+             (XF_S - 0.5, ZSTERN), (chest_x(ZC1)[1] - 0.5, ZC1),
+             (chest_x(ZC1)[0] + 0.5, ZC1), (XR_L + 0.5, ZLUMBAR)]
+P('trunkS', 'side', 'y', CH_Y, CH_Y + T, 0, 0, 0, 0, poly=SIDE_POLY, slots=[SIDE_WIN])
 P('trunkS', 'side_hem', 'y', CH_Y - T, CH_Y, SIDE_WIN[0] - HEM, SIDE_WIN[1] + HEM,
   SIDE_WIN[2] - HEM, SIDE_WIN[3] + HEM, slots=[SIDE_WIN])
-def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
+def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in, x0, x1):
     """A side chamfer panel from the side plate's edge (y_edge, z_edge) to (y_far, z_far):
     defined flat, hanging from the pivot edge by the slant length, tilted about x."""
     dy, dz = y_far - y_edge, z_far - z_edge
@@ -616,22 +689,29 @@ def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
         R_ = _rot_axis('x', a_)
         q = _apply(R_, (0.0, y_edge, z_edge), (0.0, y_edge, z_edge + L_))
         if abs(q[1] - y_far) < 0.5 and abs(q[2] - z_far) < 0.5:
-            return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, CH_X0, CH_X1, z_edge, z_edge + L_,
+            return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, x0, x1, z_edge, z_edge + L_,
                      tilt=('x', a_, (0.0, y_edge, z_edge)))
     raise AssertionError('chamfer %s: tilt sign' % tag)
-chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, FL_Y + T / 2.0, ZF, -T / 2.0)
-chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0)
+chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, WY + T / 2.0, ZWT, -T / 2.0,
+        chest_x(ZWT)[0] + 0.5, chest_x(ZWT)[1] - 0.5)
+chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0,
+        chest_x(ZD)[0] + 0.5, chest_x(ZD)[1] - 0.5)
 ss = L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -52.0, 52.0, ZSP - 52.0, ZSP + 52.0)
 P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -30.0, 30.0, CH_Y, ss.n1)
-FR_WIN = (-60.0, 60.0, ZC0 + 20.0, ZC1 - 20.0)
-FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
-OCT = [(-FL_Y - T, ZF), (FL_Y + T, ZF), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
-       (NK_Y + T, ZD), (-NK_Y - T, ZD), (-CH_Y - T, ZC1), (-CH_Y - T, ZC0)]
-P('trunkC', 'rear',      'x', CH_X0 - T, CH_X0, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
-P('trunkC', 'rear_hem',  'x', CH_X0, CH_X0 + T, *FR_HEMR, slots=[FR_WIN])
-P('trunkC', 'front',     'x', CH_X1, CH_X1 + T, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
-P('trunkC', 'front_hem', 'x', CH_X1 - T, CH_X1, *FR_HEMR, slots=[FR_WIN])
-L('trunkC', 'deck', 'head_yaw', 'stator', CH_X0, CH_X1, -NK_Y - T, NK_Y + T)
+BRK = (ZWT, ZC0, ZC1, ZD)
+fr_lo = xpanel('trunkC', 'front_lo', XF_W, ZWT, XF_S, ZSTERN, chest_w, BRK, +1)
+xpanel('trunkC', 'front_up', XF_S, ZSTERN, XF_D, ZD, chest_w, BRK, +1)
+rr_lo = xpanel('trunkC', 'rear_lo', XR_W, ZWT, XR_L, ZLUMBAR, chest_w, BRK, -1)
+xpanel('trunkC', 'rear_up', XR_L, ZLUMBAR, XR_D, ZD, chest_w, BRK, -1)
+# the windows live in the panel's own frame: v is slant up the lean, not z.
+def window(pl, tag, v0, v1, half, out):
+    win = (-half, half, pl.v0 + v0, pl.v0 + v1)
+    pl.slots.append(win)
+    P(pl.link, tag, 'x', pl.n0 - T if out > 0 else pl.n1, pl.n0 if out > 0 else pl.n1 + T,
+      win[0] - HEM, win[1] + HEM, win[2] - HEM, win[3] + HEM, slots=[win], tilt=pl.tilt)
+window(fr_lo, 'front_hem', 62.0, 182.0, 58.0, +1)
+window(rr_lo, 'rear_hem',  57.0, 167.0, 58.0, -1)
+L('trunkC', 'deck', 'head_yaw', 'stator', XR_D, XF_D, -NK_Y - T, NK_Y + T)
 
 # ---- head: an open cage on the pitch output ----
 HZ0, HZ1 = ZHEP - 8.0, ZCROWN - T

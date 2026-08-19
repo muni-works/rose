@@ -31,6 +31,11 @@ RANGES = {
     'ank_pitch': (-0.9, 0.5),
     'ank_roll':  (-0.4, 0.4),
     'hip_yaw':   (-1.0, 1.0),
+    # Hip pitch: the leg against the pelvis, -115..92 deg. UNITREE.md listed this
+    # under "Honest residue" as never swept at all - and the pelvis is now a
+    # faceted pod whose lower fore/aft panels lean INTO exactly the volume the
+    # thigh folds through, so it is the one that had to be added.
+    'hip_pitch': (-2.0, 1.6),
     # Arms, added when the arms got structure. The URDF gives shoulder roll
     # -1.7..1.6 rad on the left, i.e. it also permits adduction THROUGH the torso;
     # that is a URDF limit problem, not a structure one, so only abduction
@@ -46,6 +51,7 @@ CHILD_LINKS = {
     'ank_pitch': ('ankle', 'foot'),
     'ank_roll':  ('foot',),
     'hip_yaw':   ('thigh', 'shank', 'crankA', 'crankB', 'ankle', 'foot'),
+    'hip_pitch': ('hipA', 'hipB', 'thigh', 'shank', 'crankA', 'crankB', 'ankle', 'foot'),
     'sho_roll':  ('shoB', 'elbA', 'hand'),
     'elb_pitch': ('elbA', 'hand'),
     'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA'),
@@ -56,6 +62,7 @@ CHILD_BODIES = {
     'ank_pitch': ('ank_roll',),
     'ank_roll':  (),
     'hip_yaw':   ('knee', 'ank_mA', 'ank_mB', 'ank_pitch', 'ank_roll'),
+    'hip_pitch': ('hip_roll', 'hip_yaw', 'knee', 'ank_mA', 'ank_mB', 'ank_pitch', 'ank_roll'),
     'sho_roll':  ('elb_pitch', 'wrist_yaw'),
     'elb_pitch': ('wrist_yaw',),
     'waist_yaw': ('sho_pitch', 'sho_roll', 'head_yaw', 'head_pitch'),
@@ -66,6 +73,7 @@ PARENT_LINKS = {
     'ank_pitch': ('shank', 'crankA', 'crankB', 'thigh'),
     'ank_roll':  ('ankle', 'shank'),
     'hip_yaw':   ('hipB', 'hipA', 'pelvisS', 'pelvisC', 'trunkS', 'trunkC'),
+    'hip_pitch': ('pelvisS', 'pelvisC', 'trunkS', 'trunkC'),
     'sho_roll':  ('shoA', 'trunkS', 'trunkC'),
     # the torso over the pelvis. Arms EXCLUDED: hanging straight down they are
     # beside the hip-roll pods and a 25 deg waist yaw swings them into the pods -
@@ -78,6 +86,7 @@ PARENT_BODIES = {
     'ank_pitch': ('knee', 'ank_mA', 'ank_mB', 'ank_pitch'),
     'ank_roll':  ('ank_pitch', 'ank_roll'),
     'hip_yaw':   ('hip_yaw', 'hip_roll', 'hip_pitch'),
+    'hip_pitch': ('hip_pitch', 'waist_yaw'),
     'sho_roll':  ('sho_roll', 'sho_pitch'),
     'elb_pitch': ('elb_pitch', 'sho_roll'),
     'waist_yaw': ('waist_yaw', 'hip_pitch', 'hip_roll'),
@@ -382,7 +391,7 @@ def main():
     print('swept interference through the URDF joint ranges')
     print('=' * 72)
     ok = True
-    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_roll', 'elb_pitch', 'waist_yaw'):
+    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_pitch', 'hip_yaw', 'sho_roll', 'elb_pitch', 'waist_yaw'):
         d, ml, sl, th = sweep(j, L.PLATES)
         if d < -0.05:
             ok = False
