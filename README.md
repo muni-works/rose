@@ -45,7 +45,7 @@ the geometry has not been re-cut to yet.
 | | | |
 |---|---|---|
 | ![rose mini](mini/render/rose-mini-iso.png) | ![rose pro](pro/render/rose-pro-iso.png) | ![rose max](max/render/rose-max-iso.png) |
-| **mini** — massed volumes, 22 DOF, sheet torso and a cube head. The oldest geometry here. | **pro** — graded lightening cutouts, exposed X-series bodies, the head as an open cage. 40 bent plates. | **max** — full actuator detail, pancake rana bodies, pushrod ankle four-bar, battery in red. |
+| **mini** — massed volumes, 22 DOF, sheet torso and a cube head. The oldest geometry here. | **pro** — thighs and shanks are now channels that *wrap* their actuators, knee 55 mm back like the G1's; the head as an open cage. 49 bent plates. Arms still sticks. | **max** — full actuator detail, pancake rana bodies, pushrod ankle four-bar, battery in red. |
 
 What the three renders show, side by side, is that the *design language* is not
 yet shared: mini is massed volumes, pro is cut sheet, max is detailed mechanism.

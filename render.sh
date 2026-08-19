@@ -5,8 +5,15 @@
 # conversion first -- that is no longer true). Build the binary with:
 #   cargo build --release -p vcad-render     # in ~/Developer/vcad
 #
-# pro takes ~2.5 min: 40 bent-sheet plates, each with a bolt circle cut out of
-# it, is a lot of boolean work. mini is ~5 s, max ~9 s.
+# pro takes ~6 min (49 plates, each its own root, each with a bolt circle cut
+# out of it). mini is ~5 s, max ~9 s.
+#
+# Two vcad boolean pathologies cost real time finding, recorded so they are not
+# found twice: (1) plate corner radius is NOT monotonic in cost - r=25 was ~10x
+# slower than r=20 on the same plate (see rose_pro_loon.corner_radius);
+# (2) unioning a link's plates into one solid, where lapped/stacked plates touch
+# face to face, sent R_shank past 400 s while its mirror L_shank took 10 s. The
+# generator now emits one root per plate and never unions plates.
 set -e
 R="${VCAD_RENDER:-$HOME/Developer/vcad/target/release/vcad-render}"
 OPTS="--view iso --size 1400 --fill 0.92 --auto-aspect"

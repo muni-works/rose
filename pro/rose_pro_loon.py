@@ -116,13 +116,21 @@ def rrect_inside(hu, hv, u0, u1, v0, v1, r):
     return -(min(max(qx, qy), 0.0) + outside - r)
 
 
-def corner_radius(u0, u1, v0, v1, holes, want=25.0):
+def corner_radius(u0, u1, v0, v1, holes, want=20.0):
     """Largest corner radius up to `want` that still clears every hole.
 
     COBOT RULE: corners are what strike a person first, and contact pressure is
     force over area, so a bigger radius is a safety feature and not a styling one.
     The old cap was 8 mm - fine for a 1130 mm desk robot, mean for a machine that
-    shares a room. We ask for 25 and back off only where a bolt circle says no.
+    shares a room. We ask for 20 and back off only where a bolt circle says no.
+
+    Why 20 and not 25: vcad's boolean time on a plate is NOT monotonic in the corner
+    radius. Measured on hipA (3 plates, 26 bores), whole-link evaluation:
+        r=8 6.6 s   r=12 5.4 s   r=16 23.8 s   r=20 5.2 s   r=25 68.3 s
+    At 25 the whole robot took ~20 min to render instead of ~2.5. That is a kernel
+    degeneracy at particular radii (coincident tessellation vertices, most likely),
+    not a cost curve; 20 sits in a fast trough and buys the same safety. Worth
+    filing against vcad with the numbers above.
     """
     r = min(want, (u1 - u0) / 2.5, (v1 - v0) / 2.5)
     while r > 2.0:
@@ -209,16 +217,20 @@ def main():
     no_mirror = ('neck', 'trunkC', 'head')
     roots = []
     lines.append('\n; ----------------------------------------------------- structure ----')
+    # ONE ROOT PER PLATE, not per link. Two reasons. Every plate is a separate
+    # laser blank, so a per-plate root is what a STEP export and a BOM want. And
+    # unioning a link's plates into one solid was where vcad went pathological:
+    # lapped and stacked plates touch face-to-face, fold corners overlap by one
+    # thickness, and the union of coincident faces sent R_shank past 400 s while
+    # the mirror-image L_shank took 10 s - a float-coincidence degeneracy in the
+    # kernel, not a shape cost. Separate roots never union, so it never happens.
     for link in sorted(groups):
         sides = [(False, 'C')] if link in no_mirror else [(False, 'L'), (True, 'R')]
         for mirror, tag in sides:
-            name = '%s_%s' % (tag, link)
-            exprs = [plate_expr(pl, mirror) for pl in groups[link]]
-            body = exprs[0]
-            for e in exprs[1:]:
-                body = '[union %s\n  %s]' % (e, body)
-            lines.append('\n[let %s\n  %s]' % (name, body))
-            roots.append((name, 'aluminum'))
+            for pl in groups[link]:
+                name = '%s_%s_%s' % (tag, link, pl['tag'])
+                lines.append('\n[let %s\n  %s]' % (name, plate_expr(pl, mirror)))
+                roots.append((name, 'aluminum'))
 
     lines.append('\n; ------------------------------------------- actuator envelopes ----')
     for name, expr in actuator_exprs():
@@ -234,7 +246,7 @@ def main():
     open(OUT, 'w').write('\n'.join(lines) + '\n')
     nplate = sum(len(v) for v in groups.values())
     print('wrote %s' % OUT)
-    print('  %d plate definitions -> %d solids, %d actuator envelopes, %d roots'
+    print('  %d plate definitions -> %d plate roots, %d actuator envelopes, %d roots'
           % (nplate, sum(1 for r in roots if not r[0].startswith('act_')),
              sum(1 for r in roots if r[0].startswith('act_')), len(roots)))
 
