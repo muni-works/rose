@@ -13,12 +13,14 @@ vcad conventions that shape the output:
     the analytic B-rep and hand us faceted STEP. Plate faces are flat, so we stay in
     the well-conditioned corner of that matrix.
 """
+import math
 import os
 import sys
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rose_pro_links as L
+from rose_pro_links import MIN_EDGE
 
 AXI = {'x': 0, 'y': 1, 'z': 2}
 OUT = os.path.expanduser('~/Developer/vcad/hardware/rose-pro/rose-pro.loon')
@@ -100,6 +102,38 @@ def fnum(v):
     return '%.4f' % v
 
 
+def rrect_inside(hu, hv, u0, u1, v0, v1, r):
+    """Distance from a point to the inside of a rounded rect (>0 inside).
+
+    Standard rounded-box SDF. Needed because a large corner radius eats material
+    exactly where a corner bolt hole tends to sit, and 'the hole still fits the
+    RECTANGLE' is not the same question.
+    """
+    ax, ay = (u1 - u0) / 2.0, (v1 - v0) / 2.0
+    cx, cy = (u0 + u1) / 2.0, (v0 + v1) / 2.0
+    qx, qy = abs(hu - cx) - ax + r, abs(hv - cy) - ay + r
+    outside = math.hypot(max(qx, 0.0), max(qy, 0.0))
+    return -(min(max(qx, qy), 0.0) + outside - r)
+
+
+def corner_radius(u0, u1, v0, v1, holes, want=25.0):
+    """Largest corner radius up to `want` that still clears every hole.
+
+    COBOT RULE: corners are what strike a person first, and contact pressure is
+    force over area, so a bigger radius is a safety feature and not a styling one.
+    The old cap was 8 mm - fine for a 1130 mm desk robot, mean for a machine that
+    shares a room. We ask for 25 and back off only where a bolt circle says no.
+    """
+    r = min(want, (u1 - u0) / 2.5, (v1 - v0) / 2.5)
+    while r > 2.0:
+        if all(rrect_inside(hu, hv, u0, u1, v0, v1, r) >= hd / 2.0 + MIN_EDGE(hd)
+               for (hu, hv, hd) in holes
+               if u0 < hu < u1 and v0 < hv < v1):
+            return r
+        r -= 0.5
+    return r
+
+
 def plate_expr(pl, mirror):
     nm = pl['normal']
     i = AXI[nm]
@@ -116,7 +150,7 @@ def plate_expr(pl, mirror):
         elif vi == 1:
             v0, v1 = -v1, -v0
             holes = [(h[0], -h[1], h[2]) for h in holes]
-    r = min(8.0, (u1 - u0) / 2.5, (v1 - v0) / 2.5)
+    r = corner_radius(u0, u1, v0, v1, holes)
     base = '[plate-%s %s %s %s %s %s %s %s]' % (
         nm, fnum(n0), fnum(n1), fnum(u0), fnum(u1), fnum(v0), fnum(v1), fnum(r))
     # ONE difference against a unioned tool, not a chain of them. Chaining costs
