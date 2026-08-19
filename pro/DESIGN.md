@@ -202,8 +202,12 @@ pinch and nothing else.
   are layout (three X6-60 bodies between hip pitch and thigh; two X4-36 at the
   ankle). UNITREE.md items B and C — pushrod ankle, pelvis hub — are what fix
   them, not the generator.
-- **The head** is a cube on a neck. It was always meant to be understated; it
-  now reads as the heaviest thing on the robot next to the H2's.
+- ~~**The head** is a cube on a neck.~~ Done, 2026-08-19: a faceted helmet,
+  156 x 170 x 167 against the cage's 198 x 120 x 125, chin 28 mm off the chest
+  deck instead of 49, both neck actuators hidden. Its underside profile is a
+  head_pitch sweep result. It costs 62 mm of standing height (crown 1738, not
+  1800) — the head shrank and nothing below it grew; recovering that is a
+  `rose_pro_layout` change (TORSO or the leg proportions), not a head one.
 - **Hip couplings.** hipA's tab is not geometrically connected and hipB cannot
   be one two-bend blank; `rose_pro_bent.py` is owed a pass.
 
