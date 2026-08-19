@@ -34,6 +34,7 @@ import sys
 # ---------------------------------------------------------------- geometry ---
 HIP_Y, SHO_Y = 0.075, 0.150
 THIGH, SHANK, ANK_DZ = 0.250, 0.250, 0.060
+KNEE_BACK = 0.055    # knee axis behind the hip yaw axis; see rose_pro_layout.KNEE_BACK
 SOLE = 0.050
 
 # actuator data, verified from vendor STEP + the X-series V4 manual
@@ -129,7 +130,7 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     add_joint(p,  'Trunk', p, (0.0, s*HIP_Y, -0.060), (0, 1, 0), -2.0, 1.6, 'X6-60')
     add_joint(r,  p, r, (0.0, 0.0, -0.085), (1, 0, 0), lo_roll, hi_roll, 'X6-60')
     add_joint(y,  r, y, (0.0, 0.0, -0.051), (0, 0, 1), -1.0, 1.0, 'X6-60')
-    add_joint('%s_Knee_Pitch' % side, y, sh, (0.0, 0.0, -0.114), (0, 1, 0), 0.0, 2.3, 'X6-60')
+    add_joint('%s_Knee_Pitch' % side, y, sh, (-KNEE_BACK, 0.0, -0.114), (0, 1, 0), 0.0, 2.3, 'X6-60')
     add_joint('%s_Ankle_Pitch' % side, sh, ac, (0.0, 0.0, -SHANK), (0, 1, 0), -0.9, 0.5, 'X4-36')
     add_joint('%s_Ankle_Roll' % side, ac, ft, (0.0, 0.0, -ANK_DZ), (1, 0, 0), -0.4, 0.4, 'X4-36')
 

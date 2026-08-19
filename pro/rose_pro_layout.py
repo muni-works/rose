@@ -44,6 +44,12 @@ SHANK = 0.250        # knee -> ankle pitch. Was 200: thigh:shank came out 1.25:1
                      # against ~1.05:1 human, which is what made the legs read stumpy.
                      # Thigh is FORCED to 250 (the hip yaw body hangs inside it), so the
                      # only way to 1:1 is to lengthen the shank.
+KNEE_BACK = 0.055    # knee (and everything below it) sits this far BEHIND the hip yaw
+                     # axis. The G1 carries 53 mm here and it is not styling: in deep
+                     # knee flexion the shank folds up behind the thigh, and with the
+                     # knee under the yaw axis the shank web enters the yaw body above
+                     # ~93 deg (pro/sweep.py, rounded plates). 55 mm is the smallest
+                     # offset that clears the full 132 deg URDF range by >= 4 mm.
 ANK_DZ = 0.060       # ankle pitch -> ankle roll
 SOLE = 0.050         # ankle roll -> ground
 
@@ -60,9 +66,9 @@ def leg(side):
         ('%s_hip_pitch' % side, (0, y, -0.060), (0, 1, 0), 'X6-60', (0, -s, 0), 'end'),
         ('%s_hip_roll' % side,  (0, y, -0.145), (1, 0, 0), 'X6-60', (-1, 0, 0), 'mid'),
         ('%s_hip_yaw' % side,   (0, y, -0.196), (0, 0, 1), 'X6-60', (0, 0, -1), 'end'),
-        ('%s_knee' % side,      (0, y, -0.060 - THIGH), (0, 1, 0), 'X6-60', (0, -s, 0), 'end'),
-        ('%s_ank_pitch' % side, (0, y, -0.060 - THIGH - SHANK), (0, 1, 0), 'X4-36', (0, -s, 0), 'end'),
-        ('%s_ank_roll' % side,  (0, y, -0.060 - THIGH - SHANK - ANK_DZ), (1, 0, 0), 'X4-36', (-1, 0, 0), 'mid'),
+        ('%s_knee' % side,      (-KNEE_BACK, y, -0.060 - THIGH), (0, 1, 0), 'X6-60', (0, -s, 0), 'end'),
+        ('%s_ank_pitch' % side, (-KNEE_BACK, y, -0.060 - THIGH - SHANK), (0, 1, 0), 'X4-36', (0, -s, 0), 'end'),
+        ('%s_ank_roll' % side,  (-KNEE_BACK, y, -0.060 - THIGH - SHANK - ANK_DZ), (1, 0, 0), 'X4-36', (-1, 0, 0), 'mid'),
     ]
 
 

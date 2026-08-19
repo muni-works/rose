@@ -37,6 +37,7 @@ IFACE = {
 }
 
 HIP_Y, SHO_Y = 75.0, 150.0
+KB = 55.0                   # knee-back offset, mm; see KNEE_BACK in rose_pro_layout
 
 # joint: name, centre, axis, model, body direction, mount-face offset along axis
 #   'mid'  -> body straddles the joint, mount face at -half along the axis dir
@@ -45,9 +46,9 @@ JOINTS = {
     'hip_pitch': dict(c=(0, HIP_Y, -60.0),  ax='y', m='X6-60', bd=-1, mode='end'),
     'hip_roll':  dict(c=(0, HIP_Y, -145.0), ax='x', m='X6-60', bd=-1, mode='mid'),
     'hip_yaw':   dict(c=(0, HIP_Y, -196.0), ax='z', m='X6-60', bd=-1, mode='end'),
-    'knee':      dict(c=(0, HIP_Y, -310.0), ax='y', m='X6-60', bd=-1, mode='end'),
-    'ank_pitch': dict(c=(0, HIP_Y, -560.0), ax='y', m='X4-36', bd=-1, mode='end'),
-    'ank_roll':  dict(c=(0, HIP_Y, -620.0), ax='x', m='X4-36', bd=-1, mode='mid'),
+    'knee':      dict(c=(-KB, HIP_Y, -310.0), ax='y', m='X6-60', bd=-1, mode='end'),
+    'ank_pitch': dict(c=(-KB, HIP_Y, -560.0), ax='y', m='X4-36', bd=-1, mode='end'),
+    'ank_roll':  dict(c=(-KB, HIP_Y, -620.0), ax='x', m='X4-36', bd=-1, mode='mid'),
     'sho_pitch': dict(c=(0, SHO_Y, 230.0),  ax='y', m='X4-36', bd=-1, mode='end'),
     'sho_roll':  dict(c=(0, SHO_Y, 165.0),  ax='x', m='X4-36', bd=-1, mode='mid'),
     # body OUTBOARD: pointed inboard it ran into the y=100 torso wall, and moving
@@ -181,30 +182,103 @@ L('hipA', 'roll_face',  'hip_roll',  'stator', 33.0, 117.0, -188.0, -102.0)
 # hipB: hip roll OUTPUT -> hip yaw STATOR. The roll output hub protrudes through the
 # D54 bore in hipA's roll_face plate, so this plate stands one thickness further out.
 L('hipB', 'roll_out', 'hip_roll', 'output', 45.0, 105.0, -184.0, -106.0, outset=T)
-L('hipB', 'yaw_face', 'hip_yaw',  'stator', -46.0, 46.0, 29.0, 121.0)
+# yaw_face is 88 square: with 25 mm corners its corner sits at R51.9 from the yaw
+# axis, inside the thigh flanges at 56 (which sweep around it when the hip yaws).
+L('hipB', 'yaw_face', 'hip_yaw',  'stator', -44.0, 44.0, 31.0, 119.0)
 
-# thigh: hip yaw OUTPUT -> knee STATOR. Routes around the D80 yaw body on a rear
-# spine at x ~ -46, clear of the body's |x| <= 40.
-L('thigh', 'yaw_out',  'hip_yaw', 'output', -30.0, 30.0, 45.0, 105.0, outset=T)
-L('thigh', 'knee_face', 'knee',   'stator', -46.0, 34.0, -350.0, -285.0)
+# thigh: hip yaw OUTPUT -> knee STATOR.
+#
+# WRAPPED, not tabbed. The thigh is a channel that ENCLOSES the hip-yaw body the
+# way a G1 link encloses its actuator: a top plate on the yaw output, two side
+# flanges bent down from it, a web bent down from its FRONT edge, and the knee
+# stator plate bent from that web. Load path is continuous sheet from the yaw
+# output ring to the knee stator ring - no tab, no lap.
+#
+# Why the channel is open at the BACK and closed at the front, which is the
+# opposite of the first instinct: the shank folds up BEHIND the thigh in deep
+# knee flexion. sweep.py showed the old shank web punching 22 mm into the yaw
+# body at 132 deg, and any thigh structure behind the knee axis is in that same
+# path. The front is where nothing ever swings.
+#
+# Why the flanges sit 56 mm off the yaw axis: the yaw body ROTATES relative to
+# the thigh (the thigh is on its output), and the X6 carries a radial connector
+# boss out to R50.9. Everything that wraps it must clear that boss all the way
+# round: 50.9 + 5 = 56. That makes the thigh 118 wide and 99 deep - the G1's
+# thigh is 89 x 180, so we are in the same family.
+YAW_R = IFACE['X6-60']['od'] / 2.0
+BOSS_R = 50.9                                # X6 radial connector boss, vendor STEP
+WRAP = BOSS_R + 5.0                          # inner face of anything wrapping the yaw body
+TH_FRONT = WRAP                              # web inner face, x
+TH_Y0, TH_Y1 = HIP_Y - WRAP, HIP_Y + WRAP    # flange inner faces, y = 19, 131
+TH_TOP = -196.0 + T                          # yaw_out is outset T above the stator plate
+TH_YAW_BOT = -196.0 - IFACE['X6-60']['ln']   # yaw body bottom, -263.5
+TH_FLG_BOT = -310.0 + YAW_R + 5.0            # flange bottom clears the knee body top by 5
 
-# shank: knee OUTPUT -> ankle pitch STATOR. Both axes are +Y at y=75, so this is a
-# SINGLE FLAT PLATE spanning the whole shank - no corner, no angle stock.
-sh = face_plate('shank', 'web', 'knee', 'output', -40.0, 40.0, -570.0, -295.0)
-sh.holes += ring(IFACE['X4-36']['sb'], 0.0, -560.0, IFACE['X4-36']['sh'] + 1.1, 6, 30.0)
-sh.holes.append((0.0, -560.0, IFACE['X4-36']['spig'] + 1.0))
-sh.fit()
+L('thigh', 'yaw_out', 'hip_yaw', 'output', -YAW_R, TH_FRONT + T, TH_Y0 - T, TH_Y1 + T, outset=T)
+PLATES.append(Plate('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP))
+PLATES.append(Plate('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, -YAW_R, TH_FRONT + T, TH_FLG_BOT, TH_TOP))
+PLATES.append(Plate('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, TH_Y0 - T, TH_Y1 + T, TH_FLG_BOT, TH_TOP))
+# below the yaw body the web narrows to what the knee stator plate needs
+PLATES.append(Plate('thigh', 'web_lo',     'x', TH_FRONT, TH_FRONT + T, 60.0, TH_Y1 + T, -355.0, TH_FLG_BOT))
+L('thigh', 'knee_face', 'knee', 'stator', -KB - 46.0, TH_FRONT + T, -350.0, -285.0)
+# the knee now hangs 111 mm behind the web's bend line, so the stator plate gets a
+# short flange bent down its REAR edge too - a gusset that turns a cantilever into a
+# channel. It sits 5 mm clear of the knee body and stays out of the shank's sweep
+# because it lives inboard of the shank web (y < 75).
+PLATES.append(Plate('thigh', 'knee_gus', 'x', -KB - YAW_R - 5.0 - T, -KB - YAW_R - 5.0, 12.0, 78.0, -350.0, -285.0))
+
+# shank: knee OUTPUT -> ankle pitch STATOR.
+#
+# The knee output plate sits OUTSET one thickness, exactly as hipB documents for
+# the hip roll: the stator plate (thigh/knee_face) is on the face, the output hub
+# protrudes through its spigot bore, and the output plate stacks outside it. The
+# old model put both at 75..78 and they occupied the same 80 x 3 x 72 mm of
+# aluminium - the sim never noticed because it only touches the feet, and vcad's
+# union hid one inside the other. sweep.py's static check is what caught it.
+#
+# Because the web moved out one thickness it can no longer be the ankle stator
+# plate too, so the ankle stator gets its own plate at 75..78 LAPPED under the
+# web and bolted - the split-and-lap pattern the ankle already uses.
+#
+# One flange, at the FRONT. sweep.py again: a rear flange at 45 mm behind the
+# knee axis enters the yaw body's zone above ~110 deg of flexion, no matter how
+# far down it starts. The front never rises above the knee axis inside the range.
+SH_FR = YAW_R + 5.0                          # front flange inner face, x = 45
+sh = face_plate('shank', 'web', 'knee', 'output', -KB - 40.0, -KB + 40.0, -510.0, -295.0, outset=T)
 PLATES.append(sh)
+PLATES.append(Plate('shank', 'web_fr',    'y', sh.n0, sh.n1, -KB + 40.0, -KB + SH_FR + T, -510.0, -360.0))
+PLATES.append(Plate('shank', 'flange_fr', 'x', -KB + SH_FR, -KB + SH_FR + T, 15.0, sh.n1, -515.0, -360.0))
+lap = Plate('shank', 'ank_lap', 'y', 75.0, 78.0, -KB - 33.0, -KB + 33.0, -590.0, -480.0)
+lap.holes += ring(IFACE['X4-36']['sb'], -KB, -560.0, IFACE['X4-36']['sh'] + 1.1, 6, 30.0)
+lap.holes.append((-KB, -560.0, IFACE['X4-36']['spig'] + 1.0))
+lap.holes += [(-KB - 20.0, -495.0, 4.5), (-KB + 20.0, -495.0, 4.5)]      # lap bolts, M4
+lap.fit()
+PLATES.append(lap)
+sh.holes += [(-KB - 20.0, -495.0, 4.5), (-KB + 20.0, -495.0, 4.5)]
 
 # ankle: ankle pitch OUTPUT -> ankle roll STATOR
 # v0 held at -540: any lower and the plate's corner reaches inside the D55
 # ankle roll body sitting 60 mm below it.
-L('ankle', 'ankp_out', 'ank_pitch', 'output', -34.0, 34.0, -590.0, -534.0, outset=T)
+L('ankle', 'ankp_out', 'ank_pitch', 'output', -KB - 34.0, -KB + 34.0, -590.0, -534.0, outset=T)
 L('ankle', 'ankr_face', 'ank_roll', 'stator', 44.0, 106.0, -651.0, -589.0)
+# The ankle is a split pair: a tab bent off ankp_out laps onto ankr_face. The tab
+# lands in the slab one thickness outboard of the stator plate - which is exactly
+# where the FOOT's roll-output plate also lives (stator plate, then output plate,
+# same stack as every pancake joint here). The old tab ran straight down through
+# that plate: 3 x 25 x 32 mm of interference, found by sweep.py. So the tab is now
+# an L: it crosses the output plate's height only ABOVE it, and drops to the lap
+# outboard of it, onto a lap ear added to ankr_face. Two M4s in the lap.
+PLATES.append(Plate('ankle', 'ankr_lapear', 'x',
+                    JOINTS['ank_roll']['c'][0] - 30.5 - T, JOINTS['ank_roll']['c'][0] - 30.5,
+                    104.0, 130.0, -640.0, -589.0,
+                    holes=[(119.0, -600.0, 4.5), (119.0, -628.0, 4.5)]))
 
-# foot: ankle roll OUTPUT -> sole
-L('foot', 'ankr_out', 'ank_roll', 'output', 48.0, 102.0, -647.0, -593.0, outset=T)
-PLATES.append(Plate('foot', 'sole', 'z', -670.0, -667.0, -64.0, 116.0, 38.0, 112.0))
+# foot: ankle roll OUTPUT -> sole. The sole keeps its position RELATIVE to the ankle
+# (64 behind, 116 ahead), so with the ankle 55 mm back the heel is now 119 behind
+# the trunk origin and the toe 61 ahead - the ankle at ~35% of foot length from the
+# heel, roughly where a human's is.
+L('foot', 'ankr_out', 'ank_roll', 'output', 54.0, 96.0, -641.0, -599.0, outset=T)
+PLATES.append(Plate('foot', 'sole', 'z', -670.0, -667.0, -KB - 64.0, -KB + 116.0, 38.0, 112.0))
 
 # arm
 L('shoA', 'shop_out', 'sho_pitch', 'output', -26.0, 26.0, 204.0, 256.0, outset=T)
@@ -316,13 +390,27 @@ BEND_TABS = [
     # used where the direct bend line would land inside a bolt circle.
     ('hipA',  'z', (-99.0, -96.0), (-62.0, 32.0), (75.0, 118.0), ('pitch_face', 'roll_face')),
     ('hipB',  'z', (-96.0, -93.0), (-62.0, -37.0), (45.0, 117.0), ('roll_out', 'yaw_face')),
-    ('thigh', 'z', (-193.0, -190.0), (-46.0, 34.0), (40.0, 110.0), ('yaw_out', 'knee_face')),
     # split pairs: X-normal lap tab, bent off the output flange about a Z line
-    ('ankle', 'x', (-36.5, -33.5), (76.5, 122.0), (-625.0, -538.0), ('ankp_out',)),
+    # L-shaped: the upper rect crosses over the foot's output plate, the lower
+    # rect is the lap onto ankr_lapear. Both listed so the rule sees both.
+    ('ankle', 'x', (-KB - 36.5, -KB - 33.5), (78.0, 130.0), (-588.0, -538.0), ('ankp_out',)),
+    ('ankle', 'x', (-KB - 36.5, -KB - 33.5), (108.0, 130.0), (-640.0, -588.0), ()),
     ('shoA',  'x', (-36.5, -33.5), (151.5, 196.0), (128.0, 236.0), ('shop_out',)),
     ('shoB',  'y', (144.0, 147.0), (-34.0, 34.0), (12.0, 100.0), ('elb_face',)),
 ]
 ANGLE_MASS = (ANGLE[0] + ANGLE[1] - ANGLE[2]) * ANGLE[2] * 2.70e-3 / 1000.0  # kg per mm
+
+# Bend LINES for the wrapped links. Unlike BEND_TABS these add no plate: the plate
+# bent FROM already exists in the table. (link, axis the line runs along... no -
+# axis the line is measured on, coordinate, plates governed).
+#   thigh: side flanges and web bend down from the top plate -> lines at z=-191.5
+#          knee_face bends from the web -> line at x = TH_FRONT + T/2
+#   shank: front flange bends from web_fr -> line at x = SH_FR + T/2
+BENDS = [
+    ('thigh', 'z', -196.0 + T + T / 2.0, ('flange_in', 'flange_out', 'web')),
+    ('thigh', 'x', WRAP + T / 2.0,       ('knee_face',)),
+    ('shank', 'x', SH_FR + T / 2.0,      ('flange_fr',)),
+]
 
 
 def dump_json(path):
@@ -413,6 +501,25 @@ def main():
                 if d < lim:
                     print('  %-7s %-11s hole at %.1f is %.1f mm from the %s bend'
                           % (p.link, p.tag, pos, d, tab))
+                    bad += 1
+    for p in PLATES:
+        i = AXI[p.normal]
+        for (lk, ax, line, tgt) in BENDS:
+            if lk != p.link or p.tag not in tgt:
+                continue
+            k = AXI[ax]
+            if k == i:
+                continue
+            ui, vi = [q for q in range(3) if q != i]
+            for (hu, hv, hd) in p.holes:
+                pos = hu if ui == k else (hv if vi == k else None)
+                if pos is None:
+                    continue
+                d = abs(pos - line)
+                worst = min(worst, d)
+                if d < lim:
+                    print('  %-7s %-11s hole at %.1f is %.1f mm from the %s=%.1f bend'
+                          % (p.link, p.tag, pos, d, ax, line))
                     bad += 1
     print('  bend-rule violations: %d   (tightest %.1f mm)' % (bad, worst))
     print('\n=== mass ===')

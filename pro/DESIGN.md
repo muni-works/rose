@@ -64,6 +64,59 @@ no faceless dome. Resting gaze slightly down.
 desaturated green, for the lab it comes from. Avoid white plastic — reads as
 consumer android — and avoid all-black, which reads as security robot.
 
+## What "wrap, don't tab" turned into when we actually did it
+
+The plan was a cheap generator change: fold channels around the actuators.
+Doing it forced two tools and a layout change, and every one of them was a
+finding rather than a chore. In order:
+
+**1. The model was interfering with itself.** `sweep.py`'s static check found the
+thigh's knee-stator plate and the shank's knee-output plate occupying the *same*
+80 × 3 × 72 mm slab — the pancake stack (stator plate on the face, output plate
+outset one thickness) that hipB already documents, simply not applied at the
+knee. The sim never saw it (feet-only contact); vcad's union hid one solid inside
+the other; the plate-vs-actuator check does not look at plates. Fixed by
+outsetting the shank web and giving the ankle stator its own lapped plate. The
+same tab-in-the-output-slab pattern is still present in the **arms** (shoA/shoB,
+shoB/elbA) and two hip tabs — flagged, not yet fixed; the arms need their own
+pass anyway.
+
+**2. The knee could not flex.** The swept check — rotate the shank side through
+the URDF's own 0–132° knee range against the thigh side — showed the *existing*
+shank web driving **22 mm into the hip-yaw body at 132°**, with the honest safe
+range being **0–93°** on the rounded plates. This is the near-tangent yaw/knee
+pair from the layout notes, in the swept case: the yaw body hangs 46 mm above the
+knee axis, and in deep flexion the shank folds up behind the thigh through
+exactly that volume. It cannot be fixed by shaping the shank; any rear structure
+enters that zone above ~110°.
+
+**3. So the knee moved back 55 mm.** That is what the G1's 53 mm knee-back
+offset *is* — not styling, clearance for deep flexion — and our number came out
+within 2 mm of theirs from a completely independent calculation. `KNEE_BACK` is
+now a layout parameter threaded through layout, plates and export. Full 132°
+clears the yaw body by 4.7 mm; the whole leg (knee, ankle pitch, ankle roll, hip
+yaw) sweeps clean.
+
+**4. The thigh channel is closed at the FRONT and open at the BACK** — the
+opposite of first instinct, for the reason in (2): the back is where the shank
+goes. Web on the front, side flanges 56 mm off the yaw axis (the X6's connector
+boss reaches R50.9 and the body rotates relative to the thigh, so the wrap must
+clear it all the way round), knee stator plate bent from the web with a rear
+gusset. 118 wide, 99 deep; the G1's thigh is 89 × 180. The shank gets its
+front flange only, for the same reason.
+
+**5. Then it fell over.** With the knee back, a straight leg puts the ankle 55 mm
+behind the hip — permanently, it is in the link geometry — so the standing COM
+sits ~50 mm ahead of the ankle. **That is how a human stands** (COM ahead of
+the ankle, held by steady plantarflexor torque). The rig's PD droops under a
+steady load and tipped at 0.6 s. Stiffening the leg gains (`IPSE_STAND_LEG_OMEGA`
+40 → 80) holds it: **−0.1 % force, COM→COP 4.6 mm, contact never lost**, ankle
+PD steady at ~9 N·m — 13 % of what X4-36 has. The G1 does this in its controller
+too. The knob is in ipse's `k1_summary`, default unchanged.
+
+**6. rose pro is 3.9 kg of sheet now, up from 3.5.** The wrap costs ~370 g a
+side. Worth it; that is the difference between parts and a body.
+
 ## The open geometry work
 
 From the renders, three faults that are shape rather than safety:
