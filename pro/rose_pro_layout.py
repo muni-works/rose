@@ -53,6 +53,7 @@ JOINT_MODEL = {
     'knee': 'X15-450', 'ank_pitch': 'X8-120', 'ank_roll': 'X6-60',
     'sho_pitch': 'X8-120', 'sho_roll': 'X6-60', 'elb_pitch': 'X6-60',
     'wrist_yaw': 'X4-36', 'head_yaw': 'X4-36', 'head_pitch': 'X4-36',
+    'waist_yaw': 'X8-120',
 }
 
 
@@ -109,6 +110,10 @@ Z_WRIST = Z_ELB - FOREARM
 Z_HEAD_Y = Z_SHO_P + NECK
 Z_HEAD_P = Z_HEAD_Y + 0.060
 Z_CROWN = Z_SOLE + HEIGHT
+# waist yaw: an X8-120 standing face-UP between the hip-pitch bodies' tops and the
+# chest floor. Its body hangs into the pelvis; its stator plate is the pelvis top,
+# its output plate the chest floor. (c) of the H3 programme: a pelvis that is a part.
+Z_WAIST = Z_HIP_P + R('X15-450') + 0.004 + LN('X8-120') + 0.003    # face: body bottom 4 over the hip bodies, +3 flange
 
 # sanity: the yaw body hangs inside the thigh and must clear the knee body
 assert Z_HIP_Y - LN('X10-200') > Z_KNEE + R('X15-450') + 0.005, 'yaw body into knee body'
@@ -142,6 +147,7 @@ def arm(side):
 
 
 HEAD = [
+    ('waist_yaw',  (0, 0, Z_WAIST), (0, 0, 1), 'X8-120', (0, 0, -1), 'end'),
     ('head_yaw',   (0, 0, Z_HEAD_Y), (0, 0, 1), 'X4-36', (0, 0, -1), 'end'),
     ('head_pitch', (0, 0, Z_HEAD_P), (0, 1, 0), 'X4-36', (0, -1, 0), 'mid'),
 ]
@@ -224,6 +230,7 @@ def main():
             ('arm (shoulder->wrist)', '%.0f' % ((UPPER_ARM + FOREARM) * 1e3)),
             ('ankle stack / sole', '%.0f / %.0f' % (ANK_DZ * 1e3, SOLE * 1e3)),
             ('shoulder y', '%.0f' % (SHO_Y * 1e3)),
+            ('waist yaw face z', '%.0f' % (Z_WAIST * 1e3)),
             ('trunk origin: sole / crown', '%.0f / %.0f' % (Z_SOLE * 1e3, Z_CROWN * 1e3))]
     for k, v in rows:
         print('  %-28s %s' % (k, v))

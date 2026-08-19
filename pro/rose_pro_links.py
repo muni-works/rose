@@ -66,6 +66,7 @@ ZHP, ZHR, ZHY, ZK = mm(LAY.Z_HIP_P), mm(LAY.Z_HIP_R), mm(LAY.Z_HIP_Y), mm(LAY.Z_
 ZAP, ZAR, ZS = mm(LAY.Z_ANK_P), mm(LAY.Z_ANK_R), mm(LAY.Z_SOLE)
 ZSP, ZSR, ZE, ZW = mm(LAY.Z_SHO_P), mm(LAY.Z_SHO_R), mm(LAY.Z_ELB), mm(LAY.Z_WRIST)
 ZHEY, ZHEP, ZCROWN = mm(LAY.Z_HEAD_Y), mm(LAY.Z_HEAD_P), mm(LAY.Z_CROWN)
+ZWAIST = mm(LAY.Z_WAIST)
 KB = mm(LAY.KNEE_BACK)
 ROLL_X, SHR_X = mm(LAY.ROLL_X), mm(LAY.SHR_X)
 
@@ -86,6 +87,7 @@ JOINTS = {
     'sho_roll':  dict(c=(SHR_X, SHO_Y, ZSR),   ax='x', m='X6-60',   bd=-1, mode='mid'),
     'elb_pitch': dict(c=(0, SHO_Y, ZE),        ax='y', m='X6-60',   bd=+1, mode='end'),
     'wrist_yaw': dict(c=(0, SHO_Y, ZW),        ax='z', m='X4-36',   bd=-1, mode='end'),
+    'waist_yaw': dict(c=(0, 0.0, ZWAIST),      ax='z', m='X8-120',  bd=-1, mode='end'),
     'head_yaw':  dict(c=(0, 0.0, ZHEY),        ax='z', m='X4-36',   bd=-1, mode='end'),
     'head_pitch':dict(c=(0, 0.0, ZHEP),        ax='y', m='X4-36',   bd=-1, mode='mid'),
 }
@@ -512,41 +514,52 @@ P('elbA', 'wtab_rr', 'x', eo.u0, eo.u0 + T, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
 WR_BOT = ZW - ln('X4-36')
 P('hand', 'palm', 'z', WR_BOT - 2 * T, WR_BOT - T, -30.0, 30.0, SHO_Y - 30.0, SHO_Y + 30.0)
 
-# ---- trunk: chest over pelvis, with CHAMFERS ----
-# waist/pelvis: encloses the two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23).
-# Side walls ARE the hip-pitch stator plates; the output plates stand outside.
-# The chest is no longer a box on a box: its front and rear are ONE convex
-# octagon each (waist width at the bottom, flaring to the chest over 60 mm,
-# full width to z 420, chamfering in to the neck), and the side is three
-# plates - a waist chamfer panel tilted 51 deg, the flat side with its window,
-# and a shoulder chamfer tilted 28 deg. That is the H2's torso (widest at
-# two-thirds height, narrowing to waist and neck) in four folds a side.
-ZW_STEP = 100.0                                         # waist top
-ZC0 = 160.0                                             # chest full width from here
-ZC1 = 420.0                                             # ... to here
+# ---- pelvis: a PART, on the waist yaw ----
+# The two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23) live in it; its
+# side walls ARE their stator plates; its top plate is the waist-yaw stator
+# plate (the X8 stands face-up inside it, 4 over the hip bodies). Front and
+# rear are hexagons - the bottom corners chamfered off, which lets the hip
+# bodies' lower rims show through at the corners, the way the H2's pelvis pod
+# shows its hip rings. (c) of the H3 programme.
 WA_Y = face_n('hip_pitch', 'stator')[0]                # 94
 WA_X0, WA_X1 = -rad('X15-450') - 10.0, rad('X15-450') + 5.0
+PV_Z0 = ZHP - rad('X15-450') - 7.0
+pt = L('pelvisC', 'top', 'waist_yaw', 'stator', WA_X0 - T, WA_X1 + T, -WA_Y - T, WA_Y + T)
+PV_Z1 = pt.n0                                           # waist stator plate bottom = wall top
+hm = L('pelvisS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, PV_Z0, PV_Z1)
+PV_C = 30.0
+PV_HEX = [(-WA_Y + PV_C, PV_Z0), (WA_Y - PV_C, PV_Z0), (WA_Y, PV_Z0 + PV_C), (WA_Y, PV_Z1),
+          (-WA_Y, PV_Z1), (-WA_Y, PV_Z0 + PV_C)]
+P('pelvisC', 'rear_lo',  'x', WA_X0 - T, WA_X0, 0, 0, 0, 0, poly=PV_HEX)
+P('pelvisC', 'front_lo', 'x', WA_X1, WA_X1 + T, 0, 0, 0, 0, poly=PV_HEX)
+
+# ---- trunk: a chest with CHAMFERS, standing on the waist yaw OUTPUT ----
+# The chest floor is the waist-yaw output plate (stacked on the pelvis top, the
+# pancake). Front and rear are ONE convex octagon each (floor width at the seam,
+# flaring to the chest over 48 mm, full width to z 420, chamfering in to the
+# neck); the side is three plates - a waist chamfer panel, the flat side with
+# its window, a shoulder chamfer. That is the H2's torso (widest at two-thirds
+# height, narrowing to waist and neck) in four folds a side.
+fl = L('trunkC', 'floor', 'waist_yaw', 'output', -WA_X0 - 0.0, 0.0, 0.0, 0.0, outset=T)
+ZF = fl.n1                                              # chest floor top
+FL_Y = 108.0                                            # floor half-width (the seam)
+fl.u0, fl.u1, fl.v0, fl.v1 = -102.0, 97.0, -FL_Y, FL_Y
+ZC0 = 160.0                                             # chest full width from here
+ZC1 = 420.0                                             # ... to here
 CH_Y = 165.0
 CH_X0, CH_X1 = -102.0, 97.0
 NK_Y = 115.0                                            # half-width at the deck
 ZD = ZHEY - T                                           # deck top = head yaw face (the deck is its stator plate)
-hm = L('trunkS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, ZHP - rad('X15-450') - 7.0, ZW_STEP)
 SIDE_WIN = (-60.0, 55.0, ZC0 + 40.0, ZC1 - 40.0)
 P('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZC0, ZC1, slots=[SIDE_WIN])
 P('trunkS', 'side_hem', 'y', CH_Y - T, CH_Y, SIDE_WIN[0] - HEM, SIDE_WIN[1] + HEM,
   SIDE_WIN[2] - HEM, SIDE_WIN[3] + HEM, slots=[SIDE_WIN])
-# chamfer panels: defined flat (y-normal at the side's plane) hanging DOWN from the
-# pivot edge by the slant length, then tilted about x so the far edge lands on the
-# waist wall top (y WA_Y, z ZW_STEP) / the deck edge (y NK_Y, z ZD).
 def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
-    """A side chamfer panel from the side plate's edge (y_edge, z_edge) to (y_far, z_far)."""
+    """A side chamfer panel from the side plate's edge (y_edge, z_edge) to (y_far, z_far):
+    defined flat, hanging from the pivot edge by the slant length, tilted about x."""
     dy, dz = y_far - y_edge, z_far - z_edge
     L_ = math.hypot(dy, dz)
-    ang = math.degrees(math.atan2(dy, dz))             # from +z toward +y
-    # flat: from the pivot, running toward +z by L_ ; then rotate about x by ang
-    # (about x: y' = y cos a - z sin a, z' = y sin a + z cos a; a point at +L along z
-    # lands at (-L sin a, L cos a) -> for dy>0 we need a<0: a = -ang... sign checked
-    # by the assertion below.)
+    ang = math.degrees(math.atan2(dy, dz))
     for a_ in (-ang, ang):
         R_ = _rot_axis('x', a_)
         q = _apply(R_, (0.0, y_edge, z_edge), (0.0, y_edge, z_edge + L_))
@@ -554,16 +567,13 @@ def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
             return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, CH_X0, CH_X1, z_edge, z_edge + L_,
                      tilt=('x', a_, (0.0, y_edge, z_edge)))
     raise AssertionError('chamfer %s: tilt sign' % tag)
-chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, WA_Y + T / 2.0, ZW_STEP, -T / 2.0)
+chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, FL_Y + T / 2.0, ZF, -T / 2.0)
 chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0)
 ss = L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -52.0, 52.0, ZSP - 52.0, ZSP + 52.0)
 P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -30.0, 30.0, CH_Y, ss.n1)
-# waist front/rear: rects below the octagon
-P('trunkC', 'rear_lo',  'x', WA_X0 - T, WA_X0, -WA_Y, WA_Y, hm.v0, ZW_STEP)
-P('trunkC', 'front_lo', 'x', WA_X1, WA_X1 + T, -WA_Y, WA_Y, hm.v0, ZW_STEP)
 FR_WIN = (-60.0, 60.0, ZC0 + 20.0, ZC1 - 20.0)
 FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
-OCT = [(-WA_Y, ZW_STEP), (WA_Y, ZW_STEP), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
+OCT = [(-FL_Y - T, ZF), (FL_Y + T, ZF), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
        (NK_Y + T, ZD), (-NK_Y - T, ZD), (-CH_Y - T, ZC1), (-CH_Y - T, ZC0)]
 P('trunkC', 'rear',      'x', CH_X0 - T, CH_X0, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
 P('trunkC', 'rear_hem',  'x', CH_X0, CH_X0 + T, *FR_HEMR, slots=[FR_WIN])
@@ -586,8 +596,8 @@ L('neck', 'hp_face', 'head_pitch', 'stator', -30.0, 30.0, ZHEP - 30.0, ZHEP + 30
 OWNER = {
     ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
     ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
-    ('trunkS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
-    ('trunkC', 'deck'): 'head_yaw',
+    ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
+    ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw',
     ('hipA', 'pitch_face'): 'hip_pitch', ('hipA', 'roll_face'): 'hip_roll',
     ('hipB', 'roll_out'): 'hip_roll',    ('hipB', 'yaw_face'): 'hip_yaw',
     ('thigh', 'yaw_out'): 'hip_yaw',     ('thigh', 'knee_face'): 'knee', ('thigh', 'top'): 'hip_yaw',
@@ -602,8 +612,8 @@ OWNER = {
 SECOND_OWNER = {
     ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
     ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
-    ('trunkS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
-    ('trunkC', 'deck'): 'head_yaw', ('shank', 'web'): 'ank_pitch', ('shank', 'web'): 'knee'}
+    ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
+    ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw', ('shank', 'web'): 'ank_pitch', ('shank', 'web'): 'knee'}
 
 
 ANGLES = []   # retired with the angle stock

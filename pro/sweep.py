@@ -37,6 +37,7 @@ RANGES = {
     # (0..1.7, arm swinging out and up) is swept here. Elbow is the full range.
     'sho_roll':  (0.0, 1.7),
     'elb_pitch': (-2.3, 0.3),      # forward flexion only (export has the same): folded back it meets the shoulder roll pod
+    'waist_yaw': (-1.0, 1.0),
 }
 
 # which link's plates ride on the child side of each joint (everything distal)
@@ -47,6 +48,7 @@ CHILD_LINKS = {
     'hip_yaw':   ('thigh', 'shank', 'ankle', 'foot'),
     'sho_roll':  ('shoB', 'elbA', 'hand'),
     'elb_pitch': ('elbA', 'hand'),
+    'waist_yaw': ('trunkS', 'trunkC', 'neck', 'head', 'shoA'),
 }
 # actuator BODIES fixed to the child side (their stator is on a child link)
 CHILD_BODIES = {
@@ -56,14 +58,19 @@ CHILD_BODIES = {
     'hip_yaw':   ('knee', 'ank_pitch'),
     'sho_roll':  ('elb_pitch', 'wrist_yaw'),
     'elb_pitch': ('wrist_yaw',),
+    'waist_yaw': ('sho_pitch', 'sho_roll', 'head_yaw', 'head_pitch'),
 }
 # parent-side plates and bodies the child must clear
 PARENT_LINKS = {
     'knee':      ('thigh', 'hipB'),
     'ank_pitch': ('shank', 'thigh'),
     'ank_roll':  ('ankle', 'shank'),
-    'hip_yaw':   ('hipB', 'hipA', 'trunkS', 'trunkC'),
+    'hip_yaw':   ('hipB', 'hipA', 'pelvisS', 'pelvisC', 'trunkS', 'trunkC'),
     'sho_roll':  ('shoA', 'trunkS', 'trunkC'),
+    # the torso over the pelvis. Arms EXCLUDED: hanging straight down they are
+    # beside the hip-roll pods and a 25 deg waist yaw swings them into the pods -
+    # true of a person too, and a pose the controller lifts the arms out of.
+    'waist_yaw': ('pelvisS', 'pelvisC', 'hipA'),
     'elb_pitch': ('shoB', 'shoA'),
 }
 PARENT_BODIES = {
@@ -73,6 +80,7 @@ PARENT_BODIES = {
     'hip_yaw':   ('hip_yaw', 'hip_roll', 'hip_pitch'),
     'sho_roll':  ('sho_roll', 'sho_pitch'),
     'elb_pitch': ('elb_pitch', 'sho_roll'),
+    'waist_yaw': ('waist_yaw', 'hip_pitch', 'hip_roll'),
 }
 
 
@@ -361,7 +369,7 @@ def main():
     print('swept interference through the URDF joint ranges')
     print('=' * 72)
     ok = True
-    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_roll', 'elb_pitch'):
+    for j in ('knee', 'ank_pitch', 'ank_roll', 'hip_yaw', 'sho_roll', 'elb_pitch', 'waist_yaw'):
         d, ml, sl, th = sweep(j, L.PLATES)
         if d < -0.05:
             ok = False

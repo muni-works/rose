@@ -116,7 +116,12 @@ Z = dict(hp=LAY.Z_HIP_P, hr=LAY.Z_HIP_R, hy=LAY.Z_HIP_Y, kn=LAY.Z_KNEE, ap=LAY.Z
          hy2=LAY.Z_HEAD_Y, hp2=LAY.Z_HEAD_P)
 M = {m: LAY.MODEL[m][2] for m in LAY.MODEL}
 
-add_box('Trunk', 28.0, (0.200, 0.300, 0.560), (0.0, 0.0, 0.200))
+# Trunk (above the waist): 2x shoulder pitch + head yaw + waist yaw OUTPUT side
+# structure, 5 kg sheet, 10 kg battery/compute, 1 kg head -> 19.6 kg. Pelvis: the two
+# hip-pitch X15 (7.0) + the waist yaw X8 (1.4) + 2.2 kg sheet.
+add_box('Trunk', 19.6, (0.200, 0.330, 0.420), (0.0, 0.0, 0.330))
+add_box('Pelvis', 10.6, (0.190, 0.200, 0.260), (0.0, 0.0, -0.070 - LAY.Z_WAIST))
+add_joint('Waist_Yaw', 'Trunk', 'Pelvis', (0.0, 0.0, LAY.Z_WAIST), (0, 0, 1), -1.0, 1.0, 'X8-120')
 
 for side, s in (('Left', 1.0), ('Right', -1.0)):
     lo_roll, hi_roll = (-0.5, 1.5) if s > 0 else (-1.5, 0.5)
@@ -139,7 +144,7 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     add_box(ac, M['X6-60'] + 0.5, (0.100, 0.100, ANK_DZ), (0.0, 0.0, -ANK_DZ / 2))
     add_box(ft, 0.6, (0.280, 0.110, 0.022), (0.040, 0.0, -(SOLE - 0.021)), shrink=False)
 
-    add_joint(p,  'Trunk', p, (0.0, s * HIP_Y, Z['hp']), (0, 1, 0), -2.0, 1.6, 'X15-450')
+    add_joint(p,  'Pelvis', p, (0.0, s * HIP_Y, Z['hp'] - LAY.Z_WAIST), (0, 1, 0), -2.0, 1.6, 'X15-450')
     add_joint(r,  p, r, (0.0, dy, Z['hr'] - Z['hp']), (1, 0, 0), lo_roll, hi_roll, 'X12-320')
     add_joint(y,  r, y, (0.0, 0.0, Z['hy'] - Z['hr']), (0, 0, 1), -1.0, 1.0, 'X10-200')
     add_joint('%s_Knee_Pitch' % side, y, sh, (-KNEE_BACK, 0.0, Z['kn'] - Z['hy']), (0, 1, 0), 0.0, 2.3, 'X15-450')

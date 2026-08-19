@@ -281,7 +281,7 @@ def main():
         sys.exit('missing %s - the plate vocabulary module must sit beside the output'
                  % PLATES_MODULE)
 
-    no_mirror = ('neck', 'trunkC', 'head')
+    no_mirror = ('neck', 'trunkC', 'head', 'pelvisC')
     roots = []
     lines.append('\n; ----------------------------------------------------- structure ----')
     # ONE ROOT PER PLATE, not per link. Two reasons. Every plate is a separate
