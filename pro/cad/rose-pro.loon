@@ -30,52 +30,9 @@
 [defparam sheet_t    3.0000 :unit "mm"]
 [defparam bend_r     1.5 :unit "mm"]
 
-; ---------------------------------------------------------------- helpers ----
-; Rounded-rectangle plate, one per normal axis. u/v are the two in-plane axes in
-; x<y<z order, n0..n1 the thickness span. Corner radius r.
-; Built as two overlapping boxes plus four corner cylinders - the classic
-; rounded-rect, and every resulting face is planar or a simple cylinder.
-
-[let plate-x [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate n0 [+ u0 r] v0 [cube t [- [- u1 u0] [* 2.0 r]] [- v1 v0]]]]
-  [let cross [translate n0 u0 [+ v0 r] [cube t [- u1 u0] [- [- v1 v0] [* 2.0 r]]]]]
-  [let cn [fn [cu cv] [translate n0 cu cv [rotate 0.0 90.0 0.0 [cylinder r t]]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-[let plate-y [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate [+ u0 r] n0 v0 [cube [- [- u1 u0] [* 2.0 r]] t [- v1 v0]]]]
-  [let cross [translate u0 n0 [+ v0 r] [cube [- u1 u0] t [- [- v1 v0] [* 2.0 r]]]]]
-  [let cn [fn [cu cv] [translate cu n0 cv [rotate -90.0 0.0 0.0 [cylinder r t]]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-[let plate-z [fn [n0 n1 u0 u1 v0 v1 r]
-  [let t [- n1 n0]]
-  [let core [translate [+ u0 r] v0 n0 [cube [- [- u1 u0] [* 2.0 r]] [- v1 v0] t]]]
-  [let cross [translate u0 [+ v0 r] n0 [cube [- u1 u0] [- [- v1 v0] [* 2.0 r]] t]]]
-  [let cn [fn [cu cv] [translate cu cv n0 [cylinder r t]]]]
-  [pipe core [union cross]
-        [union [cn [+ u0 r] [+ v0 r]]] [union [cn [+ u0 r] [- v1 r]]]
-        [union [cn [- u1 r] [+ v0 r]]] [union [cn [- u1 r] [- v1 r]]]]]]
-
-; Through-bores, overshooting the plate both ways so the cut exits cleanly.
-[let bore-x [fn [d cu cv n0 n1]
-  [translate [- n0 2.0] cu cv [rotate 0.0 90.0 0.0 [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]]
-[let bore-y [fn [d cu cv n0 n1]
-  [translate cu [- n0 2.0] cv [rotate -90.0 0.0 0.0 [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]]
-[let bore-z [fn [d cu cv n0 n1]
-  [translate cu cv [- n0 2.0] [cylinder [/ d 2.0] [+ [- n1 n0] 4.0]]]]]
-
-; Actuator envelope stand-ins - purchased parts, shown for fit not for manufacture.
-[let act-x [fn [d lo hi cu cv] [translate lo cu cv [rotate 0.0 90.0 0.0 [cylinder [/ d 2.0] [- hi lo]]]]]]
-[let act-y [fn [d lo hi cu cv] [translate cu lo cv [rotate -90.0 0.0 0.0 [cylinder [/ d 2.0] [- hi lo]]]]]]
-[let act-z [fn [d lo hi cu cv] [translate cu cv lo [cylinder [/ d 2.0] [- hi lo]]]]]
-
+; Shared plate/bore/actuator vocabulary lives in plates.loon (a loon module,
+; resolved next to this file). This file is roots only.
+[use plates [plate-x plate-y plate-z bore-x bore-y bore-z act-x act-y act-z]]
 
 ; ----------------------------------------------------- structure ----
 
@@ -94,7 +51,7 @@
 [let L_ankle_bendtab
   [plate-x -91.5000 -88.5000 78.0000 130.0000 -588.0000 -538.0000 20.0000]]
 
-[let L_ankle_bendtab
+[let L_ankle_bendtab_2
   [plate-x -91.5000 -88.5000 108.0000 130.0000 -640.0000 -588.0000 8.8000]]
 
 [let R_ankle_ankp_out
@@ -112,7 +69,7 @@
 [let R_ankle_bendtab
   [plate-x -91.5000 -88.5000 -130.0000 -78.0000 -588.0000 -538.0000 20.0000]]
 
-[let R_ankle_bendtab
+[let R_ankle_bendtab_2
   [plate-x -91.5000 -88.5000 -130.0000 -108.0000 -640.0000 -588.0000 8.8000]]
 
 [let L_elbA_elb_out
@@ -290,7 +247,7 @@
 [let L_shoA_bendtab
   [plate-x -36.5000 -33.5000 106.0000 156.0000 208.0000 236.0000 11.2000]]
 
-[let L_shoA_bendtab
+[let L_shoA_bendtab_2
   [plate-x -36.5000 -33.5000 106.0000 121.0000 128.0000 208.0000 6.0000]]
 
 [let R_shoA_shop_out
@@ -304,7 +261,7 @@
 [let R_shoA_bendtab
   [plate-x -36.5000 -33.5000 -156.0000 -106.0000 208.0000 236.0000 11.2000]]
 
-[let R_shoA_bendtab
+[let R_shoA_bendtab_2
   [plate-x -36.5000 -33.5000 -121.0000 -106.0000 128.0000 208.0000 6.0000]]
 
 [let L_shoB_shor_out
@@ -531,12 +488,12 @@
 [root L_ankle_ankr_face "aluminum"]
 [root L_ankle_ankr_lapear "aluminum"]
 [root L_ankle_bendtab "aluminum"]
-[root L_ankle_bendtab "aluminum"]
+[root L_ankle_bendtab_2 "aluminum"]
 [root R_ankle_ankp_out "aluminum"]
 [root R_ankle_ankr_face "aluminum"]
 [root R_ankle_ankr_lapear "aluminum"]
 [root R_ankle_bendtab "aluminum"]
-[root R_ankle_bendtab "aluminum"]
+[root R_ankle_bendtab_2 "aluminum"]
 [root L_elbA_elb_out "aluminum"]
 [root L_elbA_flange_fr "aluminum"]
 [root L_elbA_flange_rr "aluminum"]
@@ -584,11 +541,11 @@
 [root L_shoA_shop_out "aluminum"]
 [root L_shoA_shor_face "aluminum"]
 [root L_shoA_bendtab "aluminum"]
-[root L_shoA_bendtab "aluminum"]
+[root L_shoA_bendtab_2 "aluminum"]
 [root R_shoA_shop_out "aluminum"]
 [root R_shoA_shor_face "aluminum"]
 [root R_shoA_bendtab "aluminum"]
-[root R_shoA_bendtab "aluminum"]
+[root R_shoA_bendtab_2 "aluminum"]
 [root L_shoB_shor_out "aluminum"]
 [root L_shoB_web "aluminum"]
 [root L_shoB_flange_fr "aluminum"]
