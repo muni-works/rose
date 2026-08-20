@@ -23,10 +23,31 @@ hidden for a reason you can state.
 
 ## What the manufacturing constraint already decides
 
-Bent 3 mm 5052 cannot make compound curves. There will never be a smooth shell.
-Rather than apologise for that, make it the language: **fold lines are the
-styling.** A chamfered corner is three brake hits instead of one square corner
-and turns a box into a shaped shell. Facets, not fillets.
+2026-08-20, the skeleton/skin revision: the full-sheet body — even hemmed,
+even chamfered — is a machine you would not put in a room with a child. The
+thesis splits in two:
+
+- **Bones: bent 3 mm 5052.** Structure, load paths, actuator mounts. Fold
+  lines are still the styling HERE, and every earlier rule about bends,
+  bolt circles and swept clearance still governs. The bones stay visible
+  through the skin's windows: the machine remains legibly a machine.
+- **Skin: polymer shells over the bones.** Printed ASA/PETG first (iterate
+  overnight), vacuum-formed ABS when a panel stabilises; 6-8 mm PU foam
+  behind the contact zones. The skin is what a person touches: ISO/TS 15066
+  lives in the skin now, not in hems. Geometry comes from vcad's `[skin r]`
+  rolling-ball operator over the bone solids — **the minimum curvature
+  radius and the safety spec are the same number.** Warm grey, the one
+  desaturated green accent, actuators showing as dark rings in windows.
+
+What retires: hems as the person-facing edge treatment (the skin covers the
+edge; hems survive on the skin's own openings), and the cosmetic sheet the
+H3 pass grew — helmet shell, knee facets, calf shells, chest chamfer panels
+— whose jobs move to plastic that does curvature for free. Net: several kg
+of aluminium off, ~3 kg of polymer on.
+
+Bent 3 mm 5052 still cannot make compound curves — the bones never will. A
+chamfered corner is three brake hits and turns a box into a shaped shell:
+facets, not fillets, for everything structural.
 
 This is also why the plate generator builds rounded rectangles from boxes plus
 corner cylinders rather than filleting a solid — vcad's booleans against a
