@@ -35,6 +35,33 @@ SKIN_T = 3.0       # printed wall
 # the radius is a per-panel number rather than one global.
 PANEL_R = {'thigh': 26.0}
 
+# FORM BLOCKS. A bone group is mostly air: the rolling ball dips into every
+# lightening aperture and between every pair of flanges, so a hollow group
+# skins into a bag rather than a limb. Rather than inflate r (which is the
+# SAFETY number and balloons the whole panel), each hollow panel gets a filler
+# solid inside its bones - form authored with a primitive, the same idea as a
+# subdivision cage, in the vocabulary we have. Numbers are the panel's own
+# plate bounding box, inset so the block never pokes through the sheet.
+# x0 x1 y0 y1 z0 z1, LEFT side; mirrored in y for the right.
+FORM = {
+    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 200.0, 385.0)],   # shoA/shoB channel
+    'forearm':  [(-42.0, 42.0, 226.0, 288.0, 6.0, 258.0)],     # elbA shell interior
+    'chest':    [(-100.0, 96.0, -160.0, 160.0, 120.0, 516.0),  # torso box, inside the walls
+                 (-28.0, 58.0, 158.0, 206.0, 430.0, 512.0)],   # shoulder cap, per side
+    'hand':     [(-40.0, 72.0, 226.0, 285.0, -180.0, -12.0)],
+}
+
+
+def form_exprs(panel, side):
+    out = []
+    for (x0, x1, y0, y1, z0, z1) in FORM.get(panel, ()):
+        for sd in (('L', 'R') if side == 'C' else (side,)):
+            a, b = (y0, y1) if sd == 'L' else (-y1, -y0)
+            out.append('[translate %s %s %s [cube %s %s %s]]'
+                       % (R.fnum(x0), R.fnum(a), R.fnum(z0),
+                          R.fnum(x1 - x0), R.fnum(b - a), R.fnum(z1 - z0)))
+    return out
+
 # panel -> (bone links, actuator joints) wrapped together. Split where joints
 # move: a panel never spans a joint (the skin would tear the sweep).
 PANELS = {
@@ -53,7 +80,7 @@ PANELS = {
 # shoC excluded too: a group of ONLY thin tilted plates (no bulk) vanishes in
 # the SDF at cell = r/6 (3 mm plate ~ 1.5 cells) - the kernel's documented
 # thin-feature limit. The cowl is already a cover; it stays bare sheet.
-'chest':   (('trunkC', 'trunkS'), ('waist_yaw',)),
+'chest':   (('trunkC', 'trunkS', 'shoC'), ('waist_yaw',)),
     'upperarm': (('shoA', 'shoB'), ('sho_roll', 'elb_pitch')),
     'forearm': (('elbA',), ('wrist_yaw',)),
     'hand':    (('hand',), ()),
@@ -127,6 +154,7 @@ def main():
                     if j == jt and sd in want:
                         members.append('act_' + an)
                         use.setdefault('__act__', set()).add('act_' + an)
+            members += form_exprs(panel, side)
             nm = 'skin_%s_%s' % (side, panel)
             # carry panel/side WITH the root: the emission loop below used to read
             # the loop variables, which by then held the LAST panel - so every
