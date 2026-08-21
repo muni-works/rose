@@ -27,6 +27,14 @@ SKIN_R = 12.0      # rolling-ball radius, mm: no skin curvature tighter than thi
 SKIN_GAP = 6.0     # stand-off from the bones: foam + compliance travel
 SKIN_T = 3.0       # printed wall
 
+# Per-panel radius override. The ball must be BIGGER than any aperture it is
+# meant to span, or it rolls through: the thigh flange window is 65 x 48, and a
+# 12 mm ball (24 across) tunnelled into it and left a hole in the skin, while
+# the same ball fell into the jog step and nearly severed the panel. r >= 24
+# spans both. This is the rolling-ball rule stated in reverse, and it is why
+# the radius is a per-panel number rather than one global.
+PANEL_R = {'thigh': 26.0}
+
 # panel -> (bone links, actuator joints) wrapped together. Split where joints
 # move: a panel never spans a joint (the skin would tear the sweep).
 PANELS = {
@@ -120,7 +128,11 @@ def main():
                         members.append('act_' + an)
                         use.setdefault('__act__', set()).add('act_' + an)
             nm = 'skin_%s_%s' % (side, panel)
-            roots.append((nm, members))
+            # carry panel/side WITH the root: the emission loop below used to read
+            # the loop variables, which by then held the LAST panel - so every
+            # shell got the head's visor cut (a no-op off the head) and the knee
+            # ring, calf slot and per-panel radius never applied at all.
+            roots.append((nm, members, panel, side))
 
     for lk in sorted(use):
         if lk == '__act__':
@@ -128,11 +140,11 @@ def main():
         else:
             lines.append('[use links.%s [%s]]' % (lk, ' '.join(sorted(use[lk]))))
     lines.append('')
-    for nm, members in roots:
+    for nm, members, panel, side in roots:
         # loon has no keyword args: [skin-gap r g #[bones...]] (vcad claude/loon-skin-shell)
         shellx = ('[shell %s [skin-gap %s %s #[%s]]]'
-                  % (R.fnum(SKIN_T), R.fnum(SKIN_R), R.fnum(SKIN_GAP),
-                     '\n    '.join(members)))
+                  % (R.fnum(SKIN_T), R.fnum(PANEL_R.get(panel, SKIN_R)),
+                     R.fnum(SKIN_GAP), '\n    '.join(members)))
         cuts = windows(panel, side)
         for c in cuts:
             shellx = '[difference %s\n  %s]' % (c, shellx)
@@ -156,8 +168,8 @@ def main():
            ['rod_%s_%s' % (sd, nm) for (nm, x, y, z0, z1) in getattr(L, 'RODS', []) for sd in ('L', 'R')]
     asm.append('[use actuators [%s]]' % ' '.join(acts))
     asm += ['[root %s "actuator"]' % n for n in acts]
-    asm.append('[use skin [%s]]' % ' '.join(nm for nm, _ in roots))
-    asm += ['[root %s "skin"]' % nm for nm, _ in roots]
+    asm.append('[use skin [%s]]' % ' '.join(r[0] for r in roots))
+    asm += ['[root %s "skin"]' % r[0] for r in roots]
     out2 = os.path.join(CAD, 'rose-pro-skinned.loon')
     open(out2, 'w').write('\n'.join(asm) + '\n')
     print('wrote %s' % out2)
