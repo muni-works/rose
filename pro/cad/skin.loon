@@ -163,37 +163,43 @@
     [translate -28.0000 158.0000 430.0000 [cube 86.0000 48.0000 82.0000]]
     [translate -28.0000 -206.0000 430.0000 [cube 86.0000 48.0000 82.0000]]]]]]]
 [root skin_C_chest "skin"]
-[let skin_L_upperarm
+[let skin_L_shoulder
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_shoA_bendtab
     L_shoA_bendtab_2
     L_shoA_shop_out
     L_shoA_shor_face
-    L_shoB_elb_face
+    act_L_sho_roll
+    [translate -52.0000 214.0000 330.0000 [cube 80.0000 78.0000 140.0000]]]]]]
+[root skin_L_shoulder "skin"]
+[let skin_R_shoulder
+  [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_shoA_bendtab
+    R_shoA_bendtab_2
+    R_shoA_shop_out
+    R_shoA_shor_face
+    act_R_sho_roll
+    [translate -52.0000 -292.0000 330.0000 [cube 80.0000 78.0000 140.0000]]]]]]
+[root skin_R_shoulder "skin"]
+[let skin_L_upperarm
+  [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_shoB_elb_face
     L_shoB_elb_lap
     L_shoB_elb_shelf
     L_shoB_flange_fr
     L_shoB_flange_rr
     L_shoB_shor_out
     L_shoB_web
-    act_L_sho_roll
     act_L_elb_pitch
-    [translate -58.0000 232.0000 200.0000 [cube 108.0000 70.0000 185.0000]]]]]]
+    [translate -58.0000 232.0000 200.0000 [cube 108.0000 70.0000 172.0000]]]]]]
 [root skin_L_upperarm "skin"]
 [let skin_R_upperarm
-  [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_shoA_bendtab
-    R_shoA_bendtab_2
-    R_shoA_shop_out
-    R_shoA_shor_face
-    R_shoB_elb_face
+  [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_shoB_elb_face
     R_shoB_elb_lap
     R_shoB_elb_shelf
     R_shoB_flange_fr
     R_shoB_flange_rr
     R_shoB_shor_out
     R_shoB_web
-    act_R_sho_roll
     act_R_elb_pitch
-    [translate -58.0000 -302.0000 200.0000 [cube 108.0000 70.0000 185.0000]]]]]]
+    [translate -58.0000 -302.0000 200.0000 [cube 108.0000 70.0000 172.0000]]]]]]
 [root skin_R_upperarm "skin"]
 [let skin_L_forearm
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_elbA_elb_out

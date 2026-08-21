@@ -44,7 +44,8 @@ PANEL_R = {'thigh': 26.0}
 # plate bounding box, inset so the block never pokes through the sheet.
 # x0 x1 y0 y1 z0 z1, LEFT side; mirrored in y for the right.
 FORM = {
-    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 200.0, 385.0)],   # shoA/shoB channel
+    'shoulder': [(-52.0, 28.0, 214.0, 292.0, 330.0, 470.0)],   # shoA, outboard of the cowl
+    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 200.0, 372.0)],   # shoB channel
     'forearm':  [(-42.0, 42.0, 226.0, 288.0, 6.0, 258.0)],     # elbA shell interior
     'chest':    [(-100.0, 96.0, -160.0, 160.0, 120.0, 516.0),  # torso box, inside the walls
                  (-28.0, 58.0, 158.0, 206.0, 430.0, 512.0)],   # shoulder cap, per side
@@ -81,7 +82,10 @@ PANELS = {
 # the SDF at cell = r/6 (3 mm plate ~ 1.5 cells) - the kernel's documented
 # thin-feature limit. The cowl is already a cover; it stays bare sheet.
 'chest':   (('trunkC', 'trunkS', 'shoC'), ('waist_yaw',)),
-    'upperarm': (('shoA', 'shoB'), ('sho_roll', 'elb_pitch')),
+    # shoA and shoB straddle the shoulder ROLL joint - one panel over both would
+    # tear when the arm abducts. Two panels, split on the joint, per the rule.
+    'shoulder': (('shoA',), ('sho_roll',)),
+    'upperarm': (('shoB',), ('elb_pitch',)),
     'forearm': (('elbA',), ('wrist_yaw',)),
     'hand':    (('hand',), ()),
     'head':    (('head', 'neck'), ('head_pitch',)),
