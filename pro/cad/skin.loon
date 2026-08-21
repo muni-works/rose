@@ -8,25 +8,23 @@
 [use links.ankle [L_ankle_jaw_fr L_ankle_jaw_rr L_ankle_spine R_ankle_jaw_fr R_ankle_jaw_rr R_ankle_spine]]
 [use links.crankA [L_crankA_bar R_crankA_bar]]
 [use links.crankB [L_crankB_bar R_crankB_bar]]
-[use links.elbA [L_elbA_elb_out L_elbA_hem_fr L_elbA_hem_rr L_elbA_shell L_elbA_shell_chf L_elbA_wall_fr L_elbA_wall_lo_fr L_elbA_wall_lo_rr L_elbA_wall_rr L_elbA_wrist_face R_elbA_elb_out R_elbA_hem_fr R_elbA_hem_rr R_elbA_shell R_elbA_shell_chf R_elbA_wall_fr R_elbA_wall_lo_fr R_elbA_wall_lo_rr R_elbA_wall_rr R_elbA_wrist_face]]
+[use links.elbA [L_elbA_elb_out L_elbA_shell L_elbA_shell_chf L_elbA_wall_fr L_elbA_wall_lo_fr L_elbA_wall_lo_rr L_elbA_wall_rr L_elbA_wrist_face R_elbA_elb_out R_elbA_shell R_elbA_shell_chf R_elbA_wall_fr R_elbA_wall_lo_fr R_elbA_wall_lo_rr R_elbA_wall_rr R_elbA_wrist_face]]
 [use links.foot [L_foot_col_foot L_foot_column L_foot_heel L_foot_sole L_foot_toe L_foot_wall_in L_foot_wall_out R_foot_col_foot R_foot_column R_foot_heel R_foot_sole R_foot_toe R_foot_wall_in R_foot_wall_out]]
-[use links.hand [L_hand_back L_hand_chamfer L_hand_hem_back L_hand_hem_palm L_hand_palm L_hand_thumb_bot L_hand_thumb_out L_hand_thumb_top L_hand_wrist_out R_hand_back R_hand_chamfer R_hand_hem_back R_hand_hem_palm R_hand_palm R_hand_thumb_bot R_hand_thumb_out R_hand_thumb_top R_hand_wrist_out]]
-[use links.head [C_head_crown_bk C_head_crown_fr C_head_crown_top C_head_eyes C_head_face C_head_flank_l C_head_flank_r C_head_hp_out C_head_jaw C_head_rear C_head_shelf C_head_visor_hem]]
+[use links.hand [L_hand_back L_hand_chamfer L_hand_palm L_hand_thumb_bot L_hand_thumb_out L_hand_thumb_top L_hand_wrist_out R_hand_back R_hand_chamfer R_hand_palm R_hand_thumb_bot R_hand_thumb_out R_hand_thumb_top R_hand_wrist_out]]
+[use links.head [C_head_crown_bk C_head_crown_fr C_head_crown_top C_head_eyes C_head_face C_head_flank_l C_head_flank_r C_head_hp_out C_head_jaw C_head_rear C_head_shelf]]
 [use links.neck [C_neck_foot C_neck_hp_face C_neck_hy_out]]
 [use links.pelvisC [C_pelvisC_front_ch C_pelvisC_front_lo C_pelvisC_rear_ch C_pelvisC_rear_lo C_pelvisC_top]]
 [use links.shank [L_shank_calf_front L_shank_calf_in L_shank_calf_lap_bot L_shank_calf_lap_top L_shank_calf_taper L_shank_flange_fr L_shank_fork_bridge_in L_shank_fork_bridge_out L_shank_fork_in L_shank_fork_lap_in L_shank_fork_lap_out L_shank_fork_out L_shank_web R_shank_calf_front R_shank_calf_in R_shank_calf_lap_bot R_shank_calf_lap_top R_shank_calf_taper R_shank_flange_fr R_shank_fork_bridge_in R_shank_fork_bridge_out R_shank_fork_in R_shank_fork_lap_in R_shank_fork_lap_out R_shank_fork_out R_shank_web]]
 [use links.shoA [L_shoA_bendtab L_shoA_bendtab_2 L_shoA_shop_out L_shoA_shor_face R_shoA_bendtab R_shoA_bendtab_2 R_shoA_shop_out R_shoA_shor_face]]
-[use links.shoB [L_shoB_elb_face L_shoB_elb_lap L_shoB_elb_shelf L_shoB_flange_fr L_shoB_flange_rr L_shoB_hem_fr L_shoB_hem_rr L_shoB_shor_out L_shoB_web R_shoB_elb_face R_shoB_elb_lap R_shoB_elb_shelf R_shoB_flange_fr R_shoB_flange_rr R_shoB_hem_fr R_shoB_hem_rr R_shoB_shor_out R_shoB_web]]
-[use links.thigh [L_thigh_flange_in L_thigh_flange_out L_thigh_hem_in L_thigh_hem_out L_thigh_knee_face L_thigh_knee_shroud-20 L_thigh_knee_shroud100 L_thigh_knee_shroud20 L_thigh_knee_shroud60 L_thigh_shelf L_thigh_top L_thigh_web L_thigh_web_lo L_thigh_yaw_out R_thigh_flange_in R_thigh_flange_out R_thigh_hem_in R_thigh_hem_out R_thigh_knee_face R_thigh_knee_shroud-20 R_thigh_knee_shroud100 R_thigh_knee_shroud20 R_thigh_knee_shroud60 R_thigh_shelf R_thigh_top R_thigh_web R_thigh_web_lo R_thigh_yaw_out]]
-[use links.trunkC [C_trunkC_deck C_trunkC_floor C_trunkC_front_hem C_trunkC_front_lo C_trunkC_front_up C_trunkC_rear_hem C_trunkC_rear_lo C_trunkC_rear_up]]
+[use links.shoB [L_shoB_elb_face L_shoB_elb_lap L_shoB_elb_shelf L_shoB_flange_fr L_shoB_flange_rr L_shoB_shor_out L_shoB_web R_shoB_elb_face R_shoB_elb_lap R_shoB_elb_shelf R_shoB_flange_fr R_shoB_flange_rr R_shoB_shor_out R_shoB_web]]
+[use links.thigh [L_thigh_flange_in L_thigh_flange_out L_thigh_knee_face L_thigh_knee_shroud-20 L_thigh_knee_shroud100 L_thigh_knee_shroud20 L_thigh_knee_shroud60 L_thigh_shelf L_thigh_top L_thigh_web L_thigh_web_lo L_thigh_yaw_out R_thigh_flange_in R_thigh_flange_out R_thigh_knee_face R_thigh_knee_shroud-20 R_thigh_knee_shroud100 R_thigh_knee_shroud20 R_thigh_knee_shroud60 R_thigh_shelf R_thigh_top R_thigh_web R_thigh_web_lo R_thigh_yaw_out]]
+[use links.trunkC [C_trunkC_deck C_trunkC_floor C_trunkC_front_lo C_trunkC_front_up C_trunkC_rear_lo C_trunkC_rear_up]]
 [use links.trunkS [L_trunkS_outrigger L_trunkS_sho_chamfer L_trunkS_sho_stat L_trunkS_side L_trunkS_side_hem L_trunkS_waist L_trunkS_waist_chamfer R_trunkS_outrigger R_trunkS_sho_chamfer R_trunkS_sho_stat R_trunkS_side R_trunkS_side_hem R_trunkS_waist R_trunkS_waist_chamfer]]
 
 [let skin_L_thigh
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_thigh_flange_in
     L_thigh_flange_out
-    L_thigh_hem_in
-    L_thigh_hem_out
     L_thigh_knee_face
     L_thigh_knee_shroud-20
     L_thigh_knee_shroud100
@@ -44,8 +42,6 @@
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_thigh_flange_in
     R_thigh_flange_out
-    R_thigh_hem_in
-    R_thigh_hem_out
     R_thigh_knee_face
     R_thigh_knee_shroud-20
     R_thigh_knee_shroud100
@@ -139,10 +135,8 @@
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[C_trunkC_deck
     C_trunkC_floor
-    C_trunkC_front_hem
     C_trunkC_front_lo
     C_trunkC_front_up
-    C_trunkC_rear_hem
     C_trunkC_rear_lo
     C_trunkC_rear_up
     L_trunkS_outrigger
@@ -172,8 +166,6 @@
     L_shoB_elb_shelf
     L_shoB_flange_fr
     L_shoB_flange_rr
-    L_shoB_hem_fr
-    L_shoB_hem_rr
     L_shoB_shor_out
     L_shoB_web
     act_L_sho_roll
@@ -190,8 +182,6 @@
     R_shoB_elb_shelf
     R_shoB_flange_fr
     R_shoB_flange_rr
-    R_shoB_hem_fr
-    R_shoB_hem_rr
     R_shoB_shor_out
     R_shoB_web
     act_R_sho_roll
@@ -200,8 +190,6 @@
 [let skin_L_forearm
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_elbA_elb_out
-    L_elbA_hem_fr
-    L_elbA_hem_rr
     L_elbA_shell
     L_elbA_shell_chf
     L_elbA_wall_fr
@@ -214,8 +202,6 @@
 [let skin_R_forearm
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_elbA_elb_out
-    R_elbA_hem_fr
-    R_elbA_hem_rr
     R_elbA_shell
     R_elbA_shell_chf
     R_elbA_wall_fr
@@ -229,8 +215,6 @@
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_hand_back
     L_hand_chamfer
-    L_hand_hem_back
-    L_hand_hem_palm
     L_hand_palm
     L_hand_thumb_bot
     L_hand_thumb_out
@@ -241,8 +225,6 @@
   [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_hand_back
     R_hand_chamfer
-    R_hand_hem_back
-    R_hand_hem_palm
     R_hand_palm
     R_hand_thumb_bot
     R_hand_thumb_out
@@ -262,7 +244,6 @@
     C_head_jaw
     C_head_rear
     C_head_shelf
-    C_head_visor_hem
     C_neck_foot
     C_neck_hp_face
     C_neck_hy_out
