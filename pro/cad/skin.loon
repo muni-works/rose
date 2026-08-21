@@ -4,7 +4,7 @@
 ; the same number.
 [material "skin" 0.82 0.80 0.76 0.35 0.15]
 
-[use actuators [act_C_head_pitch act_C_waist_yaw act_L_ank_mA act_L_ank_mB act_L_ank_roll act_L_elb_pitch act_L_hip_pitch act_L_hip_roll act_L_hip_yaw act_L_knee act_L_sho_roll act_L_wrist_yaw act_R_ank_mA act_R_ank_mB act_R_ank_roll act_R_elb_pitch act_R_hip_pitch act_R_hip_roll act_R_hip_yaw act_R_knee act_R_sho_roll act_R_wrist_yaw]]
+[use actuators [act_C_head_pitch act_C_waist_yaw act_L_ank_mA act_L_ank_mB act_L_ank_roll act_L_elb_pitch act_L_hip_yaw act_L_knee act_L_sho_roll act_L_wrist_yaw act_R_ank_mA act_R_ank_mB act_R_ank_roll act_R_elb_pitch act_R_hip_yaw act_R_knee act_R_sho_roll act_R_wrist_yaw]]
 [use links.ankle [L_ankle_jaw_fr L_ankle_jaw_rr L_ankle_spine R_ankle_jaw_fr R_ankle_jaw_rr R_ankle_spine]]
 [use links.crankA [L_crankA_bar R_crankA_bar]]
 [use links.crankB [L_crankB_bar R_crankB_bar]]
@@ -12,11 +12,8 @@
 [use links.foot [L_foot_col_foot L_foot_column L_foot_heel L_foot_sole L_foot_toe L_foot_wall_in L_foot_wall_out R_foot_col_foot R_foot_column R_foot_heel R_foot_sole R_foot_toe R_foot_wall_in R_foot_wall_out]]
 [use links.hand [L_hand_back L_hand_chamfer L_hand_hem_back L_hand_hem_palm L_hand_palm L_hand_thumb_bot L_hand_thumb_out L_hand_thumb_top L_hand_wrist_out R_hand_back R_hand_chamfer R_hand_hem_back R_hand_hem_palm R_hand_palm R_hand_thumb_bot R_hand_thumb_out R_hand_thumb_top R_hand_wrist_out]]
 [use links.head [C_head_crown_bk C_head_crown_fr C_head_crown_top C_head_eyes C_head_face C_head_flank_l C_head_flank_r C_head_hp_out C_head_jaw C_head_rear C_head_shelf C_head_visor_hem]]
-[use links.hipA [L_hipA_pitch_face L_hipA_roll_face R_hipA_pitch_face R_hipA_roll_face]]
-[use links.hipB [L_hipB_bridge L_hipB_leg L_hipB_roll_out L_hipB_yaw_face R_hipB_bridge R_hipB_leg R_hipB_roll_out R_hipB_yaw_face]]
 [use links.neck [C_neck_foot C_neck_hp_face C_neck_hy_out]]
 [use links.pelvisC [C_pelvisC_front_ch C_pelvisC_front_lo C_pelvisC_rear_ch C_pelvisC_rear_lo C_pelvisC_top]]
-[use links.pelvisS [L_pelvisS_hip_mount R_pelvisS_hip_mount]]
 [use links.shank [L_shank_calf_front L_shank_calf_in L_shank_calf_lap_bot L_shank_calf_lap_top L_shank_calf_taper L_shank_flange_fr L_shank_fork_bridge_in L_shank_fork_bridge_out L_shank_fork_in L_shank_fork_lap_in L_shank_fork_lap_out L_shank_fork_out L_shank_web R_shank_calf_front R_shank_calf_in R_shank_calf_lap_bot R_shank_calf_lap_top R_shank_calf_taper R_shank_flange_fr R_shank_fork_bridge_in R_shank_fork_bridge_out R_shank_fork_in R_shank_fork_lap_in R_shank_fork_lap_out R_shank_fork_out R_shank_web]]
 [use links.shoA [L_shoA_bendtab L_shoA_bendtab_2 L_shoA_shop_out L_shoA_shor_face R_shoA_bendtab R_shoA_bendtab_2 R_shoA_shop_out R_shoA_shor_face]]
 [use links.shoB [L_shoB_elb_face L_shoB_elb_lap L_shoB_elb_shelf L_shoB_flange_fr L_shoB_flange_rr L_shoB_hem_fr L_shoB_hem_rr L_shoB_shor_out L_shoB_web R_shoB_elb_face R_shoB_elb_lap R_shoB_elb_shelf R_shoB_flange_fr R_shoB_flange_rr R_shoB_hem_fr R_shoB_hem_rr R_shoB_shor_out R_shoB_web]]
@@ -25,6 +22,7 @@
 [use links.trunkS [L_trunkS_outrigger L_trunkS_sho_chamfer L_trunkS_sho_stat L_trunkS_side L_trunkS_side_hem L_trunkS_waist L_trunkS_waist_chamfer R_trunkS_outrigger R_trunkS_sho_chamfer R_trunkS_sho_stat R_trunkS_side R_trunkS_side_hem R_trunkS_waist R_trunkS_waist_chamfer]]
 
 [let skin_L_thigh
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_thigh_flange_in
     L_thigh_flange_out
     L_thigh_hem_in
@@ -40,9 +38,10 @@
     L_thigh_web_lo
     L_thigh_yaw_out
     act_L_hip_yaw
-    act_L_knee]]]]
+    act_L_knee]]]]]
 [root skin_L_thigh "skin"]
 [let skin_R_thigh
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_thigh_flange_in
     R_thigh_flange_out
     R_thigh_hem_in
@@ -58,9 +57,10 @@
     R_thigh_web_lo
     R_thigh_yaw_out
     act_R_hip_yaw
-    act_R_knee]]]]
+    act_R_knee]]]]]
 [root skin_R_thigh "skin"]
 [let skin_L_calf
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_shank_calf_front
     L_shank_calf_in
     L_shank_calf_lap_bot
@@ -77,9 +77,10 @@
     L_crankA_bar
     L_crankB_bar
     act_L_ank_mA
-    act_L_ank_mB]]]]
+    act_L_ank_mB]]]]]
 [root skin_L_calf "skin"]
 [let skin_R_calf
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_shank_calf_front
     R_shank_calf_in
     R_shank_calf_lap_bot
@@ -96,9 +97,10 @@
     R_crankA_bar
     R_crankB_bar
     act_R_ank_mA
-    act_R_ank_mB]]]]
+    act_R_ank_mB]]]]]
 [root skin_R_calf "skin"]
 [let skin_L_foot
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_foot_col_foot
     L_foot_column
     L_foot_heel
@@ -109,9 +111,10 @@
     L_ankle_jaw_fr
     L_ankle_jaw_rr
     L_ankle_spine
-    act_L_ank_roll]]]]
+    act_L_ank_roll]]]]]
 [root skin_L_foot "skin"]
 [let skin_R_foot
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_foot_col_foot
     R_foot_column
     R_foot_heel
@@ -122,34 +125,18 @@
     R_ankle_jaw_fr
     R_ankle_jaw_rr
     R_ankle_spine
-    act_R_ank_roll]]]]
+    act_R_ank_roll]]]]]
 [root skin_R_foot "skin"]
 [let skin_C_pelvis
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[C_pelvisC_front_ch
     C_pelvisC_front_lo
     C_pelvisC_rear_ch
     C_pelvisC_rear_lo
-    C_pelvisC_top
-    L_pelvisS_hip_mount
-    R_pelvisS_hip_mount
-    L_hipA_pitch_face
-    L_hipA_roll_face
-    R_hipA_pitch_face
-    R_hipA_roll_face
-    L_hipB_bridge
-    L_hipB_leg
-    L_hipB_roll_out
-    L_hipB_yaw_face
-    R_hipB_bridge
-    R_hipB_leg
-    R_hipB_roll_out
-    R_hipB_yaw_face
-    act_L_hip_pitch
-    act_R_hip_pitch
-    act_L_hip_roll
-    act_R_hip_roll]]]]
+    C_pelvisC_top]]]]]
 [root skin_C_pelvis "skin"]
 [let skin_C_chest
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[C_trunkC_deck
     C_trunkC_floor
     C_trunkC_front_hem
@@ -172,9 +159,10 @@
     R_trunkS_side_hem
     R_trunkS_waist
     R_trunkS_waist_chamfer
-    act_C_waist_yaw]]]]
+    act_C_waist_yaw]]]]]
 [root skin_C_chest "skin"]
 [let skin_L_upperarm
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_shoA_bendtab
     L_shoA_bendtab_2
     L_shoA_shop_out
@@ -189,9 +177,10 @@
     L_shoB_shor_out
     L_shoB_web
     act_L_sho_roll
-    act_L_elb_pitch]]]]
+    act_L_elb_pitch]]]]]
 [root skin_L_upperarm "skin"]
 [let skin_R_upperarm
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_shoA_bendtab
     R_shoA_bendtab_2
     R_shoA_shop_out
@@ -206,9 +195,10 @@
     R_shoB_shor_out
     R_shoB_web
     act_R_sho_roll
-    act_R_elb_pitch]]]]
+    act_R_elb_pitch]]]]]
 [root skin_R_upperarm "skin"]
 [let skin_L_forearm
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_elbA_elb_out
     L_elbA_hem_fr
     L_elbA_hem_rr
@@ -219,9 +209,10 @@
     L_elbA_wall_lo_rr
     L_elbA_wall_rr
     L_elbA_wrist_face
-    act_L_wrist_yaw]]]]
+    act_L_wrist_yaw]]]]]
 [root skin_L_forearm "skin"]
 [let skin_R_forearm
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_elbA_elb_out
     R_elbA_hem_fr
     R_elbA_hem_rr
@@ -232,9 +223,10 @@
     R_elbA_wall_lo_rr
     R_elbA_wall_rr
     R_elbA_wrist_face
-    act_R_wrist_yaw]]]]
+    act_R_wrist_yaw]]]]]
 [root skin_R_forearm "skin"]
 [let skin_L_hand
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[L_hand_back
     L_hand_chamfer
     L_hand_hem_back
@@ -243,9 +235,10 @@
     L_hand_thumb_bot
     L_hand_thumb_out
     L_hand_thumb_top
-    L_hand_wrist_out]]]]
+    L_hand_wrist_out]]]]]
 [root skin_L_hand "skin"]
 [let skin_R_hand
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[R_hand_back
     R_hand_chamfer
     R_hand_hem_back
@@ -254,9 +247,10 @@
     R_hand_thumb_bot
     R_hand_thumb_out
     R_hand_thumb_top
-    R_hand_wrist_out]]]]
+    R_hand_wrist_out]]]]]
 [root skin_R_hand "skin"]
 [let skin_C_head
+  [difference [translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]
   [shell 3.0000 [skin-gap 12.0000 6.0000 #[C_head_crown_bk
     C_head_crown_fr
     C_head_crown_top
@@ -272,5 +266,5 @@
     C_neck_foot
     C_neck_hp_face
     C_neck_hy_out
-    act_C_head_pitch]]]]
+    act_C_head_pitch]]]]]
 [root skin_C_head "skin"]

@@ -33,7 +33,13 @@ PANELS = {
     'thigh':   (('thigh',), ('hip_yaw', 'knee')),
     'calf':    (('shank', 'crankA', 'crankB'), ('ank_mA', 'ank_mB')),
     'foot':    (('foot', 'ankle'), ('ank_roll',)),
-    'pelvis':  (('pelvisC', 'pelvisS', 'hipA', 'hipB'), ('hip_pitch', 'hip_roll')),
+    # pelvisS/hipA/hipB excluded: thin plates outside the pod skinned into
+    # X-shaped webs at each hip (thin-feature aliasing rendered INTO geometry
+    # this time). The pod panels + the two actuator bodies carry the form.
+    # actuators excluded as well: the closing BRIDGES the two crossed hip
+    # cylinders into X-shaped webs (rolling ball in the crotch of a cross).
+    # The pod alone is the skin; the hip cans stay dark - the joint reveal.
+    'pelvis':  (('pelvisC',), ()),
     # sho_pitch cans excluded: they stretched the grid past the 40M cap and the
 # panel evaluated EMPTY (refused resolution). shoC's own cowl covers them.
 # shoC excluded too: a group of ONLY thin tilted plates (no bulk) vanishes in
@@ -49,6 +55,29 @@ PANELS = {
 NO_MIRROR = ('neck', 'trunkC', 'head', 'pelvisC')
 # panels that are one centred shell, not an L/R pair
 CENTRED = ('pelvis', 'chest', 'head')
+
+# WINDOWS: cuts through the finished shell, per panel, side-aware. Reveals,
+# not decoration: each shows the joint or mechanism underneath (rule 3 in the
+# skeleton/skin thesis). Coordinates derive from the plate table read above.
+def windows(panel, side):
+    sgn = -1.0 if side == 'R' else 1.0
+    if panel == 'thigh':
+        # knee ring: a through-cylinder about the knee axis, r 92 over the D166
+        # can - the dark knee disc and the bones behind it read through
+        y0, y1 = (60.0, 300.0) if side == 'L' else (-300.0, -60.0)
+        return ['[translate -60.0 %s -465.0 [rotate -90.0 0.0 0.0 [cylinder 92.0 %s]]]'
+                % (R.fnum(y0), R.fnum(y1 - y0))]
+    if panel == 'calf':
+        # rear slot: the pushrods and cranks stay visible (they explain)
+        return ['[translate -230.0 %s -940.0 [cube 90.0 90.0 330.0]]'
+                % R.fnum(sgn * 164.0 - 45.0)]
+    if panel == 'chest':
+        # the chest window, following the bones' own front aperture
+        return ['[translate 40.0 -58.0 215.0 [cube 90.0 116.0 115.0]]']
+    if panel == 'head':
+        # visor: one wide slot across the stereo pair
+        return ['[translate 30.0 -62.0 610.0 [cube 110.0 124.0 38.0]]']
+    return []
 
 
 def names_for(link, side, groups):
@@ -101,9 +130,13 @@ def main():
     lines.append('')
     for nm, members in roots:
         # loon has no keyword args: [skin-gap r g #[bones...]] (vcad claude/loon-skin-shell)
-        lines.append('[let %s\n  [shell %s [skin-gap %s %s #[%s]]]]'
-                     % (nm, R.fnum(SKIN_T), R.fnum(SKIN_R), R.fnum(SKIN_GAP),
-                        '\n    '.join(members)))
+        shellx = ('[shell %s [skin-gap %s %s #[%s]]]'
+                  % (R.fnum(SKIN_T), R.fnum(SKIN_R), R.fnum(SKIN_GAP),
+                     '\n    '.join(members)))
+        cuts = windows(panel, side)
+        for c in cuts:
+            shellx = '[difference %s\n  %s]' % (c, shellx)
+        lines.append('[let %s\n  %s]' % (nm, shellx))
         lines.append('[root %s "skin"]' % nm)
 
     out = os.path.join(CAD, 'skin.loon')
