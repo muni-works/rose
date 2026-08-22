@@ -95,17 +95,75 @@ NO_MIRROR = ('neck', 'trunkC', 'head', 'pelvisC')
 # panels that are one centred shell, not an L/R pair
 CENTRED = ('pelvis', 'chest', 'head')
 
+# SEAMS. A joint is a GAP in the skin, not a butt joint: both panels either
+# side are cut back by a cylinder about the joint's own axis, so the gap is
+# invariant under the rotation - it cannot close at any angle in the range.
+# That is what skin_sweep.py was built to prove, and what it found missing:
+# adjacent panels overlapped at 8 of 9 joints, by 12 mm where the bones merely
+# touch (both skins grow SKIN_GAP toward each other) and by 40+ where my form
+# blocks crossed. Radius = the joint body's own radius + SKIN_GAP + 6 mm of
+# air, so the actuator ring shows in the gap - the reveal and the clearance
+# are the same feature.
+SEAM = {                       # joint -> (radius, half-length along the axis)
+    'knee':       (95.0, 200.0),
+    'elb_pitch':  (54.0, 120.0),
+    'wrist_yaw':  (42.0, 120.0),
+    'sho_roll':   (54.0, 120.0),
+    'sho_pitch':  (60.0, 200.0),
+    'hip_pitch':  (95.0, 200.0),
+    'waist_yaw':  (60.0, 200.0),
+    'head_pitch': (42.0, 120.0),
+}
+# which joints cut which panels (both sides of every joint)
+SEAM_PANELS = {
+    'knee':       ('thigh', 'calf'),
+    'elb_pitch':  ('upperarm', 'forearm'),
+    'wrist_yaw':  ('forearm', 'hand'),
+    'sho_roll':   ('shoulder', 'upperarm'),
+    'sho_pitch':  ('chest', 'shoulder'),
+    'hip_pitch':  ('pelvis', 'thigh'),
+    'waist_yaw':  ('chest', 'pelvis'),
+    'head_pitch': ('head', 'chest'),
+}
+
+
+def seam_exprs(panel, side):
+    out = []
+    for joint, panels in SEAM_PANELS.items():
+        if panel not in panels:
+            continue
+        r, half = SEAM[joint]
+        J = L.JOINTS[joint]
+        for sd in (('L', 'R') if side == 'C' else (side,)):
+            c = list(J['c'])
+            if sd == 'R':
+                c[1] = -c[1]
+            if J['c'][1] == 0.0 and side != 'C' :
+                continue                      # centreline joint, only cuts C panels
+            ax = J['ax']
+            if ax == 'y':
+                e = ('[translate %s %s %s [rotate -90.0 0.0 0.0 [cylinder %s %s]]]'
+                     % (R.fnum(c[0]), R.fnum(c[1] - half), R.fnum(c[2]),
+                        R.fnum(r), R.fnum(2 * half)))
+            elif ax == 'x':
+                e = ('[translate %s %s %s [rotate 0.0 90.0 0.0 [cylinder %s %s]]]'
+                     % (R.fnum(c[0] - half), R.fnum(c[1]), R.fnum(c[2]),
+                        R.fnum(r), R.fnum(2 * half)))
+            else:
+                e = ('[translate %s %s %s [cylinder %s %s]]'
+                     % (R.fnum(c[0]), R.fnum(c[1]), R.fnum(c[2] - half),
+                        R.fnum(r), R.fnum(2 * half)))
+            out.append(e)
+    return out
+
+
 # WINDOWS: cuts through the finished shell, per panel, side-aware. Reveals,
 # not decoration: each shows the joint or mechanism underneath (rule 3 in the
 # skeleton/skin thesis). Coordinates derive from the plate table read above.
 def windows(panel, side):
     sgn = -1.0 if side == 'R' else 1.0
-    if panel == 'thigh':
-        # knee ring: a through-cylinder about the knee axis, r 92 over the D166
-        # can - the dark knee disc and the bones behind it read through
-        y0, y1 = (60.0, 300.0) if side == 'L' else (-300.0, -60.0)
-        return ['[translate -60.0 %s -465.0 [rotate -90.0 0.0 0.0 [cylinder 92.0 %s]]]'
-                % (R.fnum(y0), R.fnum(y1 - y0))]
+    # the knee ring is now the knee SEAM (SEAM/SEAM_PANELS above): the reveal
+    # and the clearance gap are the same feature, which is the point.
     if panel == 'calf':
         # rear slot: the pushrods and cranks stay visible (they explain)
         return ['[translate -230.0 %s -940.0 [cube 90.0 90.0 330.0]]'
@@ -177,7 +235,7 @@ def main():
         shellx = ('[shell %s [skin-gap %s %s #[%s]]]'
                   % (R.fnum(SKIN_T), R.fnum(PANEL_R.get(panel, SKIN_R)),
                      R.fnum(SKIN_GAP), '\n    '.join(members)))
-        cuts = windows(panel, side)
+        cuts = windows(panel, side) + seam_exprs(panel, side)
         for c in cuts:
             shellx = '[difference %s\n  %s]' % (c, shellx)
         lines.append('[let %s\n  %s]' % (nm, shellx))
