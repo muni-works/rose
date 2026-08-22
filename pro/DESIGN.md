@@ -243,3 +243,43 @@ That is an argument for the 1750 mm height beyond ergonomics or looks: at human
 scale, heads meet heads and hands meet hands, and the contact map stops being
 perverse. It also means **this audit must be re-run after the re-cut** — its
 answer is a function of height, and every number in it is about the 1130 mm body.
+
+## What the skin gate found (2026-08-21)
+
+The skin had no clearance check for its first three days: the renders looked
+right and proved nothing. `skin_sweep.py` is the gate, and it works without
+meshing anything — `[skin-gap r g X]` puts the outer surface exactly **+g**
+off the hull of X, so a panel proxy is (its bones + its form blocks) offset by
+`SKIN_GAP`, and `skin gap = bone gap − 2·SKIN_GAP`.
+
+It failed at 8 of 9 joints on the first run. What that taught, in order of
+how much it changed:
+
+**1. A joint is a gap, not a butt joint.** Both panels either side are cut
+back by a cylinder about the joint's own axis, so the clearance is invariant
+under the rotation and cannot close at any angle. The knee-ring window became
+the knee *seam*: the reveal and the clearance are one feature. Seam radii are
+a gate result, not taste — the knee needed 130 mm because at 95 the thigh and
+calf shells still met, and the waist needed 125 because the chest floor and
+pelvis top are a 200-wide pancake pair that touches *by design*.
+
+**2. The shoulder cannot have a panel at all.** 102 mm between the shoulder
+pitch and roll axes against 114 mm of seam the two joints require: the link is
+shorter than its own clearances. No shell fits there at any thickness, so the
+shoulder mechanism stays an exposed joint cluster. The upper arm clears by
+21 mm and is the next tightest; everything below the elbow and everything in
+the legs has 140–390 mm of slack. **This is an arm problem, not a skin
+problem** — the arm is mostly actuator.
+
+**3. The standoff was never the issue.** At `SKIN_GAP` 6 → 3 → 1 mm the worst
+overlap moved 43 → 37 → 33 mm. The dominant term was the form blocks, which
+are sized from static bounding boxes and therefore collide at range extremes
+where the bones do not. The H3 lesson again, one layer out: **the sweep writes
+the shape.**
+
+**Still failing, and honestly:** hip pitch at −103° (thigh into pelvis at deep
+flexion), ankle pitch at −52°, shoulder roll at 97°, elbow at −114°. Every one
+is a limb folding onto its neighbour at the end of its range — which a person
+also does, with soft tissue. The resolution is a design choice not yet made:
+slim the panels, or accept the reduced range and say so in the URDF.
+`skin_sweep.py --range` prices it in degrees.

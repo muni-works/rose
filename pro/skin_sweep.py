@@ -184,6 +184,75 @@ def sweep_joint(joint, verbose=True):
     return skin_gap
 
 
+def usable_range(joint):
+    """The sub-range of the URDF range the SKIN can actually reach.
+
+    sweep.py did this for the bones when it found the honest knee limit was
+    0..93 deg before the knee moved back. Same question, one layer out: the
+    skin is thicker than the sheet, so it buys comfort with degrees, and the
+    right way to state that is a number rather than a shrug."""
+    J = L.JOINTS[joint]
+    lo, hi = S.RANGES[joint]
+    child = panels_for(set(S.CHILD_LINKS.get(joint, ())))
+    parent = panels_for(set(S.PARENT_LINKS.get(joint, ())))
+    if not child or not parent:
+        return None
+    n = int(math.ceil(math.degrees(hi - lo) / 3.0))
+    ok_lo, ok_hi = None, None
+    for k in range(n + 1):
+        th = lo + (hi - lo) * k / n
+        worst = 1e9
+        for cp in child:
+            for cs in sides_of(cp):
+                cseam = seam_cyls(cp, cs)
+                cpts = [q for q in panel_side(cp, cs) if not in_seam(q, cseam)]
+                c = list(J['c'])
+                if cs == 'R':
+                    c[1] = -c[1]
+                Rm = S.rot(J['ax'], -th if (cs == 'R' and J['ax'] in ('x', 'z')) else th)
+                for pp in parent:
+                    for ps in sides_of(pp):
+                        if cs in ('L', 'R') and ps in ('L', 'R') and cs != ps:
+                            continue
+                        prims = panel_prims(pp, ps)
+                        pseam = seam_cyls(pp, ps)
+                        for q in cpts:
+                            x = S.apply(Rm, c, q)
+                            if in_seam(x, pseam):
+                                continue
+                            for w in prims:
+                                worst = min(worst, d_prim(x, w))
+        # 0.0, not MIN_SKIN_GAP: this reports where the panels physically
+        # TOUCH, which is the hard limit. The 3 mm comfort bar is the gate's
+        # question, and reporting the two against different bars made them
+        # disagree about the knee.
+        if worst - 2 * K.SKIN_GAP >= 0.0:
+            if ok_lo is None:
+                ok_lo = th
+            ok_hi = th
+        elif ok_lo is not None and ok_hi is not None:
+            break                      # first contiguous band around the start
+    return (lo, hi, ok_lo, ok_hi)
+
+
+def ranges_report():
+    print('=' * 78)
+    print('What the skin COSTS in joint range (URDF range vs what the panels clear)')
+    print('=' * 78)
+    for j in ('knee', 'hip_pitch', 'ank_pitch', 'sho_pitch', 'sho_roll',
+              'elb_pitch', 'wrist_yaw', 'waist_yaw'):
+        r = usable_range(j)
+        if not r:
+            continue
+        lo, hi, a, b = r
+        if a is None:
+            print('  %-10s %7.0f..%-7.0f deg  ->  NOTHING clears' % (j, math.degrees(lo), math.degrees(hi)))
+            continue
+        print('  %-10s %7.0f..%-7.0f deg  ->  %7.0f..%-7.0f  (lost %.0f deg)'
+              % (j, math.degrees(lo), math.degrees(hi), math.degrees(a), math.degrees(b),
+                 math.degrees((hi - lo) - (b - a))))
+
+
 def main():
     print('=' * 78)
     print('SKIN panel clearance, swept. Panel surface = hull(bones + form) + %.0f mm.'
@@ -206,4 +275,7 @@ def main():
 
 if __name__ == '__main__':
     import sys
+    if '--range' in sys.argv:
+        ranges_report()
+        sys.exit(0)
     sys.exit(0 if main() else 1)

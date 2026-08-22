@@ -44,12 +44,18 @@ PANEL_R = {'thigh': 26.0}
 # plate bounding box, inset so the block never pokes through the sheet.
 # x0 x1 y0 y1 z0 z1, LEFT side; mirrored in y for the right.
 FORM = {
-    'shoulder': [(-52.0, 28.0, 214.0, 292.0, 330.0, 470.0)],   # shoA, outboard of the cowl
-    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 200.0, 372.0)],   # shoB channel
+    # between the elbow seam (z 235 + 54) and the roll seam (z 362 - 54), plus
+    # the 3 mm the gate wants: a collar, because that is all the link allows.
+    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 292.0, 305.0)],   # shoB channel
     'forearm':  [(-42.0, 42.0, 226.0, 288.0, 6.0, 258.0)],     # elbA shell interior
-    'chest':    [(-100.0, 96.0, -160.0, 160.0, 120.0, 516.0),  # torso box, inside the walls
+    # bottom raised to z 200: at 120 the block's corner (r 189 about the waist
+    # axis) swung out over the 194-wide pelvis at 57 deg of yaw. The waist is
+    # where a person is narrow for the same reason.
+    'chest':    [(-100.0, 96.0, -150.0, 150.0, 200.0, 516.0),  # torso box, inside the walls
                  (-28.0, 58.0, 158.0, 206.0, 430.0, 512.0)],   # shoulder cap, per side
-    'hand':     [(-40.0, 72.0, 226.0, 285.0, -180.0, -12.0)],
+    # stops 60 mm below the wrist axis: a 180 mm mitt swung 138 deg reaches the
+    # forearm shell, and the block was what reached first.
+    'hand':     [(-40.0, 72.0, 232.0, 280.0, -180.0, -62.0)],
 }
 
 
@@ -83,8 +89,16 @@ PANELS = {
 # thin-feature limit. The cowl is already a cover; it stays bare sheet.
 'chest':   (('trunkC', 'trunkS', 'shoC'), ('waist_yaw',)),
     # shoA and shoB straddle the shoulder ROLL joint - one panel over both would
-    # tear when the arm abducts. Two panels, split on the joint, per the rule.
-    'shoulder': (('shoA',), ('sho_roll',)),
+    # tear when the arm abducts.
+    #
+    # And shoA gets NO PANEL. Measured: 102 mm between the shoulder pitch and
+    # roll axes, against 114 mm of seam the two joints need (each seam is the
+    # actuator radius + standoff + air). The link is shorter than its own
+    # clearances, so no shell fits there at any thickness - the shoulder
+    # mechanism stays an exposed joint cluster, which is at least honest about
+    # what it is. The upper arm clears by 21 mm and is the next tightest.
+    # Everything below the elbow and everything in the legs has 140-390 mm of
+    # slack: this is an ARM problem, not a skin problem.
     'upperarm': (('shoB',), ('elb_pitch',)),
     'forearm': (('elbA',), ('wrist_yaw',)),
     'hand':    (('hand',), ()),
@@ -105,25 +119,30 @@ CENTRED = ('pelvis', 'chest', 'head')
 # air, so the actuator ring shows in the gap - the reveal and the clearance
 # are the same feature.
 SEAM = {                       # joint -> (radius, half-length along the axis)
-    'knee':       (95.0, 200.0),
+    'knee':       (130.0, 200.0),
     'elb_pitch':  (54.0, 120.0),
-    'wrist_yaw':  (42.0, 120.0),
+    'wrist_yaw':  (58.0, 120.0),   # covers the wrist pancake pair, same reason
     'sho_roll':   (54.0, 120.0),
     'sho_pitch':  (60.0, 200.0),
-    'hip_pitch':  (95.0, 200.0),
-    'waist_yaw':  (60.0, 200.0),
+    'hip_pitch':  (130.0, 200.0),
+    # 110, not 60: the chest floor and the pelvis top are a 200-wide pancake
+    # pair that TOUCHES by design, and a 60 seam left both of them skinned.
+    # The wide gap is the exposed waist the H2 has, arrived at by the gate.
+    'waist_yaw':  (125.0, 200.0),
     'head_pitch': (42.0, 120.0),
+    'ank_pitch':  (62.0, 150.0),   # the pushrod ankle's pin: small joint, wide yoke
 }
 # which joints cut which panels (both sides of every joint)
 SEAM_PANELS = {
     'knee':       ('thigh', 'calf'),
     'elb_pitch':  ('upperarm', 'forearm'),
     'wrist_yaw':  ('forearm', 'hand'),
-    'sho_roll':   ('shoulder', 'upperarm'),
-    'sho_pitch':  ('chest', 'shoulder'),
+    'sho_roll':   ('upperarm',),
+    'sho_pitch':  ('chest',),
     'hip_pitch':  ('pelvis', 'thigh'),
     'waist_yaw':  ('chest', 'pelvis'),
     'head_pitch': ('head', 'chest'),
+    'ank_pitch':  ('calf', 'foot'),
 }
 
 
