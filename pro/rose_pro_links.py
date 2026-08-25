@@ -450,8 +450,8 @@ PIV_OUT = (0.0, TH_Y1 + T / 2.0, TH_TOP)
 # point below the pivot (dz < 0), y' - y = -dz sin a > 0 when a > 0. So inner +, outer -.
 P('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', TH_TILT, PIV_IN))
 P('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', -TH_TILT, PIV_OUT))
-P('thigh', 'hem_in',     'y', TH_Y0 - 2 * T, TH_Y0 - T, *TH_HEMR, slots=[TH_WIN], tilt=('x', TH_TILT, PIV_IN))
-P('thigh', 'hem_out',    'y', TH_Y1 + T, TH_Y1 + 2 * T, *TH_HEMR, slots=[TH_WIN], tilt=('x', -TH_TILT, PIV_OUT))
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 WEB_POLY = [(TH_Y0 - T + TH_IN, TH_FLG_BOT), (TH_Y1 + T - TH_IN, TH_FLG_BOT), (TH_Y1 + T, TH_TOP), (TH_Y0 - T, TH_TOP)]
 P('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, 0, 0, 0, 0, poly=WEB_POLY)
 # the jog: shelf under the yaw body back to the knee plate's front, lower web, knee plate
@@ -650,8 +650,8 @@ P('shoC', 'cowl_chf', 'z', CAP_TOPZ, CAP_TOPZ + T, CAP_TX, CAP_TX + CAP_L, CAP_Y
   tilt=('y', 45.0, (CAP_TX, 0.0, CAP_TOPZ + T / 2.0)))
 P('shoC', 'cowl_fr', 'x', CAP_FRX, CAP_FRX + T, CAP_Y0, CAP_Y1, ZSP - 30.0, CAP_FZ + T / 2.0)
 # hems: the cap's two free edges are exactly the ones a person walks into
-P('shoC', 'hem_fr', 'x', CAP_FRX - T, CAP_FRX, CAP_Y0, CAP_Y1, ZSP - 30.0, ZSP - 22.0)
-P('shoC', 'hem_rr', 'z', CAP_TOPZ - T, CAP_TOPZ, -CAP_RX, -CAP_RX + 8.0, CAP_Y0, CAP_Y1)
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 
 # shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Lapped pair: the tab bends
 # off shop_out's rear edge INBOARD (y 140..218 at the bend, lobed down beside the
@@ -698,10 +698,8 @@ P('shoB', 'flange_rr', 'x', sro.n0 - T, sro.n0, 0, 0, 0, 0,
 # 8 mm hem band along each flange's slanted inboard edge (person-facing)
 def _hem_poly(y_top, y_bot, v0, v1):
     return [(y_bot, v0), (y_bot + HEM, v0), (y_top + HEM, v1), (y_top, v1)]
-P('shoB', 'hem_fr', 'x', SB_XF - T, SB_XF, 0, 0, 0, 0,
-  poly=_hem_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
-P('shoB', 'hem_rr', 'x', sro.n0 - 2 * T, sro.n0 - T, 0, 0, 0, 0,
-  poly=_hem_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 ef = L('shoB', 'elb_face', 'elb_pitch', 'stator', -32.0, 32.0, ZE - 32.0, ZE + ELB_R + 6.0)
 P('shoB', 'elb_shelf', 'z', ef.v1, ef.v1 + T, ef.u0, ef.u1, ef.n0, SB_Y)
 P('shoB', 'elb_lap', 'y', SB_Y - T, SB_Y, ef.u0, ef.u1, ef.v1 + T, ef.v1 + T + 30.0,
@@ -733,7 +731,7 @@ for tag, x0 in (('fr', FA_X), ('rr', -FA_X - T)):
     P('elbA', 'wall_lo_' + tag, 'x', x0, x0 + T, 0, 0, 0, 0,
       poly=[(FA_Y0, ZW), (FA_Y1, ZW), (FA_Y1, FA_ZC0), (eo.n1, FA_ZC1), (FA_Y0, FA_ZC1)])
     # hem on the inboard (open) edge - the forearm is the part that brushes a person
-    P('elbA', 'hem_' + tag, 'x', x0 - T, x0, FA_Y0, FA_Y0 + HEM, ZW, FA_ZT)
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 # the outboard shell: vertical over the can, then a 39.7 deg chamfer up to the
 # elbow output plate's plane. Two facets, one fold - no compound curve.
 P('elbA', 'shell', 'y', FA_Y1, FA_Y1 + T, -FA_X - T, FA_X + T, ZW, FA_ZC0)
@@ -767,8 +765,8 @@ P('hand', 'palm', 'y', HD_YP0, HD_YP0 + T, 0, 0, 0, 0, poly=HD_MITT)
 HD_CL = math.hypot(HD_YP0 - ho.v0, 23.4)
 P('hand', 'chamfer', 'y', ho.v0, ho.v0 + T, -HD_X, HD_X, HD_Z1 - HD_CL, HD_Z1,
   tilt=('x', math.degrees(math.asin((HD_YP0 - ho.v0) / HD_CL)), (0.0, ho.v0, HD_Z1)))
-P('hand', 'hem_back', 'y', HD_YB1 - 2 * T, HD_YB1 - T, -HD_X + 15.0, HD_X - 15.0, HD_Z0, HD_Z0 + HEM)
-P('hand', 'hem_palm', 'y', HD_YP0 + T, HD_YP0 + 2 * T, -HD_X + 15.0, HD_X - 15.0, HD_Z0, HD_Z0 + HEM)
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 TH_X1 = HD_X + 33.0
 P('hand', 'thumb_top', 'z', HD_Z1 - 22.0, HD_Z1 - 19.0, HD_X, TH_X1, HD_YP0, HD_YB1)
 P('hand', 'thumb_out', 'x', TH_X1 - T, TH_X1, HD_YP0, HD_YB1, HD_Z1 - 82.0, HD_Z1 - 19.0)
@@ -917,13 +915,13 @@ xpanel('trunkC', 'front_up', XF_S, ZSTERN, XF_D, ZD, chest_w, BRK, +1)
 rr_lo = xpanel('trunkC', 'rear_lo', XR_W, ZWT, XR_L, ZLUMBAR, chest_w, BRK, -1)
 xpanel('trunkC', 'rear_up', XR_L, ZLUMBAR, XR_D, ZD, chest_w, BRK, -1)
 # the windows live in the panel's own frame: v is slant up the lean, not z.
-def window(pl, tag, v0, v1, half, out):
-    win = (-half, half, pl.v0 + v0, pl.v0 + v1)
-    pl.slots.append(win)
-    P(pl.link, tag, 'x', pl.n0 - T if out > 0 else pl.n1, pl.n0 if out > 0 else pl.n1 + T,
-      win[0] - HEM, win[1] + HEM, win[2] - HEM, win[3] + HEM, slots=[win], tilt=pl.tilt)
-window(fr_lo, 'front_hem', 62.0, 182.0, 58.0, +1)
-window(rr_lo, 'rear_hem',  57.0, 167.0, 58.0, -1)
+def window(pl, v0, v1, half):
+    # DIET (skeleton/skin): the aperture stays (lightening + the reveal the skin
+    # window looks through); the hem plate that doubled its edge is gone - the
+    # polymer skin covers the person-facing edge now.
+    pl.slots.append((-half, half, pl.v0 + v0, pl.v0 + v1))
+window(fr_lo, 62.0, 182.0, 58.0)
+window(rr_lo, 57.0, 167.0, 58.0)
 L('trunkC', 'deck', 'head_yaw', 'stator', XR_D, XF_D, -NK_Y - T, NK_Y + T)
 
 # ---- head: a FACETED HELMET on the pitch output. (H3 programme, item e) ----
@@ -999,8 +997,7 @@ hw = lambda z: HD_Y - (HD_Y - HD_YT) * (z - HD_CHIN[1]) / (HD_TOP - HD_CHIN[1]) 
 VIS = (-60.0, 60.0, 616.0, 640.0)
 fc = pan('face', HD_FACE0, HD_FACE1, (hw(HD_FACE0[1]), hw(HD_FACE1[1])), -T, slots=[VIS])
 FACE_TILT = fc.tilt
-P('head', 'visor_hem', 'x', HD_FACE0[0] - 2 * T, HD_FACE0[0] - T, VIS[0] - HEM, VIS[1] + HEM,
-  VIS[2] - HEM, VIS[3] + HEM, slots=[VIS], tilt=FACE_TILT)
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 P('head', 'eyes', 'x', HD_FACE0[0] - 20.0 - T, HD_FACE0[0] - 20.0, -54.0, 54.0, 606.0, 650.0,
   holes=[(-33.0, 628.0, 28.0), (33.0, 628.0, 28.0)], tilt=FACE_TILT)
 pan('jaw',      HD_CHIN,  HD_FACE0, (hw(HD_CHIN[1]), hw(HD_FACE0[1])), -T)
@@ -1014,7 +1011,7 @@ P('head', 'rear', 'x', HD_REAR0[0], HD_REAR0[0] + T, 0, 0, 0, 0,
 # across the fold is all corner at r 25 - it stops meeting its neighbours and the
 # shell reads as stacked slabs. The SILHOUETTE keeps 25; the seams get 6.
 for _p in PLATES:
-    if _p.link == 'head' and _p.tag in ('jaw', 'crown_fr', 'crown_bk', 'visor_hem',
+    if _p.link == 'head' and _p.tag in ('jaw', 'crown_fr', 'crown_bk',
                                         'eyes', 'shelf'):
         _p.r_want = 6.0
 # the head's own output plate, and the shelf that carries the shell off it. The
@@ -1045,7 +1042,7 @@ hp.v0, hp.v1 = min(q[1] for q in hp.poly), max(q[1] for q in hp.poly)
 P('neck', 'foot', 'z', NK_FOOT, NK_FOOT + T, -30.0, NK_CH[0], face_n('head_pitch', 'stator')[0], -6.0)
 
 
-HEAD_SHELL = ('flank_l', 'flank_r', 'face', 'visor_hem', 'eyes', 'jaw',
+HEAD_SHELL = ('flank_l', 'flank_r', 'face', 'eyes', 'jaw',
               'crown_fr', 'crown_top', 'crown_bk', 'rear', 'hp_out', 'shelf')
 OWNER = {
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
@@ -1146,7 +1143,7 @@ BENDS = [
     ('elbA',  'z', ZW - T / 2.0,                 ('wall_lo_fr', 'wall_lo_rr', 'wrist_face')),
     # the helmet: every fold of the sagittal profile, plus the flank's inward one.
     # The only holes in the shell are the eye bores, 50+ mm off the nearest line.
-    ('head',  'z', HD_FACE0[1],                  ('jaw', 'face', 'visor_hem', 'eyes')),
+    ('head',  'z', HD_FACE0[1],                  ('jaw', 'face', 'eyes')),
     ('head',  'z', HD_FACE1[1],                  ('face', 'crown_fr')),
     ('head',  'z', HD_TOP,                       ('crown_fr', 'crown_top', 'crown_bk')),
     ('head',  'z', HD_REAR1[1],                  ('crown_bk', 'rear')),
