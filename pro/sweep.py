@@ -45,9 +45,20 @@ RANGES = {
     # under the roll axis, so every degree of adduction moves them 6.3 mm); the
     # second limiter, 1 deg behind it, is the upper arm's web against the roll
     # stator plate. The arm can lie against the body and no further.
+    # 1.7 stands. It looked for a while like the skin cost 9 deg of abduction
+    # (the upper-arm shell met the chest shell at 97 deg), but the collider was
+    # a band of shoB's rear web that the shoulder-roll seam should have taken
+    # and did not: r 56 instead of 54 (skin.py SEAM) removes it and the pair
+    # clears by +3.0 mm at the full 1.7. rose_pro_export says the same.
     'sho_roll':  (-0.21, 1.7),
     'sho_pitch': (-3.0, 1.5),      # the whole arm about the shoulder, never swept before
     'wrist_yaw': (-2.4, 2.4),
+    # -2.3 (132 deg) stands, and the BONES are what hold it there, not the skin:
+    # 6 deg further the forearm's front wall reaches the shoulder-roll can
+    # (+1.2 mm at 138 deg, through the layout's 4 mm floor at 136, touching at
+    # 139). The skin has 3.5 mm to spare over the whole of that range once the
+    # forearm form block is stepped to follow the bones (skin.py FORM), so the
+    # skin costs the elbow nothing - the elbow is a bone-layout limit.
     'elb_pitch': (-2.3, 0.3),      # forward flexion only (export has the same): folded back it meets the shoulder roll pod
     'waist_yaw': (-1.0, 1.0),
     # the head. Added with the H3 helmet: the helmet's rim is 29 mm off the chest

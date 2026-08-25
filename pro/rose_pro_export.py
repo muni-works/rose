@@ -163,7 +163,11 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     # ADDUCTION CAP (H3 arm pass). -1.7 rad drove the arm straight through the
     # torso; nothing checked it because sweep.py started its shoulder-roll sweep
     # at 0. The swept-clean limit is -0.21 rad (-12 deg): the forearm's side
-    # walls reach the chest side plate there. Abduction is unchanged.
+    # walls reach the chest side plate there.
+    # Abduction stays 1.7. The skin pass capped it at 1.55 for a while, then
+    # found the real collider was a band of the upper arm's rear web that the
+    # shoulder-roll seam had not been cutting; skin.py's seam is r 56 now and
+    # the shells clear by +3.0 mm at the full 1.7. sweep.py RANGES agrees.
     lo_sr, hi_sr = (-0.21, 1.7) if s > 0 else (-1.7, 0.21)
     add_joint('%s_Shoulder_Pitch' % side, 'Trunk', a1, (0.0, s * SHO_Y, Z['sp']), (0, 1, 0), -3.0, 1.5, 'X8-120')
     add_joint('%s_Shoulder_Roll' % side, a1, a2, (0.0, 0.0, Z['sr'] - Z['sp']), (1, 0, 0), lo_sr, hi_sr, 'X6-60')

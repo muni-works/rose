@@ -29,6 +29,8 @@ import sweep as S
 import skin as K
 
 MIN_SKIN_GAP = 3.0      # panels must not come closer than this when swept
+MEMBERS = False         # --members: print the per-member breakdown under each joint
+STEP_DEG = 6.0          # sweep step: coarser than the bone gate's 2 deg (proxies)
 
 
 def seam_cyls(panel, side):
@@ -40,7 +42,7 @@ def seam_cyls(panel, side):
     for joint, panels in K.SEAM_PANELS.items():
         if panel not in panels:
             continue
-        r, half = K.SEAM[joint]
+        r, half = K.seam_r(joint, panel), K.SEAM[joint][1]
         J = L.JOINTS[joint]
         for sd in (('L', 'R') if side == 'C' else (side,)):
             c = list(J['c'])
@@ -77,25 +79,36 @@ def panel_prims(panel, side):
             continue
         tag = 'C' if p.link in K.NO_MIRROR else 'L'
         if tag == 'C' or side in ('L', 'C'):
-            out.append(('plate', p, S.plate_r(p), +1))
+            out.append(('plate', p, S.plate_r(p), +1, '%s/%s' % (p.link, p.tag)))
         if tag != 'C' and side in ('R', 'C'):
-            out.append(('plate', p, S.plate_r(p), -1))   # mirrored: negate y of the query
-    for (x0, x1, y0, y1, z0, z1) in K.FORM.get(panel, ()):
+            out.append(('plate', p, S.plate_r(p), -1, '%s/%s' % (p.link, p.tag)))   # mirrored: negate y of the query
+    for i, (x0, x1, y0, y1, z0, z1) in enumerate(K.FORM.get(panel, ())):
         for sd in (('L', 'R') if side == 'C' else (side,)):
             a, b = (y0, y1) if sd == 'L' else (-y1, -y0)
-            out.append(('box', ((x0, x1), (a, b), (z0, z1)), None, +1))
+            out.append(('box', ((x0, x1), (a, b), (z0, z1)), None, +1,
+                        'FORM[%s][%d]' % (panel, i)))
     return out
 
 
 def d_prim(pt, prim):
-    kind, data, r, sgn = prim
+    kind, data, r, sgn = prim[:4]
     q = (pt[0], sgn * pt[1], pt[2])
     return S.d_plate(q, data, r) if kind == 'plate' else S.d_box(q, data)
 
 
 def panel_side(panel, side):
     """Sample points of a panel: its bones plus its form blocks."""
-    pts = []
+    return [q for _lbl, pp in panel_members(panel, side) for q in pp]
+
+
+def panel_members(panel, side):
+    """Same points as panel_side, but kept per MEMBER: [(label, points)].
+
+    The gate used to report only the worst pair of PANELS, which is one level
+    too coarse to act on - 'forearm hits upperarm' does not say whether to move
+    a form block, a seam, or a plate. Naming the member on each side is the
+    difference between guessing and knowing which solid to shrink."""
+    out = []
     want = ('L', 'R', 'C') if side == 'C' else (side, 'C')
     links, _joints = K.PANELS[panel]
     for p in L.PLATES:
@@ -107,12 +120,13 @@ def panel_side(panel, side):
         pp = S.plate_points(p, pitch=12.0)
         if side == 'R' and tag != 'C':
             pp = [(x, -y, z) for (x, y, z) in pp]
-        pts += pp
-    for (x0, x1, y0, y1, z0, z1) in K.FORM.get(panel, ()):
+        out.append(('%s/%s' % (p.link, p.tag), pp))
+    for i, (x0, x1, y0, y1, z0, z1) in enumerate(K.FORM.get(panel, ())):
         for sd in (('L', 'R') if side == 'C' else (side,)):
             a, b = (y0, y1) if sd == 'L' else (-y1, -y0)
-            pts += S.box_points(((x0, x1), (a, b), (z0, z1)), pitch=12.0)
-    return pts
+            out.append(('FORM[%s][%d]' % (panel, i),
+                        S.box_points(((x0, x1), (a, b), (z0, z1)), pitch=12.0)))
+    return out
 
 
 def panels_for(links):
@@ -129,58 +143,70 @@ def sides_of(panel):
     return ('C',) if panel in K.CENTRED else ('L', 'R')
 
 
-def sweep_joint(joint, verbose=True):
+def sweep_joint(joint, verbose=True, members=False):
     J = L.JOINTS[joint]
     lo, hi = S.RANGES[joint]
     child = panels_for(set(S.CHILD_LINKS.get(joint, ())))
     parent = panels_for(set(S.PARENT_LINKS.get(joint, ())))
     if not child or not parent:
         return None
-    n = int(math.ceil(math.degrees(hi - lo) / 6.0))     # coarser than bones: proxies
+    n = int(math.ceil(math.degrees(hi - lo) / STEP_DEG))   # coarser than bones: proxies
     worst = (1e9, None, None, None)
+    per_member = {}
     for cp in child:
         for cs in sides_of(cp):
-            cpts = panel_side(cp, cs)
             cseam = seam_cyls(cp, cs)
-            cpts = [q for q in cpts if not in_seam(q, cseam)]   # cut away by its seams
-            if not cpts:
-                continue
             c = list(J['c'])
             if cs == 'R':
                 c[1] = -c[1]
-            for pp in parent:
-                for ps in sides_of(pp):
-                    if cs in ('L', 'R') and ps in ('L', 'R') and cs != ps:
-                        continue                        # left arm vs right leg: not a pair
-                    prims = panel_prims(pp, ps)
-                    pseam = seam_cyls(pp, ps)
-                    if not prims:
-                        continue
-                    for k in range(n + 1):
-                        th = lo + (hi - lo) * k / n
-                        # a reflection in y flips the sense of x- and z-rotations,
-                        # so the right side sweeps the mirrored angle (same trap
-                        # pose.py hit: without this the right arm swings the wrong
-                        # way and reports a 94 mm chest collision that is not real)
-                        if cs == 'R' and J['ax'] in ('x', 'z'):
-                            R = S.rot(J['ax'], -th)
-                        else:
-                            R = S.rot(J['ax'], th)
-                        for q in cpts:
-                            x = S.apply(R, c, q)
-                            if in_seam(x, pseam):
-                                continue        # the parent has no material here
-                            for w in prims:
-                                d = d_prim(x, w)
-                                if d < worst[0]:
-                                    worst = (d, '%s/%s' % (cs, cp),
-                                             '%s/%s' % (ps, pp), math.degrees(th))
+            for (clbl, craw) in panel_members(cp, cs):
+                cpts = [q for q in craw if not in_seam(q, cseam)]   # cut away by its seams
+                if not cpts:
+                    continue
+                for pp in parent:
+                    for ps in sides_of(pp):
+                        if cs in ('L', 'R') and ps in ('L', 'R') and cs != ps:
+                            continue                    # left arm vs right leg: not a pair
+                        prims = panel_prims(pp, ps)
+                        pseam = seam_cyls(pp, ps)
+                        if not prims:
+                            continue
+                        for k in range(n + 1):
+                            th = lo + (hi - lo) * k / n
+                            # a reflection in y flips the sense of x- and z-rotations,
+                            # so the right side sweeps the mirrored angle (same trap
+                            # pose.py hit: without this the right arm swings the wrong
+                            # way and reports a 94 mm chest collision that is not real)
+                            if cs == 'R' and J['ax'] in ('x', 'z'):
+                                R = S.rot(J['ax'], -th)
+                            else:
+                                R = S.rot(J['ax'], th)
+                            for q in cpts:
+                                x = S.apply(R, c, q)
+                                if in_seam(x, pseam):
+                                    continue    # the parent has no material here
+                                for w in prims:
+                                    d = d_prim(x, w)
+                                    key = ('%s/%s %s' % (cs, cp, clbl),
+                                           '%s/%s %s' % (ps, pp, w[4]))
+                                    if d < per_member.get(key, (1e9,))[0]:
+                                        per_member[key] = (d, math.degrees(th))
+                                    if d < worst[0]:
+                                        worst = (d, '%s/%s' % (cs, cp),
+                                                 '%s/%s' % (ps, pp), math.degrees(th))
     skin_gap = worst[0] - 2 * K.SKIN_GAP
     if verbose and worst[1]:
         flag = ('  CLASH' if skin_gap < 0 else
                 ('  TIGHT' if skin_gap < MIN_SKIN_GAP else ''))
         print('  %-10s %-14s vs %-14s  bone %6.1f -> skin %+7.1f mm at %5.0f deg%s'
               % (joint, worst[1], worst[2], worst[0], skin_gap, worst[3], flag))
+    if members:
+        # WHICH SOLID. The panel-level line says a pair is tight; this says
+        # whether the collider is a plate, a form block, or a seam that is too
+        # small - which is the only form of the answer you can act on.
+        for key, (d, th) in sorted(per_member.items(), key=lambda kv: kv[1][0])[:12]:
+            print('        %-38s vs %-38s  bone %6.1f -> skin %+7.1f  at %5.0f deg'
+                  % (key[0], key[1], d, d - 2 * K.SKIN_GAP, th))
     return skin_gap
 
 
@@ -263,7 +289,7 @@ def main():
     ok = True
     for j in ('knee', 'hip_pitch', 'hip_yaw', 'ank_pitch', 'sho_pitch', 'sho_roll',
               'elb_pitch', 'wrist_yaw', 'waist_yaw', 'head_yaw', 'head_pitch'):
-        g = sweep_joint(j)
+        g = sweep_joint(j, members=MEMBERS)
         if g is not None and g < 0:
             ok = False
     print('\n  VERDICT: %s' % ('PASS' if ok else 'FAIL'))
@@ -275,6 +301,12 @@ def main():
 
 if __name__ == '__main__':
     import sys
+    MEMBERS = '--members' in sys.argv
+    if len(sys.argv) > 1 and sys.argv[1] not in ('--range', '--members'):
+        # one joint by name: the whole table is 15 minutes, a single pair is seconds
+        for j in sys.argv[1].split(','):
+            sweep_joint(j, members=True)
+        sys.exit(0)
     if '--range' in sys.argv:
         ranges_report()
         sys.exit(0)

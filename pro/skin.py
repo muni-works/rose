@@ -44,10 +44,26 @@ PANEL_R = {'thigh': 26.0}
 # plate bounding box, inset so the block never pokes through the sheet.
 # x0 x1 y0 y1 z0 z1, LEFT side; mirrored in y for the right.
 FORM = {
-    # between the elbow seam (z 235 + 54) and the roll seam (z 362 - 54), plus
-    # the 3 mm the gate wants: a collar, because that is all the link allows.
-    'upperarm': [(-58.0, 50.0, 232.0, 302.0, 292.0, 305.0)],   # shoB channel
-    'forearm':  [(-42.0, 42.0, 226.0, 288.0, 6.0, 258.0)],     # elbA shell interior
+    # The upper arm gets a RAIL, not a collar. The elbow seam is r 75 about the
+    # elbow axis, so 72% of the old collar (x -58..50 at z 292..305) lived
+    # INSIDE the seam and was cut away by the very next difference - it shaped
+    # nothing, and the sweep proxy (which does not clip the parent to its own
+    # seams) read it as solid and reported the forearm folding onto it at -108
+    # deg. What survives the seam is the rear strip beyond x -49; that is all
+    # the rail claims to be, and the gate and the geometry now agree.
+    'upperarm': [(-58.0, -50.0, 246.0, 302.0, 292.0, 305.0)],  # shoB rear channel
+    # The forearm block is TAPERED, in two steps, because the forearm is.
+    # elbA is 72 mm deep (y 219..291) only below z 112; above that it is just
+    # the two side walls, y 219..252. A single block y 228..286 all the way up
+    # therefore stood 34 mm PROUD of the sheet exactly where the forearm folds
+    # past the upper arm's front flange - and that overhang, not the sheet, was
+    # what the gate kept reporting (bone -4.1, then +3.0 once the block was
+    # chopped to z 130, which fixed the symptom by throwing the form away).
+    # Stepped to follow the bones, the block reaches z 175 - filling the shell
+    # it is there to fill - and clears the upper arm by +7.8 mm at 175 deg of
+    # flexion, well outside anything the joint can command.
+    'forearm':  [(-38.0, 38.0, 228.0, 286.0, 6.0, 112.0),      # elbA shell, full depth
+                 (-38.0, 38.0, 228.0, 244.0, 112.0, 175.0)],   # between the side walls only
     # bottom raised to z 200: at 120 the block's corner (r 189 about the waist
     # axis) swung out over the 194-wide pelvis at 57 deg of yaw. The waist is
     # where a person is narrow for the same reason.
@@ -120,18 +136,42 @@ CENTRED = ('pelvis', 'chest', 'head')
 # are the same feature.
 SEAM = {                       # joint -> (radius, half-length along the axis)
     'knee':       (130.0, 200.0),
-    'elb_pitch':  (54.0, 120.0),
+    # 75, not 54: the elbow stator and output plates are a pancake pair whose
+    # CORNERS sit at r 55, just outside a 54 seam - so both stayed skinned and
+    # overlapped at EVERY angle, not just in flexion. A seam has to clear the
+    # plate corners at a joint, not just the actuator can.
+    'elb_pitch':  (75.0, 120.0),
     'wrist_yaw':  (58.0, 120.0),   # covers the wrist pancake pair, same reason
-    'sho_roll':   (54.0, 120.0),
+    # 56, not 54: at 54 the upper arm's rear web survived down to z 351 and met
+    # the trunk's shoulder-stator plate at +1.1 mm - the one place the skin was
+    # buying clearance with joint range (abduction was capped 1.7 -> 1.55 rad
+    # for it). 2 mm more seam takes that band of web out and the pair clears by
+    # +3.0 mm at the FULL 1.7 rad. The skin now costs no joint any range at all.
+    'sho_roll':   (56.0, 120.0),
     'sho_pitch':  (60.0, 200.0),
-    'hip_pitch':  (130.0, 200.0),
+    'hip_pitch':  (150.0, 200.0),
     # 110, not 60: the chest floor and the pelvis top are a 200-wide pancake
     # pair that TOUCHES by design, and a 60 seam left both of them skinned.
     # The wide gap is the exposed waist the H2 has, arrived at by the gate.
     'waist_yaw':  (125.0, 200.0),
     'head_pitch': (42.0, 120.0),
-    'ank_pitch':  (62.0, 150.0),   # the pushrod ankle's pin: small joint, wide yoke
+    'ank_pitch':  (85.0, 150.0),   # 62 left the foot and calf shells meeting at -52 deg   # the pushrod ankle's pin: small joint, wide yoke
 }
+
+# Per-(joint, panel) seam radius. A seam only has to be a cylinder ABOUT the
+# joint axis to keep the gap invariant under the rotation - it does not have to
+# be the SAME cylinder on both sides. The elbow needs that: the upper arm's
+# surviving band is a pair of cheeks reaching r 95 about the elbow axis (they
+# have to, the link is only 30 mm of skin tall between its two seams), so it is
+# the FOREARM that gets cut back instead. 95 buys the whole flexion range; a
+# symmetric 95 would have erased the upper-arm panel entirely.
+SEAM_R = {('elb_pitch', 'forearm'): 95.0}
+
+
+def seam_r(joint, panel):
+    return SEAM_R.get((joint, panel), SEAM[joint][0])
+
+
 # which joints cut which panels (both sides of every joint)
 SEAM_PANELS = {
     'knee':       ('thigh', 'calf'),
@@ -151,7 +191,7 @@ def seam_exprs(panel, side):
     for joint, panels in SEAM_PANELS.items():
         if panel not in panels:
             continue
-        r, half = SEAM[joint]
+        r, half = seam_r(joint, panel), SEAM[joint][1]
         J = L.JOINTS[joint]
         for sd in (('L', 'R') if side == 'C' else (side,)):
             c = list(J['c'])
