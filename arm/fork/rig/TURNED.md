@@ -1,4 +1,10 @@
-# Elbow rig — turned part (4th axis or lathe)
+# Elbow rig — turned part
+
+**v9: the rig uses the arm's RS04 sleeve exactly - see `../fab/SLEEVES.md` and
+`../fab/sleeve_RS04.svg`.** The rig is back-mounted like the arm: parent B bolts to the RS04
+back face (10x M4 on Ø106) with the sleeve flange under the same screws; parent A is a Ø102
+clearance plate round the Ø98 nose. The drawing below is the v6 sleeve, kept for the record.
+
 
 ## Sleeve boss (1 off, 6061)
 

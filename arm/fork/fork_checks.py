@@ -36,7 +36,7 @@ def masses():
         link, mat, o, u, v, ol, vec = p[:7]
         if mat == 'actuator':
             r = round(abs(ol[0][1][0]), 4)
-            m = ACT_KG.get(r, 0.3)
+            m = ACT_KG.get(r, 0.0)   # noses are drawn as a second cylinder; the body carries the mass
             c = add(o, mul(vec, 0.5))
         else:
             m = F.prim_mass(p) or 0.0
@@ -44,12 +44,18 @@ def masses():
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
     rows.append(('harness', 0.20, 0.35))
+    import fab
+    for name, where, qty, m, sp, bush, ring, bore in fab.SLEEVES:
+        kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
+        xs = [('turret', 0.0), ('upper', F.UPPER)] if name == 'RS04' else [('yoke', F.W)]
+        for link, x in xs:            # J2's sleeve is on the upper arm's axis at the shoulder; J4's at the elbow
+            rows.append(('upper' if name == 'RS04' else link, kg, x))
     _MASS_CACHE[key] = rows
     return rows
 
 
 def flange_x():
-    return F.W + F.J6M['d'] / 2 + 0.006 + 0.007 + F.J7M['L'] + 0.004 + F.EDU['d'] + 0.060
+    return F.flange_x()
 
 
 MOVING = ('upper', 'fore', 'yoke', 'wrist', 'tool', 'harness')
@@ -88,6 +94,18 @@ def stiffness():
     d_u = (F_e * U ** 3 / 3 + m_e * U ** 2 / 2) / (E * Iu)
     th_f = (F_w * Fo ** 2 / 2 + m_w * Fo) / (E * If)
     d_f = (F_w * Fo ** 3 / 3 + m_w * Fo ** 2 / 2) / (E * If)
+    # v9: the upper arm's lobes are rings round the motor bores (A: nose bore, B: centre hole), and
+    # the covers stop short of them, so over one bore diameter at each end only the ring bends
+    R = F.R_LOBE_EL
+    def ring_I(r):
+        w = R - r
+        return 2 * (F.T_PL * w ** 3 / 12 + F.T_PL * w * ((R + r) / 2) ** 2)
+    r_a, r_b = F.J2M['nose_d'] / 2 + 0.002, 0.045
+    I_lobe = ring_I(r_a) / 2 + ring_I(r_b) / 2
+    M_sh, M_el = moment(0.0), m_e
+    th_lobe = sum(M * 2 * r_a * (1 / I_lobe - 1 / Iu) for M in (M_sh, M_el)) / E
+    th_u += th_lobe
+    d_u += th_lobe * U / 2
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)
     # twist: wrist pitched 90 puts the hand's moment into the forearm as torque; elbow at 90 the same for the upper arm
     twist = m_w * Fo / (Gs * Jf) * (xF - U - Fo) + m_e * U / (Gs * Ju) * (xF - U) * 0.0 + \

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 85 42" width="85mm" height="42mm">
+<title>jaw_3mm_x2</title><rect x="0" y="0" width="75" height="32" fill="none" stroke="#bbb" stroke-dasharray="4 3"/>
+<g fill="none" stroke="#e8590c" stroke-width="0.6">
+<line x1="0.00" y1="32.00" x2="75.00" y2="22.00"/>
+<line x1="75.00" y1="22.00" x2="75.00" y2="10.00"/>
+<line x1="75.00" y1="10.00" x2="0.00" y2="0.00"/>
+<line x1="0.00" y1="0.00" x2="0.00" y2="32.00"/>
+</g></svg>

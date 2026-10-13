@@ -28,7 +28,9 @@ RING_BC, RING_N = 106.0, 10       # stator front: 10x M4 EQS blind (5 min) on 10
 BACK_BC, BACK_N = 106.0, 10       # back: 10x M4 EQS deep 6 on 106 +-0.1
 MOTOR_D = 120.0
 STATOR_SPAN = 52.2                # 13.2 + 39
-CLEAR_D = 70.0                    # parent plate A bore round the output flange and spacer disc
+NOSE_D = 98.0                     # v9: the RS04 is back-mounted; its Ø98 nose passes through parent A
+CLEAR_D = NOSE_D + 4.0            # parent plate A bore round the nose (2 mm all round)
+SLEEVE_STEP_D = 90.0              # sleeve locating step; parent B's centre hole
 M3, M4, M5, M8 = 3.4, 4.5, 5.5, 8.5   # clearance holes
 
 # ---- rig choices
@@ -83,16 +85,18 @@ def bolt_circle(bc, n, d, phase=0.0, c=(0.0, 0.0)):
 
 # ---------------------------------------------------------------- the parts
 def parent_A():
-    """Stand plate on the stator front: 10x M4 on 106, bore round the output."""
-    holes = [('circle', (0, 0), CLEAR_D / 2)] + bolt_circle(RING_BC, RING_N, M4, math.pi / RING_N)
+    """Stand plate in front of the motor (v9, back-mounted): a clearance bore round the nose, outer
+    face 1 mm short of the output. It carries no motor load - parent B holds the back face."""
+    holes = [('circle', (0, 0), CLEAR_D / 2)]
     holes += [('circle', (x, -AXIS_H + 12), M5 / 2) for x in (-60, -20, 20, 60)]       # to the 2020 foot rails
     holes += [stadium(-30, 30, -125, 18)]
     return tower(), holes
 
 
 def parent_B():
-    """Stand plate on the back cover. The sleeve boss bolts through it with the same 4x M4."""
-    holes = [('circle', (0, 0), 10.0)] + bolt_circle(BACK_BC, BACK_N, M4, math.pi / BACK_N)
+    """Stand plate on the back face: 10x M4 on 106. The sleeve's Ø90 step locates in its centre hole
+    and its flange clamps under the same 10 screws (see ../fab/SLEEVES.md)."""
+    holes = [('circle', (0, 0), SLEEVE_STEP_D / 2)] + bolt_circle(BACK_BC, BACK_N, M4, math.pi / BACK_N)
     holes += [('circle', (x, -AXIS_H + 12), M5 / 2) for x in (-60, -20, 20, 60)]
     holes += [stadium(-30, 30, -125, 18)]
     return tower(), holes

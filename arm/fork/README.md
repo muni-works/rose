@@ -5,11 +5,14 @@ same flat-sheet-on-the-4040 manufacturing, a different kinematic idea.
 
 ```bash
 python3 arm/fork/rose_fork.py --summary                 # quick numbers
-python3 arm/fork/fork_checks.py                         # mass, torque, stiffness, fold ranges
+python3 arm/fork/fork_checks.py                         # mass, torque, stiffness
+python3 arm/fork/audit.py                               # interference, pinch points, joint ranges
+python3 arm/fork/dfm.py                                 # process, bed fit, webs, unique parts
+python3 arm/fork/fab.py                                 # fab package: DXFs, nests, BOM, sleeves -> fab/
 python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![fork v8](render/fork-v8-lines.png)
+![fork v9](render/fork-v9-lines.png)
 
 ## The idea
 
@@ -35,6 +38,54 @@ a constraint of the nesting that turned out to be the look.
 **Structure.** Two windowed 3 mm side plates, two 2020 bars along the bottom
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
+
+## v9 (2026-10-13): complete - every part ready to cut
+
+![fork v9 back](render/fork-v9-back.png)
+
+**Fab package in `fab/`**, generated from the model by `fab.py`:
+
+- `parts/`: one DXF per unique router part (20), with outline, bolt patterns, bores, windows and slots
+- `nest/`: one arm's parts on the 390 mm bed, three 3 mm sheets and one 6 mm. The 392 mm
+  upper-arm plates go on at 21°.
+- `BOM.md`: motors, stock, purchased parts, and 88 screws listed by interface. Each screw length is
+  checked against the motor's thread depth.
+- `SLEEVES.md` and `sleeve_*.svg`: the two turned sleeves, RS04 (3 off with the rig) and RS02
+
+What changed to get there:
+
+- **Real interfaces.** RS04, RS02 and RS00 come from their manual drawings (INTERFACES.md). Every
+  motor is **mounted by its back face**. Plate A is a clearance plate round the nose, and the
+  straddler bolts to the output through a 3 mm spacer disc. Every gap in the stack is 4 mm.
+- **Every plate is flat and parallel.** v8's forearm flared 7° to reach round the J5 motor, so its
+  plate could not sit flat on the elbow spacer. Now both roll motors are **cartridges**: the
+  forearm and the wrist end in a cross plate, and the RS02 or RS00 back-mounts on its far face.
+- **Tabs and slots** locate the covers, both end plates, the yoke bridge and the turret towers.
+  The side plates' flat ends tab through the end plates.
+- **One 3 mm stock** for every plate, covers included (6 mm foot only). Hub caps are closed cups.
+- **Stiffness sees the lobe bores.** At each upper-arm lobe only the ring round the Ø102 / Ø90
+  bores bends: 0.03 → 0.13 mm sag, still inside the 0.5 mm budget.
+- **Sleeves are in the mass**, at 70 g each (RS04) and 22 g (RS02).
+
+| | v8 | v9 |
+|---|---:|---:|
+| mass | 8.23 kg | 8.21 kg |
+| moving mass | 5.59 kg | 5.64 kg |
+| jaw tips from the shoulder | 693 mm | 731 mm |
+| holds straight out, continuously | 1.49 kg | **1.49 kg** (wrist and shoulder bind together) |
+| sag / twist | 0.03 / 0.10 mm | 0.13 / 0.11 mm |
+| elbow / wrist range | ±110° / ±125° | −120…115° / ±135° |
+| interference, 209 poses | none | none |
+| DFM web violations | — | none (upper plates nest diagonally) |
+
+Open:
+
+- RS02 back-face and output thread depths are assumed at 6 mm, so measure before ordering screws.
+- The yoke bridge turns about 1 mm in front of the stationary RS02 nose face. That is a safe pinch
+  gap, but the flange proud height needs checking on a real motor.
+- The crush points from `audit.py` still need a policy: soft limits, or force limiting.
+- The cable loops under the two roll cartridges are drawn, but the clock-spring turns for roll
+  are not designed yet.
 
 ## v8 (2026-10-13): DFM and efficiency pass
 

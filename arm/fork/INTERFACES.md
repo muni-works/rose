@@ -5,6 +5,22 @@ github.com/RobStride/Product_Information, pulled 2026-10-13). **The manual
 drawing (RS06 manual p. 8) is authoritative; it corrects the STEP-only reading
 below** — the STEP hole grouping counted the side lugs as a front bolt pattern.
 
+## v9 motors per the manual drawings (RS04 p. 9, RS02 / RS00 p. 8)
+
+| motor | where | nose ahead of the front face | front (stator) | back face | output |
+|---|---|---|---|---|---|
+| RS04 | J1, J2, J4 | Ø98 x 13.2 (52.2 overall, Ø120 body) | 10x M4 on Ø106 | 10x M4 ▼6 on Ø106 | 8x M5 ▼6.5 on Ø36, 2x Ø5 dowels on Ø35.86 |
+| RS02 | J5, J6 | Ø65 x 28 to the flange (41.5 overall, Ø78.5 body) | 9x M3 ▼8 on Ø73 | 4x M4 on Ø52 | 6x M4 on Ø24, 3x Ø4 dowels, Ø43 flange |
+| RS00 | J7 | Ø35 x 1 (51 overall, Ø57 body) | 6x M3 on Ø50 | 4x M3 ▼4 on Ø38 | 6x M3 ▼5 on Ø27 |
+
+Thread depths for the RS02 back face and output are not on its drawing; `fab.py` assumes 6 mm.
+
+**v9 mounts every motor by its back face.** The RS04 and RS02 noses are long (13 and 28 mm)
+and wide, so a front-face mount would push the holder's plate A far off the output. Back-mounted,
+plate B carries the motor and the sleeve; plate A is a clearance plate round the nose (bore =
+nose + 4 mm), its outer face 1 mm short of the output. The straddler's plate A bolts to the output
+through a 3 mm spacer disc. Every A and B gap in the stack is 4 mm.
+
 ## RS06 per the manual drawing
 
 | interface | pattern | turns? |
