@@ -1,5 +1,29 @@
 # Arm controller board - design v0.1 (2026-10-13)
 
+**Schematic:** `arm_controller.loon` is the circuit, written in loon, and it is the source.
+`./build.sh` exports it with vcad to `arm_controller.kicad_sch`. It then checks that every pin is
+on its loon net with no merges (`netcheck.py`), runs KiCad ERC (0 errors), and plots
+`arm_controller.pdf`. Every part is a KiCad library symbol, so pin numbers come from KiCad.
+
+**Parts the schematic uses instead of the first pass below.** Each change was made to use a part
+that KiCad's library has:
+
+| first pass | schematic | why |
+|---|---|---|
+| TCAN1044 | MCP2562FD | same role, 8-pin CAN-FD, in KiCad's library |
+| LM5069 | LM5060 | high-side switch controller with enable, inrush and VDS overcurrent |
+| INA229 (SPI) | INA228 (I2C) | same 85 V, 20-bit monitor |
+| TPS3431 | TPS3430 | same window watchdog family |
+| LMR38020 to 5 V | LM5164 48 V to 12 V, then TPS54302 to 5 V | the 12 V rail drives the brake FET gate and feeds aux |
+| FDCAN2 on PB12/PB13 | FDCAN2 on PB5/PB6 | the 100-pin package has no port G, so RMII takes PB11-PB13 |
+
+- **Same FET twice.** The hot-swap and brake FETs are the same 100 V TOLL part.
+- **VCAP pins.** The two VCAP pins each get their own 2.2 µF capacitor.
+- **Footprint gap.** KiCad has no XT30(2+2) footprint, so the wrist-bus connector is a marked
+  placeholder until one is drawn.
+- **Check before layout.** Verify the FDCAN3 pins (PD12/PD13) and every alternate-function
+  assignment in CubeMX.
+
 One board per arm. It sits in the base, on the 6 mm foot, beside the yaw motor. It replaces
 four boxes:
 

@@ -1,0 +1,506 @@
+ERC report (2026-10-13T14:53:40-0400, Encoding UTF8)
+
+***** Sheet /
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 105.41 mm): Symbol U10 [U10]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 41.91 mm): Symbol U13 [U13]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 72.39 mm): Symbol U8 [U8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 102.87 mm): Symbol U2 [U2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 133.35 mm): Symbol U6 [U6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 44.45 mm): Symbol U4 [U4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 163.83 mm): Symbol J4 [J4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 92.71 mm): Symbol J12 [J12]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 222.25 mm): Symbol U15 [U15]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 194.31 mm): Symbol U5 [U5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 138.43 mm): Symbol J13 [J13]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 35.56 mm): Symbol R5 [R5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 55.88 mm): Symbol R8 [R8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 76.20 mm): Symbol R14 [R14]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 166.37 mm): Symbol J2 [J2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 217.17 mm): Symbol PF1 [PF1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 96.52 mm): Symbol R16 [R16]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 116.84 mm): Symbol R20 [R20]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 234.95 mm): Symbol PF3 [PF3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 196.85 mm): Symbol U3 [U3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 135.89 mm): Symbol D2 [D2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 36.83 mm): Symbol Y1 [Y1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 58.42 mm): Symbol R40 [R40]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 153.67 mm): Symbol D3 [D3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 78.74 mm): Symbol R42 [R42]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 278.13 mm): Symbol U1 [U1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 257.81 mm): Symbol U9 [U9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 99.06 mm): Symbol R43 [R43]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 172.72 mm): Symbol R22 [R22]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 227.33 mm): Symbol Q1 [Q1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 119.38 mm): Symbol D7 [D7]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 139.70 mm): Symbol R46 [R46]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 193.04 mm): Symbol R23 [R23]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 34.29 mm): Symbol D1 [D1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 280.67 mm): Symbol PF4 [PF4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 53.34 mm): Symbol C1 [C1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 250.19 mm): Symbol J9 [J9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 73.66 mm): Symbol R4 [R4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 160.02 mm): Symbol R47 [R47]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 212.09 mm): Symbol D4 [D4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 93.98 mm): Symbol R6 [R6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 316.23 mm): Symbol U7 [U7]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 298.45 mm): Symbol PF5 [PF5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 114.30 mm): Symbol C2 [C2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 180.34 mm): Symbol D8 [D8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 229.87 mm): Symbol J3 [J3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 273.05 mm): Symbol J11 [J11]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 134.62 mm): Symbol R7 [R7]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 35.56 mm): Symbol TH1 [TH1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 55.88 mm): Symbol TH2 [TH2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 200.66 mm): Symbol R50 [R50]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 76.20 mm): Symbol R24 [R24]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 316.23 mm): Symbol PF6 [PF6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 154.94 mm): Symbol C3 [C3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 248.92 mm): Symbol R26 [R26]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 96.52 mm): Symbol R25 [R25]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 220.98 mm): Symbol R51 [R51]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 116.84 mm): Symbol R27 [R27]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 175.26 mm): Symbol R10 [R10]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 298.45 mm): Symbol U14 [U14]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 351.79 mm): Symbol U11 [U11]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 334.01 mm): Symbol PF8 [PF8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 269.24 mm): Symbol C10 [C10]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 137.16 mm): Symbol R28 [R28]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 35.56 mm): Symbol C27 [C27]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 195.58 mm): Symbol R12 [R12]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 241.30 mm): Symbol D9 [D9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 55.88 mm): Symbol C28 [C28]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 157.48 mm): Symbol R30 [R30]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 76.20 mm): Symbol R36 [R36]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 96.52 mm): Symbol C29 [C29]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 215.90 mm): Symbol R13 [R13]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 322.58 mm): Symbol F1 [F1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 289.56 mm): Symbol L1 [L1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 351.79 mm): Symbol PF9 [PF9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 177.80 mm): Symbol R31 [R31]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 260.35 mm): Symbol J8 [J8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 116.84 mm): Symbol C30 [C30]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 137.16 mm): Symbol R37 [R37]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 236.22 mm): Symbol R15 [R15]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 198.12 mm): Symbol C11 [C11]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 278.13 mm): Symbol J10 [J10]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 34.29 mm): Symbol FB2 [FB2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(66.04 mm, 384.81 mm): Symbol U12 [U12]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 309.88 mm): Symbol R29 [R29]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 342.90 mm): Symbol R1 [R1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 369.57 mm): Symbol PF10 [PF10]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 157.48 mm): Symbol R38 [R38]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 73.66 mm): Symbol C43 [C43]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 218.44 mm): Symbol C12 [C12]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 256.54 mm): Symbol C7 [C7]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 93.98 mm): Symbol C44 [C44]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 177.80 mm): Symbol R39 [R39]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 298.45 mm): Symbol Y2 [Y2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 114.30 mm): Symbol C45 [C45]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 330.20 mm): Symbol R32 [R32]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(132.08 mm, 387.35 mm): Symbol PF2 [PF2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 238.76 mm): Symbol R34 [R34]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 363.22 mm): Symbol R2 [R2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 134.62 mm): Symbol R55 [R55]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 198.12 mm): Symbol C31 [C31]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 276.86 mm): Symbol C8 [C8]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 36.83 mm): Symbol Q2 [Q2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 154.94 mm): Symbol R56 [R56]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 57.15 mm): Symbol J1 [J1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 320.04 mm): Symbol R63 [R63]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 218.44 mm): Symbol R41 [R41]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 259.08 mm): Symbol C14 [C14]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 76.20 mm): Symbol R9 [R9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 350.52 mm): Symbol C13 [C13]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 175.26 mm): Symbol R57 [R57]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 297.18 mm): Symbol R17 [R17]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 96.52 mm): Symbol R11 [R11]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(190.50 mm, 383.54 mm): Symbol R3 [R3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 238.76 mm): Symbol C33 [C33]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 116.84 mm): Symbol C4 [C4]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 279.40 mm): Symbol C15 [C15]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 195.58 mm): Symbol R58 [R58]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 340.36 mm): Symbol R64 [R64]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 137.16 mm): Symbol C5 [C5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 317.50 mm): Symbol R18 [R18]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 370.84 mm): Symbol L2 [L2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 259.08 mm): Symbol R45 [R45]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 215.90 mm): Symbol R59 [R59]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 156.21 mm): Symbol D6 [D6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(445.77 mm, 34.29 mm): Symbol D5 [D5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 299.72 mm): Symbol C16 [C16]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(445.77 mm, 53.34 mm): Symbol R35 [R35]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(445.77 mm, 73.66 mm): Symbol C6 [C6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 175.26 mm): Symbol C37 [C37]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 360.68 mm): Symbol R65 [R65]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 236.22 mm): Symbol R60 [R60]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(445.77 mm, 93.98 mm): Symbol C17 [C17]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 337.82 mm): Symbol R19 [R19]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 279.40 mm): Symbol C35 [C35]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(238.76 mm, 391.16 mm): Symbol R33 [R33]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 195.58 mm): Symbol C38 [C38]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 318.77 mm): Symbol FB1 [FB1]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 256.54 mm): Symbol R61 [R61]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(273.05 mm, 381.00 mm): Symbol R66 [R66]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 299.72 mm): Symbol R49 [R49]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 215.90 mm): Symbol C39 [C39]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 358.14 mm): Symbol R21 [R21]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(472.44 mm, 35.56 mm): Symbol C18 [C18]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 337.82 mm): Symbol C24 [C24]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(472.44 mm, 55.88 mm): Symbol C19 [C19]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 276.86 mm): Symbol R62 [R62]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(472.44 mm, 76.20 mm): Symbol C20 [C20]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 236.22 mm): Symbol R53 [R53]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 318.77 mm): Symbol J5 [J5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(472.44 mm, 96.52 mm): Symbol C21 [C21]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(306.07 mm, 378.46 mm): Symbol C9 [C9]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 295.91 mm): Symbol FB3 [FB3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 358.14 mm): Symbol C25 [C25]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(416.56 mm, 256.54 mm): Symbol R54 [R54]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 336.55 mm): Symbol J6 [J6]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(497.84 mm, 35.56 mm): Symbol C22 [C22]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(388.62 mm, 314.96 mm): Symbol C47 [C47]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(497.84 mm, 55.88 mm): Symbol C23 [C23]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(497.84 mm, 76.20 mm): Symbol C32 [C32]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(332.74 mm, 378.46 mm): Symbol C26 [C26]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 354.33 mm): Symbol J7 [J7]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(497.84 mm, 96.52 mm): Symbol C34 [C34]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 373.38 mm): Symbol C40 [C40]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(523.24 mm, 35.56 mm): Symbol C36 [C36]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(523.24 mm, 55.88 mm): Symbol C46 [C46]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(360.68 mm, 393.70 mm): Symbol C41 [C41]
+
+ ** ERC messages: 167  Errors 0  Warnings 167

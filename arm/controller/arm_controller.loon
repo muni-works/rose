@@ -1,0 +1,263 @@
+;; rose arm controller v0.1 - the circuit as loon.
+;;
+;; Every part is a KiCad library symbol: [EcadSymbol ref "Library:Symbol" value footprint x y rot],
+;; so pin numbers and names come from KiCad's own libraries. Connectivity is data:
+;; [EcadConn net "REF.PIN"]. Design notes: DESIGN.md. Render:
+;;   vcad export arm_controller.loon arm_controller.kicad_sch
+;;   kicad-cli sch erc arm_controller.kicad_sch
+
+[let R0402 "Resistor_SMD:R_0402_1005Metric"]
+[let C0402 "Capacitor_SMD:C_0402_1005Metric"]
+[let C0805 "Capacitor_SMD:C_0805_2012Metric"]
+[let C1210 "Capacitor_SMD:C_1210_3225Metric"]
+[let R2512 "Resistor_SMD:R_2512_6332Metric"]
+
+;; a part and its connections; pins is flat: #["pin" "net" "pin" "net" ...]
+[let part [fn [ref lib val fp pins]
+  #[[EcadSymbol ref lib val fp 0.0 0.0 0.0]
+    [map [fn [pn] [EcadConn [nth pn 1] [str ref "." [nth pn 0]]]] [chunk 2 pins]]]]]
+[let r [fn [ref val a b] [part ref "Device:R" val R0402 #["1" a "2" b]]]]
+[let c [fn [ref val a b] [part ref "Device:C" val C0402 #["1" a "2" b]]]]
+[let cfp [fn [ref val fp a b] [part ref "Device:C" val fp #["1" a "2" b]]]]
+[let flag [fn [ref net] [part ref "power:PWR_FLAG" "PWR_FLAG" "" #["1" net]]]]
+
+
+;; ---- power in, hot-swap switch, e-stop and watchdog
+
+[part "J1" "Connector_Generic:Conn_01x02" "XT60PW-M 48V in" "Connector_AMASS:AMASS_XT60PW-M_1x02_P7.20mm_Horizontal"
+  #["1" "VIN_RAW" "2" "GND"]]
+[part "F1" "Device:Fuse" "ATM 50A" "Fuse:Fuseholder_Blade_Mini_Keystone_3568"
+  #["1" "VIN_RAW" "2" "VIN"]]
+[part "D1" "Device:D_TVS" "SMDJ58A" "Diode_SMD:D_SMC"
+  #["1" "VIN" "2" "GND"]]
+[cfp "C1" "2.2u 100V" C1210 "VIN" "GND"]
+[part "U1" "Power_Management:LM5060" "LM5060" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+  #["2" "VIN" "1" "HS_SENSE" "10" "HS_GATE_R" "9" "VBUS_SW" "5" "HS_EN" "4" "HS_UVLO" "3" "HS_OVP" "7" "HS_TIMER" "8" "HS_PGD" "6" "GND"]]
+[r "R1" "20k" "VIN" "HS_SENSE"]
+[r "R2" "10" "HS_GATE_R" "HS_GATE"]
+[part "Q1" "Device:Q_NMOS" "IPT015N10N5 100V 1.5mR" "Package_TO_SOT_SMD:Infineon_PG-HSOF-8-1"
+  #["D" "VIN" "G" "HS_GATE" "S" "VBUS_SW"]]
+[r "R3" "220k" "VIN" "HS_UVLO"]
+[r "R4" "10k" "HS_UVLO" "GND"]
+[r "R5" "330k" "VIN" "HS_OVP"]
+[r "R6" "10k" "HS_OVP" "GND"]
+[c "C2" "100n" "HS_TIMER" "GND"]
+[r "R7" "10k" "+3V3" "HS_PGD"]
+[part "U2" "74xGxx:74LVC1G11" "74LVC1G11" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "ESTOP1" "3" "WD_OK" "6" "MCU_EN" "4" "EN_AND" "5" "+3V3" "2" "GND"]]
+[r "R8" "1M" "EN_AND" "HS_EN"]
+[c "C3" "220n" "HS_EN" "GND"]
+[part "J2" "Connector_Generic:Conn_01x04" "E-stop, 2-ch NC" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
+  #["1" "ESTOP_SRC1" "2" "ESTOP1" "3" "ESTOP_SRC2" "4" "ESTOP2"]]
+[r "R9" "1k" "+3V3" "ESTOP_SRC1"]
+[r "R10" "10k" "ESTOP1" "GND"]
+[r "R11" "1k" "+3V3" "ESTOP_SRC2"]
+[r "R12" "10k" "ESTOP2" "GND"]
+[part "U3" "Power_Supervisor:TPS3430WDRC" "TPS3430" "Package_SON:Texas_DRC0010J_ThermalVias"
+  #["1" "+3V3" "10" "+3V3" "5" "GND" "11" "GND" "7" "WD_KICK" "4" "WD_CRST" "2" "WD_CWD" "3" "GND" "6" "GND" "8" "WD_OK"]]
+[c "C4" "10n" "WD_CRST" "GND"]
+[c "C5" "10n" "WD_CWD" "GND"]
+[r "R13" "10k" "+3V3" "WD_OK"]
+[flag "PF1" "VIN"]
+[flag "PF2" "GND"]
+
+;; ---- bus monitor, bulk capacitance, brake chopper
+
+[part "R14" "Device:R" "0.5m 4-term" R2512
+  #["1" "VBUS_SW" "2" "VBUS"]]
+[part "U4" "Sensor_Energy:INA228" "INA228" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+  #["10" "VBUS_SW" "9" "VBUS" "8" "VBUS" "6" "+3V3" "7" "GND" "1" "GND" "2" "GND" "4" "I2C_SDA" "5" "I2C_SCL" "3" "INA_ALERT"]]
+[c "C6" "100n" "+3V3" "GND"]
+[r "R15" "10k" "+3V3" "INA_ALERT"]
+[part "C7" "Device:C_Polarized" "220u 100V" "Capacitor_THT:CP_Radial_D12.5mm_P5.00mm"
+  #["1" "VBUS" "2" "GND"]]
+[cfp "C8" "2.2u 100V" C1210 "VBUS" "GND"]
+[flag "PF3" "VBUS"]
+[r "R16" "316k" "VBUS" "BRK_DIV"]
+[r "R17" "10k" "BRK_DIV" "GND"]
+[r "R18" "10k" "+3V3" "BRK_REF"]
+[r "R19" "10k" "BRK_REF" "GND"]
+[r "R20" "1M" "BRK_CMP" "BRK_DIV"]
+[part "U5" "Comparator:TLV7031DBV" "TLV7031" "Package_TO_SOT_SMD:SOT-23-5"
+  #["5" "+3V3" "2" "GND" "3" "BRK_DIV" "4" "BRK_REF" "1" "BRK_CMP"]]
+[part "D2" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "BRK_CMP" "1" "BRK_IN"]]
+[part "D3" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "BRK_FORCE" "1" "BRK_IN"]]
+[r "R21" "100k" "BRK_IN" "GND"]
+[part "U6" "Driver_FET:UCC27511ADBV" "UCC27511A" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "+12V" "4" "GND" "6" "BRK_IN" "5" "GND" "2" "BRK_GH" "3" "BRK_GL"]]
+[r "R22" "4.7" "BRK_GH" "BRK_G"]
+[r "R23" "2.2" "BRK_GL" "BRK_G"]
+[c "C9" "1u" "+12V" "GND"]
+[part "Q2" "Device:Q_NMOS" "IPT015N10N5 100V 1.5mR" "Package_TO_SOT_SMD:Infineon_PG-HSOF-8-1"
+  #["D" "BRK_R" "G" "BRK_G" "S" "GND"]]
+[part "D4" "Device:D_Schottky" "STPS10H100 100V" "Diode_SMD:D_SMC"
+  #["1" "VBUS" "2" "BRK_R"]]
+[part "J3" "Connector_Generic:Conn_01x02" "Brake resistor 10R 100W" "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"
+  #["1" "VBUS" "2" "BRK_R"]]
+[part "TH1" "Device:Thermistor_NTC" "10k NTC (FETs)" R0402
+  #["1" "NTC_FET" "2" "GND"]]
+[part "TH2" "Device:Thermistor_NTC" "10k NTC (brake R)" R0402
+  #["1" "NTC_BRK" "2" "GND"]]
+[r "R24" "10k" "+3V3" "NTC_FET"]
+[r "R25" "10k" "+3V3" "NTC_BRK"]
+
+;; ---- logic rails: 48 V -> 12 V -> 5 V -> 3.3 V
+
+[part "U7" "Regulator_Switching:LM5164DDA" "LM5164 48V->12V" "Package_SO:Texas_HSOP-8-1EP_3.9x4.9mm_P1.27mm"
+  #["2" "VIN" "3" "BK1_EN" "4" "BK1_RON" "1" "GND" "9" "GND" "7" "BK1_BST" "8" "BK1_SW" "5" "BK1_FB" "6" "BK1_PG"]]
+[r "R26" "100k" "VIN" "BK1_EN"]
+[r "R27" "10k" "BK1_EN" "GND"]
+[r "R28" "150k" "BK1_RON" "GND"]
+[c "C10" "2.2n" "BK1_BST" "BK1_SW"]
+[part "L1" "Device:L" "22u 1.5A" "Inductor_SMD:L_Bourns_SRR1260"
+  #["1" "BK1_SW" "2" "+12V"]]
+[r "R29" "100k" "+12V" "BK1_FB"]
+[r "R30" "11k" "BK1_FB" "GND"]
+[r "R31" "100k" "+3V3" "BK1_PG"]
+[cfp "C11" "2.2u 100V" C1210 "VIN" "GND"]
+[cfp "C12" "22u 25V" C0805 "+12V" "GND"]
+[part "U8" "Regulator_Switching:TPS54302" "TPS54302 12V->5V" "Package_TO_SOT_SMD:TSOT-23-6"
+  #["3" "+12V" "5" "BK2_EN" "1" "GND" "6" "BK2_BST" "2" "BK2_SW" "4" "BK2_FB"]]
+[r "R32" "100k" "+12V" "BK2_EN"]
+[c "C13" "100n" "BK2_BST" "BK2_SW"]
+[part "L2" "Device:L" "4.7u 3A" "Inductor_SMD:L_Bourns_SRR1260"
+  #["1" "BK2_SW" "2" "+5V"]]
+[r "R33" "100k" "+5V" "BK2_FB"]
+[r "R34" "13.3k" "BK2_FB" "GND"]
+[cfp "C14" "10u 25V" C0805 "+12V" "GND"]
+[cfp "C15" "22u" C0805 "+5V" "GND"]
+[part "U9" "Regulator_Linear:AP2112K-3.3" "AP2112K-3.3" "Package_TO_SOT_SMD:SOT-23-5"
+  #["1" "+5V" "3" "+5V" "2" "GND" "5" "+3V3"]]
+[c "C16" "1u" "+5V" "GND"]
+[cfp "C17" "10u" C0805 "+3V3" "GND"]
+[flag "PF4" "+12V"]
+[flag "PF5" "+5V"]
+[part "D5" "Device:LED" "green 3V3" "LED_SMD:LED_0603_1608Metric"
+  #["2" "LED_PWR" "1" "GND"]]
+[r "R35" "1k" "+3V3" "LED_PWR"]
+
+;; ---- microcontroller
+
+[part "U10" "MCU_ST_STM32H7:STM32H723VGTx" "STM32H723VGT6" "Package_QFP:LQFP-100_14x14mm_P0.5mm"
+  #["14" "NRST" "94" "BOOT0" "20" "VDDA" "12" "HSE_IN" "13" "HSE_OUT" "97" "HS_PGD" "98" "INA_ALERT" "1" "ESTOP1" "2" "ESTOP2" "3" "MCU_EN" "4" "WD_KICK" "5" "WD_OK" "37" "BRK_FORCE" "38" "BRK_CMP" "39" "PHY_RST" "41" "CANA_STBY" "42" "CANB_STBY" "43" "CANU_STBY" "44" "AUX_IO" "45" "LED_STAT" "81" "CANA_RX" "82" "CANA_TX" "84" "BK1_PG" "59" "CANU_RX" "60" "CANU_TX" "48" "VCAP1" "73" "VCAP2" "6" "+3V3" "11" "+3V3" "27" "+3V3" "50" "+3V3" "10" "GND" "26" "GND" "49" "GND" "74" "GND" "99" "GND" "75" "+3V3" "19" "GND" "100" "+3V3" "21" "VDDA" "22" "NTC_FET" "23" "ETH_REFCLK" "24" "ETH_MDIO" "25" "NTC_BRK" "31" "ETH_CRSDV" "70" "USB_DM" "71" "USB_DP" "72" "SWDIO" "76" "SWCLK" "89" "SWO" "91" "CANB_RX" "92" "CANB_TX" "95" "I2C_SCL" "96" "I2C_SDA" "47" "ETH_TXEN" "51" "ETH_TXD0" "52" "ETH_TXD1" "16" "ETH_MDC" "32" "ETH_RXD0" "33" "ETH_RXD1"]]
+[c "C18" "100n" "+3V3" "GND"]
+[c "C19" "100n" "+3V3" "GND"]
+[c "C20" "100n" "+3V3" "GND"]
+[c "C21" "100n" "+3V3" "GND"]
+[c "C22" "100n" "+3V3" "GND"]
+[cfp "C23" "4.7u" C0805 "+3V3" "GND"]
+[part "FB1" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "VDDA"]]
+[c "C24" "1u" "VDDA" "GND"]
+[c "C25" "100n" "VDDA" "GND"]
+[flag "PF6" "VDDA"]
+[c "C26" "2.2u" "VCAP1" "GND"]
+[c "C27" "2.2u" "VCAP2" "GND"]
+[c "C28" "100n" "NRST" "GND"]
+[r "R36" "10k" "BOOT0" "GND"]
+[part "Y1" "Device:Crystal_GND24" "25MHz" "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+  #["1" "HSE_IN" "3" "HSE_OUT" "2" "GND" "4" "GND"]]
+[c "C29" "10p" "HSE_IN" "GND"]
+[c "C30" "10p" "HSE_OUT" "GND"]
+[r "R37" "2.2k" "+3V3" "I2C_SCL"]
+[r "R38" "2.2k" "+3V3" "I2C_SDA"]
+[r "R39" "100k" "MCU_EN" "GND"]
+[part "D6" "Device:LED" "blue status" "LED_SMD:LED_0603_1608Metric"
+  #["2" "LED_STAT_A" "1" "GND"]]
+[r "R40" "1k" "LED_STAT" "LED_STAT_A"]
+[part "J4" "Connector:Conn_ARM_SWD_TagConnect_TC2030" "TC2030 SWD" "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
+  #["1" "+3V3" "5" "GND" "3" "NRST" "4" "SWCLK" "2" "SWDIO" "6" "SWO"]]
+
+;; ---- CAN: bus A (3x RS04), bus B (wrist), uplink
+
+[part "U11" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANA_TX" "4" "CANA_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANA_H" "6" "CANA_L" "8" "CANA_STBY"]]
+[c "C31" "100n" "+5V" "GND"]
+[c "C32" "100n" "+3V3" "GND"]
+[r "R41" "10k" "CANA_STBY" "GND"]
+[r "R42" "60.4" "CANA_H" "CANA_TSPLIT"]
+[r "R43" "60.4" "CANA_TSPLIT" "CANA_L"]
+[c "C37" "4.7n" "CANA_TSPLIT" "GND"]
+[part "D7" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANA_H" "2" "CANA_L" "3" "GND"]]
+[part "U12" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANB_TX" "4" "CANB_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANB_H" "6" "CANB_L" "8" "CANB_STBY"]]
+[c "C33" "100n" "+5V" "GND"]
+[c "C34" "100n" "+3V3" "GND"]
+[r "R45" "10k" "CANB_STBY" "GND"]
+[r "R46" "60.4" "CANB_H" "CANB_TSPLIT"]
+[r "R47" "60.4" "CANB_TSPLIT" "CANB_L"]
+[c "C38" "4.7n" "CANB_TSPLIT" "GND"]
+[part "D8" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANB_H" "2" "CANB_L" "3" "GND"]]
+[part "U13" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANU_TX" "4" "CANU_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANU_H" "6" "CANU_L" "8" "CANU_STBY"]]
+[c "C35" "100n" "+5V" "GND"]
+[c "C36" "100n" "+3V3" "GND"]
+[r "R49" "10k" "CANU_STBY" "GND"]
+[r "R50" "60.4" "CANU_H" "CANU_TSPLIT"]
+[r "R51" "60.4" "CANU_TSPLIT" "CANU_L"]
+[c "C39" "4.7n" "CANU_TSPLIT" "GND"]
+[part "D9" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANU_H" "2" "CANU_L" "3" "GND"]]
+[part "J5" "Connector_Generic:Conn_01x02" "XT30PW-M RS04 power" "Connector_AMASS:AMASS_XT30PW-M_1x02_P2.50mm_Horizontal"
+  #["1" "VBUS" "2" "GND"]]
+[part "J6" "Connector_Generic:Conn_01x02" "XT30PW-M RS04 power" "Connector_AMASS:AMASS_XT30PW-M_1x02_P2.50mm_Horizontal"
+  #["1" "VBUS" "2" "GND"]]
+[part "J7" "Connector_Generic:Conn_01x02" "XT30PW-M RS04 power" "Connector_AMASS:AMASS_XT30PW-M_1x02_P2.50mm_Horizontal"
+  #["1" "VBUS" "2" "GND"]]
+[part "J8" "Connector_Generic:Conn_01x02" "GH1.25 RS04 CAN" "Connector_JST:JST_GH_SM02B-GHS-TB_1x02-1MP_P1.25mm_Horizontal"
+  #["1" "CANA_L" "2" "CANA_H"]]
+[part "J9" "Connector_Generic:Conn_01x04" "XT30PB(2+2)-M wrist bus (FOOTPRINT TODO)" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+  #["1" "VBUS" "2" "GND" "3" "CANB_L" "4" "CANB_H"]]
+[part "J10" "Connector_Generic:Conn_01x03" "GH CAN-FD uplink" "Connector_JST:JST_GH_SM03B-GHS-TB_1x03-1MP_P1.25mm_Horizontal"
+  #["1" "CANU_H" "2" "CANU_L" "3" "GND"]]
+[part "J11" "Connector_Generic:Conn_01x04" "GH aux 12V/5V/IO" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
+  #["1" "+12V" "2" "+5V" "3" "AUX_IO" "4" "GND"]]
+
+;; ---- USB-C
+
+[part "J12" "Connector:USB_C_Receptacle_USB2.0_16P" "USB-C" "Connector_USB:USB_C_Receptacle_GCT_USB4105-xx-A_16P_TopMnt_Horizontal"
+  #["A4" "USB_VBUS" "A9" "USB_VBUS" "B4" "USB_VBUS" "B9" "USB_VBUS" "A1" "GND" "A12" "GND" "B1" "GND" "B12" "GND" "S1" "GND" "A5" "USB_CC1" "B5" "USB_CC2" "A7" "USB_DM" "B7" "USB_DM" "A6" "USB_DP" "B6" "USB_DP"]]
+[r "R53" "5.1k" "USB_CC1" "GND"]
+[r "R54" "5.1k" "USB_CC2" "GND"]
+[part "U14" "Power_Protection:USBLC6-2SC6" "USBLC6-2SC6" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "USB_DM" "6" "USB_DM" "3" "USB_DP" "4" "USB_DP" "5" "USB_VBUS" "2" "GND"]]
+
+;; ---- Ethernet
+
+[part "U15" "Interface_Ethernet:LAN8742A" "LAN8742A-CZ" "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm"
+  #["17" "ETH_TXD0" "18" "ETH_TXD1" "16" "ETH_TXEN" "8" "ETH_RXD0" "7" "ETH_RXD1" "10" "PHY_RXER" "11" "ETH_CRSDV" "12" "ETH_MDIO" "13" "ETH_MDC" "15" "PHY_RST" "14" "ETH_REFCLK" "5" "PHY_XI" "4" "PHY_XO" "9" "+3V3" "6" "PHY_VDDCR" "19" "PHY_VDDA" "1" "PHY_VDDA" "25" "GND" "21" "ETH_TXP" "20" "ETH_TXN" "23" "ETH_RXP" "22" "ETH_RXN" "24" "PHY_RBIAS" "3" "PHY_LED1" "2" "PHY_LED2"]]
+[part "Y2" "Device:Crystal_GND24" "25MHz" "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+  #["1" "PHY_XI" "3" "PHY_XO" "2" "GND" "4" "GND"]]
+[c "C40" "10p" "PHY_XI" "GND"]
+[c "C41" "10p" "PHY_XO" "GND"]
+[part "FB2" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "PHY_VDDA"]]
+[c "C42" "1u" "PHY_VDDA" "GND"]
+[c "C43" "100n" "PHY_VDDA" "GND"]
+[c "C44" "1u" "PHY_VDDCR" "GND"]
+[c "C45" "470p" "PHY_VDDCR" "GND"]
+[c "C46" "100n" "+3V3" "GND"]
+[flag "PF8" "PHY_VDDA"]
+[flag "PF9" "PHY_VDDCR"]
+[r "R55" "12.1k 1%" "PHY_RBIAS" "GND"]
+[r "R56" "10k" "PHY_LED1" "GND"]
+[r "R57" "10k" "PHY_LED2" "GND"]
+[r "R58" "10k" "PHY_RXER" "GND"]
+[r "R59" "10k" "+3V3" "ETH_RXD0"]
+[r "R60" "10k" "+3V3" "ETH_RXD1"]
+[r "R61" "10k" "+3V3" "ETH_CRSDV"]
+[r "R62" "1.5k" "+3V3" "ETH_MDIO"]
+[r "R63" "49.9 1%" "ETH_CT" "ETH_TXP"]
+[r "R64" "49.9 1%" "ETH_CT" "ETH_TXN"]
+[r "R65" "49.9 1%" "ETH_CT" "ETH_RXP"]
+[r "R66" "49.9 1%" "ETH_CT" "ETH_RXN"]
+[part "FB3" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "ETH_CT"]]
+[c "C47" "100n" "ETH_CT" "GND"]
+[flag "PF10" "ETH_CT"]
+[part "J13" "Connector:RJ45_Hanrun_HR911105A_Horizontal" "HR911105A" "Connector_RJ:RJ45_Hanrun_HR911105A_Horizontal"
+  #["1" "ETH_TXP" "2" "ETH_TXN" "3" "ETH_RXP" "6" "ETH_RXN" "4" "ETH_CT" "5" "ETH_CT" "8" "GND" "SH" "GND"]]
