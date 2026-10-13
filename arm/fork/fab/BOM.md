@@ -75,13 +75,14 @@ screws; a drop of retaining compound on each tab stops rattle.
 | J6 wrist pitch RS02 | back face to yoke B + sleeve flange | 4 | M4 x 10 | 5.175 | 6 (assumed) | 4.825 |
 | J6 wrist pitch RS02 | output to spacer + wrist A | 6 | M4 x 10 | 6.35 | 6 (assumed) | 3.65 |
 | J7 tool roll RS00 | back face to the wrist end plate | 4 | M3 x 6 | 3.175 | 4 | 2.825 |
-| J7 tool roll RS00 | output to the tool flange | 6 | M3 x 6 | 3.175 | 5 | 2.825 |
+| J7 tool roll RS00 | output to tool flange + gripper top plate (shared screws) | 6 | M3 x 10 | 6.35 | 5 | 3.65 |
 
 ### Order list
 
 | screw (ISO 4762 socket head, A2 or 12.9 black) | qty | + spares |
 |---|---:|---:|
-| M3 x 6 | 10 | 2 |
+| M3 x 10 | 6 | 2 |
+| M3 x 6 | 4 | 2 |
 | M4 x 10 | 40 | 4 |
 | M4 x 8 | 10 | 2 |
 | M5 x 12 | 16 | 2 |

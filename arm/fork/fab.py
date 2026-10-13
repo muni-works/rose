@@ -214,7 +214,7 @@ def fasteners():
         ('J6 wrist pitch RS02', 'back face to yoke B + sleeve flange', F.J6M['back'], T + FL, 6.0, 'assumed'),
         ('J6 wrist pitch RS02', 'output to spacer + wrist A', F.J6M['out'], T + S, 6.0, 'assumed'),
         ('J7 tool roll RS00', 'back face to the wrist end plate', F.J7M['back'], T, 4.0, 'manual'),
-        ('J7 tool roll RS00', 'output to the tool flange', F.J7M['out'], T, 5.0, 'manual'),
+        ('J7 tool roll RS00', 'output to tool flange + gripper top plate (shared screws)', F.J7M['out'], 2 * T, 5.0, 'manual'),
     ]
     out = []
     for j, what, pat, stack, depth, src in rows:
