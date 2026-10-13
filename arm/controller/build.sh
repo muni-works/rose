@@ -4,6 +4,8 @@
 set -e
 cd "$(dirname "$0")"
 VCAD=${VCAD:-vcad}
+# board art: brand/muni.pretty (shared) and art.pretty (this board)
+export VCAD_KICAD_FOOTPRINTS="$(cd ../../brand && pwd):$(pwd)${VCAD_KICAD_FOOTPRINTS:+:$VCAD_KICAD_FOOTPRINTS}"
 KICAD_CLI=${KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}
 $VCAD export arm_controller.loon arm_controller.kicad_sch
 python3 netcheck.py arm_controller.loon arm_controller.kicad_sch      # every pin on its loon net, nothing merged
