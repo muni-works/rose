@@ -49,9 +49,10 @@ RS00 = motor(0.057, 0.051, 0.035, 0.001, 0.310, back=(4, 0.038, 0.0034), out=(6,
 J1M, J2M, J4M = RS04, RS04, RS04
 J5M, J6M, J7M = RS02, RS02, RS00
 EDU = dict(d=0.046, L=0.044, kg=0.242)
-T_PL = 0.003          # every plate, cover, disc and bridge: one 3 mm 5052 stock (v9: covers too)
-T_CV = 0.003
-T_PB = 0.003
+T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm) 5052 stock - SendCutSend and local supply
+T_FOOT = 0.00635      # 1/4" foot
+T_CV = T_PL
+T_PB = T_PL
 GAP = 0.002
 BAR = 0.020
 
@@ -73,7 +74,7 @@ R_LOBE6W = J6M['d'] / 2 + 0.006      # wrist-pitch lobe
 #   +y:  motor nose ... output face | spacer disc 3 | straddler A
 #        holder A (around the nose, outer face at output - 1 mm)
 #   -y:  back face | holder B | CABLE_GAP 4 | straddler B | hub cap
-SPACER_T = 0.003
+SPACER_T = T_PL
 CABLE_GAP = 0.004
 SPACER_GAP = 0.004    # A side: holder A outer face to straddler A inner face (1 + spacer 3)
 
@@ -349,7 +350,7 @@ def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_
 def end_plate(link, x, z, ya, yb, hz, tabs_z, holes, hy_extra=0.0):
     """A cross plate normal to x at x .. x+T, slotted for the side plates' tabs at y = +ya and -yb."""
     web = max(1.5 * T_PL, 0.004)
-    ey = SLOT_L / 2 * 0 + (T_PL + 0.0002) / 2 + web + hy_extra
+    ey = (T_PL + 0.0002) / 2 + web + 0.0003 + hy_extra
     y0, y1 = -yb - ey, ya + ey
     ol = [('line', (y0, -hz), (y1, -hz)), ('line', (y1, -hz), (y1, hz)), ('line', (y1, hz), (y0, hz)), ('line', (y0, hz), (y0, -hz))]
     slots = [rect(yy, tz, T_PL + 0.0002, SLOT_L) for yy in (ya, -yb) for tz in tabs_z]
@@ -365,8 +366,8 @@ def build():
         [circ(0.095 * math.cos(a), 0.095 * math.sin(a), 0.0033) for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4)]
     P.append(('base', 'base', (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
               [('arc', (0.115, 0.0), (-0.115, 0.0), (0.0, 0.0), True), ('arc', (-0.115, 0.0), (0.115, 0.0), (0.0, 0.0), True)],
-              (0.0, 0.0, 0.006), foot_holes))
-    zb = 0.006
+              (0.0, 0.0, T_FOOT), foot_holes))
+    zb = T_FOOT
     P += motor_prims('base', J1M, 'z', 0.0, zb)
     zo = zb + J1M['L']
     P.append(Gm.cylinder('base', 'printed', (0, 0, zb), (0, 0, zo - J1M['nose_L'] - 0.002), J1M['d'] / 2 + 0.010)

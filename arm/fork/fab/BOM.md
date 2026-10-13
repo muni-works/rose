@@ -17,29 +17,29 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 
 | part | t mm | qty | size mm | holes + slots | g each |
 |---|---:|---:|---|---:|---:|
-| foot | 6 | 1 | 230 x 230 | 15 | 583 |
-| turret-disc | 3 | 1 | 140 x 140 | 14 | 114 |
-| turret-tower-A | 3 | 1 | 140 x 208 | 9 | 192 |
-| turret-tower-B | 3 | 1 | 140 x 208 | 2 | 192 |
-| spacer-RS04 | 3 | 2 | 57 x 57 | 8 | 19 |
-| upper-A | 3 | 1 | 392 x 132 | 7 | 163 |
-| upper-B | 3 | 1 | 392 x 132 | 27 | 199 |
-| upper-cover | 3 | 2 | 108 x 54 | 0 | 43 |
-| fore-A | 3 | 1 | 166 x 132 | 8 | 137 |
-| fore-B | 3 | 1 | 166 x 132 | 1 | 136 |
-| fore-end-plate | 3 | 1 | 77 x 72 | 9 | 35 |
-| yoke-bridge | 3 | 1 | 53 x 41 | 10 | 16 |
-| yoke-A | 3 | 1 | 123 x 90 | 1 | 38 |
-| yoke-B | 3 | 1 | 123 x 90 | 5 | 60 |
-| wrist-A | 3 | 1 | 121 x 90 | 6 | 69 |
-| wrist-B | 3 | 1 | 121 x 90 | 1 | 68 |
-| wrist-end-plate | 3 | 1 | 67 x 52 | 9 | 24 |
-| spacer-RS02 | 3 | 1 | 43 x 43 | 6 | 11 |
-| tool-flange | 3 | 1 | 61 x 61 | 6 | 23 |
-| jaw | 3 | 2 | 75 x 32 | 0 | 13 |
+| foot | 6.3 | 1 | 230 x 230 | 15 | 617 |
+| turret-disc | 3.2 | 1 | 140 x 140 | 14 | 121 |
+| turret-tower-A | 3.2 | 1 | 140 x 207 | 9 | 203 |
+| turret-tower-B | 3.2 | 1 | 140 x 207 | 2 | 202 |
+| spacer-RS04 | 3.2 | 2 | 57 x 57 | 8 | 20 |
+| upper-A | 3.2 | 1 | 392 x 132 | 7 | 173 |
+| upper-B | 3.2 | 1 | 392 x 132 | 27 | 211 |
+| upper-cover | 3.2 | 2 | 108 x 54 | 0 | 45 |
+| fore-A | 3.2 | 1 | 166 x 132 | 8 | 144 |
+| fore-B | 3.2 | 1 | 166 x 132 | 1 | 144 |
+| fore-end-plate | 3.2 | 1 | 79 x 72 | 9 | 38 |
+| yoke-bridge | 3.2 | 1 | 54 x 41 | 10 | 17 |
+| yoke-A | 3.2 | 1 | 123 x 90 | 1 | 40 |
+| yoke-B | 3.2 | 1 | 123 x 90 | 5 | 63 |
+| wrist-A | 3.2 | 1 | 122 x 90 | 6 | 73 |
+| wrist-B | 3.2 | 1 | 122 x 90 | 1 | 72 |
+| wrist-end-plate | 3.2 | 1 | 69 x 52 | 9 | 26 |
+| spacer-RS02 | 3.2 | 1 | 43 x 43 | 6 | 12 |
+| tool-flange | 3.2 | 1 | 61 x 61 | 6 | 24 |
+| jaw | 3.2 | 2 | 75 x 32 | 0 | 14 |
 
-Stock, 3 mm: **3 sheets** of 390 x 390 (bed size).
-Stock, 6 mm: **1 sheet** of 390 x 390 (bed size).
+Stock, 3.2 mm: **3 sheets** of 381 x 381 mm.
+Stock, 6.3 mm: **1 sheet** of 381 x 381 mm.
 
 Covers and end plates are located by tabs in slots (10 mm tabs, slots 0.4 mm long and 0.2 mm wide
 over). They are captured between the side plates once the motors are bolted, so they need no
@@ -64,18 +64,18 @@ screws; a drop of retaining compound on each tab stops rattle.
 
 | joint | interface | qty | screw | stack mm | thread depth mm | engagement mm |
 |---|---|---:|---|---:|---:|---:|
-| J1 base yaw RS04 | back face to the 6 mm foot | 10 | M4 x 10 | 6 | 6 | 4 |
-| J1 base yaw RS04 | output to the turret disc | 8 | M5 x 8 | 3 | 6.5 | 5 |
-| J2 shoulder RS04 | back face to upper B + sleeve flange | 10 | M4 x 10 | 5 | 6 | 5 |
-| J2 shoulder RS04 | output to spacer + turret tower A | 8 | M5 x 12 | 6 | 6.5 | 6 |
-| J4 elbow RS04 | back face to upper B + sleeve flange | 10 | M4 x 10 | 5 | 6 | 5 |
-| J4 elbow RS04 | output to spacer + fore A | 8 | M5 x 12 | 6 | 6.5 | 6 |
-| J5 forearm roll RS02 | back face to the forearm end plate | 4 | M4 x 8 | 3 | 6 (assumed) | 5 |
-| J5 forearm roll RS02 | output to the yoke bridge | 6 | M4 x 8 | 3 | 6 (assumed) | 5 |
-| J6 wrist pitch RS02 | back face to yoke B + sleeve flange | 4 | M4 x 10 | 5 | 6 (assumed) | 5 |
-| J6 wrist pitch RS02 | output to spacer + wrist A | 6 | M4 x 10 | 6 | 6 (assumed) | 4 |
-| J7 tool roll RS00 | back face to the wrist end plate | 4 | M3 x 6 | 3 | 4 | 3 |
-| J7 tool roll RS00 | output to the tool flange | 6 | M3 x 6 | 3 | 5 | 3 |
+| J1 base yaw RS04 | back face to the foot | 10 | M4 x 10 | 6.35 | 6 | 3.65 |
+| J1 base yaw RS04 | output to the turret disc | 8 | M5 x 8 | 3.175 | 6.5 | 4.825 |
+| J2 shoulder RS04 | back face to upper B + sleeve flange | 10 | M4 x 10 | 5.175 | 6 | 4.825 |
+| J2 shoulder RS04 | output to spacer + turret tower A | 8 | M5 x 12 | 6.35 | 6.5 | 5.65 |
+| J4 elbow RS04 | back face to upper B + sleeve flange | 10 | M4 x 10 | 5.175 | 6 | 4.825 |
+| J4 elbow RS04 | output to spacer + fore A | 8 | M5 x 12 | 6.35 | 6.5 | 5.65 |
+| J5 forearm roll RS02 | back face to the forearm end plate | 4 | M4 x 8 | 3.175 | 6 (assumed) | 4.825 |
+| J5 forearm roll RS02 | output to the yoke bridge | 6 | M4 x 8 | 3.175 | 6 (assumed) | 4.825 |
+| J6 wrist pitch RS02 | back face to yoke B + sleeve flange | 4 | M4 x 10 | 5.175 | 6 (assumed) | 4.825 |
+| J6 wrist pitch RS02 | output to spacer + wrist A | 6 | M4 x 10 | 6.35 | 6 (assumed) | 3.65 |
+| J7 tool roll RS00 | back face to the wrist end plate | 4 | M3 x 6 | 3.175 | 4 | 2.825 |
+| J7 tool roll RS00 | output to the tool flange | 6 | M3 x 6 | 3.175 | 5 | 2.825 |
 
 ### Order list
 

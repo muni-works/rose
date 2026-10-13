@@ -43,6 +43,10 @@ torsion while the side plates are what you see.
 
 ![fork v9 back](render/fork-v9-back.png)
 
+**Stock: 1/8" (3.175 mm) 5052 for every plate, 1/4" for the foot** - what SendCutSend and local
+suppliers carry. Nests are for 15 x 15 in sheets: three of 1/8" (one 24 x 48 in sheet cuts into
+three with a strip left over) and one 12 x 12 in of 1/4". Re-run with `SHEET_MM=390` for bed size.
+
 **Fab package in `fab/`**, generated from the model by `fab.py`:
 
 - `parts/`: one DXF per unique router part (20), with outline, bolt patterns, bores, windows and slots

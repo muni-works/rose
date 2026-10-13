@@ -25,7 +25,8 @@ import dfm as D
 import elbow_rig as R      # DXF / SVG writers
 
 OUT = os.path.join(HERE, 'fab')
-BED, MARGIN, GAP, CELL = 390.0, 5.0, 6.0, 2.0
+BED = float(os.environ.get("SHEET_MM", 381.0))   # 15 x 15 in square sheet (fits the 390 mm 4040 bed); SHEET_MM overrides
+MARGIN, GAP, CELL = 5.0, 6.0, 2.0
 
 
 # ---------------------------------------------------------------- parts
@@ -199,10 +200,10 @@ def screw(d, stack, depth):
 
 def fasteners():
     m = lambda pat: 'M%d' % {0.0034: 3, 0.0045: 4, 0.0055: 5}[pat[2]]
-    T, S, FL = 3.0, 3.0, 2.0          # plate, spacer disc, sleeve flange (mm)
+    T = S = F.T_PL * 1e3; FL = 2.0     # plate, spacer disc, sleeve flange (mm)
     # (joint, interface, pattern, stack mm, thread depth mm, depth source)
     rows = [
-        ('J1 base yaw RS04', 'back face to the 6 mm foot', F.J1M['back'], 6.0, 6.0, 'manual'),
+        ('J1 base yaw RS04', 'back face to the foot', F.J1M['back'], F.T_FOOT * 1e3, 6.0, 'manual'),
         ('J1 base yaw RS04', 'output to the turret disc', F.J1M['out'], T, 6.5, 'manual'),
         ('J2 shoulder RS04', 'back face to upper B + sleeve flange', F.J2M['back'], T + FL, 6.0, 'manual'),
         ('J2 shoulder RS04', 'output to spacer + turret tower A', F.J2M['out'], T + S, 6.5, 'manual'),
@@ -296,7 +297,7 @@ def write_bom(parts, nests):
         w('| %s | %g | %d | %.0f x %.0f | %d | %.0f |' % (d['name'], d['t'], d['qty'], d['w'], d['h'], len(d['holes']), d['kg'] * 1e3))
     w('')
     for t, sh in sorted(nests.items()):
-        w('Stock, %g mm: **%d sheet%s** of 390 x 390 (bed size).' % (t, len(sh), '' if len(sh) == 1 else 's'))
+        w('Stock, %g mm: **%d sheet%s** of %.0f x %.0f mm.' % (t, len(sh), "" if len(sh) == 1 else "s", BED, BED))
     w('')
     w('Covers and end plates are located by tabs in slots (10 mm tabs, slots 0.4 mm long and 0.2 mm wide')
     w('over). They are captured between the side plates once the motors are bolted, so they need no')

@@ -16,10 +16,10 @@ then the hub cap, bonded to straddler plate B with a VHB ring.
 
 | feature | size |
 |---|---|
-| step | ring Ø89.8 / Ø81.8 x 2.8, locates in plate B's Ø90 centre hole, stops 0.2 short of the motor |
-| mass | 70 g |
+| step | ring Ø89.8 / Ø81.8 x 3.0, locates in plate B's Ø90 centre hole, stops 0.2 short of the motor |
+| mass | 71 g |
 | flange | Ø119 x 2, 10x Ø4.5 on Ø106, clamped with plate B by the back-face screws |
-| spigot | Ø16 g6 x 9.3, Ra 0.8: running fit for the 16 x 18 x 3, flange 24 bushing |
+| spigot | Ø16 g6 x 9.5, Ra 0.8: running fit for the 16 x 18 x 3, flange 24 bushing |
 | bore | Ø11 through, edges broken R1 (harness) |
 | cable slot | 10 wide, radial, through the flange and step into the bore |
 | groove | DIN 471-16, 1.5 from the spigot end |
@@ -30,10 +30,10 @@ then the hub cap, bonded to straddler plate B with a VHB ring.
 
 | feature | size |
 |---|---|
-| step | ring Ø35.8 / Ø27.8 x 2.8, locates in plate B's Ø36 centre hole, stops 0.2 short of the motor |
+| step | ring Ø35.8 / Ø27.8 x 3.0, locates in plate B's Ø36 centre hole, stops 0.2 short of the motor |
 | mass | 22 g |
 | flange | Ø65 x 2, 4x Ø4.5 on Ø52, clamped with plate B by the back-face screws |
-| spigot | Ø10 g6 x 9.3, Ra 0.8: running fit for the 10 x 12 x 3, flange 18 bushing |
+| spigot | Ø10 g6 x 9.5, Ra 0.8: running fit for the 10 x 12 x 3, flange 18 bushing |
 | bore | Ø7 through, edges broken R1 (harness) |
 | cable slot | 10 wide, radial, through the flange and step into the bore |
 | groove | DIN 471-10, 1.5 from the spigot end |
