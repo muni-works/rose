@@ -20,7 +20,7 @@ from rose_arm_geom import add, sub, mul, norm
 G = 9.81
 E, Gs = 69e9, 26e9
 PAYLOAD = 2.5
-ACT_KG = {round(F.RS04['d'] / 2, 4): F.RS04['kg'], round(F.RS03['d'] / 2, 4): F.RS03['kg'], round(F.RS06['d'] / 2, 4): F.RS06['kg'], round(F.RS00['d'] / 2, 4): F.RS00['kg'], round(F.EDU['d'] / 2, 4): F.EDU['kg']}
+ACT_KG = {round(F.RS02['d'] / 2, 4): F.RS02['kg'], round(F.RS04['d'] / 2, 4): F.RS04['kg'], round(F.RS03['d'] / 2, 4): F.RS03['kg'], round(F.RS06['d'] / 2, 4): F.RS06['kg'], round(F.RS00['d'] / 2, 4): F.RS00['kg'], round(F.EDU['d'] / 2, 4): F.EDU['kg']}
 
 
 _MASS_CACHE = {}
@@ -49,7 +49,7 @@ def masses():
 
 
 def flange_x():
-    return F.W + 0.040 + 0.007 + F.RS00['L'] + 0.004 + F.EDU['d'] + 0.060
+    return F.W + F.J6M['d'] / 2 + 0.006 + 0.007 + F.J7M['L'] + 0.004 + F.EDU['d'] + 0.060
 
 
 MOVING = ('upper', 'fore', 'yoke', 'wrist', 'tool', 'harness')
@@ -163,19 +163,16 @@ def main():
     print('flange at %.0f mm from the shoulder' % (flange_x() * 1e3))
     print('\ngravity torque, arm straight out, %.1f kg at the flange:' % PAYLOAD)
     for name, x0, peak, stall in (('J2 shoulder (RS04)', 0.0, 120, 25), ('J4 elbow (RS04)', F.UPPER, 120, 25),
-                                  ('J6 wrist (RS00)', F.W, 14, 3.6)):
+                                  ('J6 wrist (RS02)', F.W, 17, 4.5)):
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
-    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 25), ('J6', F.W, 3.6)):
+    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 25), ('J6', F.W, 4.5)):
         free = stall - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
 
     sag, tw, secs = stiffness()
     print('\nflange deflection from structure: %.2f mm sag, %.2f mm twist   (budget 0.5 / 0.5)' % (sag * 1e3, tw * 1e3))
-    print('\nfold ranges (no two links within 1 mm):')
-    for j, lo, hi in (('J2_sho_pitch', -150, 120), ('J4_elbow', -170, 170), ('J6_wrist_pitch', -150, 150)):
-        a, b, hit = fold(j, lo, hi)
-        print('  %-15s %4d .. %-4d  limited by %s' % (j, a, b, '%s / %s' % hit if hit else 'its sweep end'))
+    print('\njoint ranges: run audit.py - the old surface-distance fold check here missed buried overlaps')
 
 
 if __name__ == '__main__':

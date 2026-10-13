@@ -9,7 +9,7 @@ python3 arm/fork/fork_checks.py                         # mass, torque, stiffnes
 python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![fork v6](render/fork-v6-lines.png)
+![fork v8](render/fork-v8-lines.png)
 
 ## The idea
 
@@ -35,6 +35,37 @@ a constraint of the nesting that turned out to be the look.
 **Structure.** Two windowed 3 mm side plates, two 2020 bars along the bottom
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
+
+## v8 (2026-10-13): DFM and efficiency pass
+
+`dfm.py` classifies every part by process and checks router rules (bed fit,
+webs >= 1.5 t and >= 4 mm, tool access); `audit.py` checks interference.
+
+| | v7 (hybrid wrist) | v8 |
+|---|---:|---:|
+| mass | 9.54 kg | **8.23 kg** |
+| moving mass | 6.49 kg | 5.59 kg |
+| holds straight out, continuously | 1.13 kg | **1.49 kg** (shoulder binds; wrist 1.66) |
+| plate stock | 1.5 / 3 / 4 / 6 mm | 3 mm (+ 1.5 mm upper covers, 6 mm foot) |
+| unique router parts | 18 | 13 |
+| turned parts | 6 | 1 (the steel sleeve, hidden) |
+
+What moved the numbers: holder plates get a hole inside the motor's bolt circle
+(that face only covers the motor); span-fitted windows; hub caps as thin cups
+(117 g → 5 g each - they had been modelled as solid steel); a flat 3 mm yoke
+bridge instead of an 8 mm disc (177 g → 24 g); B plates 4 → 3 mm with a 4 mm
+single-layer cable gap; turret disc 6 → 3 mm windowed; the tower foot trimmed to
+the disc it stands on (it overhung); forearm cover slivers removed; jaws and tool
+flange 3 mm. The base collar is a printed part.
+
+Still open from DFM: the upper-arm plates are 392 mm - they nest diagonally on
+the 390 mm bed, not square; the RS02 stator bolt circle (lobe hole size) is an
+estimate until its drawing is read; tabs and slots for the covers and bridge are
+not yet modelled; the stiffness model does not yet see the lobe holes.
+
+## v7 (2026-10-13): hybrid wrist
+
+RS02 at forearm roll and wrist pitch, RS00 at the tool roll. Three motor models.
 
 ## v6 (2026-10-13): one plate family, flat sheet only
 

@@ -1,4 +1,5 @@
-"""rose arm, fork concept (v6, 2026-10-13: shoulder motor flipped onto the arm, constant-width upper arm,
+"""rose arm, fork concept (v8, 2026-10-13: DFM + efficiency - one 3 mm stock for every plate, thin
+caps, flat yoke bridge, bigger windows. v7: hybrid wrist RS02 / RS02 / RS00. v6: shoulder motor flipped onto the arm, constant-width upper arm,
 roll motors inside the links, flat sheet only, hub caps over the pitch-joint cable crossings).
 
 6 DOF: base yaw, shoulder pitch, elbow pitch, then a spherical wrist (roll, pitch, roll).
@@ -35,6 +36,10 @@ RS04 = dict(d=0.120, L=0.052, kg=1.420)      # manual: 39 + 13.2 long, 10x M4 on
 # elbow; RS00 for the three wrist joints. Shoulder and elbow become the same joint.
 J1M, J2M, J4M = RS04, RS04, RS04
 RS00 = dict(d=0.061, L=0.066, kg=0.310)
+RS02 = dict(d=0.0785, L=0.0455, kg=0.380)    # manual: 78.5 x 45.5, 17 N.m peak, 6 N.m stall-cont (260 x 280 sink)
+# v7 (2026-10-13): the hybrid wrist. RS02 at forearm roll and wrist pitch, RS00 at the tool roll (it carries
+# no gravity load about its own axis). Three motor models: RS04, RS02, RS00.
+J5M, J6M, J7M = RS02, RS02, RS00
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003          # fork side plate (v2: 4 -> 3 mm, windowed)
 T_CV = 0.0015         # cover
@@ -49,6 +54,8 @@ R_LOBE6 = RS06['d'] / 2 + 0.006      # lobe radius round an RS06 joint
 R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
 R_LOBE_EL = J4M['d'] / 2 + 0.006     # elbow lobe
 R_LOBE0 = RS00['d'] / 2 + 0.006
+R_LOBE5 = J5M['d'] / 2 + 0.006     # forearm tip round the J5 roll motor
+R_LOBE6W = J6M['d'] / 2 + 0.006    # wrist-pitch lobe
 
 # plate centre-plane half-widths (y), from the stack-up: motor | gap | parent plate | gap | child plate
 def stack(motor_L, layers):
@@ -66,8 +73,8 @@ def stack(motor_L, layers):
 # The cable crosses in CABLE_GAP: out of the parent through plate B, radially to the sleeve,
 # along the axis inside the sleeve (the only twisting length), out under the hub cap, back in.
 SPACER_GAP = 0.003     # v6.1: <= 4 mm everywhere a plate passes a plate (ISO 13857: no finger reach)
-CABLE_GAP = 0.003      # v6.1: flat high-flex cable (~3 mm) lies in routed grooves in the B plates
-T_PB = 0.004           # B-side plates are 4 mm, with a 2.5 mm deep routed groove for the flat cable
+CABLE_GAP = 0.004      # v8: one flat-cable thickness + 1 mm. The two legs run in different sectors, so they never stack
+T_PB = 0.003           # v8: B plates are plain 3 mm (no grooves) - one sheet stock for every plate
 
 
 def joint_y(L, min_pa=0.0):
@@ -82,8 +89,8 @@ def joint_y(L, min_pa=0.0):
 
 SH_PA, SH_CA, SH_PB, SH_CB = joint_y(J2M['L'])      # shoulder: upper holds J2 (motor flipped onto the arm)
 EL_PA, EL_CA, EL_PB, EL_CB = joint_y(J4M['L'])      # elbow: upper holds J4, forearm straddles
-Y_FORE_DIST = RS00['d'] / 2 + GAP + T_PL / 2 + 0.0005     # forearm tip: just clears the J5 roll motor inside it
-WR_PA, WR_CA, WR_PB, WR_CB = joint_y(RS00['L'], Y_FORE_DIST + T_PL + GAP)   # yoke plates pass outside the forearm tip
+Y_FORE_DIST = J5M['d'] / 2 + GAP + T_PL / 2 + 0.0005     # forearm tip: just clears the J5 roll motor inside it
+WR_PA, WR_CA, WR_PB, WR_CB = joint_y(J6M['L'], Y_FORE_DIST + T_PL + GAP)   # yoke plates pass outside the forearm tip
 Y_UPPER = SH_PA                                     # the upper arm: constant width, same joint at both ends
 Y_UPPER_DIST = Y_UPPER
 Y_YOKE, Y_WRIST = WR_PA, WR_CA
@@ -143,7 +150,7 @@ def tower(r, foot_w, h):
     return [('line', fl, fr), ('line', fr, tr), ('arc', tr, tl, (0.0, 0.0), True), ('line', tl, fl)]
 
 
-def plate(link, mat, p0, p1, z, yo0, yo1, r0, r1, side, t=T_PL):
+def plate(link, mat, p0, p1, z, yo0, yo1, r0, r1, side, t=T_PL, hole0=0.0, hole1=0.0):
     """A fork side plate from joint p0 to p1 (x), centre plane at y = side*yo0 .. side*yo1, lobes r0, r1."""
     a = (p0, side * yo0, z)
     b = (p1, side * yo1, z)
@@ -151,11 +158,11 @@ def plate(link, mat, p0, p1, z, yo0, yo1, r0, r1, side, t=T_PL):
     L = norm(sub(b, a))
     n = unit(cross((0, 0, 1), d))           # horizontal normal, +y-ish
     o = add(a, mul(n, t / 2 * side))
-    return (link, mat, o, d, (0.0, 0.0, 1.0), capsule(L, r0, r1), mul(n, -t * side), windows(L, r0, r1))
+    return (link, mat, o, d, (0.0, 0.0, 1.0), capsule(L, r0, r1), mul(n, -t * side), windows(L, r0, r1, hole0, hole1, t))
 
 
-FLANGE = 0.020        # solid plate kept above and below each window (the bars and covers fix to it)
-RIB = 0.018           # web left between two windows
+FLANGE = 0.014        # v8: solid plate above and below each window (stress < 10 MPa; >= 1.5 t web rule)
+RIB = 0.012           # v8: web left between two windows
 
 
 def stadium(s0, s1, h):
@@ -167,16 +174,28 @@ def stadium(s0, s1, h):
             ('line', (b, -h), (a, -h)), ('arc', (a, -h), (a, h), (a, 0.0), False)]
 
 
-def windows(L, r0, r1):
-    """One or two lightening windows between the lobes; the lobes stay solid round the bearings."""
-    s0, s1 = r0 + 0.008, L - r1 - 0.008
-    h = min(r0, r1) - FLANGE
-    if s1 - s0 < 2 * h + 0.01 or h < 0.008:
-        return []
-    if s1 - s0 > 4 * h + RIB + 0.02:
-        mid = (s0 + s1) / 2
-        return [w for w in (stadium(s0, mid - RIB / 2, h), stadium(mid + RIB / 2, s1, h)) if w]
-    return [w for w in (stadium(s0, s1, h),) if w]
+def circle_hole(cx, r):
+    return [('arc', (cx + r, 0.0), (cx - r, 0.0), (cx, 0.0), True), ('arc', (cx - r, 0.0), (cx + r, 0.0), (cx, 0.0), True)]
+
+
+def windows(L, r0, r1, hole0=0.0, hole1=0.0, t=T_PL):
+    """v8 lightening. Where the plate holds a motor's stator (hole0 / hole1 > 0), the lobe gets a central
+    hole inside the motor's bolt circle - that face of the plate only covers the motor. Between the lobes,
+    one stadium window sized to whatever span is left. Every web >= max(1.5 t, 4 mm)."""
+    web = max(1.5 * t, 0.004)
+    out = []
+    if hole0:
+        out.append(circle_hole(0.0, hole0))
+    if hole1:
+        out.append(circle_hole(L, hole1))
+    s0 = max(r0 * 0.55, hole0) + web + 0.002
+    s1 = L - max(r1 * 0.55, hole1) - web - 0.002
+    h = min(min(r0, r1) - FLANGE, (s1 - s0) / 2)
+    if h >= 0.008:
+        w = stadium(s0, s1, h)
+        if w:
+            out.append(w)
+    return out
 
 
 MOTOR_CLEAR = 0.010   # bars and covers stop this far outside the motor at either end
@@ -243,8 +262,9 @@ def cross_plate(link, x, z, ya, yb, h):
 
 
 def hub(link, x, y_out, z, r=0.020, h=0.012):
-    """The hub cap over a pitch joint's sleeve: the cable turns inside it. The joint's one accent."""
-    return Gm.cylinder(link, 'sleeve', (x, y_out, z), (x, y_out - h, z), r)
+    """The hub cap over a pitch joint's sleeve: the cable turns inside it. The joint's one accent.
+    v8: a thin aluminium cup (spun or printed), not a solid - the steel sleeve stays inside it."""
+    return Gm.cylinder(link, 'cap', (x, y_out, z), (x, y_out - h, z), r) + ([circle_outline(r - 0.0012)],)
 
 
 def build():
@@ -255,61 +275,71 @@ def build():
     zy0 = 0.006
     P.append(cyl('base', 'actuator', (0, 0, zy0), (0, 0, zy0 + J1M['L']), J1M['d'] / 2))
     P.append(collar('base', 'collar', 0.0, 0.0, 0.0, 0.0, 0.0) if False else
-             (lambda c: c)(Gm.cylinder('base', 'collar', (0, 0, zy0), (0, 0, zy0 + J1M['L'] - 0.003), J1M['d'] / 2 + 0.010) + ([circle_outline(J1M['d'] / 2 + 0.008)],)))
+             (lambda c: c)(Gm.cylinder('base', 'printed', (0, 0, zy0), (0, 0, zy0 + J1M['L'] - 0.003), J1M['d'] / 2 + 0.010) + ([circle_outline(J1M['d'] / 2 + 0.008)],)))
     zt = zy0 + J1M['L']
     # turret: a disc on the yaw output and two tower plates that straddle the upper arm at the shoulder
-    P.append(cyl('turret', 'base', (0, 0, zt), (0, 0, zt + 0.006), J1M['d'] / 2 + 0.010))
+    rd = J1M['d'] / 2 + 0.010
+    disc = Gm.cylinder('turret', 'base', (0, 0, zt), (0, 0, zt + 0.003), rd)
+    P.append(disc + ([[('arc', (cx + 0.014, cy), (cx - 0.014, cy), (cx, cy), True), ('arc', (cx - 0.014, cy), (cx + 0.014, cy), (cx, cy), True)]
+                      for cx, cy in ((0.045, 0.0), (-0.045, 0.0))],))
     for side, yo in ((1, SH_CA), (-1, SH_CB)):
         tt = T_PL if side > 0 else T_PB
         win = [stadium(-0.030, 0.030, 0.016)]
         win = [[(it[0],) + tuple((pt[0], pt[1] - 0.095) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in w] for w in win if w]
         P.append(('turret', 'sheet', (0.0, side * (yo + tt / 2), z), (1, 0, 0), (0, 0, 1),
-                  tower(R_LOBE_SH, 0.170, z - zt - 0.006), (0, -side * tt, 0), win))
+                  tower(R_LOBE_SH, 2 * (J1M['d'] / 2 + 0.010), z - zt - 0.003), (0, -side * tt, 0), win))
     P.append(hub('turret', 0.0, -SH_CB - T_PB / 2 - 0.0005, z))
     # upper arm: constant width, the same RS04 joint at both ends, both motors held between its plates
-    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PA, EL_PA, R_LOBE_SH, R_LOBE_EL, 1))
-    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PB, EL_PB, R_LOBE_SH, R_LOBE_EL, -1, t=T_PB))
+    HOLE4 = 0.106 / 2 - 0.008              # inside the RS04's 10x M4 on 106 bolt circle
+    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PA, EL_PA, R_LOBE_SH, R_LOBE_EL, 1, hole0=HOLE4, hole1=HOLE4))
+    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PB, EL_PB, R_LOBE_SH, R_LOBE_EL, -1, t=T_PB, hole0=HOLE4, hole1=HOLE4))
     P.append(cyl('upper', 'actuator', (0, -J2M['L'] / 2, z), (0, J2M['L'] / 2, z), J2M['d'] / 2))
     P.append(cyl('upper', 'actuator', (UPPER, -J4M['L'] / 2, z), (UPPER, J4M['L'] / 2, z), J4M['d'] / 2))
     yi = Y_UPPER - T_PL / 2
     P += covers('upper', R_LOBE_SH + MOTOR_CLEAR, UPPER - R_LOBE_EL - MOTOR_CLEAR, z, (yi, yi), (yi, yi), R_LOBE_EL - 0.012)
     # forearm: straddles the elbow, runs straight to the J5 roll motor, which sits inside its far end
-    x5 = W - 0.070
-    r_end = R_LOBE0 + 0.008
+    x5 = W - 0.078                      # v7: 8 mm further back so the yoke hub clears the RS02 wrist motor
+    r_end = R_LOBE5 + 0.008
     P.append(plate('fore', 'sheet', UPPER, x5 - r_end, z, EL_CA, Y_FORE_DIST, R_LOBE_EL, r_end, 1))
     P.append(plate('fore', 'sheet', UPPER, x5 - r_end, z, EL_CB, Y_FORE_DIST, R_LOBE_EL, r_end, -1, t=T_PB))
     P.append(hub('fore', UPPER, -EL_CB - T_PB / 2 - 0.0005, z))
-    xs5 = x5 - RS00['L']
-    P.append(cross_plate('fore', xs5 - 0.003, z, Y_FORE_DIST - T_PL / 2, Y_FORE_DIST - T_PL / 2, r_end - 0.006))
-    P.append(cyl('fore', 'actuator', (xs5, 0, z), (x5, 0, z), RS00['d'] / 2))
+    xs5 = x5 - J5M['L']
+    P.append(cross_plate('fore', xs5 - 0.003, z, Y_FORE_DIST - T_PL / 2, Y_FORE_DIST - T_PL / 2, r_end - 0.006)
+             + ([circle_hole(0.0, J5M['d'] / 2 - 0.012)],))         # v8: open inside the J5 stator bolt circle
+    P.append(cyl('fore', 'actuator', (xs5, 0, z), (x5, 0, z), J5M['d'] / 2))
     ya_in = lambda x: EL_CA + (Y_FORE_DIST - EL_CA) * (x - UPPER) / (x5 - r_end - UPPER) - T_PL / 2
     yb_in = lambda x: EL_CB + (Y_FORE_DIST - EL_CB) * (x - UPPER) / (x5 - r_end - UPPER) - T_PL / 2
-    xa, xb = UPPER + R_LOBE_EL + MOTOR_CLEAR, xs5 - 0.010
-    P += covers('fore', xa, xb, z, (ya_in(xa), yb_in(xa)), (ya_in(xb), yb_in(xb)), r_end - 0.012)
+    # v8: no forearm covers - with the RS02 inside its tip the forearm is all lobe; they were 10 mm slivers
     # yoke: a hub disc on the J5 output and two plates holding J6
-    YOKE_HUB = 0.008
-    P.append(cyl('yoke', 'sheet', (x5 + 0.002, 0, z), (x5 + 0.002 + YOKE_HUB, 0, z), WR_PA + T_PL))
+    YOKE_HUB = 0.003
+    # v8: a flat 3 mm bridge across the J5 output, out to both yoke plates (was an 8 mm solid disc)
+    bw = WR_PA + T_PL
+    P.append(('yoke', 'sheet', (x5 + 0.002, 0.0, z), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0),
+              [('line', (-bw, -0.022), (bw, -0.022)), ('arc', (bw, -0.022), (bw, 0.022), (bw, 0.0), True),
+               ('line', (bw, 0.022), (-bw, 0.022)), ('arc', (-bw, 0.022), (-bw, -0.022), (-bw, 0.0), True)],
+              (YOKE_HUB, 0.0, 0.0)))
     r_y0 = 0.020                                       # yoke plates' rear lobe: starts behind the hub, no overhang
     xy0 = x5 + 0.002 + YOKE_HUB + r_y0
-    P.append(plate('yoke', 'sheet', xy0, W, z, WR_PA, WR_PA, r_y0, R_LOBE0, 1))
-    P.append(plate('yoke', 'sheet', xy0, W, z, WR_PB, WR_PB, r_y0, R_LOBE0, -1, t=T_PB))
+    HOLE2 = J6M['d'] / 2 - 0.012           # inside the RS02 stator bolt circle (ESTIMATE until its drawing is read)
+    P.append(plate('yoke', 'sheet', xy0, W, z, WR_PA, WR_PA, r_y0, R_LOBE6W, 1, hole1=HOLE2))
+    P.append(plate('yoke', 'sheet', xy0, W, z, WR_PB, WR_PB, r_y0, R_LOBE6W, -1, t=T_PB, hole1=HOLE2))
     P.append(cyl('yoke', 'sheet', (x5 + 0.002 + YOKE_HUB, 0, z), (xy0, 0, z), 0.012))      # hub boss up to the plates' root
-    P.append(cyl('yoke', 'actuator', (W, -RS00['L'] / 2, z), (W, RS00['L'] / 2, z), RS00['d'] / 2))
+    P.append(cyl('yoke', 'actuator', (W, -J6M['L'] / 2, z), (W, J6M['L'] / 2, z), J6M['d'] / 2))
     # wrist: straddles J6 and runs on over the J7 roll motor, which sits inside it
-    x7 = W + 0.040
-    xt = x7 + 0.007 + RS00['L']
-    P.append(plate('wrist', 'sheet', W, xt - R_LOBE0, z, WR_CA, WR_CA, R_LOBE0, R_LOBE0, 1))
-    P.append(plate('wrist', 'sheet', W, xt - R_LOBE0, z, WR_CB, WR_CB, R_LOBE0, R_LOBE0, -1, t=T_PB))
+    x7 = W + J6M['d'] / 2 + 0.006
+    xt = x7 + 0.007 + J7M['L']
+    P.append(plate('wrist', 'sheet', W, xt - R_LOBE0, z, WR_CA, WR_CA, R_LOBE6W, R_LOBE0, 1))
+    P.append(plate('wrist', 'sheet', W, xt - R_LOBE0, z, WR_CB, WR_CB, R_LOBE6W, R_LOBE0, -1, t=T_PB))
     P.append(hub('wrist', W, -WR_CB - T_PB / 2 - 0.0005, z, r=0.016, h=0.010))
     P.append(cross_plate('wrist', x7 + 0.004, z, WR_CA - T_PL / 2, WR_CB - T_PL / 2, R_LOBE0 - 0.006))
     P.append(cyl('wrist', 'actuator', (x7 + 0.007, 0, z), (xt, 0, z), RS00['d'] / 2))
     # tool: flange on the J7 output, the gripper motor across it, two tapered jaws
-    P.append(cyl('tool', 'sheet', (xt, 0, z), (xt + 0.004, 0, z), R_LOBE0 - 0.004))
-    P.append(cyl('tool', 'actuator', (xt + 0.004 + EDU['d'] / 2, -EDU['L'] / 2, z), (xt + 0.004 + EDU['d'] / 2, EDU['L'] / 2, z), EDU['d'] / 2))
+    P.append(cyl('tool', 'sheet', (xt, 0, z), (xt + 0.003, 0, z), R_LOBE0 - 0.004))
+    P.append(cyl('tool', 'actuator', (xt + 0.003 + EDU['d'] / 2, -EDU['L'] / 2, z), (xt + 0.004 + EDU['d'] / 2, EDU['L'] / 2, z), EDU['d'] / 2))
     for dy in (-0.010, 0.010):
         jaw = [('line', (0.0, -0.016), (0.075, -0.006)), ('line', (0.075, -0.006), (0.075, 0.006)),
                ('line', (0.075, 0.006), (0.0, 0.016)), ('line', (0.0, 0.016), (0.0, -0.016))]
-        P.append(('tool', 'sheet', (xt + 0.004 + EDU['d'], dy - 0.003, z), (1, 0, 0), (0, 0, 1), jaw, (0, 0.006, 0)))
+        P.append(('tool', 'sheet', (xt + 0.004 + EDU['d'], dy - 0.0015, z), (1, 0, 0), (0, 0, 1), jaw, (0, 0.003, 0)))
     return P
 
 
@@ -362,16 +392,16 @@ def cable_points(T):
     P('upper', (0.090, 0.0, z))
     P('upper', (UPPER - 0.090, 0.0, z))                    # the design line: down the middle of the arm
     crossing('upper', 'fore', UPPER, EL_PB, EL_CB, J4M['d'] / 2 + 0.004, R_LOBE_EL + 0.012, (-1, 0), (1, 0), from_holder=True)
-    x5 = W - 0.070
-    xs5 = x5 - RS00['L']
+    x5 = W - 0.078
+    xs5 = x5 - J5M['L']
     P('fore', (UPPER + 0.090, 0.0, z))
     P('fore', (xs5 - 0.020, 0.0, z))
-    P('fore', (xs5 - 0.010, 0.0, z - RS00['d'] / 2 - 0.004))
-    P('fore', (x5 - 0.004, 0.0, z - RS00['d'] / 2 - 0.004))
-    P('yoke', (x5 + 0.010, 0.0, z - RS00['d'] / 2 - 0.004))
-    crossing('yoke', 'wrist', W, WR_PB, WR_CB, RS00['d'] / 2 + 0.004, R_LOBE0 + 0.010, (-1, 0), (1, 0), from_holder=True)
-    x7 = W + 0.040
-    xt = x7 + 0.007 + RS00['L']
+    P('fore', (xs5 - 0.010, 0.0, z - J5M['d'] / 2 - 0.004))
+    P('fore', (x5 - 0.004, 0.0, z - J5M['d'] / 2 - 0.004))
+    P('yoke', (x5 + 0.010, 0.0, z - J5M['d'] / 2 - 0.004))
+    crossing('yoke', 'wrist', W, WR_PB, WR_CB, J6M['d'] / 2 + 0.004, R_LOBE6W + 0.010, (-1, 0), (1, 0), from_holder=True)
+    x7 = W + J6M['d'] / 2 + 0.006
+    xt = x7 + 0.007 + J7M['L']
     P('wrist', (x7 + 0.010, 0.0, z - RS00['d'] / 2 - 0.004))
     P('wrist', (xt - 0.004, 0.0, z - RS00['d'] / 2 - 0.004))
     P('tool', (xt + 0.004 + EDU['d'] / 2, -EDU['L'] / 2 - 0.004, z - 0.010))
@@ -389,7 +419,7 @@ def cable_prims(T):
 
 MATERIALS = ('[material "actuator" 0.09 0.09 0.10 0.6 0.5]\n[material "sheet" 0.84 0.85 0.86 0.9 0.32]\n'
              '[material "bar" 0.62 0.64 0.67 0.95 0.45]\n[material "cover" 0.30 0.31 0.33 0.8 0.5]\n'
-             '[material "base" 0.20 0.21 0.22 0.85 0.45]\n[material "sleeve" 0.90 0.55 0.15 0.9 0.3]\n'
+             '[material "base" 0.20 0.21 0.22 0.85 0.45]\n[material "sleeve" 0.90 0.55 0.15 0.9 0.3]\n[material "cap" 0.90 0.55 0.15 0.9 0.3]\n[material "printed" 0.20 0.21 0.22 0.0 0.6]\n'
              '[material "cassette" 0.90 0.55 0.15 0.9 0.3]\n[material "collar" 0.20 0.21 0.22 0.85 0.45]\n[material "collar_turn" 0.84 0.85 0.86 0.9 0.32]\n[material "cable" 0.95 0.40 0.10 0.0 0.6]\n')
 
 
@@ -451,8 +481,8 @@ def prim_mass(p):
         return None
     if mat == 'bar':
         return 0.44 * norm(vec)
-    rho = {'sheet': 2680, 'cover': 2680, 'base': 2680, 'sleeve': 7800, 'cassette': 1200,
-           'collar': 2680, 'collar_turn': 2680}.get(mat, 0.0)
+    rho = {'sheet': 2680, 'cover': 2680, 'base': 2680, 'sleeve': 7800, 'cassette': 1200, 'cap': 2680,
+           'printed': 1250, 'collar': 2680, 'collar_turn': 2680}.get(mat, 0.0)
     area = area2d(ol) - sum(area2d(h) for h in (p[7] if len(p) > 7 else []))
     m = rho * area * norm(vec)
     if mat == 'cover':
