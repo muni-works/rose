@@ -44,6 +44,31 @@ It has two firmware modes on the same hardware:
   servo loop, trajectory interpolation, gravity compensation and the safety policy. The user needs
   no CAN adapter and no realtime OS.
 
+## Simulation (sim/, 2026-10-13)
+
+`cd sim && cargo run --release` runs the power path on vcad's circuit solver. The ICs are behavioural
+chips (`vcad_ecad_sim::circuit::chips`): the LM5060 hot-swap, the 3-input AND, the TLV7031 comparator,
+and the brake FET with its driver. The circuit is a 48 V bench supply that can't absorb current,
+power-up, a 100 ms regen pulse from a back-driven arm, then e-stop. `plot.py` draws
+`power_path.svg`.
+
+What it changed in the schematic:
+
+| | first schematic | simulated | now |
+|---|---|---|---|
+| brake comparator hysteresis | on 54.3 V / off 53.3 V: chatters (582 switch events in 100 ms) | | R16 309k, R17 10.2k, R20 309k: on 53.3 / off 50.0 V |
+| brake resistor | 10 Ω: holds 5 A of regen; 20 A runs the bus to 188 V | 4.7 Ω holds 10 A, 3.3 Ω holds 15 A at 54.2 V | **3.3 Ω, 200 W, on the foot** |
+| e-stop hold (R8 / C3) | 104-142 ms, depending on how long the board has been on | diode across R8 makes it fixed | C3 390 nF + BAT54 (D10): **188 ms** |
+
+The LM5060 pin thresholds (EN 2.0 V, UVLO 1.6 V, OVP 2.0 V) and the 5 A inrush limit are assumptions
+in the model. Check them against the datasheet before trusting the e-stop delay.
+
+Linear checks were run with vcad's hosted simulate tool:
+- 12 V feedback: 1.189 V at 12.0 V out, so the rail sits at 12.11 V.
+- 5 V feedback: 0.587 V at 5.0 V out, so the rail sits at 5.08 V.
+- Brake sense at 48 V: 1.46 V against the 1.65 V reference, so the brake stays off.
+- CAN split-termination corner: about 1.1 MHz.
+
 ## Requirements
 
 Facts below come from the RobStride manuals in `~/Developer/robstride_assets`.

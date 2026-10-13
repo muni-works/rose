@@ -1,0 +1,12 @@
+[package]
+name = "arm-controller-sim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# vcad's MNA circuit solver.
+[dependencies]
+# vcad branch feat/loon-circuits (adds circuit::chips)
+vcad-ecad-sim = { path = "/Users/cam/Developer/vcad-passive-prefix/crates/vcad-ecad-sim" }
+
+[workspace]

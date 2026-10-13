@@ -46,7 +46,10 @@
 [part "U2" "74xGxx:74LVC1G11" "74LVC1G11" "Package_TO_SOT_SMD:SOT-23-6"
   #["1" "ESTOP1" "3" "WD_OK" "6" "MCU_EN" "4" "EN_AND" "5" "+3V3" "2" "GND"]]
 [r "R8" "1M" "EN_AND" "HS_EN"]
-[c "C3" "220n" "HS_EN" "GND"]
+[c "C3" "390n" "HS_EN" "GND"]
+;; D10 bypasses R8: C3 charges at once, so the e-stop hold is a fixed ~190 ms (sim/)
+[part "D10" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "EN_AND" "1" "HS_EN"]]
 [part "J2" "Connector_Generic:Conn_01x04" "E-stop, 2-ch NC" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
   #["1" "ESTOP_SRC1" "2" "ESTOP1" "3" "ESTOP_SRC2" "4" "ESTOP2"]]
 [r "R9" "1k" "+3V3" "ESTOP_SRC1"]
@@ -73,11 +76,11 @@
   #["1" "VBUS" "2" "GND"]]
 [cfp "C8" "2.2u 100V" C1210 "VBUS" "GND"]
 [flag "PF3" "VBUS"]
-[r "R16" "316k" "VBUS" "BRK_DIV"]
-[r "R17" "10k" "BRK_DIV" "GND"]
+[r "R16" "309k" "VBUS" "BRK_DIV"]
+[r "R17" "10.2k" "BRK_DIV" "GND"]
 [r "R18" "10k" "+3V3" "BRK_REF"]
 [r "R19" "10k" "BRK_REF" "GND"]
-[r "R20" "1M" "BRK_CMP" "BRK_DIV"]
+[r "R20" "309k" "BRK_CMP" "BRK_DIV"]
 [part "U5" "Comparator:TLV7031DBV" "TLV7031" "Package_TO_SOT_SMD:SOT-23-5"
   #["5" "+3V3" "2" "GND" "3" "BRK_DIV" "4" "BRK_REF" "1" "BRK_CMP"]]
 [part "D2" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
@@ -94,7 +97,7 @@
   #["D" "BRK_R" "G" "BRK_G" "S" "GND"]]
 [part "D4" "Device:D_Schottky" "STPS10H100 100V" "Diode_SMD:D_SMC"
   #["1" "VBUS" "2" "BRK_R"]]
-[part "J3" "Connector_Generic:Conn_01x02" "Brake resistor 10R 100W" "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"
+[part "J3" "Connector_Generic:Conn_01x02" "Brake resistor 3R3 200W" "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"
   #["1" "VBUS" "2" "BRK_R"]]
 [part "TH1" "Device:Thermistor_NTC" "10k NTC (FETs)" R0402
   #["1" "NTC_FET" "2" "GND"]]
