@@ -61,13 +61,13 @@ def moment(x0, payload=PAYLOAD):
 
 def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
     """Fork link section: two side plates (h deep, windowed over window_frac of the length),
-    a top cover, a bottom cover and two 2020 bars along the bottom corners."""
+    a top cover and a bottom cover. Flat sheet only (v6)."""
     hw = hw if hw is not None else max(0.0, h - 2 * F.FLANGE)
     # bending, averaged along the length between solid and windowed stations
     I_solid = 2 * t * h ** 3 / 12
     I_win = 2 * t * (h ** 3 - hw ** 3) / 12
     I_pl = window_frac * I_win + (1 - window_frac) * I_solid
-    I = I_pl + 2 * W * tc * (h / 2) ** 2 + 2 * (0.70e-8 + 1.6e-4 * (h / 2 - 0.01) ** 2)
+    I = I_pl + 2 * W * tc * (h / 2) ** 2          # v6: no 2020 bars - plates and covers only
     # torsion, Bredt: the windowed side walls carry shear only through their flanges (Vierendeel),
     # so their effective shear thickness drops with the window - keep it honest with (1 - hw/h)^3
     t_side = window_frac * t * (1 - hw / h) ** 3 + (1 - window_frac) * t

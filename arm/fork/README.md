@@ -9,7 +9,7 @@ python3 arm/fork/fork_checks.py                         # mass, torque, stiffnes
 python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![fork v5](render/fork-v5-lines.png)
+![fork v6](render/fork-v6-lines.png)
 
 ## The idea
 
@@ -35,6 +35,32 @@ a constraint of the nesting that turned out to be the look.
 **Structure.** Two windowed 3 mm side plates, two 2020 bars along the bottom
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
+
+## v6 (2026-10-13): one plate family, flat sheet only
+
+Same two motor models as v5. What changed is how few kinds of thing there are:
+
+- **The shoulder motor is flipped onto the upper arm.** The upper arm now holds
+  identical RS04s at both ends between parallel plates: a constant-width bone
+  with the same lobe at each end. The turret straddles it from outside. The
+  motor's mass is on the shoulder axis, so the flip costs no gravity torque.
+- **Roll motors live inside the links.** The forearm-roll RS00 sits inside the
+  forearm's far end, the tool-roll RS00 inside the wrist link. No collars.
+- **No 2020 bars.** Plates and flat covers only — the arm is all 3 mm sheet.
+- **The base is a flat foot** with the yaw RS04 standing on it in a slim collar.
+- **Cables are drawn honestly.** At each pitch joint the cable leaves the holder
+  through plate B just outside the motor (under the other link's lobe), crosses
+  an 18 mm gap with each leg flat on its own plate, meets the other leg on the
+  axis inside the hollow sleeve, and turns under an orange **hub cap** — the one
+  accent on the arm, and the only length of cable that twists. Inside the upper
+  arm it runs down the centreline, seen through the windows.
+
+| | v6 |
+|---|---:|
+| holds straight out, continuously, no spring | **1.28 kg** (wrist binds; shoulder 1.41, elbow 4.7) |
+| shoulder / elbow / wrist range | −150…+120° / −170…+150° / ±150° |
+| deflection | 0.04 mm sag, 0.09 mm twist |
+| mass | 8.9 kg |
 
 ## v5 (2026-10-13): two motor models
 

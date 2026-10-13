@@ -8,7 +8,7 @@ leaves along the axis, so it only twists across the joint.
 
 ```
            flange                 spigot (bushing seat)        retaining groove
-   |<---- 4 ---->|<------------------ 14 ------------------->|
+   |<---- 4 ---->|<------------------ 30 ------------------->|
    +-------------+                                            
    |             +--------------------------------------+--+-+
    |  D 116      |   D 16 g6                            |  | |  DIN 471-16 groove:
@@ -22,14 +22,16 @@ leaves along the axis, so it only twists across the joint.
 | feature | size |
 |---|---|
 | flange | Ø116 × 4, 10× Ø4.5 on Ø106 (match parent plate B and the back face) |
-| spigot | Ø16 g6 × 14 — running fit for the igus GFM-1618-06 bushing (ID 16) |
+| spigot | Ø16 g6 × 30 — running fit for the igus GFM-1618-06 bushing (ID 16); spans the 18 mm cable gap (v6) |
 | bore | Ø9 through, edges broken R1 (cable) |
-| cable slot | 6 wide, through the flange into the bore, 4 deep — on the side facing the parent's bars |
+| cable slot | 9 wide × 12 long through the spigot wall into the bore, inside the cable gap |
 | groove | DIN 471-16 retaining ring, 1.5 from the spigot end |
 | finish | spigot Ra 0.8 (bushing running surface), rest as machined |
 
-Stack along the spigot: parent plate B (3) is under the flange; then 2 running
-gap; child plate B (3) on the bushing; bushing flange (1.5) outboard; ring.
+Stack along the spigot (v6): parent plate B (3) is under the flange; then the 18 mm
+cable gap, where each cable leg lies on its own plate; child plate B (3) on the
+bushing; bushing flange (1.5) outboard; ring; then the hub cap (Ø40 × 12) over
+the end, where the cable turns. The cable slot is in the spigot wall, inside the gap.
 
 ## Spacer disc (cut, not turned)
 
