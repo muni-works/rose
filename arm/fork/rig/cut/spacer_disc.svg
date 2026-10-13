@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 46 46" width="46mm" height="46mm">
+<title>spacer_disc</title><rect x="0" y="0" width="36" height="36" fill="none" stroke="#bbb" stroke-dasharray="4 3"/>
+<g fill="none" stroke="#e8590c" stroke-width="0.6">
+<circle cx="18.00" cy="18.00" r="18.00"/>
+<circle cx="30.00" cy="18.00" r="2.25"/>
+<circle cx="24.00" cy="7.61" r="2.25"/>
+<circle cx="12.00" cy="7.61" r="2.25"/>
+<circle cx="6.00" cy="18.00" r="2.25"/>
+<circle cx="12.00" cy="28.39" r="2.25"/>
+<circle cx="24.00" cy="28.39" r="2.25"/>
+</g></svg>
