@@ -28,6 +28,10 @@ from rose_arm_geom import add, sub, mul, dot, cross, norm, unit, rot, mv, mm_, I
 
 # ---------------------------------------------------------------- parts (m)
 RS06 = dict(d=0.088, L=0.064, kg=0.621)
+RS03 = dict(d=0.106, L=0.054, kg=0.880)      # manual: 54.1 long, 8x M4 on 98
+RS04 = dict(d=0.120, L=0.052, kg=1.420)      # manual: 39 + 13.2 long, 10x M4 on 106
+# v4 (2026-10-13): size up, no springs. Shoulder RS04, elbow RS03 - from size_actuators.py
+J2M, J4M = RS04, RS03
 RS00 = dict(d=0.061, L=0.066, kg=0.310)
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003          # fork side plate (v2: 4 -> 3 mm, windowed)
@@ -35,11 +39,13 @@ T_CV = 0.0015         # cover
 GAP = 0.002           # plate to motor / plate to plate running clearance
 BAR = 0.020
 
-Z_SH = 0.210          # shoulder axis height
-UPPER = 0.300         # v3: 330 -> 300
-FORE = 0.260          # elbow to wrist centre, v3: 300 -> 260 (flange ~760 mm, reBot class)
+Z_SH = 0.220          # shoulder axis height (v4: clears the RS04 lobe over the base)
+UPPER = 0.280         # v4: 300 -> 280
+FORE = 0.240          # elbow to wrist centre, v4: 260 -> 240 (flange ~743 mm, reBot class)
 W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006      # lobe radius round an RS06 joint
+R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
+R_LOBE_EL = J4M['d'] / 2 + 0.006     # elbow lobe
 R_LOBE0 = RS00['d'] / 2 + 0.006
 
 # plate centre-plane half-widths (y), from the stack-up: motor | gap | parent plate | gap | child plate
@@ -52,8 +58,8 @@ def stack(motor_L, layers):
     return out
 
 
-Y_TURRET, Y_UPPER_PROX = stack(RS06['L'], [T_PL, T_PL])          # shoulder: turret holds J2, upper straddles
-Y_UPPER_DIST, Y_FORE_PROX = stack(RS06['L'], [T_PL, T_PL])        # elbow: upper holds J4, forearm straddles
+Y_TURRET, Y_UPPER_PROX = stack(J2M['L'], [T_PL, T_PL])           # shoulder: turret holds J2, upper straddles
+Y_UPPER_DIST, Y_FORE_PROX = stack(J4M['L'], [T_PL, T_PL])         # elbow: upper holds J4, forearm straddles
 Y_YOKE, Y_WRIST = stack(RS00['L'], [T_PL, T_PL])                  # wrist pitch: yoke holds J6, wrist straddles
 Y_FORE_DIST = RS00['d'] / 2 + GAP + T_PL / 2 + 0.004              # forearm end holds the J5 roll motor (inline)
 
@@ -147,10 +153,15 @@ def windows(L, r0, r1):
     return [w for w in (stadium(s0, s1, h),) if w]
 
 
-def bars_and_covers(link, p0, p1, z, yo0, yo1, h, s_in=0.05):
-    """2020 bars along the inner top/bottom edge of each plate, plus recessed covers."""
+MOTOR_CLEAR = 0.010   # bars and covers stop this far outside the motor at either end
+
+
+def bars_and_covers(link, p0, p1, z, yo0, yo1, h, r0=0.04, r1=0.04):
+    """2020 bars along the inner bottom edge of each plate, plus recessed covers. They start and stop
+    MOTOR_CLEAR outside the motors at the two ends (radii r0, r1), so a fold never brings a motor
+    into a cover."""
     out = []
-    xa, xb = p0 + s_in, p1 - s_in
+    xa, xb = p0 + r0 + MOTOR_CLEAR, p1 - r1 - MOTOR_CLEAR
     f = lambda x: yo0 + (yo1 - yo0) * (x - p0) / (p1 - p0)
     for side in (1, -1):
         for zs in (-1,):           # v2: bottom corners only - the cable runs in their inner slot
@@ -201,22 +212,22 @@ def build():
         y = side * Y_TURRET
         win = [stadium(-0.034, 0.034, 0.018)]
         win = [[(it[0],) + tuple((pt[0], pt[1] - 0.085) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in w] for w in win if w]
-        P.append(('turret', 'sheet', (0.0, y + side * T_PL / 2, z), (1, 0, 0), (0, 0, 1), tower(R_LOBE6, 0.130, z - 0.126),
+        P.append(('turret', 'sheet', (0.0, y + side * T_PL / 2, z), (1, 0, 0), (0, 0, 1), tower(R_LOBE_SH, 0.150, z - 0.126),
                   (0, -side * T_PL, 0), win))
-    P.append(cyl('turret', 'actuator', (0, -RS06['L'] / 2, z), (0, RS06['L'] / 2, z), RS06['d'] / 2))
+    P.append(cyl('turret', 'actuator', (0, -J2M['L'] / 2, z), (0, J2M['L'] / 2, z), J2M['d'] / 2))
     P.append(cyl('turret', 'sleeve', (0, -Y_UPPER_PROX - 0.008, z), (0, -Y_TURRET + T_PL / 2, z), 0.011))
     # upper arm
     for side in (1, -1):
-        P.append(plate('upper', 'sheet', 0.0, UPPER, z, Y_UPPER_PROX, Y_UPPER_DIST, R_LOBE6, R_LOBE6, side))
-    P += bars_and_covers('upper', 0.0, UPPER, z, Y_UPPER_PROX, Y_UPPER_DIST, R_LOBE6 - 0.010)
-    P.append(cyl('upper', 'actuator', (UPPER, -RS06['L'] / 2, z), (UPPER, RS06['L'] / 2, z), RS06['d'] / 2))
+        P.append(plate('upper', 'sheet', 0.0, UPPER, z, Y_UPPER_PROX, Y_UPPER_DIST, R_LOBE_SH, R_LOBE_EL, side))
+    P += bars_and_covers('upper', 0.0, UPPER, z, Y_UPPER_PROX, Y_UPPER_DIST, R_LOBE_EL - 0.010, J2M['d'] / 2, J4M['d'] / 2)
+    P.append(cyl('upper', 'actuator', (UPPER, -J4M['L'] / 2, z), (UPPER, J4M['L'] / 2, z), J4M['d'] / 2))
     P.append(cyl('upper', 'sleeve', (UPPER, -Y_FORE_PROX - 0.008, z), (UPPER, -Y_UPPER_DIST + T_PL / 2, z), 0.011))
     # forearm: straddles the upper arm, narrows to the J5 end plate
     x5 = W - 0.070
     xe = x5 - RS00['L'] - 0.004
     for side in (1, -1):
-        P.append(plate('fore', 'sheet', UPPER, xe, z, Y_FORE_PROX, Y_FORE_DIST, R_LOBE6, R_LOBE0 + 0.008, side))
-    P += bars_and_covers('fore', UPPER, xe, z, Y_FORE_PROX, Y_FORE_DIST, R_LOBE0)
+        P.append(plate('fore', 'sheet', UPPER, xe, z, Y_FORE_PROX, Y_FORE_DIST, R_LOBE_EL, R_LOBE0 + 0.008, side))
+    P += bars_and_covers('fore', UPPER, xe, z, Y_FORE_PROX, Y_FORE_DIST, R_LOBE0, J4M['d'] / 2, 0.004)
     P.append(cyl('fore', 'sheet', (xe - 0.003, 0, z), (xe, 0, z), R_LOBE0 + 0.010))
     P.append(cyl('fore', 'actuator', (x5 - RS00['L'], 0, z), (x5, 0, z), RS00['d'] / 2))
     # J5 collar: fixed half on the forearm, turning half on the yoke, cassette inside

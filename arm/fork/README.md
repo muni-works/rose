@@ -9,7 +9,7 @@ python3 arm/fork/fork_checks.py                         # mass, torque, stiffnes
 python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![fork v3](render/fork-v3-posed.png)
+![fork v4](render/fork-v4-lines.png)
 
 ## The idea
 
@@ -36,7 +36,28 @@ a constraint of the nesting that turned out to be the look.
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
 
-## Numbers (v3, 2026-10-12)
+## v4 (2026-10-13): bigger motors, no springs
+
+Holding a pose is a stall, and the vendor's stall-continuous ratings
+(INTERFACES.md) left v3 unable to hold anything without the gas spring. v4
+sizes up instead of adding parts: **shoulder RS04, elbow RS03**, wrist RS00 x3,
+reach 783 → 743 mm. `size_actuators.py` searches every combination with the
+arm's own weight re-computed.
+
+| | v4 |
+|---|---:|
+| flange from shoulder | 743 mm |
+| holds straight out, continuously, no spring | **1.24 kg** (wrist binds; shoulder 1.28, elbow 1.71) |
+| peak payload | ~6 kg (wrist pitch) |
+| mass | 7.5 kg (4.2 kg moving; the extra is in base and turret) |
+| deflection | 0.04 mm sag, 0.11 mm twist |
+| shoulder / elbow / wrist range | −150…+75° / −165…+140° / ±120° |
+
+Ceiling: with RobStride's ratings, ~1.25 kg continuous straight out is about the
+limit at this reach without springs — the shoulder RS04 carries the whole arm.
+Straight out is the worst case; bent working poses hold more.
+
+## Numbers (v3, 2026-10-12) — superseded by v4
 
 | | fork v3 | reBot B601-RS |
 |---|---:|---:|

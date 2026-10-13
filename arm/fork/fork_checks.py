@@ -20,7 +20,7 @@ from rose_arm_geom import add, sub, mul, norm
 G = 9.81
 E, Gs = 69e9, 26e9
 PAYLOAD = 2.5
-ACT_KG = {round(F.RS06['d'] / 2, 4): F.RS06['kg'], round(F.RS00['d'] / 2, 4): F.RS00['kg'], round(F.EDU['d'] / 2, 4): F.EDU['kg']}
+ACT_KG = {round(F.RS04['d'] / 2, 4): F.RS04['kg'], round(F.RS03['d'] / 2, 4): F.RS03['kg'], round(F.RS06['d'] / 2, 4): F.RS06['kg'], round(F.RS00['d'] / 2, 4): F.RS00['kg'], round(F.EDU['d'] / 2, 4): F.EDU['kg']}
 
 
 def masses():
@@ -70,7 +70,7 @@ def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
 
 def stiffness():
     U, Fo = F.UPPER, F.FORE
-    hu, Wu = 2 * F.R_LOBE6, 2 * F.Y_UPPER_DIST
+    hu, Wu = 2 * F.R_LOBE_EL, 2 * F.Y_UPPER_DIST
     hf, Wf = 2 * F.R_LOBE0 + 0.016, 2 * F.Y_FORE_DIST
     Iu, Ju = section(hu, Wu)
     If, Jf = section(hf, Wf)
@@ -155,12 +155,14 @@ def main():
     print('total %.2f kg   moving (shoulder outward) %.2f kg' % (tot, sum(by[k] for k in MOVING if k in by)))
     print('flange at %.0f mm from the shoulder' % (flange_x() * 1e3))
     print('\ngravity torque, arm straight out, %.1f kg at the flange:' % PAYLOAD)
-    for name, x0, peak, rated in (('J2 shoulder (RS06)', 0.0, 36, 11), ('J4 elbow (RS06)', F.UPPER, 36, 11),
-                                  ('J6 wrist (RS00)', F.W, 14, 5)):
+    for name, x0, peak, stall in (('J2 shoulder (RS04)', 0.0, 120, 25), ('J4 elbow (RS03)', F.UPPER, 60, 13),
+                                  ('J6 wrist (RS00)', F.W, 14, 3.6)):
         m = moment(x0)
-        print('  %-20s %5.1f N.m   %3.0f%% of peak   %.1fx rated' % (name, m, 100 * m / peak, m / rated))
-    self_ = moment(0.0, 0.0)
-    print('  shoulder self-weight %.1f N.m -> gas spring leaves %.1f N.m (%.0f%% of peak)' % (self_, moment(0.0) - self_, 100 * (moment(0.0) - self_) / 36))
+        print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
+    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 13), ('J6', F.W, 3.6)):
+        free = stall - moment(x0, 0.0)
+        print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
+
     sag, tw, secs = stiffness()
     print('\nflange deflection from structure: %.2f mm sag, %.2f mm twist   (budget 0.5 / 0.5)' % (sag * 1e3, tw * 1e3))
     print('\nfold ranges (no two links within 1 mm):')
