@@ -29,7 +29,8 @@ G = 9.81
 M = {  # peak, stall_cont, kg, D, L
     'RS00': (14.0, 3.6, 0.310, 0.061, 0.066),
     'RS06': (36.0, 8.0, 0.621, 0.088, 0.049),
-    'RS03': (60.0, 13.0, 0.880, 0.106, 0.054),
+    'RS03': (60.0, 13.0, 0.880, 0.106, 0.054),     # NOT AVAILABLE (2026-10-13) - kept for reference only
+    'RS02': (17.0, 4.4, 0.380, 0.0785, 0.0455),   # stall-cont scaled from rated 6 by RS06's 8/11 - ESTIMATE
     'RS04': (120.0, 25.0, 1.420, 0.120, 0.052),
 }
 BASE = dict(J2='RS06', J4='RS06', J5='RS00', J6='RS00', J7='RS00')   # v3
@@ -103,5 +104,45 @@ def main():
             target, ' / '.join(sel[j] for j in ('J2', 'J4', 'J5', 'J6', 'J7')), c, p, tot, bind))
 
 
+AVAILABLE = ('RS00', 'RS02', 'RS04', 'RS06')     # RS01 / RS05 duplicate RS02 / RS00 at lower spec
+
+
+def search():
+    """Every selection from the available motors, at several reaches. Score: continuous straight-out
+    hold, then fewest distinct models (simpler BOM, fewer interfaces), then lightest."""
+    import itertools
+    out = []
+    for up, fo in ((0.300, 0.260), (0.280, 0.240), (0.260, 0.220), (0.240, 0.200)):
+        F.UPPER, F.FORE, F.W = up, fo, up + fo
+        reach = C.flange_x()
+        for J2 in ('RS04', 'RS06'):
+            for J4 in ('RS04', 'RS06', 'RS02'):
+                for J6 in ('RS00', 'RS02', 'RS06'):
+                    for J57 in ('RS00', 'RS02', 'RS06'):
+                        for J1 in AVAILABLE:
+                            sel = dict(J2=J2, J4=J4, J5=J57, J6=J6, J7=J57)
+                            c, p, cont, peak, tot, mov = evaluate(sel)
+                            skus = len(set(list(sel.values()) + [J1]))
+                            tot = tot - M['RS06'][2] + M[J1][2]
+                            out.append(dict(reach=reach, up=up, fo=fo, sel=sel, J1=J1, cont=c, peak=p, skus=skus, kg=tot,
+                                            bind=min(cont, key=cont.get)))
+    return out
+
+
 if __name__ == '__main__':
-    main()
+    import sys as _s
+    if len(_s.argv) > 1 and _s.argv[1] == '--available':
+        rows = search()
+        print('best continuous straight-out hold for each (reach, number of motor models):')
+        print('  %-6s %-5s %-44s %7s %7s %7s  %s' % ('reach', 'SKUs', 'J1 base / J2 / J4 / J5 / J6 / J7', 'cont', 'peak', 'motors', 'binds'))
+        for reach in sorted({r['reach'] for r in rows}, reverse=True):
+            for k in (1, 2, 3):
+                cand = [r for r in rows if abs(r['reach'] - reach) < 1e-6 and r['skus'] == k]
+                if not cand:
+                    continue
+                b = max(cand, key=lambda r: (round(r['cont'], 2), -r['kg']))
+                print('  %4.0f   %d    %-44s %5.2f kg %5.2f kg %5.2f kg  %s' % (
+                    reach * 1e3, k, ' / '.join([b['J1']] + [b['sel'][j] for j in ('J2', 'J4', 'J5', 'J6', 'J7')]),
+                    b['cont'], b['peak'], b['kg'], b['bind']))
+    else:
+        main()

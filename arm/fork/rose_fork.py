@@ -30,8 +30,9 @@ from rose_arm_geom import add, sub, mul, dot, cross, norm, unit, rot, mv, mm_, I
 RS06 = dict(d=0.088, L=0.064, kg=0.621)
 RS03 = dict(d=0.106, L=0.054, kg=0.880)      # manual: 54.1 long, 8x M4 on 98
 RS04 = dict(d=0.120, L=0.052, kg=1.420)      # manual: 39 + 13.2 long, 10x M4 on 106
-# v4 (2026-10-13): size up, no springs. Shoulder RS04, elbow RS03 - from size_actuators.py
-J2M, J4M = RS04, RS03
+# v5 (2026-10-13): RS03 is not available. Two motor models only: RS04 at base yaw, shoulder and
+# elbow; RS00 for the three wrist joints. Shoulder and elbow become the same joint.
+J1M, J2M, J4M = RS04, RS04, RS04
 RS00 = dict(d=0.061, L=0.066, kg=0.310)
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003          # fork side plate (v2: 4 -> 3 mm, windowed)
@@ -40,8 +41,8 @@ GAP = 0.002           # plate to motor / plate to plate running clearance
 BAR = 0.020
 
 Z_SH = 0.220          # shoulder axis height (v4: clears the RS04 lobe over the base)
-UPPER = 0.280         # v4: 300 -> 280
-FORE = 0.240          # elbow to wrist centre, v4: 260 -> 240 (flange ~743 mm, reBot class)
+UPPER = 0.260         # v5: 280 -> 260
+FORE = 0.220          # elbow to wrist centre, v5: 240 -> 220 (flange ~703 mm)
 W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006      # lobe radius round an RS06 joint
 R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
@@ -202,12 +203,12 @@ def build():
     P = []
     z = Z_SH
     # base: a spun shell round J1 on a foot ring; the J1 cassette sits in the annulus round the motor
-    P.append(shell('base', 'base', 0.0, 0.010, 0.105, 0.003))
-    P.append(cyl('base', 'base', (0, 0, 0.0), (0, 0, 0.004), 0.105))
-    P.append(shell('base', 'base', 0.010, 0.118, 0.070))
-    P.append(cyl('base', 'actuator', (0, 0, 0.040), (0, 0, 0.104), RS06['d'] / 2))
+    P.append(shell('base', 'base', 0.0, 0.010, 0.115, 0.003))
+    P.append(cyl('base', 'base', (0, 0, 0.0), (0, 0, 0.004), 0.115))
+    P.append(shell('base', 'base', 0.010, 0.118, J1M['d'] / 2 + 0.010))
+    P.append(cyl('base', 'actuator', (0, 0, 0.118 - J1M['L']), (0, 0, 0.118), J1M['d'] / 2))
     # turret: two tower plates holding J2 between them, on a disc on the J1 output
-    P.append(cyl('turret', 'base', (0, 0, 0.120), (0, 0, 0.126), 0.072))
+    P.append(cyl('turret', 'base', (0, 0, 0.120), (0, 0, 0.126), J1M['d'] / 2 + 0.010))
     for side in (1, -1):
         y = side * Y_TURRET
         win = [stadium(-0.034, 0.034, 0.018)]

@@ -9,7 +9,7 @@ python3 arm/fork/fork_checks.py                         # mass, torque, stiffnes
 python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![fork v4](render/fork-v4-lines.png)
+![fork v5](render/fork-v5-lines.png)
 
 ## The idea
 
@@ -36,7 +36,28 @@ a constraint of the nesting that turned out to be the look.
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
 
-## v4 (2026-10-13): bigger motors, no springs
+## v5 (2026-10-13): two motor models
+
+RS03 is not available (RobStride sells RS00, 01, 02, 04, 05, 06). The search
+in `size_actuators.py --available` ranks every selection by continuous hold,
+then by number of distinct models: **RS04 at base yaw, shoulder and elbow;
+RS00 for the three wrist joints.** No third model helps. The base yaw is an
+RS04 for its large output bearing — it carries the arm's whole tipping moment.
+Shoulder and elbow are now the same joint, same lobes and bolt pattern.
+
+| | v5 |
+|---|---:|
+| motor models | 2 (RS04 x3, RS00 x3) |
+| flange from shoulder | 703 mm |
+| holds straight out, continuously, no spring | **1.24 kg** (wrist binds; shoulder 1.32, elbow 4.6) |
+| peak payload | ~6 kg (wrist pitch) |
+| mass | 8.9 kg (4.7 kg moving) |
+| deflection | 0.03 mm sag, 0.09 mm twist |
+| shoulder / elbow / wrist range | −150…+65° / −170…+125° / ±120° |
+
+The elbow rig (`rig/`) is now an RS04 joint, so it qualifies the shoulder too.
+
+## v4 (2026-10-13): bigger motors, no springs — superseded (RS03 unavailable)
 
 Holding a pose is a stall, and the vendor's stall-continuous ratings
 (INTERFACES.md) left v3 unable to hold anything without the gas spring. v4

@@ -1,4 +1,6 @@
-"""Elbow test rig for the fork joint: one RS06 on a bench stand, a 300 mm test forearm straddling it.
+"""Elbow test rig for the fork joint: one RS04 on a bench stand, a test forearm straddling it.
+(v5, 2026-10-13: the elbow is an RS04 - RS03 is not available. Shoulder and elbow are the same joint,
+so this rig also qualifies the shoulder.)
 
 What it proves before a whole arm gets cut: the stator-held-both-ends mount, the spacer disc
 through the parent plate, the plain bushing on the sleeve (wobble), cable twist through the
@@ -19,24 +21,24 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'cut')
 BED = (390.0, 390.0)
 
-# ---- interfaces (mm), RS06, from the user manual drawing (p. 8) - see ../INTERFACES.md
-OUT_BC, OUT_N = 24.0, 6           # output: 6x M4 deep 6 on 24
-FLANGE_D = 37.0                   # output flange
-SPIGOT_D = 52.0                   # stator front centring spigot, 3 long: parent plate A locates on it
-RING_BC, RING_N = 82.0, 8         # stator front: 8x M3 deep 8.5 on 82
-BACK_BC, BACK_N = 62.0, 4         # back cover (STEP)
-STATOR_SPAN = 49.0                # overall length
+# ---- interfaces (mm), RS04, from the user manual drawing (RS04 manual p. 9)
+OUT_BC, OUT_N = 36.0, 8           # output: 8x M5 deep 6.5 on 36 +-0.1 (2x D5 dowels on 35.86)
+OUT_HOLE = 5.5
+RING_BC, RING_N = 106.0, 10       # stator front: 10x M4 EQS blind (5 min) on 106 +-0.1
+BACK_BC, BACK_N = 106.0, 10       # back: 10x M4 EQS deep 6 on 106 +-0.1
+MOTOR_D = 120.0
+STATOR_SPAN = 52.2                # 13.2 + 39
+CLEAR_D = 70.0                    # parent plate A bore round the output flange and spacer disc
 M3, M4, M5, M8 = 3.4, 4.5, 5.5, 8.5   # clearance holes
 
 # ---- rig choices
 T = 3.0                           # plates, 5052
-AXIS_H = 180.0                    # bench to joint axis
-FOOT_W = 160.0
-R_LOBE = 50.0
-ARM_L = 290.0                     # joint axis to load point (fits the 4040 bed with margin)
+AXIS_H = 200.0                    # bench to joint axis
+FOOT_W = 180.0
+R_LOBE = MOTOR_D / 2 + 6.0
+ARM_L = 270.0                     # joint axis to load point (RS04 lobe; fits the 4040 bed with margin)
 R_TIP = 34.0
-SPACER_D, SPACER_T = 36.0, 3.0   # output flange stands 1.5 proud of the spigot face; 3 mm disc gives 4.5 mm running gap
-CLEAR_D = SPIGOT_D + 0.05        # parent plate A bore: a locating fit on the stator spigot
+SPACER_D, SPACER_T = 48.0, 3.0   # on the output flange, through parent plate A's bore
 SLEEVE_D = 16.0                   # sleeve spigot; child plate B rides a flanged bushing on it
 BUSH_OD = 18.0                    # igus GFM-1618 style: ID 16 / OD 18 / flange 24
 WIN_H, WIN_FLANGE = 30.0, 20.0
@@ -81,18 +83,18 @@ def bolt_circle(bc, n, d, phase=0.0, c=(0.0, 0.0)):
 
 # ---------------------------------------------------------------- the parts
 def parent_A():
-    """Stand plate on the stator front ring: locates on the 52 spigot, 8x M3 on 82."""
-    holes = [('circle', (0, 0), CLEAR_D / 2)] + bolt_circle(RING_BC, RING_N, M3, math.pi / RING_N)
+    """Stand plate on the stator front: 10x M4 on 106, bore round the output."""
+    holes = [('circle', (0, 0), CLEAR_D / 2)] + bolt_circle(RING_BC, RING_N, M4, math.pi / RING_N)
     holes += [('circle', (x, -AXIS_H + 12), M5 / 2) for x in (-60, -20, 20, 60)]       # to the 2020 foot rails
-    holes += [stadium(-25, 25, -105, 16)]
+    holes += [stadium(-30, 30, -125, 18)]
     return tower(), holes
 
 
 def parent_B():
     """Stand plate on the back cover. The sleeve boss bolts through it with the same 4x M4."""
-    holes = [('circle', (0, 0), 10.0)] + bolt_circle(BACK_BC, BACK_N, M4, math.pi / 4)
+    holes = [('circle', (0, 0), 10.0)] + bolt_circle(BACK_BC, BACK_N, M4, math.pi / BACK_N)
     holes += [('circle', (x, -AXIS_H + 12), M5 / 2) for x in (-60, -20, 20, 60)]
-    holes += [stadium(-25, 25, -105, 16)]
+    holes += [stadium(-30, 30, -125, 18)]
     return tower(), holes
 
 
@@ -100,17 +102,19 @@ def child(kind):
     """Test forearm plate. A bolts to the spacer disc; B rides the bushing on the sleeve."""
     ol = capsule(ARM_L, R_LOBE, R_TIP)
     if kind == 'A':
-        holes = bolt_circle(OUT_BC, OUT_N, M4)
+        holes = bolt_circle(OUT_BC, OUT_N, OUT_HOLE)
     else:
         holes = [('circle', (0, 0), BUSH_OD / 2)]
     holes += [('circle', (ARM_L, 0), M8 / 2)]                                         # load bolt
-    holes += [('circle', (x, -R_LOBE + 22), M5 / 2) for x in (90, 150, 210, 260)]     # bottom 2020 bar, T-nuts
-    holes += [stadium(R_LOBE + 12, 175, 6, 15), stadium(185, ARM_L - R_TIP - 10, 6, 12)]
+    # bottom 2020 bar, T-nuts: 12 mm in from the tapered bottom edge (the edge runs from R_LOBE to R_TIP)
+    edge = lambda x: R_LOBE + (R_TIP - R_LOBE) * x / ARM_L
+    holes += [('circle', (x, -edge(x) + 12), M5 / 2) for x in (100, 150, 200, 235)]
+    holes += [stadium(R_LOBE + 12, 180, 6, 18), stadium(190, ARM_L - R_TIP - 10, 6, 12)]
     return ol, holes
 
 
 def spacer_disc():
-    return [('circle', (0, 0), SPACER_D / 2)], bolt_circle(OUT_BC, OUT_N, M4)
+    return [('circle', (0, 0), SPACER_D / 2)], bolt_circle(OUT_BC, OUT_N, OUT_HOLE)
 
 
 PARTS = {

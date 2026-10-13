@@ -23,8 +23,14 @@ PAYLOAD = 2.5
 ACT_KG = {round(F.RS04['d'] / 2, 4): F.RS04['kg'], round(F.RS03['d'] / 2, 4): F.RS03['kg'], round(F.RS06['d'] / 2, 4): F.RS06['kg'], round(F.RS00['d'] / 2, 4): F.RS00['kg'], round(F.EDU['d'] / 2, 4): F.EDU['kg']}
 
 
+_MASS_CACHE = {}
+
+
 def masses():
-    """(link, kg, x of centroid, zero pose) per primitive."""
+    """(link, kg, x of centroid, zero pose) per primitive. Cached per arm length."""
+    key = (F.UPPER, F.FORE, F.W)
+    if key in _MASS_CACHE:
+        return _MASS_CACHE[key]
     rows = []
     for p in F.build():
         link, mat, o, u, v, ol, vec = p[:7]
@@ -38,6 +44,7 @@ def masses():
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
     rows.append(('harness', 0.20, 0.35))
+    _MASS_CACHE[key] = rows
     return rows
 
 
@@ -155,11 +162,11 @@ def main():
     print('total %.2f kg   moving (shoulder outward) %.2f kg' % (tot, sum(by[k] for k in MOVING if k in by)))
     print('flange at %.0f mm from the shoulder' % (flange_x() * 1e3))
     print('\ngravity torque, arm straight out, %.1f kg at the flange:' % PAYLOAD)
-    for name, x0, peak, stall in (('J2 shoulder (RS04)', 0.0, 120, 25), ('J4 elbow (RS03)', F.UPPER, 60, 13),
+    for name, x0, peak, stall in (('J2 shoulder (RS04)', 0.0, 120, 25), ('J4 elbow (RS04)', F.UPPER, 120, 25),
                                   ('J6 wrist (RS00)', F.W, 14, 3.6)):
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
-    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 13), ('J6', F.W, 3.6)):
+    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 25), ('J6', F.W, 3.6)):
         free = stall - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
 
