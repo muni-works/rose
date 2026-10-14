@@ -149,31 +149,60 @@ def to_plane(net, x, y, layer):
             vx, vy = x + ring * math.cos(a), y + ring * math.sin(a)
             if not via_clear(net, vx, vy):
                 continue
+            if not ring:
+                add_via(net, vx, vy)
+                return True
+            # straight stub, else an L (out along one axis, then the other)
+            for path in ([(x, y), (vx, vy)], [(x, y), (vx, y), (vx, vy)], [(x, y), (x, vy), (vx, vy)]):
+                if all(seg_clear(net, layer, p, q, TRACK_W / 2) for p, q in zip(path, path[1:])):
+                    add_via(net, vx, vy)
+                    for p, q in zip(path, path[1:]):
+                        if math.dist(p, q) > 1e-3:
+                            add_track(net, layer, p, q)
+                    return True
+    return False
+
+
+def hop(net, x, y, layer):
+    """A via near pad (x, y) reached by a stub on the pad's layer: (vx, vy) or None."""
+    for ring in (0.0, 0.6, 0.9, 1.2, 1.6, 2.0):
+        for k in range(1 if ring == 0 else 24):
+            a = 2 * math.pi * k / 24
+            vx, vy = x + ring * math.cos(a), y + ring * math.sin(a)
+            if not via_clear(net, vx, vy):
+                continue
             if ring and not seg_clear(net, layer, (x, y), (vx, vy), TRACK_W / 2):
                 continue
-            add_via(net, vx, vy)
-            if ring:
-                add_track(net, layer, (x, y), (vx, vy))
-            return True
-    return False
+            return (vx, vy)
+    return None
 
 
 def join(net, a, la, b, lb):
     """Straight or L trace a->b on a shared signal layer, via-hopping if needed."""
     paths = [[a, b], [a, (a[0], b[1]), b], [a, (b[0], a[1]), b]]
     for layer in SIGNAL:
-        hop_a = layer not in la
-        hop_b = layer not in lb
-        if (hop_a and not via_clear(net, *a)) or (hop_b and not via_clear(net, *b)):
+        ends = []
+        for p, lp in ((a, la), (b, lb)):
+            if layer in lp:
+                ends.append((p, None))
+                continue
+            h = hop(net, p[0], p[1], next(iter(lp & set(SIGNAL)), pcbnew.F_Cu))
+            if h is None:
+                break
+            ends.append((h, (p, next(iter(lp & set(SIGNAL)), pcbnew.F_Cu))))
+        if len(ends) < 2:
             continue
-        for path in paths:
+        (ea, sa), (eb, sb) = ends
+        for path in ([ea, eb], [ea, (ea[0], eb[1]), eb], [ea, (eb[0], ea[1]), eb]):
             if all(seg_clear(net, layer, p, q, TRACK_W / 2) for p, q in zip(path, path[1:])):
-                if hop_a:
-                    add_via(net, *a)
-                if hop_b:
-                    add_via(net, *b)
+                for e, stub in ((ea, sa), (eb, sb)):
+                    if stub:
+                        add_via(net, *e)
+                        if math.dist(stub[0], e) > 1e-3:
+                            add_track(net, stub[1], stub[0], e)
                 for p, q in zip(path, path[1:]):
-                    add_track(net, layer, p, q)
+                    if math.dist(p, q) > 1e-3:
+                        add_track(net, layer, p, q)
                 return True
     return False
 
