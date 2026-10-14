@@ -3,7 +3,7 @@
 Run:  python3 arm/fork/animate.py OUT_DIR [workers]      (frames in OUT_DIR, video in render/)
 Frames already in OUT_DIR are skipped, so an interrupted run resumes.
 """
-import math, os, subprocess, sys
+import math, os, shutil, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..'))
 import rose_fork as F
@@ -37,12 +37,17 @@ def frames(out, w, k):
         if os.path.exists(png):
             continue
         src = F.world_loon(pose(i / FPS))
-        # fixed framing: two tiny anchors at opposite corners of the workspace
-        src += '[let a0 [translate -380 -620 0 [sphere 0.3]]]\n[let a1 [translate 760 620 820 [sphere 0.3]]]\n[root a0 "base"]\n[root a1 "base"]\n'
+        # fixed framing: two tiny anchors at opposite corners of the whole reach
+        # envelope (the tool swings below the base and behind it), so no pose
+        # grows the bounding box and the camera never rescales between frames
+        src += '[let a0 [translate -230 -620 -230 [sphere 0.3]]]\n[let a1 [translate 700 680 660 [sphere 0.3]]]\n[root a0 "base"]\n[root a1 "base"]\n'
         lf = os.path.join(out, 'f%d.loon' % w)
         open(lf, 'w').write(src)
-        subprocess.run([R, lf, '--azimuth=-45', '--elevation=18', '--size', '1280x800', '--fill', '0.95', '-o', png],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run([R, lf, '--azimuth=-45', '--elevation=18', '--size', '1280x800', '--fill', '0.95', '-o', png],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
+        except subprocess.TimeoutExpired:       # a pose that hangs the renderer: skipped, filled below
+            pass
 
 
 if __name__ == '__main__':
@@ -55,6 +60,13 @@ if __name__ == '__main__':
     ps = [subprocess.Popen([sys.executable, __file__, out, str(w), str(k)]) for w in range(k)]
     for p in ps:
         p.wait()
+    # any frame the renderer gave up on repeats the frame before it
+    n = int(K[-1][0] * FPS) + 1
+    for i in range(1, n):
+        a, b = os.path.join(out, 'f%04d.png' % (i - 1)), os.path.join(out, 'f%04d.png' % i)
+        if not os.path.exists(b) and os.path.exists(a):
+            shutil.copy(a, b)
+            print('frame %d: renderer timed out, held frame %d' % (i, i - 1))
     mp4 = os.path.join(HERE, 'render', 'fork-v9-motion.mp4')
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', str(FPS), '-i', os.path.join(out, 'f%04d.png'),
                     '-vf', 'scale=1280:-2,format=yuv420p', '-c:v', 'libx264', '-crf', '20', mp4], check=True)
