@@ -187,6 +187,49 @@ the far motor. ESD protection (PESD2CAN class) on every CAN line that leaves the
 - **Cost, qty 10:** roughly $45–70 per board assembled, excluding the brake resistor. That's an
   estimate until it's quoted.
 
+### One board, many limbs
+
+The same board runs the arm, a leg, the torso or the head. Firmware picks the role from
+the board ID, and each block below is fitted only where a limb needs it.
+
+| Block | Part | MCU | Use |
+|---|---|---|---|
+| Board ID | R67/R68 divider | PC0 (ADC) | R68 DNP = arm, 10k leg, 4.7k torso, 2.2k head |
+| IMU | ISM330DHCX (SPI1) | CS PA4, INT PD6 | orientation, fall and collision detection |
+| Load cell | ADS1220 24-bit, ratiometric (SPI1) | CS PD4, DRDY PD2 | wrist force, grip force, foot contact (J14) |
+| 4th CAN-FD | MCP251863 (controller and transceiver, SPI1) | CS PD5, INT PC10 | second limb or tool bus (J15); the MCU's 3 FDCANs are taken |
+| Brushed motor | DRV8871 from +12 V, ILIM 0.78 A | TIM1 CH1/CH2 (PA8/PA9) | gripper or tool without a RobStride (J16) |
+| 48 V aux out | 3 A PTC, XT30 | - | the board doubles as the power distribution node (J17) |
+| PTP time sync | STM32H7 MAC timestamping | - | firmware only, no new parts |
+| Mounting | 4 x M3, grounded pads | - | fits any limb, not only the foot ring |
+
+SPI1 is PA5 SCK, PA6 MISO and PD7 MOSI. The IMU and ADC outputs go through 33 R series
+resistors onto the shared MISO line. The MCP251863's TXCAN-TXD link is a 0 R resistor (R77).
+**Open:** check the brushed motor's 0.78 A limit against the 1 A LM5164 12 V buck. If a
+gripper needs more, swap the buck for a 2 A part. Pick a real part number for F1.
+
+### Layout as built (v0.1 draft, 150 x 40 mm)
+
+- **Flow:** `arm_controller.loon` → `place.py` (placement block) → `route.sh`. route.sh runs
+  `vcad route`, then KiCad fills the zones (`fill_zones.py`) and runs DRC (`drc.rpt`).
+- **Stackup (6 layers):** F signal / In1 GND / In2 signal / In3 +3V3 / In4 signal / B signal.
+  The router keeps traces off the two plane layers, and vias pass through them. On
+  4 layers, signals on the planes cut ground into islands and stranded pads. +12 V, +5 V,
+  VIN_BUCK and VAUX48 are traced at 0.5 mm (the "Power" class).
+- **48 V pours:** VIN, VBUS_SW, VBUS and BRK_R get F.Cu pour rectangles that reinforce routed
+  traces. The router never relies on them, because KiCad's fill carves overlapping pours
+  apart. Only pads of 1 mm² or larger set a pour's extent, so a controller's sense pin
+  doesn't drag the pour over the logic.
+- **VIN_BUCK:** a ferrite (FB4) splits the buck's input from VIN. This keeps the buck's
+  switching noise off the hot-swap sense node, and gives the 48 V pour a clean edge.
+- **Hot-swap and brake FETs:** IPT015N10N5 (TOLL), with pins 1 = G, 2 = S, 3 = D. The
+  old generic NMOS symbol's G/D/S names didn't match the footprint's pad numbers, so the FETs
+  were unconnected. vcad now refuses a pin that has no pad.
+- **Thermal vias** under exposed pads tie solid to the planes, with no spokes.
+- **Easter eggs:** the muni logo is on the front silk. A note sits inside the MCU's pad ring,
+  so it's only readable on a bare board. The back carries the fork arm, drawn from its own
+  dimensions.
+
 ## Firmware outline
 
 - **1 kHz control tick.** Send bus A and bus B frames in parallel and gather replies, then publish
