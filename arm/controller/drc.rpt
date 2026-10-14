@@ -1,7 +1,10 @@
 ** Drc report for arm_controller.kicad_pcb **
-** Created on 2026-10-14T10:53:28-0400 **
+** Created on 2026-10-14T15:49:08-0400 **
 
-** Found 7 DRC violations **
+** Found 8 DRC violations **
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(113.0307 mm, 6.0207 mm): Track [ETH_RXN] on In4.Cu, length 3.5242 mm
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(62.8370 mm, 24.4860 mm): Segment of ART1 on B.Silkscreen
@@ -22,26 +25,18 @@
     @(104.0000 mm, 30.8000 mm): Footprint text of ART1 (designed by muni)
 [silk_overlap]: Silkscreen overlap
     Rule: board setup constraints silk; warning
-    @(100.0000 mm, 31.4400 mm): Footprint text of LBB_J16 (MOTOR)
     @(104.0000 mm, 30.8000 mm): Footprint text of ART1 (designed by muni)
+    @(100.0000 mm, 31.4400 mm): Footprint text of LBB_J16 (MOTOR)
 
-** Found 4 unconnected pads **
+** Found 2 unconnected pads **
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(96.0000 mm, 27.4750 mm): Pad 23 [ETH_REFCLK] of U10 on F.Cu
-    @(112.9375 mm, 12.7500 mm): Pad 14 [ETH_REFCLK] of U15 on F.Cu
+    @(98.6750 mm, 16.8000 mm): Pad 44 [AUX_IO] of U10 on F.Cu
+    @(119.3250 mm, 34.3500 mm): Pad 3 [AUX_IO] of J11 on F.Cu
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(88.5000 mm, 12.1250 mm): Pad 68 [MOT_IN2] of U10 on F.Cu
-    @(106.9550 mm, 26.9750 mm): Pad 2 [MOT_IN2] of U19 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(134.0000 mm, 26.0500 mm): Pad 24 [SPI_MISO] of U18 on F.Cu
-    @(117.5000 mm, 24.7600 mm): Pad 2 [SPI_MISO] of R76 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(86.5000 mm, 27.4750 mm): Pad 4 [WD_KICK] of U10 on F.Cu
-    @(104.9900 mm, 20.7000 mm): Pad 7 [WD_KICK] of U3 on F.Cu
+    @(116.2600 mm, 7.7500 mm): Track [ETH_RXN] on F.Cu, length 0.7029 mm
+    @(113.0307 mm, 6.0207 mm): Track [ETH_RXN] on In4.Cu, length 3.5242 mm
 
 ** Found 0 Footprint errors **
 

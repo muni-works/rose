@@ -69,14 +69,23 @@ def clear_holes(x, y, extra):
 
 
 cands = []
-n = int((x1 - x0 - 2 * FENCE_INSET) / FENCE_PITCH)
-for k in range(n + 1):
-    x = x0 + FENCE_INSET + k * (x1 - x0 - 2 * FENCE_INSET) / n
-    cands += [(x, y0 + FENCE_INSET), (x, y1 - FENCE_INSET)]
-n = int((y1 - y0 - 2 * FENCE_INSET) / FENCE_PITCH)
-for k in range(1, n):
-    y = y0 + FENCE_INSET + k * (y1 - y0 - 2 * FENCE_INSET) / n
-    cands += [(x0 + FENCE_INSET, y), (x1 - FENCE_INSET, y)]
+# the fence follows the board's own outline (Edge.Cuts), FENCE_INSET inside it:
+# offset each edge both ways and let in_fill() keep the side that is on the board
+for d in board.GetDrawings():
+    if d.GetLayer() != pcbnew.Edge_Cuts or d.GetShape() != pcbnew.SHAPE_T_SEGMENT:
+        continue
+    a, b = d.GetStart(), d.GetEnd()
+    ax, ay, bx, by = pcbnew.ToMM(a.x), pcbnew.ToMM(a.y), pcbnew.ToMM(b.x), pcbnew.ToMM(b.y)
+    L = math.hypot(bx - ax, by - ay)
+    if L < 1e-6:
+        continue
+    nx, ny = -(by - ay) / L, (bx - ax) / L
+    for k in range(int(L / FENCE_PITCH) + 1):
+        t = (k + 0.5) * FENCE_PITCH / L
+        if t > 1:
+            break
+        px, py = ax + (bx - ax) * t, ay + (by - ay) * t
+        cands += [(px + nx * FENCE_INSET, py + ny * FENCE_INSET), (px - nx * FENCE_INSET, py - ny * FENCE_INSET)]
 gx = x0 + GRID_PITCH
 while gx < x1 - GRID_PITCH / 2:
     gy = y0 + GRID_PITCH
@@ -85,9 +94,18 @@ while gx < x1 - GRID_PITCH / 2:
         gy += GRID_PITCH
     gx += GRID_PITCH
 
+# rule areas that forbid vias (a copper logo, the gold rim): no stitch lands there
+no_via = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowVias()]
+
+
+def in_keepout(x, y):
+    p = pcbnew.VECTOR2I(mm(x), mm(y))
+    return any(z.Outline().Contains(p) for z in no_via)
+
+
 added = []
 for (x, y) in cands:
-    if in_fill(x, y) and clear_inner(x, y) and clear_holes(x, y, [(a, mm(VIA_DRILL)) for a in added]):
+    if not in_keepout(x, y) and in_fill(x, y) and clear_inner(x, y) and clear_holes(x, y, [(a, mm(VIA_DRILL)) for a in added]):
         v = pcbnew.PCB_VIA(board)
         v.SetPosition(pcbnew.VECTOR2I(mm(x), mm(y)))
         v.SetWidth(mm(VIA_D))
