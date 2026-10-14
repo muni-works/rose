@@ -15,9 +15,10 @@ VIA_D, VIA_DRILL = 0.45, 0.25
 
 # (net, [("via", x, y) | ("track", layer, x0, y0, x1, y1, width)], why)
 FIXES = [
-    ("+12V", [("via", 105.21, 7.615), ("via", 101.01, 11.115),
-              ("track", "In2.Cu", 105.21, 7.615, 101.01, 11.115, 0.5)],
-     "the In2 run under L1 had no via at either end (and was 0.15 mm on a 1 A rail)"),
+    # 150 x 40 placement (retired when the board grew to 46 mm for J9):
+    # ("+12V", [("via", 105.21, 7.615), ("via", 101.01, 11.115),
+    #           ("track", "In2.Cu", 105.21, 7.615, 101.01, 11.115, 0.5)],
+    #  "the In2 run under L1 had no via at either end (and was 0.15 mm on a 1 A rail)"),
 ]
 
 mm = pcbnew.FromMM

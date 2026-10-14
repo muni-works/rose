@@ -16,7 +16,7 @@ import heapq, json, math, sys
 import pcbnew
 
 GRID = 0.05                       # mm
-WIN = 3.0                         # mm half-window round the search
+WIN = float(__import__('os').environ.get('ASTAR_WIN', 3.0))                        # mm half-window round the search
 TRACK_W, VIA_D, VIA_DRILL = 0.15, 0.45, 0.25      # the board's default via
 CLEAR, HOLE_GAP = 0.155, 0.16     # a hair over the board rules (clearance, hole-to-hole)
 POWER = {'+12V', '+5V', 'VIN_BUCK', 'VAUX48'}   # the 'Power' class: 0.2 mm clearance
@@ -92,7 +92,7 @@ class Window:
             b = pd['box']
             for i, j, k, p in cells(b[0] - m, b[1] - m, b[2] + m, b[3] + m):
                 if pd['net'] != net:
-                    d = box_pt(b, p) - (POWER_EXTRA if pd['net'] in POWER else 0)
+                    d = box_pt(b, p) - (POWER_EXTRA if pd['net'] in POWER or net in POWER else 0)
                     for l in SIG:
                         if l in pd['layers'] and d < tw:
                             self.free[l][k] = 0
@@ -103,7 +103,7 @@ class Window:
         for v in my_vias:
             c = v['c']
             for i, j, k, p in cells(c[0] - m, c[1] - m, c[0] + m, c[1] + m):
-                d = math.dist(p, c) - (POWER_EXTRA if v['net'] in POWER else 0)
+                d = math.dist(p, c) - (POWER_EXTRA if v['net'] in POWER or net in POWER else 0)
                 if d < v['drill'] + VIA_DRILL / 2 + HOLE_GAP:
                     self.viaok[k] = 0
                 if v['net'] == net:
@@ -117,7 +117,7 @@ class Window:
             a, b = t['a'], t['b']
             mm_ = t['hw'] + vr
             for i, j, k, p in cells(min(a[0], b[0]) - mm_, min(a[1], b[1]) - mm_, max(a[0], b[0]) + mm_, max(a[1], b[1]) + mm_):
-                d = seg_pt(p, a, b) - (POWER_EXTRA if t['net'] in POWER else 0)
+                d = seg_pt(p, a, b) - (POWER_EXTRA if t['net'] in POWER or net in POWER else 0)
                 if d < t['hw'] + tw and t['layer'] in self.soft:
                     self.soft[t['layer']].setdefault(k, set()).add(id(t))
                 if d < t['hw'] + vr:

@@ -13,7 +13,7 @@ import collections, math, os, re, sys
 
 LOON = 'arm_controller.loon'
 FP = '/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints'
-W, H = 150.0, 40.0          # board, KiCad coordinates (y down)
+W, H = 150.0, 46.0          # board, KiCad coordinates (y down)
 MARGIN = 0.6                # courtyard to board edge
 GAP = 0.25                # courtyard to courtyard
 BEGIN, END = ';; ---- placement (place.py)', ';; ---- end placement'
@@ -28,8 +28,8 @@ ANCHORS = {
     'Q2': (45.0, 31.0, 0),    # brake FET
     # motor buses (top edge)
     'J5': ('T', 52.0),        # XT30 RS04 power
-    'J8': ('T', 63.0),        # GH CAN A
-    'J9': ('T', 70.0),        # XT30(2+2) wrist bus (placeholder header)
+    'J8': ('T', 62.4),        # GH CAN A
+    'J9': (68.8, 3.75, 0),       # XT30PB(2+2)-M wrist bus (14 x 5 body; the board grew 6 mm for it)
     'U11': (63.0, 11.0, 0),   # CAN A
     'U12': (74.5, 12.0, 90),  # CAN B
     # MCU: rotation chosen below by connection length ('auto')
@@ -51,8 +51,8 @@ ANCHORS = {
     'J14': ('B', 128.5),      # GH load cell
     'J16': ('B', 100.0),      # GH brushed motor
     # M3 mounting, clear of the edge connectors
-    'H1': (4.4, 35.8, 0),
-    'H2': (145.6, 35.8, 0),
+    'H1': (4.4, H - 4.2, 0),
+    'H2': (145.6, H - 4.2, 0),
     'H3': (88.0, 4.2, 0),
     'H4': (145.6, 27.0, 0),
 }
@@ -465,8 +465,8 @@ def main():
     edge_ring(boxes)
     art_lines.append('[EcadArt "RING1" "art:edge_ring" 0.00 0.00 0.0]')
 
-    lines = [BEGIN, ';; board: 150 x 40 mm, 6 layers: F sig / In1 GND / In2 sig / In3 +3V3 / In4 sig / B sig. Anchors by hand, the rest packed near the part they connect to.',
-             '[EcadBoard 0.0 0.0 150.0 40.0 2.0 1.6 6.0]',
+    lines = [BEGIN, ';; board: %g x %g mm,' % (W, H) + ' 6 layers: F sig / In1 GND / In2 sig / In3 +3V3 / In4 sig / B sig. Anchors by hand, the rest packed near the part they connect to.',
+             '[EcadBoard 0.0 0.0 %.1f %.1f 2.0 1.6 6.0]' % (W, H),
              '[EcadRules 0.15 0.15 0.45 0.25 0.3 0.15]',
              '[EcadPour "GND" "In1.Cu"]',
              '[EcadPour "+3V3" "In3.Cu"]',

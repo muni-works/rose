@@ -1,162 +1,34 @@
 plane layers kept trace-free: [In1Cu, In3Cu]
-[2026-10-14T19:30:31Z INFO  vcad_ecad_pcb::router::auto] plane prestitch: 223 via(s), 0 pad(s) left for after routing
-[2026-10-14T19:31:31Z INFO  vcad_ecad_pcb::router::auto] route_batch: 291 conns -> committed=264 unrouted=23 (cache_skips=0, conflicts=139, batches=14) in 59.7s
-[2026-10-14T19:31:34Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=3, batches=3) in 2.5s
-[2026-10-14T19:31:34Z INFO  vcad_ecad_pcb::router::auto] route_batch: 2 conns -> committed=2 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.0s
-[2026-10-14T19:31:34Z INFO  vcad_ecad_pcb::router::auto] route_batch: 7 conns -> committed=7 unrouted=0 (cache_skips=0, conflicts=6, batches=3) in 0.9s
-[2026-10-14T19:31:35Z INFO  vcad_ecad_pcb::router::auto] route_batch: 7 conns -> committed=7 unrouted=0 (cache_skips=0, conflicts=4, batches=3) in 1.0s
-[2026-10-14T19:31:57Z INFO  vcad_ecad_pcb::router::auto] route_batch: 47 conns -> committed=38 unrouted=3 (cache_skips=0, conflicts=46, batches=4) in 21.2s
-[2026-10-14T19:32:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 25 conns -> committed=20 unrouted=1 (cache_skips=0, conflicts=32, batches=4) in 11.7s
-[2026-10-14T19:32:31Z INFO  vcad_ecad_pcb::router::auto] route_batch: 32 conns -> committed=26 unrouted=1 (cache_skips=0, conflicts=41, batches=4) in 22.5s
-[2026-10-14T19:32:40Z INFO  vcad_ecad_pcb::router::auto] route_batch: 12 conns -> committed=10 unrouted=2 (cache_skips=0, conflicts=7, batches=3) in 9.0s
-[2026-10-14T19:33:07Z INFO  vcad_ecad_pcb::router::auto] route_batch: 25 conns -> committed=19 unrouted=1 (cache_skips=0, conflicts=32, batches=4) in 26.4s
-[2026-10-14T19:33:16Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 8.9s
-[2026-10-14T19:33:33Z INFO  vcad_ecad_pcb::router::auto] route_batch: 10 conns -> committed=9 unrouted=1 (cache_skips=0, conflicts=11, batches=4) in 17.6s
-[2026-10-14T19:33:37Z INFO  vcad_ecad_pcb::router::auto] route_batch: 23 conns -> committed=21 unrouted=1 (cache_skips=0, conflicts=24, batches=4) in 3.0s
-[2026-10-14T19:33:50Z INFO  vcad_ecad_pcb::router::auto] route_batch: 15 conns -> committed=14 unrouted=1 (cache_skips=0, conflicts=21, batches=4) in 13.4s
-[2026-10-14T19:33:57Z INFO  vcad_ecad_pcb::router::auto] route_batch: 11 conns -> committed=11 unrouted=0 (cache_skips=0, conflicts=11, batches=4) in 7.0s
-[2026-10-14T19:33:57Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=5, batches=3) in 0.1s
-[2026-10-14T19:34:02Z INFO  vcad_ecad_pcb::router::auto] route_batch: 15 conns -> committed=14 unrouted=1 (cache_skips=0, conflicts=12, batches=3) in 4.3s
-[2026-10-14T19:34:18Z INFO  vcad_ecad_pcb::router::auto] route_batch: 17 conns -> committed=14 unrouted=2 (cache_skips=0, conflicts=19, batches=4) in 16.7s
-[2026-10-14T19:34:22Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=5 unrouted=1 (cache_skips=0, conflicts=2, batches=2) in 4.1s
-[2026-10-14T19:34:37Z INFO  vcad_ecad_pcb::router::auto] route_batch: 21 conns -> committed=15 unrouted=1 (cache_skips=0, conflicts=33, batches=4) in 14.3s
-[2026-10-14T19:34:45Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=6, batches=3) in 8.4s
-[2026-10-14T19:34:54Z INFO  vcad_ecad_pcb::router::auto] route_batch: 9 conns -> committed=7 unrouted=2 (cache_skips=0, conflicts=8, batches=3) in 9.2s
-[2026-10-14T19:34:55Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 0.3s
-[2026-10-14T19:35:10Z INFO  vcad_ecad_pcb::router::auto] route_batch: 22 conns -> committed=16 unrouted=0 (cache_skips=0, conflicts=35, batches=4) in 15.4s
-[2026-10-14T19:35:10Z INFO  vcad_ecad_pcb::router::auto] ripup round: placed 268 -> 273 pending=18 in 219.1s
-[2026-10-14T19:35:34Z INFO  vcad_ecad_pcb::router::auto] route_batch: 15 conns -> committed=12 unrouted=2 (cache_skips=0, conflicts=20, batches=4) in 23.3s
-[2026-10-14T19:36:11Z INFO  vcad_ecad_pcb::router::auto] route_batch: 22 conns -> committed=16 unrouted=2 (cache_skips=0, conflicts=27, batches=4) in 37.3s
-[2026-10-14T19:36:35Z INFO  vcad_ecad_pcb::router::auto] route_batch: 24 conns -> committed=18 unrouted=0 (cache_skips=0, conflicts=33, batches=4) in 23.7s
-[2026-10-14T19:36:42Z INFO  vcad_ecad_pcb::router::auto] route_batch: 7 conns -> committed=7 unrouted=0 (cache_skips=0, conflicts=3, batches=3) in 7.3s
-[2026-10-14T19:37:03Z INFO  vcad_ecad_pcb::router::auto] route_batch: 32 conns -> committed=24 unrouted=1 (cache_skips=0, conflicts=38, batches=4) in 20.9s
-[2026-10-14T19:37:07Z INFO  vcad_ecad_pcb::router::auto] route_batch: 15 conns -> committed=14 unrouted=1 (cache_skips=0, conflicts=12, batches=4) in 3.9s
-[2026-10-14T19:37:07Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=1, batches=2) in 0.1s
-[2026-10-14T19:37:37Z INFO  vcad_ecad_pcb::router::auto] route_batch: 36 conns -> committed=26 unrouted=5 (cache_skips=0, conflicts=43, batches=4) in 29.6s
-[2026-10-14T19:37:38Z INFO  vcad_ecad_pcb::router::auto] route_batch: 12 conns -> committed=12 unrouted=0 (cache_skips=0, conflicts=14, batches=4) in 1.1s
-[2026-10-14T19:37:47Z INFO  vcad_ecad_pcb::router::auto] route_batch: 24 conns -> committed=21 unrouted=1 (cache_skips=0, conflicts=25, batches=4) in 8.6s
-[2026-10-14T19:37:55Z INFO  vcad_ecad_pcb::router::auto] route_batch: 9 conns -> committed=8 unrouted=1 (cache_skips=0, conflicts=10, batches=4) in 7.5s
-[2026-10-14T19:37:59Z INFO  vcad_ecad_pcb::router::auto] route_batch: 10 conns -> committed=8 unrouted=2 (cache_skips=0, conflicts=7, batches=3) in 4.4s
-[2026-10-14T19:38:00Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=14 unrouted=0 (cache_skips=0, conflicts=10, batches=3) in 1.0s
-[2026-10-14T19:38:03Z INFO  vcad_ecad_pcb::router::auto] route_batch: 23 conns -> committed=21 unrouted=0 (cache_skips=0, conflicts=26, batches=4) in 2.9s
-[2026-10-14T19:38:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=13 unrouted=1 (cache_skips=0, conflicts=15, batches=4) in 6.2s
-[2026-10-14T19:38:19Z INFO  vcad_ecad_pcb::router::auto] route_batch: 16 conns -> committed=14 unrouted=2 (cache_skips=0, conflicts=16, batches=4) in 9.5s
-[2026-10-14T19:38:33Z INFO  vcad_ecad_pcb::router::auto] route_batch: 19 conns -> committed=17 unrouted=1 (cache_skips=0, conflicts=18, batches=4) in 14.3s
-[2026-10-14T19:38:39Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=13 unrouted=1 (cache_skips=0, conflicts=8, batches=3) in 6.2s
-[2026-10-14T19:38:39Z INFO  vcad_ecad_pcb::router::auto] ripup round: placed 273 -> 271 pending=20 in 209.2s
-[2026-10-14T19:38:39Z INFO  vcad_ecad_pcb::router::auto] ripup round regressed — restoring pre-round snapshot
-[2026-10-14T19:38:39Z INFO  vcad_ecad_pcb::router::auto] negotiation round 1/4: placed=273 pending=18 (push_shove=false)
-[2026-10-14T19:38:58Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=10 unrouted=2 (cache_skips=0, conflicts=19, batches=4) in 18.0s
-[2026-10-14T19:39:04Z INFO  vcad_ecad_pcb::router::auto] route_batch: 19 conns -> committed=18 unrouted=1 (cache_skips=0, conflicts=12, batches=3) in 6.0s
-[2026-10-14T19:39:07Z INFO  vcad_ecad_pcb::router::auto] route_batch: 13 conns -> committed=13 unrouted=0 (cache_skips=0, conflicts=5, batches=3) in 3.1s
-[2026-10-14T19:39:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 1.1s
-[2026-10-14T19:39:10Z INFO  vcad_ecad_pcb::router::auto] route_batch: 11 conns -> committed=11 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 1.3s
-[2026-10-14T19:39:20Z INFO  vcad_ecad_pcb::router::auto] route_batch: 21 conns -> committed=17 unrouted=2 (cache_skips=0, conflicts=25, batches=4) in 9.8s
-[2026-10-14T19:39:24Z INFO  vcad_ecad_pcb::router::auto] route_batch: 8 conns -> committed=7 unrouted=0 (cache_skips=0, conflicts=10, batches=4) in 3.7s
-[2026-10-14T19:39:30Z INFO  vcad_ecad_pcb::router::auto] route_batch: 22 conns -> committed=20 unrouted=0 (cache_skips=0, conflicts=19, batches=4) in 4.8s
-[2026-10-14T19:39:36Z INFO  vcad_ecad_pcb::router::auto] route_batch: 16 conns -> committed=12 unrouted=1 (cache_skips=0, conflicts=22, batches=4) in 6.4s
-[2026-10-14T19:39:37Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=3, batches=3) in 1.0s
-[2026-10-14T19:39:41Z INFO  vcad_ecad_pcb::router::auto] route_batch: 22 conns -> committed=19 unrouted=1 (cache_skips=0, conflicts=21, batches=4) in 3.6s
-[2026-10-14T19:39:49Z INFO  vcad_ecad_pcb::router::auto] route_batch: 21 conns -> committed=20 unrouted=1 (cache_skips=0, conflicts=24, batches=4) in 7.3s
-[2026-10-14T19:39:50Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=3, batches=2) in 0.8s
-[2026-10-14T19:39:53Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=4 unrouted=2 (cache_skips=0, conflicts=3, batches=3) in 3.5s
-[2026-10-14T19:39:55Z INFO  vcad_ecad_pcb::router::auto] route_batch: 10 conns -> committed=9 unrouted=0 (cache_skips=0, conflicts=10, batches=4) in 2.0s
-[2026-10-14T19:39:59Z INFO  vcad_ecad_pcb::router::auto] route_batch: 19 conns -> committed=19 unrouted=0 (cache_skips=0, conflicts=14, batches=4) in 3.0s
-[2026-10-14T19:40:00Z INFO  vcad_ecad_pcb::router::auto] route_batch: 6 conns -> committed=6 unrouted=0 (cache_skips=0, conflicts=3, batches=2) in 0.8s
-[2026-10-14T19:40:05Z INFO  vcad_ecad_pcb::router::auto] route_batch: 11 conns -> committed=10 unrouted=1 (cache_skips=0, conflicts=10, batches=4) in 5.0s
-[2026-10-14T19:40:05Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=18 -> placed=280 pending=11 in 85.6s (budget 122s)
-[2026-10-14T19:40:05Z INFO  vcad_ecad_pcb::router::auto] negotiation round 2/4: placed=280 pending=11 (push_shove=true)
-[2026-10-14T19:40:05Z INFO  vcad_ecad_pcb::router::auto] route_batch: 4 conns -> committed=4 unrouted=0 (cache_skips=0, conflicts=1, batches=2) in 0.4s
-[2026-10-14T19:40:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=12 unrouted=0 (cache_skips=0, conflicts=16, batches=4) in 3.6s
-[2026-10-14T19:40:11Z INFO  vcad_ecad_pcb::router::auto] route_batch: 11 conns -> committed=11 unrouted=0 (cache_skips=0, conflicts=9, batches=4) in 1.8s
-[2026-10-14T19:40:24Z INFO  vcad_ecad_pcb::router::auto] route_batch: 32 conns -> committed=23 unrouted=0 (cache_skips=0, conflicts=47, batches=4) in 11.4s
-[2026-10-14T19:40:31Z INFO  vcad_ecad_pcb::router::auto] route_batch: 20 conns -> committed=18 unrouted=0 (cache_skips=0, conflicts=22, batches=4) in 4.9s
-[2026-10-14T19:40:52Z INFO  vcad_ecad_pcb::router::auto] route_batch: 42 conns -> committed=33 unrouted=1 (cache_skips=0, conflicts=50, batches=5) in 19.9s
-[2026-10-14T19:40:56Z INFO  vcad_ecad_pcb::router::auto] route_batch: 12 conns -> committed=10 unrouted=0 (cache_skips=0, conflicts=16, batches=4) in 3.7s
-[2026-10-14T19:41:07Z INFO  vcad_ecad_pcb::router::auto] route_batch: 14 conns -> committed=14 unrouted=0 (cache_skips=0, conflicts=20, batches=4) in 10.5s
-[2026-10-14T19:41:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 11 conns -> committed=11 unrouted=0 (cache_skips=0, conflicts=10, batches=4) in 2.2s
-[2026-10-14T19:41:17Z INFO  vcad_ecad_pcb::router::auto] route_batch: 18 conns -> committed=17 unrouted=0 (cache_skips=0, conflicts=17, batches=4) in 6.3s
-[2026-10-14T19:41:25Z INFO  vcad_ecad_pcb::router::auto] route_batch: 12 conns -> committed=10 unrouted=0 (cache_skips=0, conflicts=17, batches=4) in 8.5s
-[2026-10-14T19:41:25Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=11 -> placed=289 pending=2 in 80.5s (budget 122s)
-[2026-10-14T19:41:25Z INFO  vcad_ecad_pcb::router::auto] negotiation round 3/4: placed=289 pending=2 (push_shove=true)
-[2026-10-14T19:41:47Z INFO  vcad_ecad_pcb::router::auto] route_batch: 31 conns -> committed=23 unrouted=3 (cache_skips=0, conflicts=47, batches=4) in 19.0s
-[2026-10-14T19:42:09Z INFO  vcad_ecad_pcb::router::auto] route_batch: 18 conns -> committed=17 unrouted=1 (cache_skips=0, conflicts=18, batches=4) in 19.5s
-[2026-10-14T19:42:09Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=2 -> placed=286 pending=5 in 43.6s (budget 122s)
-[2026-10-14T19:42:09Z INFO  vcad_ecad_pcb::router::auto] negotiation round 4/4: placed=286 pending=5 (push_shove=true)
-[2026-10-14T19:42:09Z INFO  vcad_ecad_pcb::router::auto] negotiation converged after round 4 — stopping
-[2026-10-14T19:42:10Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=1 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.6s
-[2026-10-14T19:42:46Z INFO  vcad_ecad_pcb::router::auto] route_batch: 101 conns -> committed=84 unrouted=12 (cache_skips=0, conflicts=75, batches=7) in 36.5s
-[2026-10-14T19:42:47Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=1 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.6s
-[2026-10-14T19:42:59Z INFO  vcad_ecad_pcb::router::auto] route_batch: 74 conns -> committed=57 unrouted=14 (cache_skips=11, conflicts=57, batches=5) in 11.7s
-[2026-10-14T19:42:59Z INFO  vcad_ecad_pcb::router::auto] joint repair round 1 (margin 3mm): 2 windows -> 2 still unrouted in 49.4s
-[2026-10-14T19:42:59Z INFO  vcad_ecad_pcb::router::auto] joint repair: round converted nothing — stopping escalation
-[2026-10-14T19:42:59Z INFO  vcad_ecad_pcb::router::auto] plane stitch +3V3: 50 via(s), 10 pad(s) unstitched
-[2026-10-14T19:42:59Z INFO  vcad_ecad_pcb::router::auto] plane stitch GND: 144 via(s), 17 pad(s) unstitched
-[2026-10-14T19:43:01Z INFO  vcad_ecad_pcb::router::auto] post-route legalization: merged 0 vias, pruned 8 traces, dropped 0 stitch vias, demoted 0 nets
-anchored 288 track ends into their pads
-restored 2 layer-change vias
-split after clean-up: +12V, +5V, AUX_IO, CANB_STBY, ETH_MDIO, ETH_TXP, USB_DM
-[2026-10-14T19:43:05Z INFO  vcad_ecad_pcb::router::auto] plane prestitch: 203 via(s), 19 pad(s) left for after routing
-[2026-10-14T19:43:10Z INFO  vcad_ecad_pcb::router::auto] route_batch: 36 conns -> committed=35 unrouted=1 (cache_skips=0, conflicts=10, batches=3) in 4.9s
-[2026-10-14T19:43:13Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=1, batches=2) in 1.1s
-[2026-10-14T19:43:13Z INFO  vcad_ecad_pcb::router::auto] ripup round: placed 35 -> 35 pending=1 in 3.3s
-[2026-10-14T19:43:13Z INFO  vcad_ecad_pcb::router::auto] negotiation round 1/4: placed=35 pending=1 (push_shove=false)
-[2026-10-14T19:43:17Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 1.4s
-[2026-10-14T19:43:17Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=1 -> placed=35 pending=1 in 3.5s (budget 60s)
-[2026-10-14T19:43:17Z INFO  vcad_ecad_pcb::router::auto] negotiation round 2/4: placed=35 pending=1 (push_shove=true)
-[2026-10-14T19:43:17Z INFO  vcad_ecad_pcb::router::auto] negotiation converged after round 2 — final fine-retry round
-[2026-10-14T19:43:20Z INFO  vcad_ecad_pcb::router::auto] route_batch: 5 conns -> committed=5 unrouted=0 (cache_skips=0, conflicts=2, batches=2) in 1.4s
-[2026-10-14T19:43:20Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=1 -> placed=35 pending=1 in 3.5s (budget 60s)
-[2026-10-14T19:43:20Z INFO  vcad_ecad_pcb::router::auto] negotiation round 3/4: placed=35 pending=1 (push_shove=true)
-[2026-10-14T19:43:20Z INFO  vcad_ecad_pcb::router::auto] negotiation converged after round 3 — stopping
-[2026-10-14T19:43:25Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=0 unrouted=1 (cache_skips=0, conflicts=0, batches=1) in 4.3s
-[2026-10-14T19:43:26Z INFO  vcad_ecad_pcb::router::auto] route_batch: 16 conns -> committed=16 unrouted=0 (cache_skips=0, conflicts=5, batches=3) in 1.0s
-[2026-10-14T19:43:26Z INFO  vcad_ecad_pcb::router::auto] joint repair round 1 (margin 3mm): 1 windows -> 1 still unrouted in 5.3s
-[2026-10-14T19:43:26Z INFO  vcad_ecad_pcb::router::auto] joint repair: round converted nothing — stopping escalation
-[2026-10-14T19:43:26Z INFO  vcad_ecad_pcb::router::auto] plane stitch +3V3: 42 via(s), 18 pad(s) unstitched
-[2026-10-14T19:43:26Z INFO  vcad_ecad_pcb::router::auto] plane stitch GND: 126 via(s), 37 pad(s) unstitched
-[2026-10-14T19:43:36Z INFO  vcad_ecad_pcb::router::auto] post-route legalization: merged 0 vias, pruned 15 traces, dropped 0 stitch vias, demoted 0 nets
-second pass on +12V, +5V, AUX_IO, CANB_STBY, ETH_MDIO, ETH_TXP, USB_DM: islands 15 -> 9
-[2026-10-14T19:43:36Z INFO  vcad_ecad_pcb::router::auto] plane prestitch: 203 via(s), 19 pad(s) left for after routing
-[2026-10-14T19:43:41Z INFO  vcad_ecad_pcb::router::auto] route_batch: 12 conns -> committed=11 unrouted=1 (cache_skips=0, conflicts=2, batches=2) in 4.8s
-[2026-10-14T19:43:44Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=1 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.0s
-[2026-10-14T19:43:44Z INFO  vcad_ecad_pcb::router::auto] ripup round: placed 11 -> 11 pending=1 in 2.4s
-[2026-10-14T19:43:44Z INFO  vcad_ecad_pcb::router::auto] negotiation round 1/4: placed=11 pending=1 (push_shove=false)
-[2026-10-14T19:43:46Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=1 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.0s
-[2026-10-14T19:43:46Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=1 -> placed=11 pending=1 in 2.4s (budget 60s)
-[2026-10-14T19:43:46Z INFO  vcad_ecad_pcb::router::auto] negotiation round 2/4: placed=11 pending=1 (push_shove=true)
-[2026-10-14T19:43:46Z INFO  vcad_ecad_pcb::router::auto] negotiation converged after round 2 — final fine-retry round
-[2026-10-14T19:43:48Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=1 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.0s
-[2026-10-14T19:43:48Z INFO  vcad_ecad_pcb::router::auto] incremental round: stuck=1 -> placed=11 pending=1 in 2.3s (budget 60s)
-[2026-10-14T19:43:48Z INFO  vcad_ecad_pcb::router::auto] negotiation round 3/4: placed=11 pending=1 (push_shove=true)
-[2026-10-14T19:43:48Z INFO  vcad_ecad_pcb::router::auto] negotiation converged after round 3 — stopping
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] route_batch: 1 conns -> committed=0 unrouted=1 (cache_skips=0, conflicts=0, batches=1) in 4.7s
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] route_batch: 7 conns -> committed=7 unrouted=0 (cache_skips=0, conflicts=0, batches=1) in 0.1s
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] joint repair round 1 (margin 3mm): 1 windows -> 1 still unrouted in 4.8s
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] joint repair: round converted nothing — stopping escalation
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] plane stitch +3V3: 42 via(s), 18 pad(s) unstitched
-[2026-10-14T19:43:53Z INFO  vcad_ecad_pcb::router::auto] plane stitch GND: 126 via(s), 37 pad(s) unstitched
-[2026-10-14T19:44:02Z INFO  vcad_ecad_pcb::router::auto] post-route legalization: merged 0 vias, pruned 16 traces, dropped 0 stitch vias, demoted 0 nets
-second pass on +12V, AUX_IO: islands 4 -> 4
-trimmed leaf copper: 186 traces, 62 vias
-Routed 99.3% of connections in 820.3 s: 1621 traces, 713 vias, 0 synthesized pours -> arm_controller.kicad_pcb
-unrouted nets (2): AUX_IO, ETH_MDIO
-  AUX_IO (119.33,34.35) -> (98.67,16.80): blocked by +3V3, +5V, ADC_CS, CANB_STBY, GND, IMU_SDO, SPI_MISO, SPI_SCK, VCAP1, WD_OK, +12V, ADC_DRDY, BOARD_ID, BRK_CMP, BRK_DIV, BRK_IN, CANA_STBY, CANU_STBY, ETH_CRSDV, ETH_MDC, ETH_REFCLK, ETH_RXD0, IMU_CS, IMU_INT, LED_STAT, LED_STAT_A, NTC_FET, SPI_MOSI, WD_CRST, WD_CWD, WD_KICK, ~nc~U16~10, ~nc~U16~8, ~nc~U16~9, ~nc~U17~5, ~nc~U17~6
-  ETH_MDIO (112.25,13.94) -> (96.50,27.48): blocked by +3V3, ETH_CRSDV, ETH_MDC, ETH_RXD1, GND, IMU_CS, IMU_INT, MOT_ILIM, SPI_MISO, ETH_RXD0, SPI_SCK, WD_CWD, BRK_CMP, BRK_FORCE, ETH_REFCLK, MOT_IN1, NTC_BRK, PHY_LED1, PHY_RXER, PHY_VDDCR, VCAP1, WD_CRST, WD_KICK, WD_OK, ~nc~U3~14
+[2026-10-14T20:53:05Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 2 connection(s) infeasible at current rules — terminal of net PHY_RST at (98.67, 19.30)/(112.94, 12.25) has no clearance-legal grid attachment — the pad at (112.94, 12.25) is walled in on all 6 copper layers by GND (11), PHY_XO (7), PHY_LED1 (4) at the current rules and grid pitch 0.413 mm
+anchored 282 track ends into their pads
+restored 1 layer-change vias
+split after clean-up: +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM
+second pass on +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM: islands 26 -> 17
+[2026-10-14T21:02:35Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 1 connection(s) infeasible at current rules — net ETH_CRSDV is severed inside the window: breadth-first search from its to terminal at (111.75, 13.94) exhausted every reachable node — 4 of the 1057 clearance-free (cell, layer) nodes on the 6-layer stack — without touching the other terminal at (109.50, 17.76) (layer FCu); the enclosing cut is 13 blocked nodes spanning x=110.78..112.42, y=13.18..15.22, held by PHY_RXER (17), ETH_MDIO (9), +3V3 (3). With k = 1 reachability is exact, so no path exists on the canonical grid at pitch 0.408 mm
+second pass on +5V, ETH_CRSDV, SPI_MOSI: islands 9 -> 9
+trimmed leaf copper: 84 traces, 42 vias
+Routed 96.6% of connections in 1120.7 s: 1397 traces, 662 vias, 0 synthesized pours -> arm_controller.kicad_pcb
+unrouted nets (9): +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXP, SPI_MOSI, SWO
+  +5V (120.53,26.64) -> (134.50,30.95): blocked by -
+  +5V (134.50,30.95) -> (136.00,34.77): blocked by -
+  SPI_MOSI (83.33,19.80) -> (104.86,23.34): blocked by CANX_CS, ETH_RXD1, GND, IMU_SDO, SPI_SCK, +3V3, AUX_IO, CANB_RX, ETH_CRSDV, ETH_RXD0, IMU_INT, MOT_IN1, NRST, NTC_BRK, SWO, USB_DM, VDDA, ~nc~U10~34, ~nc~U10~89
+  ETH_CRSDV (109.50,17.76) -> (98.67,23.30): blocked by +3V3, BRK_CMP, BRK_REF, ETH_RXD1, GND, HSE_OUT, BOARD_ID, BRK_DIV, ETH_RXD0, HSE_IN, SPI_MISO, VDDA
+  SWO (96.82,6.46) -> (83.33,20.30): blocked by keepout, +3V3, BRK_DIV, CANB_STBY, ETH_TXD0, ETH_TXD1, GND, MOT_IN1, CANU_RX, CANU_TX, CANX_INT, NRST, +5V, ADC_CS, BK1_PG, BRK_FORCE, BRK_REF, CANA_STBY, CANB_RX, CANU_STBY, CANX_CS, ETH_TXEN, IMU_INT, NTC_BRK, NTC_FET, SPI_MOSI, SWCLK, USB_DM, ~nc~U10~60, ~nc~U10~61, ~nc~U10~62, ~nc~U10~63, ~nc~U10~64, ~nc~U10~65, ~nc~U10~89
+  ETH_RXP (131.64,14.40) -> (110.25,10.06): blocked by ETH_CT, ETH_TXD0, ETH_TXD1, ETH_TXEN, ETH_TXP, GND, +5V, ETH_RXN, ETH_TXN, PHY_LED2, PHY_RBIAS, PHY_VDDA
+  BRK_CMP (94.10,40.53) -> (98.67,19.80): blocked by BK1_SW, BOARD_ID, ETH_MDC, ETH_REFCLK, GND, MOT_ILIM, NTC_BRK, NTC_FET, SPI_SCK, VDDA, +12V, +3V3, ADC_DRDY, AUX_IO, BK1_BST, BK1_FB, BK1_PG, BRK_FORCE, BRK_IN, CANX_CS, ETH_CRSDV, ETH_MDIO, ETH_RXD0, ETH_RXD1, HSE_IN, HSE_OUT, IMU_CS, IMU_INT, MOT_IN1, MOT_IN2, NRST, PHY_RST, SPI_MISO, ~nc~U10~34, ~nc~U10~35
+  ADC_CS (83.33,18.30) -> (120.06,33.16): blocked by +3V3, CANX_CS, GND, HSE_OUT, IMU_CS, IMU_INT, IMU_SDO, SPI_SCK, VDDA, +12V, BK1_PG, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, HSE_IN, MOT_ILIM, MOT_IN1, NRST, SPI_MISO, USB_DM
+  ETH_MDIO (113.00,17.76) -> (96.50,27.48): blocked by +3V3, BOARD_ID, GND, IMU_CS, IMU_SDO, NTC_BRK, SPI_MOSI, SPI_SCK, BRK_REF, ETH_MDC, ETH_REFCLK, HSE_IN, HSE_OUT, PHY_VDDA, SPI_MISO, VDDA
+  AUX_IO (119.33,40.35) -> (98.67,21.80): blocked by +3V3, +5V, GND, HSE_OUT, IMU_INT, IMU_SDO, SPI_MISO, VDDA, +12V, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, ETH_RXD0, ETH_RXD1, HSE_IN, IMU_CS, SPI_SCK, ~nc~U10~34
 finish: black mask, #FF6600FF silk, ENIG (6 copper layers)
 placeholder models: AMASS_XT30PW-M_1x02_P2.50mm_Horizontal, AMASS_XT60PW-M_1x02_P7.20mm_Horizontal, RJ45_Hanrun_HR911105A_Horizontal
-premium: 33 482 (front designators to fab, teardrops)
+premium: 45 449 (front designators to fab, teardrops)
 ./src/common/stdpbase.cpp(59): assert ""traits"" failed in Get(): create wxApp before calling this
 filled 9 zones
-stitching vias: 145
-dropped 2 dangling items
-dropped 2 dangling items
-dropped 2 dangling items
-dropped 2 dangling items
+stitching vias: 231
 dropped 1 dangling items
-closed 2 open connections (removed 7 that broke a rule)
-closed 3 open connections (removed 2 that broke a rule)
-closed 3 open connections (removed 3 that broke a rule)
-Found 9 violations
-Found 4 unconnected items
+closed 5 open connections (removed 5 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+Found 4 violations
+Found 6 unconnected items
 rendered render/board_{top,bottom,3d}.png
