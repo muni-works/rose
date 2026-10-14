@@ -122,9 +122,7 @@ def add_track(net, layer, a, b):
 def add_via(net, x, y):
     v = pcbnew.PCB_VIA(board)
     v.SetPosition(pcbnew.VECTOR2I(mm(x), mm(y)))
-    v.SetWidth(mm(VIA_D))
-    for l in COPPER:
-        v.SetWidth(mm(VIA_D), l)
+    v.SetWidth(mm(VIA_D))                # (a per-layer SetWidth on a normal padstack zeroes it)
     v.SetDrill(mm(VIA_DRILL))
     v.SetNet(board.FindNet(net))
     board.Add(v)

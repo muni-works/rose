@@ -17,8 +17,10 @@ import pcbnew
 
 GRID = 0.05                       # mm
 WIN = 3.0                         # mm half-window round the search
-TRACK_W, VIA_D, VIA_DRILL = 0.15, 0.4, 0.2       # small vias (0.1 mm ring) beside fine-pitch pins
+TRACK_W, VIA_D, VIA_DRILL = 0.15, 0.45, 0.25      # the board's default via
 CLEAR, HOLE_GAP = 0.155, 0.16     # a hair over the board rules (clearance, hole-to-hole)
+POWER = {'+12V', '+5V', 'VIN_BUCK', 'VAUX48'}   # the 'Power' class: 0.2 mm clearance
+POWER_EXTRA = 0.05
 VIA_COST = 1.2                    # mm-equivalent
 
 mm, to_mm = pcbnew.FromMM, pcbnew.ToMM
@@ -90,7 +92,7 @@ class Window:
             b = pd['box']
             for i, j, k, p in cells(b[0] - m, b[1] - m, b[2] + m, b[3] + m):
                 if pd['net'] != net:
-                    d = box_pt(b, p)
+                    d = box_pt(b, p) - (POWER_EXTRA if pd['net'] in POWER else 0)
                     for l in SIG:
                         if l in pd['layers'] and d < tw:
                             self.free[l][k] = 0
@@ -101,7 +103,7 @@ class Window:
         for v in my_vias:
             c = v['c']
             for i, j, k, p in cells(c[0] - m, c[1] - m, c[0] + m, c[1] + m):
-                d = math.dist(p, c)
+                d = math.dist(p, c) - (POWER_EXTRA if v['net'] in POWER else 0)
                 if d < v['drill'] + VIA_DRILL / 2 + HOLE_GAP:
                     self.viaok[k] = 0
                 if v['net'] == net:
@@ -115,7 +117,7 @@ class Window:
             a, b = t['a'], t['b']
             mm_ = t['hw'] + vr
             for i, j, k, p in cells(min(a[0], b[0]) - mm_, min(a[1], b[1]) - mm_, max(a[0], b[0]) + mm_, max(a[1], b[1]) + mm_):
-                d = seg_pt(p, a, b)
+                d = seg_pt(p, a, b) - (POWER_EXTRA if t['net'] in POWER else 0)
                 if d < t['hw'] + tw and t['layer'] in self.soft:
                     self.soft[t['layer']].setdefault(k, set()).add(id(t))
                 if d < t['hw'] + vr:
@@ -194,9 +196,7 @@ def lay(w, net, path, end_via):
     def add_via(p):
         v = pcbnew.PCB_VIA(board)
         v.SetPosition(pcbnew.VECTOR2I(mm(p[0]), mm(p[1])))
-        v.SetWidth(mm(VIA_D))            # the via's own size (KiCad 9 keeps a per-layer stack too)
-        for l in ALL:
-            v.SetWidth(mm(VIA_D), l)
+        v.SetWidth(mm(VIA_D))            # (a per-layer SetWidth on a normal padstack zeroes it)
         v.SetDrill(mm(VIA_DRILL))
         v.SetNet(nets)
         board.Add(v)
@@ -268,7 +268,7 @@ for v in report.get('unconnected_items', []):
     else:
         span = max(abs(pa[0] - pb[0]), abs(pa[1] - pb[1])) / 2 + 3.0
         mid = ((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2)
-        w = Window(net, mid, span, 0.1 if span > WIN else GRID)
+        w = Window(net, mid, span, float(__import__('os').environ.get('ASTAR_GRID', 0)) or (0.1 if span > WIN else GRID))
     starts = []
     for i in range(w.n):
         for j in range(w.n):

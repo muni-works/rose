@@ -210,6 +210,14 @@ gripper needs more, swap the buck for a 2 A part. Pick a real part number for F1
 
 ### Layout as built (v0.1 draft, 150 x 40 mm)
 
+- **Hand work (v0.2):** three gaps the autorouter left, closed by hand and on record:
+  - +12V under L1 had no vias on its In2 run. manual_fixes.py adds them and widens the run to 0.5 mm.
+  - ETH_RXN: PHY to R66, routed in KiCad with push-and-shove (In4, then a via beside R66 pad 2).
+  - AUX_IO: pin-swapped from U10 pin 44 (PE13) to pin 34 (PB0), on the side facing J11, then
+    routed with astar_fix.py on a 0.05 mm grid. Firmware: AUX_IO is PB0.
+  A full re-route regenerates the board: replay pin_swap.py and astar_fix.py, then redo the ETH_RXN
+  fix (or route.sh's closer may get it).
+
 - **Flow:** `arm_controller.loon` → `place.py` (placement block) → `route.sh`. route.sh runs
   `vcad route`, then KiCad fills the zones (`fill_zones.py`) and runs DRC (`drc.rpt`).
 - **Stackup (6 layers):** F signal / In1 GND / In2 signal / In3 +3V3 / In4 signal / B signal.

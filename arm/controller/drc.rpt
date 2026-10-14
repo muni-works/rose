@@ -1,10 +1,7 @@
 ** Drc report for arm_controller.kicad_pcb **
-** Created on 2026-10-14T15:49:08-0400 **
+** Created on 2026-10-14T16:09:53-0400 **
 
-** Found 8 DRC violations **
-[track_dangling]: Track has unconnected end
-    Local override; warning
-    @(113.0307 mm, 6.0207 mm): Track [ETH_RXN] on In4.Cu, length 3.5242 mm
+** Found 7 DRC violations **
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(62.8370 mm, 24.4860 mm): Segment of ART1 on B.Silkscreen
@@ -28,15 +25,7 @@
     @(104.0000 mm, 30.8000 mm): Footprint text of ART1 (designed by muni)
     @(100.0000 mm, 31.4400 mm): Footprint text of LBB_J16 (MOTOR)
 
-** Found 2 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(98.6750 mm, 16.8000 mm): Pad 44 [AUX_IO] of U10 on F.Cu
-    @(119.3250 mm, 34.3500 mm): Pad 3 [AUX_IO] of J11 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(116.2600 mm, 7.7500 mm): Track [ETH_RXN] on F.Cu, length 0.7029 mm
-    @(113.0307 mm, 6.0207 mm): Track [ETH_RXN] on In4.Cu, length 3.5242 mm
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 
