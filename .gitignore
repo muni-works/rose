@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .DS_Store
-controller/*.kicad_prl
-controller/route.log
-controller/.best.*
+arm/controller/*.kicad_prl
+arm/controller/route.log
+arm/controller/.best.*
+arm/controller/added.txt

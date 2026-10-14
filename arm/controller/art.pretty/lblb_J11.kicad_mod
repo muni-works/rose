@@ -1,0 +1,10 @@
+(footprint "lblb_J11"
+  (version 20240108)
+  (generator "place.py")
+  (layer "F.Cu")
+  (attr exclude_from_pos_files exclude_from_bom allow_missing_courtyard)
+  (fp_text reference "REF**" (at 0 0) (layer "F.Fab") hide (effects (font (size 0.5 0.5) (thickness 0.08))))
+  (fp_text value "lblb_J11" (at 0 0) (layer "F.Fab") hide (effects (font (size 0.5 0.5) (thickness 0.08))))
+  (fp_text user "AUX" (at 0 0.000) (layer "B.SilkS") (effects (font (size 0.9 0.9) (thickness 0.153)) (justify mirror)))
+  (fp_line (start -1.448 -0.875) (end 1.448 0.875) (stroke (width 0.05) (type solid)) (layer "F.Fab"))
+)

@@ -1,4 +1,4 @@
-ERC report (2026-10-14T00:23:30-0400, Encoding UTF8)
+ERC report (2026-10-14T08:36:41-0400, Encoding UTF8)
 
 ***** Sheet /
 [lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
@@ -638,15 +638,18 @@ ERC report (2026-10-14T00:23:30-0400, Encoding UTF8)
     @(650.24 mm, 76.20 mm): Symbol C60 [C60]
 [lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
     ; warning
-    @(650.24 mm, 95.25 mm): Symbol H1 [H1]
+    @(650.24 mm, 95.25 mm): Symbol SH1 [SH1]
 [lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
     ; warning
-    @(685.80 mm, 34.29 mm): Symbol H2 [H2]
+    @(685.80 mm, 34.29 mm): Symbol H1 [H1]
 [lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
     ; warning
-    @(685.80 mm, 52.07 mm): Symbol H3 [H3]
+    @(685.80 mm, 52.07 mm): Symbol H2 [H2]
 [lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
     ; warning
-    @(685.80 mm, 69.85 mm): Symbol H4 [H4]
+    @(685.80 mm, 69.85 mm): Symbol H3 [H3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'vcad'
+    ; warning
+    @(685.80 mm, 87.63 mm): Symbol H4 [H4]
 
- ** ERC messages: 215  Errors 0  Warnings 215
+ ** ERC messages: 216  Errors 0  Warnings 216

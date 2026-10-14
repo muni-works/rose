@@ -1,6 +1,10 @@
 """Stroked SVG artwork -> KiCad silkscreen footprints.
 
     python3 brand/svg2fp.py <in.svg> <out.pretty> <name> [width_mm ...]
+    python3 brand/svg2fp.py --gold <in.svg> <out.pretty> <name> [width_mm ...]
+
+--gold draws the strokes in copper with the mask opened over them: on an ENIG
+board the logo comes out bare gold instead of ink (<name>_<w>mm_gold).
 
 Line art drawn with a pen (stroked paths with round caps - like the muni logo)
 maps one-to-one onto silkscreen: each path becomes fp_line segments at the
@@ -79,7 +83,7 @@ def load(svg):
     return strokes, dots
 
 
-def footprint(name, strokes, dots, width_mm, back):
+def footprint(name, strokes, dots, width_mm, back, gold=False):
     xs = [p[0] for poly, w in strokes for p in poly] + [c[0] for c, r in dots]
     ys = [p[1] for poly, w in strokes for p in poly] + [c[1] for c, r in dots]
     pad = max([w for _, w in strokes] + [0]) / 2
@@ -88,6 +92,7 @@ def footprint(name, strokes, dots, width_mm, back):
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     mx = -1 if back else 1
     layer = 'B.SilkS' if back else 'F.SilkS'
+    layers = [('B.Cu' if back else 'F.Cu'), ('B.Mask' if back else 'F.Mask')] if gold else [layer]
     T = lambda p: (round(mx * (p[0] - cx) * s, 4), round((p[1] - cy) * s, 4))
     out = ['(footprint "%s"' % name, '  (version 20240108)', '  (generator "svg2fp")', '  (layer "F.Cu")',
            '  (descr "%s, %.1f mm wide, silkscreen art")' % (name, width_mm), '  (attr exclude_from_pos_files exclude_from_bom allow_missing_courtyard)',
@@ -98,23 +103,36 @@ def footprint(name, strokes, dots, width_mm, back):
         for a, b in zip(poly, poly[1:]):
             if a != b:
                 pa, pb = T(a), T(b)
-                out.append('  (fp_line (start %g %g) (end %g %g) (stroke (width %g) (type solid)) (layer "%s"))' % (pa[0], pa[1], pb[0], pb[1], sw, layer))
+                for ly in layers:
+                    out.append('  (fp_line (start %g %g) (end %g %g) (stroke (width %g) (type solid)) (layer "%s"))' % (pa[0], pa[1], pb[0], pb[1], sw, ly))
     for c, r in dots:
         pc = T(c)
-        out.append('  (fp_circle (center %g %g) (end %g %g) (stroke (width %g) (type solid)) (fill solid) (layer "%s"))' % (pc[0], pc[1], pc[0] + r * s / 2, pc[1], r * s, layer))
+        for ly in layers:
+            out.append('  (fp_circle (center %g %g) (end %g %g) (stroke (width %g) (type solid)) (fill solid) (layer "%s"))' % (pc[0], pc[1], pc[0] + r * s / 2, pc[1], r * s, ly))
+    if gold:
+        # the router can't see art copper: keep tracks and vias off the logo
+        hx, hy = (x1 - x0) * s / 2 + 0.4, (y1 - y0) * s / 2 + 0.4
+        cu = 'B.Cu' if back else 'F.Cu'
+        out.append('  (zone (net 0) (net_name "") (layers "%s") (hatch edge 0.5) (connect_pads (clearance 0)) (min_thickness 0.25)'
+                   ' (keepout (tracks not_allowed) (vias not_allowed) (pads allowed) (copperpour allowed) (footprints allowed))'
+                   ' (fill (thermal_gap 0.5) (thermal_bridge_width 0.5))'
+                   ' (polygon (pts (xy %g %g) (xy %g %g) (xy %g %g) (xy %g %g))))' % (cu, -hx, -hy, hx, -hy, hx, hy, -hx, hy))
     out.append(')')
     return '\n'.join(out) + '\n', (x1 - x0) * s, (y1 - y0) * s
 
 
 def main():
-    svg, pretty, name = sys.argv[1:4]
-    widths = [float(w) for w in sys.argv[4:]] or [8.0, 12.0, 20.0]
+    args = sys.argv[1:]
+    gold = '--gold' in args
+    args = [a for a in args if a != '--gold']
+    svg, pretty, name = args[:3]
+    widths = [float(w) for w in args[3:]] or [8.0, 12.0, 20.0]
     strokes, dots = load(svg)
     os.makedirs(pretty, exist_ok=True)
     for w in widths:
         for back in (False, True):
-            fp = '%s_%gmm%s' % (name, w, '_back' if back else '')
-            text, ww, hh = footprint(fp, strokes, dots, w, back)
+            fp = '%s_%gmm%s%s' % (name, w, '_back' if back else '', '_gold' if gold else '')
+            text, ww, hh = footprint(fp, strokes, dots, w, back, gold)
             open(os.path.join(pretty, fp + '.kicad_mod'), 'w').write(text)
             if not back:
                 print('%s: %.1f x %.1f mm' % (fp, ww, hh))
