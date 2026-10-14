@@ -1,0 +1,77 @@
+{
+  "joints": {
+    "J1_yaw": {
+      "model": "RS06",
+      "peak": 36.0,
+      "rated": 11.0,
+      "no_load": 50.26548245743668,
+      "armature": 0.008100000000000001,
+      "short": 3.3
+    },
+    "J2_sho_pitch": {
+      "model": "RS06",
+      "peak": 36.0,
+      "rated": 11.0,
+      "no_load": 50.26548245743668,
+      "armature": 0.008100000000000001,
+      "short": 3.3
+    },
+    "J3_upper_roll": {
+      "model": "RS06",
+      "peak": 36.0,
+      "rated": 11.0,
+      "no_load": 50.26548245743668,
+      "armature": 0.008100000000000001,
+      "short": 3.3
+    },
+    "J4_elbow": {
+      "model": "RS06",
+      "peak": 36.0,
+      "rated": 11.0,
+      "no_load": 50.26548245743668,
+      "armature": 0.008100000000000001,
+      "short": 3.3
+    },
+    "J5_fore_roll": {
+      "model": "RS00",
+      "peak": 14.0,
+      "rated": 5.0,
+      "no_load": 32.98672286269283,
+      "armature": 0.003,
+      "short": 0.8
+    },
+    "J6_wrist_pitch": {
+      "model": "RS00",
+      "peak": 14.0,
+      "rated": 5.0,
+      "no_load": 32.98672286269283,
+      "armature": 0.003,
+      "short": 0.8
+    },
+    "J7_tool_roll": {
+      "model": "RS00",
+      "peak": 14.0,
+      "rated": 5.0,
+      "no_load": 32.98672286269283,
+      "armature": 0.003,
+      "short": 0.8
+    }
+  },
+  "spring": {
+    "r": 0.06,
+    "d": 0.12,
+    "force": 317.9816072773089,
+    "self_moment": 17.064683747200906
+  },
+  "payload": {
+    "mass": 2.5,
+    "xyz": [
+      0.12,
+      0.0,
+      0.0
+    ]
+  },
+  "reach": 0.798,
+  "upper": 0.33,
+  "fore": 0.3
+}

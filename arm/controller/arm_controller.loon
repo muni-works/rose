@@ -1,0 +1,569 @@
+;; rose arm controller v0.1 - the circuit as loon.
+;;
+;; Every part is a KiCad library symbol: [EcadSymbol ref "Library:Symbol" value footprint x y rot],
+;; so pin numbers and names come from KiCad's own libraries. Connectivity is data:
+;; [EcadConn net "REF.PIN"]. Design notes: DESIGN.md. Render:
+;;   vcad export arm_controller.loon arm_controller.kicad_sch
+;;   kicad-cli sch erc arm_controller.kicad_sch
+
+[let R0402 "Resistor_SMD:R_0402_1005Metric"]
+[let C0402 "Capacitor_SMD:C_0402_1005Metric"]
+[let C0805 "Capacitor_SMD:C_0805_2012Metric"]
+[let C1210 "Capacitor_SMD:C_1210_3225Metric"]
+[let R2512 "Resistor_SMD:R_2512_6332Metric"]
+
+;; a part and its connections; pins is flat: #["pin" "net" "pin" "net" ...]
+[let part [fn [ref lib val fp pins]
+  #[[EcadSymbol ref lib val fp 0.0 0.0 0.0]
+    [map [fn [pn] [EcadConn [nth pn 1] [str ref "." [nth pn 0]]]] [chunk 2 pins]]]]]
+[let r [fn [ref val a b] [part ref "Device:R" val R0402 #["1" a "2" b]]]]
+[let c [fn [ref val a b] [part ref "Device:C" val C0402 #["1" a "2" b]]]]
+[let cfp [fn [ref val fp a b] [part ref "Device:C" val fp #["1" a "2" b]]]]
+[let flag [fn [ref net] [part ref "power:PWR_FLAG" "PWR_FLAG" "" #["1" net]]]]
+
+
+;; ---- power in, hot-swap switch, e-stop and watchdog
+
+[part "J1" "Connector_Generic:Conn_01x02" "XT60PW-M 48V in (fuse: ATM 50A inline in the supply cable)" "Connector_AMASS:AMASS_XT60PW-M_1x02_P7.20mm_Horizontal"
+  #["1" "VIN" "2" "GND"]]
+[part "D1" "Device:D_TVS" "SMDJ58A" "Diode_SMD:D_SMC"
+  #["1" "VIN" "2" "GND"]]
+[cfp "C1" "2.2u 100V" C1210 "VIN" "GND"]
+[part "U1" "Power_Management:LM5060" "LM5060" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+  #["2" "VIN" "1" "HS_SENSE" "10" "HS_GATE_R" "9" "VBUS_SW" "5" "HS_EN" "4" "HS_UVLO" "3" "HS_OVP" "7" "HS_TIMER" "8" "HS_PGD" "6" "GND"]]
+[r "R1" "20k" "VIN" "HS_SENSE"]
+[r "R2" "10" "HS_GATE_R" "HS_GATE"]
+[part "Q1" "Transistor_FET:IPT015N10N5" "IPT015N10N5 100V 1.5mR" "Package_TO_SOT_SMD:Infineon_PG-HSOF-8-1"
+  #["1" "HS_GATE" "2" "VBUS_SW" "3" "VIN"]]
+[r "R3" "220k" "VIN" "HS_UVLO"]
+[r "R4" "10k" "HS_UVLO" "GND"]
+[r "R5" "330k" "VIN" "HS_OVP"]
+[r "R6" "10k" "HS_OVP" "GND"]
+[c "C2" "100n" "HS_TIMER" "GND"]
+[r "R7" "10k" "+3V3" "HS_PGD"]
+[part "U2" "74xGxx:74LVC1G11" "74LVC1G11" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "ESTOP1" "3" "WD_OK" "6" "MCU_EN" "4" "EN_AND" "5" "+3V3" "2" "GND"]]
+[r "R8" "1M" "EN_AND" "HS_EN"]
+[c "C3" "390n" "HS_EN" "GND"]
+;; D10 bypasses R8: C3 charges at once, so the e-stop hold is a fixed ~190 ms (sim/)
+[part "D10" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "EN_AND" "1" "HS_EN"]]
+[part "J2" "Connector_Generic:Conn_01x04" "E-stop, 2-ch NC" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
+  #["1" "ESTOP_SRC1" "2" "ESTOP1" "3" "ESTOP_SRC2" "4" "ESTOP2"]]
+[r "R9" "1k" "+3V3" "ESTOP_SRC1"]
+[r "R10" "10k" "ESTOP1" "GND"]
+[r "R11" "1k" "+3V3" "ESTOP_SRC2"]
+[r "R12" "10k" "ESTOP2" "GND"]
+[part "U3" "Power_Supervisor:TPS3430WDRC" "TPS3430" "Package_SON:Texas_DRC0010J_ThermalVias"
+  #["1" "+3V3" "10" "+3V3" "5" "GND" "11" "GND" "7" "WD_KICK" "4" "WD_CRST" "2" "WD_CWD" "3" "GND" "6" "GND" "8" "WD_OK"]]
+[c "C4" "10n" "WD_CRST" "GND"]
+[c "C5" "10n" "WD_CWD" "GND"]
+[r "R13" "10k" "+3V3" "WD_OK"]
+[flag "PF1" "VIN"]
+[flag "PF2" "GND"]
+
+;; ---- bus monitor, bulk capacitance, brake chopper
+
+[part "R14" "Device:R" "0.5m 4-term" R2512
+  #["1" "VBUS_SW" "2" "VBUS"]]
+[part "U4" "Sensor_Energy:INA228" "INA228" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+  #["10" "VBUS_SW" "9" "VBUS" "8" "VBUS" "6" "+3V3" "7" "GND" "1" "GND" "2" "GND" "4" "I2C_SDA" "5" "I2C_SCL" "3" "INA_ALERT"]]
+[c "C6" "100n" "+3V3" "GND"]
+[r "R15" "10k" "+3V3" "INA_ALERT"]
+[part "C7" "Device:C_Polarized" "220u 100V" "Capacitor_THT:CP_Radial_D12.5mm_P5.00mm"
+  #["1" "VBUS" "2" "GND"]]
+[cfp "C8" "2.2u 100V" C1210 "VBUS" "GND"]
+[flag "PF3" "VBUS"]
+[r "R16" "309k" "VBUS" "BRK_DIV"]
+[r "R17" "10.2k" "BRK_DIV" "GND"]
+[r "R18" "10k" "+3V3" "BRK_REF"]
+[r "R19" "10k" "BRK_REF" "GND"]
+[r "R20" "309k" "BRK_CMP" "BRK_DIV"]
+[part "U5" "Comparator:TLV7031DBV" "TLV7031" "Package_TO_SOT_SMD:SOT-23-5"
+  #["5" "+3V3" "2" "GND" "3" "BRK_DIV" "4" "BRK_REF" "1" "BRK_CMP"]]
+[part "D2" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "BRK_CMP" "1" "BRK_IN"]]
+[part "D3" "Device:D_Schottky" "BAT54" "Diode_SMD:D_SOD-123"
+  #["2" "BRK_FORCE" "1" "BRK_IN"]]
+[r "R21" "100k" "BRK_IN" "GND"]
+[part "U6" "Driver_FET:UCC27511ADBV" "UCC27511A" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "+12V" "4" "GND" "6" "BRK_IN" "5" "GND" "2" "BRK_GH" "3" "BRK_GL"]]
+[r "R22" "4.7" "BRK_GH" "BRK_G"]
+[r "R23" "2.2" "BRK_GL" "BRK_G"]
+[c "C9" "1u" "+12V" "GND"]
+[part "Q2" "Transistor_FET:IPT015N10N5" "IPT015N10N5 100V 1.5mR" "Package_TO_SOT_SMD:Infineon_PG-HSOF-8-1"
+  #["1" "BRK_G" "2" "GND" "3" "BRK_R"]]
+[part "D4" "Device:D_Schottky" "STPS10H100 100V" "Diode_SMD:D_SMC"
+  #["1" "VBUS" "2" "BRK_R"]]
+[part "J3" "Connector_Generic:Conn_01x02" "Brake resistor 3R3 200W" "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"
+  #["1" "VBUS" "2" "BRK_R"]]
+[part "TH1" "Device:Thermistor_NTC" "10k NTC (FETs)" R0402
+  #["1" "NTC_FET" "2" "GND"]]
+[part "TH2" "Device:Thermistor_NTC" "10k NTC (brake R)" R0402
+  #["1" "NTC_BRK" "2" "GND"]]
+[r "R24" "10k" "+3V3" "NTC_FET"]
+[r "R25" "10k" "+3V3" "NTC_BRK"]
+
+;; ---- logic rails: 48 V -> 12 V -> 5 V -> 3.3 V
+
+[part "U7" "Regulator_Switching:LM5164DDA" "LM5164 48V->12V" "Package_SO:Texas_HSOP-8-1EP_3.9x4.9mm_P1.27mm"
+  #["2" "VIN_BUCK" "3" "BK1_EN" "4" "BK1_RON" "1" "GND" "9" "GND" "7" "BK1_BST" "8" "BK1_SW" "5" "BK1_FB" "6" "BK1_PG"]]
+[r "R26" "100k" "VIN_BUCK" "BK1_EN"]
+[r "R27" "10k" "BK1_EN" "GND"]
+[r "R28" "150k" "BK1_RON" "GND"]
+[c "C10" "2.2n" "BK1_BST" "BK1_SW"]
+[part "L1" "Device:L" "22u 1.5A" "Inductor_SMD:L_Bourns_SRN6045TA"
+  #["1" "BK1_SW" "2" "+12V"]]
+[r "R29" "100k" "+12V" "BK1_FB"]
+[r "R30" "11k" "BK1_FB" "GND"]
+[r "R31" "100k" "+3V3" "BK1_PG"]
+[cfp "C11" "2.2u 100V" C1210 "VIN_BUCK" "GND"]
+;; FB4 feeds the 12 V buck from VIN: input filtering, and it keeps the 10 A VIN net
+;; local to the power entry, where it is poured
+[part "FB4" "Device:FerriteBead_Small" "BLM31KN601SN1 (1206, 100 V)" "Inductor_SMD:L_1206_3216Metric"
+  #["1" "VIN" "2" "VIN_BUCK"]]
+[flag "PF11" "VIN_BUCK"]
+[cfp "C12" "22u 25V" C0805 "+12V" "GND"]
+[part "U8" "Regulator_Switching:TPS54302" "TPS54302 12V->5V" "Package_TO_SOT_SMD:TSOT-23-6"
+  #["3" "+12V" "5" "BK2_EN" "1" "GND" "6" "BK2_BST" "2" "BK2_SW" "4" "BK2_FB"]]
+[r "R32" "100k" "+12V" "BK2_EN"]
+[c "C13" "100n" "BK2_BST" "BK2_SW"]
+[part "L2" "Device:L" "4.7u 3A" "Inductor_SMD:L_Bourns_SRN6045TA"
+  #["1" "BK2_SW" "2" "+5V"]]
+[r "R33" "100k" "+5V" "BK2_FB"]
+[r "R34" "13.3k" "BK2_FB" "GND"]
+[cfp "C14" "10u 25V" C0805 "+12V" "GND"]
+[cfp "C15" "22u" C0805 "+5V" "GND"]
+[part "U9" "Regulator_Linear:AP2112K-3.3" "AP2112K-3.3" "Package_TO_SOT_SMD:SOT-23-5"
+  #["1" "+5V" "3" "+5V" "2" "GND" "5" "+3V3"]]
+[c "C16" "1u" "+5V" "GND"]
+[cfp "C17" "10u" C0805 "+3V3" "GND"]
+[flag "PF4" "+12V"]
+[flag "PF5" "+5V"]
+[part "D5" "Device:LED" "green 3V3" "LED_SMD:LED_0603_1608Metric"
+  #["2" "LED_PWR" "1" "GND"]]
+[r "R35" "1k" "+3V3" "LED_PWR"]
+
+;; ---- microcontroller
+
+[part "U10" "MCU_ST_STM32H7:STM32H723VGTx" "STM32H723VGT6" "Package_QFP:LQFP-100_14x14mm_P0.5mm"
+  #["14" "NRST" "94" "BOOT0" "20" "VDDA" "12" "HSE_IN" "13" "HSE_OUT" "97" "HS_PGD" "98" "INA_ALERT" "1" "ESTOP1" "2" "ESTOP2" "3" "MCU_EN" "4" "WD_KICK" "5" "WD_OK" "37" "BRK_FORCE" "38" "BRK_CMP" "39" "PHY_RST" "41" "CANA_STBY" "42" "CANB_STBY" "43" "CANU_STBY" "44" "AUX_IO" "45" "LED_STAT" "81" "CANA_RX" "82" "CANA_TX" "84" "BK1_PG" "59" "CANU_RX" "60" "CANU_TX" "48" "VCAP1" "73" "VCAP2" "6" "+3V3" "11" "+3V3" "27" "+3V3" "50" "+3V3" "10" "GND" "26" "GND" "49" "GND" "74" "GND" "99" "GND" "75" "+3V3" "19" "GND" "100" "+3V3" "21" "VDDA" "22" "NTC_FET" "23" "ETH_REFCLK" "24" "ETH_MDIO" "25" "NTC_BRK" "31" "ETH_CRSDV" "70" "USB_DM" "71" "USB_DP" "72" "SWDIO" "76" "SWCLK" "89" "SWO" "91" "CANB_RX" "92" "CANB_TX" "95" "I2C_SCL" "96" "I2C_SDA" "47" "ETH_TXEN" "51" "ETH_TXD0" "52" "ETH_TXD1" "16" "ETH_MDC" "32" "ETH_RXD0" "33" "ETH_RXD1" "15" "BOARD_ID" "29" "SPI_SCK" "30" "SPI_MISO" "88" "SPI_MOSI" "28" "IMU_CS" "85" "ADC_CS" "86" "CANX_CS" "87" "IMU_INT" "83" "ADC_DRDY" "78" "CANX_INT" "67" "MOT_IN1" "68" "MOT_IN2"]]
+[c "C18" "100n" "+3V3" "GND"]
+[c "C19" "100n" "+3V3" "GND"]
+[c "C20" "100n" "+3V3" "GND"]
+[c "C21" "100n" "+3V3" "GND"]
+[c "C22" "100n" "+3V3" "GND"]
+[cfp "C23" "4.7u" C0805 "+3V3" "GND"]
+[part "FB1" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "VDDA"]]
+[c "C24" "1u" "VDDA" "GND"]
+[c "C25" "100n" "VDDA" "GND"]
+[flag "PF6" "VDDA"]
+[c "C26" "2.2u" "VCAP1" "GND"]
+[c "C27" "2.2u" "VCAP2" "GND"]
+[c "C28" "100n" "NRST" "GND"]
+[r "R36" "10k" "BOOT0" "GND"]
+[part "Y1" "Device:Crystal_GND24" "25MHz" "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+  #["1" "HSE_IN" "3" "HSE_OUT" "2" "GND" "4" "GND"]]
+[c "C29" "10p" "HSE_IN" "GND"]
+[c "C30" "10p" "HSE_OUT" "GND"]
+[r "R37" "2.2k" "+3V3" "I2C_SCL"]
+[r "R38" "2.2k" "+3V3" "I2C_SDA"]
+[r "R39" "100k" "MCU_EN" "GND"]
+[part "D6" "Device:LED" "blue status" "LED_SMD:LED_0603_1608Metric"
+  #["2" "LED_STAT_A" "1" "GND"]]
+[r "R40" "1k" "LED_STAT" "LED_STAT_A"]
+[part "J4" "Connector:Conn_ARM_SWD_TagConnect_TC2030" "TC2030 SWD" "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
+  #["1" "+3V3" "5" "GND" "3" "NRST" "4" "SWCLK" "2" "SWDIO" "6" "SWO"]]
+
+;; ---- CAN: bus A (3x RS04), bus B (wrist), uplink
+
+[part "U11" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANA_TX" "4" "CANA_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANA_H" "6" "CANA_L" "8" "CANA_STBY"]]
+[c "C31" "100n" "+5V" "GND"]
+[c "C32" "100n" "+3V3" "GND"]
+[r "R41" "10k" "CANA_STBY" "GND"]
+[r "R42" "60.4" "CANA_H" "CANA_TSPLIT"]
+[r "R43" "60.4" "CANA_TSPLIT" "CANA_L"]
+[c "C37" "4.7n" "CANA_TSPLIT" "GND"]
+[part "D7" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANA_H" "2" "CANA_L" "3" "GND"]]
+[part "U12" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANB_TX" "4" "CANB_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANB_H" "6" "CANB_L" "8" "CANB_STBY"]]
+[c "C33" "100n" "+5V" "GND"]
+[c "C34" "100n" "+3V3" "GND"]
+[r "R45" "10k" "CANB_STBY" "GND"]
+[r "R46" "60.4" "CANB_H" "CANB_TSPLIT"]
+[r "R47" "60.4" "CANB_TSPLIT" "CANB_L"]
+[c "C38" "4.7n" "CANB_TSPLIT" "GND"]
+[part "D8" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANB_H" "2" "CANB_L" "3" "GND"]]
+[part "U13" "Interface_CAN_LIN:MCP2562-E-SN" "MCP2562FD-E/SN" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  #["1" "CANU_TX" "4" "CANU_RX" "2" "GND" "3" "+5V" "5" "+3V3" "7" "CANU_H" "6" "CANU_L" "8" "CANU_STBY"]]
+[c "C35" "100n" "+5V" "GND"]
+[c "C36" "100n" "+3V3" "GND"]
+[r "R49" "10k" "CANU_STBY" "GND"]
+[r "R50" "60.4" "CANU_H" "CANU_TSPLIT"]
+[r "R51" "60.4" "CANU_TSPLIT" "CANU_L"]
+[c "C39" "4.7n" "CANU_TSPLIT" "GND"]
+[part "D9" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANU_H" "2" "CANU_L" "3" "GND"]]
+[part "J5" "Connector_Generic:Conn_01x02" "XT30PW-M RS04 power (3-way split in the harness)" "Connector_AMASS:AMASS_XT30PW-M_1x02_P2.50mm_Horizontal"
+  #["1" "VBUS" "2" "GND"]]
+[part "J8" "Connector_Generic:Conn_01x02" "GH1.25 RS04 CAN" "Connector_JST:JST_GH_SM02B-GHS-TB_1x02-1MP_P1.25mm_Horizontal"
+  #["1" "CANA_L" "2" "CANA_H"]]
+[part "J9" "Connector_Generic:Conn_01x04" "XT30PB(2+2)-M wrist bus (FOOTPRINT TODO)" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+  #["1" "VBUS" "2" "GND" "3" "CANB_L" "4" "CANB_H"]]
+[part "J10" "Connector_Generic:Conn_01x03" "GH CAN-FD uplink" "Connector_JST:JST_GH_SM03B-GHS-TB_1x03-1MP_P1.25mm_Horizontal"
+  #["1" "CANU_H" "2" "CANU_L" "3" "GND"]]
+[part "J11" "Connector_Generic:Conn_01x04" "GH aux 12V/5V/IO" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
+  #["1" "+12V" "2" "+5V" "3" "AUX_IO" "4" "GND"]]
+
+;; ---- USB-C
+
+[part "J12" "Connector:USB_C_Receptacle_USB2.0_16P" "USB-C" "Connector_USB:USB_C_Receptacle_GCT_USB4105-xx-A_16P_TopMnt_Horizontal"
+  #["A4" "USB_VBUS" "A9" "USB_VBUS" "B4" "USB_VBUS" "B9" "USB_VBUS" "A1" "GND" "A12" "GND" "B1" "GND" "B12" "GND" "S1" "GND" "A5" "USB_CC1" "B5" "USB_CC2" "A7" "USB_DM" "B7" "USB_DM" "A6" "USB_DP" "B6" "USB_DP"]]
+[r "R53" "5.1k" "USB_CC1" "GND"]
+[r "R54" "5.1k" "USB_CC2" "GND"]
+[part "U14" "Power_Protection:USBLC6-2SC6" "USBLC6-2SC6" "Package_TO_SOT_SMD:SOT-23-6"
+  #["1" "USB_DM" "6" "USB_DM" "3" "USB_DP" "4" "USB_DP" "5" "USB_VBUS" "2" "GND"]]
+
+;; ---- Ethernet
+
+[part "U15" "Interface_Ethernet:LAN8742A" "LAN8742A-CZ" "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm"
+  #["17" "ETH_TXD0" "18" "ETH_TXD1" "16" "ETH_TXEN" "8" "ETH_RXD0" "7" "ETH_RXD1" "10" "PHY_RXER" "11" "ETH_CRSDV" "12" "ETH_MDIO" "13" "ETH_MDC" "15" "PHY_RST" "14" "ETH_REFCLK" "5" "PHY_XI" "4" "PHY_XO" "9" "+3V3" "6" "PHY_VDDCR" "19" "PHY_VDDA" "1" "PHY_VDDA" "25" "GND" "21" "ETH_TXP" "20" "ETH_TXN" "23" "ETH_RXP" "22" "ETH_RXN" "24" "PHY_RBIAS" "3" "PHY_LED1" "2" "PHY_LED2"]]
+[part "Y2" "Device:Crystal_GND24" "25MHz" "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+  #["1" "PHY_XI" "3" "PHY_XO" "2" "GND" "4" "GND"]]
+[c "C40" "10p" "PHY_XI" "GND"]
+[c "C41" "10p" "PHY_XO" "GND"]
+[part "FB2" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "PHY_VDDA"]]
+[c "C42" "1u" "PHY_VDDA" "GND"]
+[c "C43" "100n" "PHY_VDDA" "GND"]
+[c "C44" "1u" "PHY_VDDCR" "GND"]
+[c "C45" "470p" "PHY_VDDCR" "GND"]
+[c "C46" "100n" "+3V3" "GND"]
+[flag "PF8" "PHY_VDDA"]
+[flag "PF9" "PHY_VDDCR"]
+[r "R55" "12.1k 1%" "PHY_RBIAS" "GND"]
+[r "R56" "10k" "PHY_LED1" "GND"]
+[r "R57" "10k" "PHY_LED2" "GND"]
+[r "R58" "10k" "PHY_RXER" "GND"]
+[r "R59" "10k" "+3V3" "ETH_RXD0"]
+[r "R60" "10k" "+3V3" "ETH_RXD1"]
+[r "R61" "10k" "+3V3" "ETH_CRSDV"]
+[r "R62" "1.5k" "+3V3" "ETH_MDIO"]
+[r "R63" "49.9 1%" "ETH_CT" "ETH_TXP"]
+[r "R64" "49.9 1%" "ETH_CT" "ETH_TXN"]
+[r "R65" "49.9 1%" "ETH_CT" "ETH_RXP"]
+[r "R66" "49.9 1%" "ETH_CT" "ETH_RXN"]
+[part "FB3" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "ETH_CT"]]
+[c "C47" "100n" "ETH_CT" "GND"]
+[flag "PF10" "ETH_CT"]
+[part "J13" "Connector:RJ45_Hanrun_HR911105A_Horizontal" "HR911105A" "Connector_RJ:RJ45_Hanrun_HR911105A_Horizontal"
+  #["1" "ETH_TXP" "2" "ETH_TXN" "3" "ETH_RXP" "6" "ETH_RXN" "4" "ETH_CT" "5" "ETH_CT" "8" "GND" "SH" "GND"]]
+
+;; ---- limb options: one board for arm, leg, torso (DESIGN.md "One board, many limbs")
+;; Every block below is optional at assembly (leave it unpopulated where a limb doesn't need it).
+
+;; board ID: firmware reads the divider and boots as arm / leg / torso / head
+[r "R67" "10k" "+3V3" "BOARD_ID"]
+[r "R68" "ID: DNP arm, 10k leg, 4.7k torso, 2.2k head" "BOARD_ID" "GND"]
+[c "C48" "100n" "BOARD_ID" "GND"]
+
+;; SPI1 bus: IMU, load-cell ADC, fourth CAN-FD
+[part "U16" "Sensor_Motion:ISM330DHCX" "ISM330DHCX" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y"
+  #["13" "SPI_SCK" "14" "SPI_MOSI" "1" "IMU_SDO" "12" "IMU_CS" "4" "IMU_INT" "8" "+3V3" "5" "+3V3" "6" "GND" "7" "GND" "2" "GND" "3" "GND"]]
+[c "C49" "100n" "+3V3" "GND"]
+[r "R75" "33" "IMU_SDO" "SPI_MISO"]
+[c "C50" "100n" "+3V3" "GND"]
+
+;; load cell / force sensor: ratiometric bridge, 24 bit
+[part "U17" "Analog_ADC:ADS1220xPW" "ADS1220IPW" "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
+  #["1" "SPI_SCK" "16" "SPI_MOSI" "15" "ADC_DOUT" "2" "ADC_CS" "14" "ADC_DRDY" "3" "GND" "13" "+3V3" "4" "GND" "12" "AVDD_LC" "5" "GND" "9" "AVDD_LC" "8" "GND" "11" "LC_SP" "10" "LC_SN"]]
+[part "FB5" "Device:FerriteBead_Small" "600R@100MHz" "Inductor_SMD:L_0603_1608Metric"
+  #["1" "+3V3" "2" "AVDD_LC"]]
+[c "C51" "1u" "AVDD_LC" "GND"]
+[c "C52" "100n" "AVDD_LC" "GND"]
+[c "C53" "100n" "+3V3" "GND"]
+[r "R76" "33" "ADC_DOUT" "SPI_MISO"]
+[r "R69" "1k" "LC_P" "LC_SP"]
+[r "R70" "1k" "LC_N" "LC_SN"]
+[c "C54" "10n" "LC_SP" "LC_SN"]
+[c "C55" "1n" "LC_SP" "GND"]
+[c "C56" "1n" "LC_SN" "GND"]
+[flag "PF12" "AVDD_LC"]
+[part "J14" "Connector_Generic:Conn_01x04" "GH load cell EXC+/EXC-/S+/S-" "Connector_JST:JST_GH_SM04B-GHS-TB_1x04-1MP_P1.25mm_Horizontal"
+  #["1" "AVDD_LC" "2" "GND" "3" "LC_P" "4" "LC_N"]]
+
+;; fourth CAN-FD bus (the MCU's three FDCANs are taken): SPI controller + transceiver in one
+[part "U18" "Interface_CAN_LIN:MCP251863T-E-9PX" "MCP251863T-E/9PX" "Package_DFN_QFN:VQFN-28-1EP_5x5mm_P0.5mm_EP3.25x3.25mm"
+  #["25" "CANX_CS" "22" "SPI_SCK" "23" "SPI_MOSI" "24" "SPI_MISO" "3" "CANX_INT" "5" "CANX_OSC1" "4" "CANX_OSC2" "14" "+3V3" "26" "+3V3" "13" "+5V" "10" "GND" "7" "GND" "29" "GND" "18" "CANX_STBY" "17" "CANX_H" "16" "CANX_L" "20" "CANX_TXD" "28" "CANX_TXI" "11" "CANX_RXI" "1" "CANX_RXI"]]
+[part "Y3" "Device:Crystal_GND24" "40MHz" "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+  #["1" "CANX_OSC1" "3" "CANX_OSC2" "2" "GND" "4" "GND"]]
+[c "C57" "12p" "CANX_OSC1" "GND"]
+[c "C58" "12p" "CANX_OSC2" "GND"]
+[c "C59" "100n" "+3V3" "GND"]
+[c "C60" "100n" "+3V3" "GND"]
+[c "C61" "100n" "+5V" "GND"]
+[r "R71" "10k" "CANX_STBY" "GND"]
+[r "R77" "0" "CANX_TXI" "CANX_TXD"]
+[r "R72" "60.4" "CANX_H" "CANX_TSPLIT"]
+[r "R73" "60.4" "CANX_TSPLIT" "CANX_L"]
+[c "C62" "4.7n" "CANX_TSPLIT" "GND"]
+[part "D11" "Device:D_TVS_Dual_AAC" "PESD2CAN" "Package_TO_SOT_SMD:SOT-23"
+  #["1" "CANX_H" "2" "CANX_L" "3" "GND"]]
+[part "J15" "Connector_Generic:Conn_01x03" "GH CAN-FD X (second limb / tool)" "Connector_JST:JST_GH_SM03B-GHS-TB_1x03-1MP_P1.25mm_Horizontal"
+  #["1" "CANX_H" "2" "CANX_L" "3" "GND"]]
+
+;; brushed DC motor (gripper / tool), from 12 V; ILIM 82k = 0.78 A, inside the 12 V buck's 1 A
+[part "U19" "Driver_Motor:DRV8871DDA" "DRV8871DDAR" "Package_SO:Texas_HTSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.95x4.9mm_Mask2.4x3.1mm_ThermalVias"
+  #["3" "MOT_IN1" "2" "MOT_IN2" "5" "+12V" "1" "GND" "7" "GND" "9" "GND" "6" "MOT_A" "8" "MOT_B" "4" "MOT_ILIM"]]
+[r "R74" "82k" "MOT_ILIM" "GND"]
+[cfp "C63" "10u 25V" C1210 "+12V" "GND"]
+[c "C64" "100n" "+12V" "GND"]
+[part "J16" "Connector_Generic:Conn_01x02" "GH brushed motor" "Connector_JST:JST_GH_SM02B-GHS-TB_1x02-1MP_P1.25mm_Horizontal"
+  #["1" "MOT_A" "2" "MOT_B"]]
+
+;; second fused 48 V output: this board is also the power distribution node
+[part "F1" "Device:Polyfuse" "PTC 60V 3A hold (Bourns MF-SM, verify part)" "Fuse:Fuse_2920_7451Metric"
+  #["1" "VBUS" "2" "VAUX48"]]
+[part "J17" "Connector_Generic:Conn_01x02" "XT30PW-M 48 V aux out" "Connector_AMASS:AMASS_XT30PW-M_1x02_P2.50mm_Horizontal"
+  #["1" "VAUX48" "2" "GND"]]
+
+;; mounting: M3 at the corners, grounded, so the board fits any limb, not only the foot
+[part "H1" "Mechanical:MountingHole_Pad" "M3" "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+  #["1" "GND"]]
+[part "H2" "Mechanical:MountingHole_Pad" "M3" "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+  #["1" "GND"]]
+[part "H3" "Mechanical:MountingHole_Pad" "M3" "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+  #["1" "GND"]]
+[part "H4" "Mechanical:MountingHole_Pad" "M3" "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+  #["1" "GND"]]
+
+;; ---- placement (place.py)
+;; board: 150 x 40 mm, 6 layers: F sig / In1 GND / In2 sig / In3 +3V3 / In4 sig / B sig. Anchors by hand, the rest packed near the part they connect to.
+[EcadBoard 0.0 0.0 150.0 40.0 2.0 1.6 6.0]
+[EcadRules 0.15 0.15 0.45 0.25 0.3 0.15]
+[EcadPour "GND" "In1.Cu"]
+[EcadPour "+3V3" "In3.Cu"]
+;; 12 V and 5 V carry 1-1.5 A: 0.5 mm traces (IPC-2221, 1 oz, 10 C rise)
+[EcadClass "Power" 0.5 0.2 0.6 0.3]
+[EcadInClass "+12V" "Power"]
+[EcadInClass "+5V" "Power"]
+[EcadInClass "VIN_BUCK" "Power"]
+[EcadInClass "VAUX48" "Power"]
+[EcadPlace "C1" 38.09 2.59 0.0]
+[EcadPlace "C2" 42.44 10.51 90.0]
+[EcadPlace "C3" 54.58 22.05 90.0]
+[EcadPlace "C4" 79.40 37.48 90.0]
+[EcadPlace "C5" 69.75 30.92 90.0]
+[EcadPlace "C6" 102.53 7.17 0.0]
+[EcadPlace "C7" 9.00 25.00 0.0]
+[EcadPlace "C8" 33.65 23.08 90.0]
+[EcadPlace "C9" 69.08 24.05 90.0]
+[EcadPlace "C10" 73.56 25.83 90.0]
+[EcadPlace "C11" 67.18 19.76 0.0]
+[EcadPlace "C12" 112.13 21.81 90.0]
+[EcadPlace "C13" 72.99 28.31 0.0]
+[EcadPlace "C14" 114.46 19.83 90.0]
+[EcadPlace "C15" 114.07 24.77 0.0]
+[EcadPlace "C16" 77.84 37.51 90.0]
+[EcadPlace "C17" 111.72 32.65 90.0]
+[EcadPlace "C18" 68.81 26.21 90.0]
+[EcadPlace "C19" 67.54 26.02 90.0]
+[EcadPlace "C20" 67.86 28.90 90.0]
+[EcadPlace "C21" 66.03 22.70 0.0]
+[EcadPlace "C22" 68.36 31.69 90.0]
+[EcadPlace "C23" 114.95 14.77 90.0]
+[EcadPlace "C24" 72.96 3.07 0.0]
+[EcadPlace "C25" 110.43 24.57 0.0]
+[EcadPlace "C26" 63.88 20.02 90.0]
+[EcadPlace "C27" 62.67 20.02 90.0]
+[EcadPlace "C28" 100.46 7.03 0.0]
+[EcadPlace "C29" 93.36 38.19 90.0]
+[EcadPlace "C30" 95.60 38.39 0.0]
+[EcadPlace "C31" 67.15 4.87 90.0]
+[EcadPlace "C32" 104.80 38.48 0.0]
+[EcadPlace "C33" 103.82 1.17 0.0]
+[EcadPlace "C34" 110.00 33.88 90.0]
+[EcadPlace "C35" 61.23 14.97 0.0]
+[EcadPlace "C36" 105.95 1.29 0.0]
+[EcadPlace "C37" 66.68 16.13 90.0]
+[EcadPlace "C38" 67.45 7.20 90.0]
+[EcadPlace "C39" 123.51 13.56 0.0]
+[EcadPlace "C40" 105.45 8.30 0.0]
+[EcadPlace "C41" 106.67 7.07 0.0]
+[EcadPlace "C42" 66.98 2.67 90.0]
+[EcadPlace "C43" 113.33 17.25 0.0]
+[EcadPlace "C44" 114.65 22.38 0.0]
+[EcadPlace "C45" 107.06 38.50 0.0]
+[EcadPlace "C46" 107.75 1.79 90.0]
+[EcadPlace "C47" 110.41 35.65 0.0]
+[EcadPlace "C48" 108.61 24.77 90.0]
+[EcadPlace "C49" 104.60 6.99 0.0]
+[EcadPlace "C50" 105.02 14.97 0.0]
+[EcadPlace "C51" 114.20 30.19 0.0]
+[EcadPlace "C52" 114.58 31.49 0.0]
+[EcadPlace "C53" 115.74 17.39 0.0]
+[EcadPlace "C54" 108.62 27.29 90.0]
+[EcadPlace "C55" 109.98 27.80 90.0]
+[EcadPlace "C56" 110.71 26.15 0.0]
+[EcadPlace "C57" 111.87 19.05 0.0]
+[EcadPlace "C58" 111.54 17.08 90.0]
+[EcadPlace "C59" 116.53 19.87 90.0]
+[EcadPlace "C60" 116.61 22.38 90.0]
+[EcadPlace "C61" 112.07 8.23 90.0]
+[EcadPlace "C62" 117.97 8.44 90.0]
+[EcadPlace "C63" 101.02 3.72 90.0]
+[EcadPlace "C64" 115.73 27.21 90.0]
+[EcadPlace "D1" 30.69 16.93 0.0]
+[EcadPlace "D2" 73.61 18.47 0.0]
+[EcadPlace "D3" 71.21 15.90 0.0]
+[EcadPlace "D4" 47.20 21.63 0.0]
+[EcadPlace "D5" 81.02 11.86 90.0]
+[EcadPlace "D6" 98.55 10.04 90.0]
+[EcadPlace "D7" 64.25 15.95 90.0]
+[EcadPlace "D8" 74.12 5.53 0.0]
+[EcadPlace "D9" 122.63 9.40 90.0]
+[EcadPlace "D10" 58.13 22.06 0.0]
+[EcadPlace "D11" 115.55 10.80 90.0]
+[EcadPlace "F1" 38.83 20.81 90.0]
+[EcadPlace "FB1" 107.65 4.66 90.0]
+[EcadPlace "FB2" 74.90 1.39 0.0]
+[EcadPlace "FB3" 114.27 27.55 90.0]
+[EcadPlace "FB4" 42.11 6.81 0.0]
+[EcadPlace "FB5" 112.22 29.04 90.0]
+[EcadPlace "H1" 4.40 35.80 0.0]
+[EcadPlace "H2" 145.60 35.80 0.0]
+[EcadPlace "H3" 88.00 4.20 0.0]
+[EcadPlace "H4" 145.60 27.00 0.0]
+[EcadPlace "J1" 17.45 12.60 270.0]
+[EcadPlace "J2" 72.00 36.20 0.0]
+[EcadPlace "J3" 31.55 33.69 180.0]
+[EcadPlace "J4" 86.35 9.94 0.0]
+[EcadPlace "J5" 54.50 14.20 0.0]
+[EcadPlace "J8" 63.00 4.08 270.0]
+[EcadPlace "J9" 70.00 9.99 180.0]
+[EcadPlace "J10" 122.00 3.80 180.0]
+[EcadPlace "J11" 120.00 36.20 0.0]
+[EcadPlace "J12" 87.00 35.22 0.0]
+[EcadPlace "J13" 131.64 16.94 270.0]
+[EcadPlace "J14" 131.00 36.20 0.0]
+[EcadPlace "J15" 113.00 3.80 180.0]
+[EcadPlace "J16" 100.00 35.92 90.0]
+[EcadPlace "J17" 57.00 25.80 180.0]
+[EcadPlace "L1" 80.53 4.39 0.0]
+[EcadPlace "L2" 95.58 4.71 0.0]
+[EcadPlace "Q1" 28.00 8.00 0.0]
+[EcadPlace "Q2" 45.00 31.00 0.0]
+[EcadPlace "R1" 36.10 7.38 0.0]
+[EcadPlace "R2" 37.83 7.03 90.0]
+[EcadPlace "R3" 36.22 5.70 90.0]
+[EcadPlace "R4" 41.76 4.58 0.0]
+[EcadPlace "R5" 38.06 5.10 0.0]
+[EcadPlace "R6" 41.64 3.21 0.0]
+[EcadPlace "R7" 70.90 20.60 0.0]
+[EcadPlace "R8" 61.29 21.93 90.0]
+[EcadPlace "R9" 71.00 31.81 90.0]
+[EcadPlace "R10" 78.18 34.64 0.0]
+[EcadPlace "R11" 72.50 31.73 90.0]
+[EcadPlace "R12" 80.62 35.04 90.0]
+[EcadPlace "R13" 72.23 26.49 90.0]
+[EcadPlace "R14" 39.83 13.97 0.0]
+[EcadPlace "R15" 71.56 23.14 90.0]
+[EcadPlace "R16" 60.92 16.22 0.0]
+[EcadPlace "R17" 81.45 9.65 0.0]
+[EcadPlace "R18" 96.20 9.72 90.0]
+[EcadPlace "R19" 100.13 8.98 90.0]
+[EcadPlace "R20" 81.01 14.36 0.0]
+[EcadPlace "R21" 70.46 18.52 90.0]
+[EcadPlace "R22" 62.88 22.13 90.0]
+[EcadPlace "R23" 64.15 22.22 90.0]
+[EcadPlace "R24" 97.43 31.13 90.0]
+[EcadPlace "R25" 99.22 31.07 0.0]
+[EcadPlace "R26" 70.56 13.91 0.0]
+[EcadPlace "R27" 73.10 13.34 0.0]
+[EcadPlace "R28" 74.77 16.53 0.0]
+[EcadPlace "R29" 69.81 22.24 0.0]
+[EcadPlace "R30" 70.32 23.98 90.0]
+[EcadPlace "R31" 70.49 25.91 0.0]
+[EcadPlace "R32" 72.25 29.86 0.0]
+[EcadPlace "R33" 70.82 28.32 0.0]
+[EcadPlace "R34" 69.04 28.46 90.0]
+[EcadPlace "R35" 80.89 8.36 0.0]
+[EcadPlace "R36" 100.99 29.31 0.0]
+[EcadPlace "R37" 67.84 22.88 90.0]
+[EcadPlace "R38" 68.05 16.57 90.0]
+[EcadPlace "R39" 78.71 35.85 0.0]
+[EcadPlace "R40" 96.50 11.47 0.0]
+[EcadPlace "R41" 70.31 12.62 0.0]
+[EcadPlace "R42" 67.42 10.34 90.0]
+[EcadPlace "R43" 67.94 13.15 90.0]
+[EcadPlace "R45" 75.57 2.90 0.0]
+[EcadPlace "R46" 73.46 8.74 90.0]
+[EcadPlace "R47" 73.27 11.03 90.0]
+[EcadPlace "R49" 108.07 21.81 0.0]
+[EcadPlace "R50" 125.09 9.98 90.0]
+[EcadPlace "R51" 123.18 12.29 0.0]
+[EcadPlace "R53" 80.89 37.44 90.0]
+[EcadPlace "R54" 93.48 35.72 90.0]
+[EcadPlace "R55" 110.36 8.56 0.0]
+[EcadPlace "R56" 107.19 9.61 0.0]
+[EcadPlace "R57" 107.56 8.38 0.0]
+[EcadPlace "R58" 111.89 15.39 0.0]
+[EcadPlace "R59" 103.10 10.35 90.0]
+[EcadPlace "R60" 101.75 9.04 90.0]
+[EcadPlace "R61" 104.85 9.49 0.0]
+[EcadPlace "R62" 109.99 16.00 90.0]
+[EcadPlace "R63" 125.91 16.44 0.0]
+[EcadPlace "R64" 125.79 14.97 0.0]
+[EcadPlace "R65" 125.71 13.47 0.0]
+[EcadPlace "R66" 125.69 12.04 0.0]
+[EcadPlace "R67" 101.52 30.98 90.0]
+[EcadPlace "R68" 102.71 29.81 90.0]
+[EcadPlace "R69" 117.44 30.77 90.0]
+[EcadPlace "R70" 118.85 30.25 90.0]
+[EcadPlace "R71" 109.31 23.04 0.0]
+[EcadPlace "R72" 113.74 7.95 0.0]
+[EcadPlace "R73" 116.29 7.92 0.0]
+[EcadPlace "R74" 109.97 31.41 90.0]
+[EcadPlace "R75" 100.60 11.08 0.0]
+[EcadPlace "R76" 107.09 16.11 90.0]
+[EcadPlace "R77" 108.39 15.91 90.0]
+[EcadPlace "TH1" 95.59 35.47 0.0]
+[EcadPlace "TH2" 95.36 37.03 0.0]
+[EcadPlace "U1" 38.47 10.01 0.0]
+[EcadPlace "U2" 75.64 30.73 0.0]
+[EcadPlace "U3" 80.03 27.00 0.0]
+[EcadPlace "U4" 58.48 18.91 0.0]
+[EcadPlace "U5" 93.24 10.23 0.0]
+[EcadPlace "U6" 74.01 21.94 90.0]
+[EcadPlace "U7" 79.04 20.00 90.0]
+[EcadPlace "U8" 76.04 26.60 90.0]
+[EcadPlace "U9" 104.78 4.14 90.0]
+[EcadPlace "U10" 91.00 21.00 270.0]
+[EcadPlace "U11" 63.00 11.00 0.0]
+[EcadPlace "U12" 77.00 12.00 90.0]
+[EcadPlace "U13" 123.00 26.00 0.0]
+[EcadPlace "U14" 79.70 31.79 90.0]
+[EcadPlace "U15" 111.00 12.00 0.0]
+[EcadPlace "U16" 102.06 13.66 90.0]
+[EcadPlace "U17" 103.88 25.33 0.0]
+[EcadPlace "U18" 103.13 18.80 0.0]
+[EcadPlace "U19" 106.46 33.34 90.0]
+[EcadPlace "Y1" 94.71 32.41 90.0]
+[EcadPlace "Y2" 106.03 12.51 0.0]
+[EcadPlace "Y3" 108.61 19.30 0.0]
+;; local pours for the 48 V path (smaller pours fill first)
+[EcadPourRect "VAUX48" "F.Cu" 37.33 22.70 58.50 27.30 5.0]
+[EcadPourRect "VBUS_SW" "F.Cu" 22.25 7.10 38.37 15.47 4.0]
+[EcadPourRect "BRK_R" "F.Cu" 24.97 20.13 52.10 35.19 3.0]
+[EcadPourRect "VIN" "F.Cu" 15.95 1.09 42.03 18.43 2.0]
+[EcadPourRect "VBUS" "F.Cu" 7.50 8.49 71.50 35.19 1.0]
+;; art: muni logo (brand/muni.pretty) and board art (art.pretty, from art.py)
+[EcadArt "LOGO1" "muni:muni_logo_12mm" 25.26 25.75 0.0]
+[EcadArt "EGG1" "art:rose_egg_mcu" 91.00 21.00 0.0]
+[EcadArt "ART1" "art:rose_back" 78.00 25.50 0.0]
+;; ---- end placement

@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+controller/*.kicad_prl
+controller/route.log
+controller/.best.*
