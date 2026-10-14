@@ -586,6 +586,6 @@
 [EcadArt "LBB_J10" "art:lblb_J10" 122.00 8.00 0.0]
 [EcadArt "LBB_J13" "art:lblb_J13" 131.64 23.00 0.0]
 [EcadArt "EGG1" "art:rose_egg_mcu" 91.00 19.80 0.0]
-[EcadArt "ART1" "art:rose_back" 78.00 25.50 0.0]
+[EcadArt "ART1" "art:rose_back" 90.00 24.00 0.0]
 [EcadArt "RING1" "art:edge_ring" 0.00 0.00 0.0]
 ;; ---- end placement

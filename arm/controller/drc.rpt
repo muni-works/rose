@@ -1,96 +1,47 @@
 ** Drc report for arm_controller.kicad_pcb **
-** Created on 2026-10-14T09:46:00-0400 **
+** Created on 2026-10-14T10:53:28-0400 **
 
-** Found 16 DRC violations **
-[clearance]: Clearance violation (netclass 'Power' clearance 0.2000 mm; actual 0.1862 mm)
-    Rule: netclass 'Power'; error
-    @(120.7533 mm, 16.2500 mm): Track [+12V] on In2.Cu, length 8.0458 mm
-    @(123.9500 mm, 11.9500 mm): Via [GND] on F.Cu - B.Cu
-[clearance]: Clearance violation (netclass 'Default' clearance 0.1500 mm; actual 0.1410 mm)
-    Rule: netclass 'Default'; error
-    @(106.8484 mm, 22.2134 mm): Via [SPI_MISO] on F.Cu - B.Cu
-    @(106.9888 mm, 22.6567 mm): Polygon [+3V3] on B.Cu
-[clearance]: Clearance violation (netclass 'Default' clearance 0.1500 mm; actual 0.1165 mm)
-    Rule: netclass 'Default'; error
-    @(87.8500 mm, 29.4000 mm): Pad 1 [GND] of SH1 on F.Cu
-    @(90.8162 mm, 30.1350 mm): Polygon [WD_OK] on F.Cu
-[text_height]: Text height out of range (board setup constraints silk text height min height 0.8000 mm; actual 0.7000 mm)
-    Rule: board setup constraints silk text height; warning
-    @(92.0000 mm, 34.1000 mm): Footprint text of ART1 (6L  1.6 mm  ENIG  black / muni orange)
+** Found 7 DRC violations **
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(55.1630 mm, 29.0140 mm): Segment of ART1 on B.Silkscreen
+    @(62.8370 mm, 24.4860 mm): Segment of ART1 on B.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(57.2680 mm, 21.0030 mm): Segment of ART1 on B.Silkscreen
+    @(65.0000 mm, 26.0000 mm): Circle of ART1 on B.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(53.0000 mm, 27.5000 mm): Circle of ART1 on B.Silkscreen
+    @(77.7060 mm, 23.1370 mm): Circle of ART1 on B.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(92.0000 mm, 32.3000 mm): Footprint text of ART1 (designed by muni)
-[silk_overlap]: Silkscreen overlap
-    Rule: board setup constraints silk; warning
-    @(57.0000 mm, 22.5500 mm): Footprint text of LBB_J17 (48V AUX)
-    @(50.8370 mm, 25.9860 mm): Segment of ART1 on B.Silkscreen
-[silk_overlap]: Silkscreen overlap
-    Rule: board setup constraints silk; warning
-    @(58.9650 mm, 18.9810 mm): Circle of ART1 on B.Silkscreen
-    @(54.5000 mm, 17.4500 mm): Footprint text of LBB_J5 (RS04 48V)
-[silk_overlap]: Silkscreen overlap
-    Rule: board setup constraints silk; warning
-    @(57.0000 mm, 22.5500 mm): Footprint text of LBB_J17 (48V AUX)
-    @(57.2680 mm, 21.0030 mm): Segment of ART1 on B.Silkscreen
-[silk_overlap]: Silkscreen overlap
-    Rule: board setup constraints silk; warning
-    @(57.0000 mm, 22.5500 mm): Footprint text of LBB_J17 (48V AUX)
-    @(55.1630 mm, 29.0140 mm): Segment of ART1 on B.Silkscreen
-[silk_overlap]: Silkscreen overlap
-    Rule: board setup constraints silk; warning
-    @(92.0000 mm, 29.5000 mm): Footprint text of ART1 (the nearest robot)
-    @(87.0000 mm, 29.4600 mm): Footprint text of LBB_J12 (USB)
+    @(77.7060 mm, 23.1370 mm): Circle of ART1 on B.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(104.0000 mm, 32.6000 mm): Footprint text of ART1 (6L  1.6 mm  ENIG  black / muni orange)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(104.0000 mm, 30.8000 mm): Footprint text of ART1 (designed by muni)
 [silk_overlap]: Silkscreen overlap
     Rule: board setup constraints silk; warning
     @(100.0000 mm, 31.4400 mm): Footprint text of LBB_J16 (MOTOR)
-    @(92.0000 mm, 32.3000 mm): Footprint text of ART1 (designed by muni)
-[copper_sliver]: Copper sliver (In4.Cu)
-    Local override; warning
-[copper_sliver]: Copper sliver (In4.Cu)
-    Local override; warning
+    @(104.0000 mm, 30.8000 mm): Footprint text of ART1 (designed by muni)
 
-** Found 8 unconnected pads **
+** Found 4 unconnected pads **
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(83.3250 mm, 25.8000 mm): Pad 100 [+3V3] of U10 on F.Cu
-    @(85.6250 mm, 25.9750 mm): Via [+3V3] on F.Cu - B.Cu
+    @(96.0000 mm, 27.4750 mm): Pad 23 [ETH_REFCLK] of U10 on F.Cu
+    @(112.9375 mm, 12.7500 mm): Pad 14 [ETH_REFCLK] of U15 on F.Cu
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(90.0000 mm, 27.4750 mm): Pad 11 [+3V3] of U10 on F.Cu
-    @(87.5000 mm, 27.4750 mm): Pad 6 [+3V3] of U10 on F.Cu
+    @(88.5000 mm, 12.1250 mm): Pad 68 [MOT_IN2] of U10 on F.Cu
+    @(106.9550 mm, 26.9750 mm): Pad 2 [MOT_IN2] of U19 on F.Cu
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(133.8343 mm, 23.6922 mm): Via [+3V3] on F.Cu - B.Cu
-    @(133.0000 mm, 26.0500 mm): Pad 26 [+3V3] of U18 on F.Cu
+    @(134.0000 mm, 26.0500 mm): Pad 24 [SPI_MISO] of U18 on F.Cu
+    @(117.5000 mm, 24.7600 mm): Pad 2 [SPI_MISO] of R76 on F.Cu
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(89.5000 mm, 27.4750 mm): Pad 10 [GND] of U10 on F.Cu
-    @(88.8894 mm, 28.9695 mm): Via [GND] on F.Cu - B.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(148.0000 mm, 0.0000 mm): Zone [GND] on F.Cu, priority 0
-    @(148.0000 mm, 0.0000 mm): Zone [GND] on In1.Cu, priority 0
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(81.2500 mm, 16.4800 mm): Pad 2 [GND] of C28 on F.Cu
-    @(79.2472 mm, 15.7466 mm): Via [GND] on F.Cu - B.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(148.0000 mm, 0.0000 mm): Zone [GND] on F.Cu, priority 0
-    @(85.5000 mm, 12.1250 mm): Pad 74 [GND] of U10 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(86.2500 mm, 31.5400 mm): Pad B7 [USB_DM] of J12 on F.Cu
-    @(87.2500 mm, 31.5400 mm): Pad A7 [USB_DM] of J12 on F.Cu
+    @(86.5000 mm, 27.4750 mm): Pad 4 [WD_KICK] of U10 on F.Cu
+    @(104.9900 mm, 20.7000 mm): Pad 7 [WD_KICK] of U3 on F.Cu
 
 ** Found 0 Footprint errors **
 

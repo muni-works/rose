@@ -70,7 +70,7 @@ ART = [
 ]
 FIXED_ART = [
     ('EGG1', 'art:rose_egg_mcu'),       # centred on the MCU, inside its pad ring
-    ('ART1', 'art:rose_back', (78.0, 25.5)),  # back side - clear of the through-hole pins
+    ('ART1', 'art:rose_back', (90.0, 24.0)),  # back side - clear of the through-hole pins
 ]
 # Silk function labels: what plugs in where. Each becomes a text-only footprint
 # (art.pretty/lbl_<ref>) packed into free space just inboard of its connector.

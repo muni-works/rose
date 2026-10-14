@@ -164,7 +164,7 @@ def main():
         text('if found, return to', 14, 2.6, 0.9, B),
         text('the nearest robot', 14, 4.0, 0.9, B),
         text('designed by muni', 14, 6.8, 1.2, B, 0.2),
-        text('6L  1.6 mm  ENIG  black / muni orange', 14, 8.6, 0.7, B, 0.12),
+        text('6L  1.6 mm  ENIG  black / muni orange', 14, 8.6, 0.8, B, 0.13),
     ]))
     open(os.path.join(OUT, 'shield_mcu.kicad_mod'), 'w').write(shield_frame('shield_mcu', SHIELD_W, SHIELD_H))
     vrml_lid(os.path.join(HERE, '3d', 'shield_mcu.wrl'), SHIELD_W, SHIELD_H, 2.0)

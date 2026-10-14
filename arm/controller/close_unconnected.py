@@ -122,6 +122,7 @@ def add_track(net, layer, a, b):
 def add_via(net, x, y):
     v = pcbnew.PCB_VIA(board)
     v.SetPosition(pcbnew.VECTOR2I(mm(x), mm(y)))
+    v.SetWidth(mm(VIA_D))
     for l in COPPER:
         v.SetWidth(mm(VIA_D), l)
     v.SetDrill(mm(VIA_DRILL))
