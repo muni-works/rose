@@ -15,11 +15,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LOON = os.path.join(HERE, 'brain.loon')
 KI = '/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints'
 LIBS = {'brain': os.path.join(HERE, 'brain.pretty'), 'art': os.path.join(HERE, '..', 'arm', 'controller', 'art.pretty')}
-W, H = 100.0, 76.0
+W, H = 110.0, 84.0
 MARGIN, GAP = 0.6, 0.2
 BEGIN, END = ';; ---- placement (place.py)', ';; ---- end placement'
 
-# 8-layer HDI: F sig / In1 sig (fanout) / In2 GND / In3 sig (DDR) / In4 power regions / In5 GND / In6 sig / B sig + caps
+# 8-layer HDI: F sig / In1 GND / In2 SoC power regions / In3 sig (BGA escape) / In4 VDD2 + board power / In5 GND / In6 VDDQ + sig / B sig + caps.
+# GND and power drop into planes next to the surface; only signals reach the signal layers.
 STACK = ['F.Cu', 'In1.Cu', 'In2.Cu', 'In3.Cu', 'In4.Cu', 'In5.Cu', 'In6.Cu', 'B.Cu']
 
 ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
@@ -29,16 +30,16 @@ ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
     'U_EMMC': (56.5, 37.0, 0, 'F'),
     'U_PMIC': (38.0, 55.0, 0, 'F'),
     'U_RT': (80.0, 34.0, 0, 'F'),
-    'J1': (12.0, 70.5, 0, 'F'),      # 12 V + BMS CAN from the spine
-    'J2': (25.0, 72.5, 0, 'F'),      # e-stop / pack status
+    'J1': (12.0, 78.5, 0, 'F'),      # 12 V + BMS CAN from the spine
+    'J2': (25.0, 80.5, 0, 'F'),      # e-stop / pack status
     'J3': (4.5, 20.0, 270, 'F'),     # USB-C
     'J5': (58.0, 3.0, 180, 'F'),     # camera 0
     'J6': (75.0, 3.0, 180, 'F'),     # camera 1
     'J7': (8.0, 50.0, 270, 'F'),     # SoC console
-    'J8': (88.0, 22.0, 0, 'F'),      # H7 SWD
-    'J10': (97.0, 10.0, 90, 'F'), 'J11': (97.0, 22.0, 90, 'F'), 'J12': (97.0, 34.0, 90, 'F'),
-    'J13': (97.0, 46.0, 90, 'F'), 'J14': (97.0, 58.0, 90, 'F'),
-    'H1': (3.5, 3.5, 0, 'F'), 'H2': (96.5, 72.5, 0, 'F'), 'H3': (3.5, 72.5, 0, 'F'), 'H4': (88.0, 72.5, 0, 'F'),
+    'J8': (98.0, 22.0, 0, 'F'),      # H7 SWD
+    'J10': (107.0, 10.0, 90, 'F'), 'J11': (107.0, 22.0, 90, 'F'), 'J12': (107.0, 34.0, 90, 'F'),
+    'J13': (107.0, 46.0, 90, 'F'), 'J14': (107.0, 58.0, 90, 'F'),
+    'H1': (3.5, 3.5, 0, 'F'), 'H2': (106.5, 80.5, 0, 'F'), 'H3': (3.5, 80.5, 0, 'F'), 'H4': (98.0, 80.5, 0, 'F'),
     'SW1': (14.0, 58.0, 0, 'F'), 'SW2': (14.0, 50.0, 0, 'F'),
 }
 THT = re.compile(r'^(J|H|SW)')     # through-hole: blocks both sides
@@ -195,8 +196,8 @@ def main():
 
     lines = [BEGIN, f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK),
              f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 8.0]',
-             '[EcadRules 0.09 0.09 0.45 0.2 0.3 0.15]',
-             '[EcadPour "GND" "In2.Cu"]', '[EcadPour "GND" "In5.Cu"]']
+             '[EcadRules 0.09 0.09 0.30 0.15 0.3 0.15]',
+             '[EcadPour "GND" "In1.Cu"]', '[EcadPour "GND" "In5.Cu"]']
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]
         form = 'EcadPlaceBack' if side == 'B' else 'EcadPlace'
