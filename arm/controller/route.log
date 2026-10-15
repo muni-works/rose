@@ -1,46 +1,34 @@
 plane layers kept trace-free: [In1Cu, In3Cu]
-[2026-10-14T04:16:26Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 3 connection(s) infeasible at current rules — terminal of net USB_DP at (86.75, 31.54)/(87.00, 13.32) has no clearance-legal grid attachment — the pad at (87.00, 13.32) is walled in on all 6 copper layers by USB_DM (10), BK1_PG (1), BOOT0 (1) at the current rules and grid pitch 0.408 mm
-anchored 260 track ends into their pads
-restored 2 layer-change vias
-split after clean-up: +3V3, +5V, ADC_CS, ADC_DRDY, CANU_STBY, CANX_H, CANX_OSC1, ETH_CRSDV, ETH_MDIO, ETH_REFCLK, ETH_RXD1, ETH_RXP, ETH_TXEN, GND, MCU_EN, MOT_IN1, MOT_IN2, PHY_RXER, PHY_VDDA, PHY_VDDCR, PHY_XO, SPI_MOSI
-[2026-10-14T04:19:55Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 1 connection(s) infeasible at current rules — net MCU_EN is severed inside the window: breadth-first search from its to terminal at (86.00, 28.68) exhausted every reachable node — 4 of the 2543 clearance-free (cell, layer) nodes on the 6-layer stack — without touching the other terminal at (76.33, 28.70) (layer FCu); the enclosing cut is 14 blocked nodes spanning x=85.36..86.59, y=27.51..29.96, held by WD_KICK (13), ESTOP2 (10), USB_VBUS (4). With k = 1 reachability is exact, so no path exists on the canonical grid at pitch 0.408 mm
-[2026-10-14T04:19:57Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 4 connection(s) infeasible at current rules — terminal of net ETH_CRSDV at (111.75, 13.94)/(98.67, 24.50) has no clearance-legal grid attachment — the pad at (98.67, 24.50) is walled in on all 6 copper layers by ETH_RXD0 (10), SPI_SCK (9), ADC_CS (1) at the current rules and grid pitch 0.742 mm
-second pass on +3V3, +5V, ADC_CS, ADC_DRDY, CANU_STBY, CANX_H, CANX_OSC1, ETH_CRSDV, ETH_MDIO, ETH_REFCLK, ETH_RXD1, ETH_RXP, ETH_TXEN, GND, MCU_EN, MOT_IN1, MOT_IN2, PHY_RXER, PHY_VDDA, PHY_VDDCR, PHY_XO, SPI_MOSI: islands 49 -> 35
-[2026-10-14T04:20:42Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 1 connection(s) infeasible at current rules — net MCU_EN is severed inside the window: breadth-first search from its to terminal at (86.00, 28.68) exhausted every reachable node — 4 of the 2356 clearance-free (cell, layer) nodes on the 6-layer stack — without touching the other terminal at (76.33, 28.70) (layer FCu); the enclosing cut is 14 blocked nodes spanning x=85.36..86.59, y=27.51..29.96, held by WD_KICK (19), ESTOP2 (10), USB_VBUS (4). With k = 1 reachability is exact, so no path exists on the canonical grid at pitch 0.408 mm
-second pass on +3V3, +5V, ADC_CS, CANX_H, CANX_OSC1, ETH_RXP, GND, MCU_EN, MOT_IN1, PHY_RXER, SPI_MOSI: islands 24 -> 24
-trimmed leaf copper: 177 traces, 75 vias
-Routed 93.1% of connections in 760.0 s: 1204 traces, 560 vias, 0 synthesized pours -> arm_controller.kicad_pcb
-unrouted nets (20): +3V3, +5V, ADC_CS, ADC_DRDY, CANU_STBY, CANX_H, CANX_OSC1, ETH_CRSDV, ETH_REFCLK, ETH_RXD1, ETH_RXP, ETH_TXEN, GND, MCU_EN, MOT_IN1, MOT_IN2, PHY_RXER, PHY_VDDCR, PHY_XO, SPI_MOSI
-  ETH_TXEN (98.67,16.50) -> (112.94,11.75): blocked by +3V3, CANX_CS, CANX_INT, CANX_RXI, CANX_TXI, GND, IMU_CS, PHY_RST, SPI_MISO, SPI_SCK, ETH_RXD0, CANX_L, CANX_TXD, ETH_MDIO, ETH_REFCLK, ETH_RXD1, ETH_TXD0, PHY_VDDCR, PHY_XI, PHY_XO, SPI_MOSI, VCAP1, ~nc~U10~45, ~nc~U16~10, ~nc~U16~8, ~nc~U16~9, ~nc~U18~30
-  CANX_OSC1 (108.08,22.01) -> (100.92,18.74): blocked by +3V3, GND, SPI_MOSI, CANX_RXI, +5V, CANX_OSC2, CANX_STBY, ETH_RXD0, SPI_MISO, SPI_SCK, ~nc~U18~12, ~nc~U18~15, ~nc~U18~9
-  +5V (115.59,21.31) -> (104.37,20.69): blocked by -
-  CANU_STBY (104.30,22.29) -> (98.67,18.50): blocked by CANX_OSC2, CANX_RXI, GND, SPI_MISO, AUX_IO, CANA_STBY, CANB_STBY, CANX_OSC1, ETH_RXD0, IMU_CS, ~nc~U10~39, ~nc~U18~11, ~nc~U18~12, ~nc~U18~15, ~nc~U18~9
-  SPI_MOSI (104.37,15.79) -> (103.70,12.39): blocked by GND, IMU_CS, SPI_MISO, SPI_SCK, CANX_CS, CANX_TXI, ETH_RXD0, IMU_SDO, ~nc~U16~10, ~nc~U16~9
-  PHY_XO (110.85,15.99) -> (109.06,12.25): blocked by +3V3, ETH_RXD0, ETH_RXD1, PHY_LED1, CANX_L, GND, PHY_VDDCR, PHY_XI
-  PHY_RXER (114.54,13.95) -> (111.25,13.94): blocked by +3V3, ETH_MDC, ETH_MDIO, ETH_RXD0, GND, CANX_L, ETH_CRSDV, PHY_RST, PHY_XI
-  ADC_DRDY (83.33,18.50) -> (106.93,25.17): blocked by BRK_FORCE, CANX_CS, ETH_RXD0, HSE_IN, IMU_INT, SPI_SCK, +12V, +3V3, ADC_CS, ADC_DOUT, AUX_IO, BK1_PG, BOARD_ID, BRK_CMP, CANA_TX, CANB_TX, CANX_OSC2, ETH_RXD1, HSE_OUT, IMU_CS, NRST, PHY_RST, SPI_MISO, SWO, USB_DM, USB_DP, VCAP1, ~nc~U10~33, ~nc~U10~34, ~nc~U10~35
-  ADC_CS (83.33,19.50) -> (101.21,24.52): blocked by BRK_CMP, CANX_CS, ETH_RXD0, GND, HSE_IN, IMU_INT, SPI_MISO, SPI_SCK, VCAP1, +12V, AUX_IO, BK1_PG, BOARD_ID, BRK_FORCE, CANB_TX, CANX_OSC2, ETH_CRSDV, ETH_RXD1, HSE_OUT, IMU_CS, NRST, PHY_RST, SWO, USB_DM, USB_DP, ~nc~U10~33
-  ETH_REFCLK (96.00,28.68) -> (112.94,12.75): blocked by +3V3, CANX_L, CANX_RXI, CANX_STBY, ETH_MDIO, ETH_RXD0, ETH_RXD1, GND, PHY_RST, SPI_SCK, +5V, ADC_CS, ADC_DOUT, BOOT0, BRK_CMP, CANU_STBY, CANX_H, CANX_OSC2, ETH_CRSDV, ETH_MDC, IMU_CS, NTC_BRK, NTC_FET, PHY_RXER, PHY_XI, PHY_XO, SPI_MISO, SPI_MOSI, ~nc~U18~15, ~nc~U18~18
-  ETH_RXP (123.83,14.47) -> (110.25,10.06): blocked by ETH_RXN, GND, PHY_VDDA, +12V, +5V, BK2_SW, CANX_L, ETH_CRSDV, ETH_CT, ETH_MDIO, ETH_RXD1, ETH_TXD0, ETH_TXD1, ETH_TXEN, ETH_TXN, ETH_TXP, PHY_RBIAS, PHY_XI, VCAP2
-  CANX_H (112.28,8.27) -> (105.82,18.74): blocked by CANX_L, CANX_TSPLIT, ETH_RXN, ETH_TXN, ETH_TXP, GND, PHY_LED1, PHY_VDDA, CANX_STBY, CANX_TXD, ETH_MDIO, ETH_RXD0, ETH_RXD1, ETH_RXP, PHY_LED2, PHY_VDDCR, PHY_XI, PHY_XO, SPI_MOSI, SPI_SCK, ~nc~U18~22, ~nc~U18~24
-  ETH_RXD1 (109.75,13.94) -> (98.67,23.50): blocked by ETH_RXD0, GND, SPI_MISO, CANX_RXI, ADC_DOUT, CANX_H, CANX_STBY, CANX_TXD, PHY_RST, PHY_VDDCR, PHY_XI, SPI_MOSI, SPI_SCK, ~nc~U10~33, ~nc~U10~34, ~nc~U10~35, ~nc~U18~11, ~nc~U18~12, ~nc~U18~22, ~nc~U18~24
-  ETH_CRSDV (111.75,13.94) -> (98.67,24.50): blocked by +3V3, CANX_L, CANX_RXI, ETH_MDIO, ETH_RXD0, ETH_RXD1, GND, SPI_SCK, +5V, ADC_DOUT, CANX_H, CANX_OSC2, CANX_STBY, CANX_TXD, PHY_RST, PHY_RXER, PHY_XI, PHY_XO, SPI_MISO, SPI_MOSI, ~nc~U10~33, ~nc~U18~11, ~nc~U18~12, ~nc~U18~15, ~nc~U18~18, ~nc~U18~22
-  MOT_IN1 (89.00,13.32) -> (106.17,30.91): blocked by +3V3, BRK_FORCE, CANX_INT, ETH_RXD0, GND, IMU_CS, SPI_SCK, SPI_MISO, ADC_CS, AUX_IO, BOARD_ID, BRK_CMP, CANA_STBY, CANX_CS, CANX_OSC2, ETH_CRSDV, ETH_RXD1, HSE_IN, HSE_OUT, MOT_ILIM, MOT_IN2, NRST, PHY_RST, SWO, USB_DM, VCAP1, ~nc~U10~33, ~nc~U10~34, ~nc~U10~35, ~nc~U10~62, ~nc~U10~63, ~nc~U10~64, ~nc~U10~65, ~nc~U17~5, ~nc~U17~6
-  MOT_IN2 (88.50,13.32) -> (107.45,30.91): blocked by +3V3, BRK_FORCE, ETH_RXD0, GND, IMU_CS, PHY_RST, SPI_SCK, ADC_CS, AUX_IO, BOARD_ID, BRK_CMP, CANA_STBY, CANX_CS, CANX_OSC2, ETH_CRSDV, ETH_RXD1, HSE_IN, HSE_OUT, MOT_ILIM, MOT_IN1, NRST, SPI_MISO, SWO, USB_DM, VCAP1, ~nc~U10~33, ~nc~U10~34, ~nc~U10~35, ~nc~U10~63, ~nc~U10~64, ~nc~U10~65, ~nc~U10~68, ~nc~U17~5
-  SPI_MOSI (83.33,21.00) -> (104.37,15.79): blocked by AUX_IO, CANX_CS, CANX_INT, CANX_RXI, CANX_TXI, IMU_INT, SPI_MISO, SPI_SCK, VCAP1, +12V, +3V3, BOARD_ID, BRK_FORCE, CANA_STBY, CANB_STBY, CANB_TX, ETH_RXD0, ETH_TXEN, GND, HSE_IN, HSE_OUT, IMU_CS, LED_STAT, NRST, SWO, USB_DM, USB_DP, ~nc~U10~45, ~nc~U18~30, ~nc~U18~5
-  PHY_VDDCR (109.06,13.25) -> (58.30,21.71): blocked by +3V3, BK1_FB, BK1_PG, BK1_RON, BRK_FORCE, BRK_G, BRK_GL, CANA_RX, CANA_TX, CANB_STBY, CANX_CS, CANX_TXI, GND, HSE_IN, IMU_CS, LED_STAT, SWO, VBUS, VIN_BUCK, WD_CRST, +12V, +5V, ADC_DRDY, BK1_BST, BK1_EN, BK1_SW, BOARD_ID, BRK_DIV, BRK_GH, BRK_IN, CANA_STBY, CANB_RX, CANB_TX, CANX_INT, CANX_TXD, ETH_RXD0, ETH_RXD1, HSE_OUT, HS_PGD, I2C_SCL, I2C_SDA, IMU_INT, INA_ALERT, NRST, PHY_XI, SPI_MISO, SPI_SCK, USB_DM, USB_DP, VCAP1, WD_CWD, ~nc~U10~78, ~nc~U10~79, ~nc~U16~10, ~nc~U16~8, ~nc~U16~9
-  PHY_VDDCR (125.83,21.44) -> (109.06,13.25): blocked by +3V3, BK2_SW, ETH_CRSDV, ETH_CT, ETH_MDIO, ETH_RXD0, ETH_RXD1, GND, PHY_XI, +12V, +5V, CANX_L, ETH_MDC, PHY_RST, PHY_RXER, PHY_XO
-  MCU_EN (76.33,28.70) -> (86.00,28.68): blocked by +3V3, BRK_CMP, BRK_DIV, ESTOP1, ESTOP2, GND, USB_DP, WD_KICK, WD_OK
-  GND (105.09,38.94) -> (105.09,38.94): blocked by -
-  GND (88.98,9.20) -> (88.98,9.20): blocked by -
-  +3V3 (96.03,4.93) -> (96.03,4.93): blocked by -
-  +3V3 (102.87,15.79) -> (102.87,15.79): blocked by -
+[2026-10-14T20:53:05Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 2 connection(s) infeasible at current rules — terminal of net PHY_RST at (98.67, 19.30)/(112.94, 12.25) has no clearance-legal grid attachment — the pad at (112.94, 12.25) is walled in on all 6 copper layers by GND (11), PHY_XO (7), PHY_LED1 (4) at the current rules and grid pitch 0.413 mm
+anchored 282 track ends into their pads
+restored 1 layer-change vias
+split after clean-up: +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM
+second pass on +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM: islands 26 -> 17
+[2026-10-14T21:02:35Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 1 connection(s) infeasible at current rules — net ETH_CRSDV is severed inside the window: breadth-first search from its to terminal at (111.75, 13.94) exhausted every reachable node — 4 of the 1057 clearance-free (cell, layer) nodes on the 6-layer stack — without touching the other terminal at (109.50, 17.76) (layer FCu); the enclosing cut is 13 blocked nodes spanning x=110.78..112.42, y=13.18..15.22, held by PHY_RXER (17), ETH_MDIO (9), +3V3 (3). With k = 1 reachability is exact, so no path exists on the canonical grid at pitch 0.408 mm
+second pass on +5V, ETH_CRSDV, SPI_MOSI: islands 9 -> 9
+trimmed leaf copper: 84 traces, 42 vias
+Routed 96.6% of connections in 1120.7 s: 1397 traces, 662 vias, 0 synthesized pours -> arm_controller.kicad_pcb
+unrouted nets (9): +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXP, SPI_MOSI, SWO
+  +5V (120.53,26.64) -> (134.50,30.95): blocked by -
+  +5V (134.50,30.95) -> (136.00,34.77): blocked by -
+  SPI_MOSI (83.33,19.80) -> (104.86,23.34): blocked by CANX_CS, ETH_RXD1, GND, IMU_SDO, SPI_SCK, +3V3, AUX_IO, CANB_RX, ETH_CRSDV, ETH_RXD0, IMU_INT, MOT_IN1, NRST, NTC_BRK, SWO, USB_DM, VDDA, ~nc~U10~34, ~nc~U10~89
+  ETH_CRSDV (109.50,17.76) -> (98.67,23.30): blocked by +3V3, BRK_CMP, BRK_REF, ETH_RXD1, GND, HSE_OUT, BOARD_ID, BRK_DIV, ETH_RXD0, HSE_IN, SPI_MISO, VDDA
+  SWO (96.82,6.46) -> (83.33,20.30): blocked by keepout, +3V3, BRK_DIV, CANB_STBY, ETH_TXD0, ETH_TXD1, GND, MOT_IN1, CANU_RX, CANU_TX, CANX_INT, NRST, +5V, ADC_CS, BK1_PG, BRK_FORCE, BRK_REF, CANA_STBY, CANB_RX, CANU_STBY, CANX_CS, ETH_TXEN, IMU_INT, NTC_BRK, NTC_FET, SPI_MOSI, SWCLK, USB_DM, ~nc~U10~60, ~nc~U10~61, ~nc~U10~62, ~nc~U10~63, ~nc~U10~64, ~nc~U10~65, ~nc~U10~89
+  ETH_RXP (131.64,14.40) -> (110.25,10.06): blocked by ETH_CT, ETH_TXD0, ETH_TXD1, ETH_TXEN, ETH_TXP, GND, +5V, ETH_RXN, ETH_TXN, PHY_LED2, PHY_RBIAS, PHY_VDDA
+  BRK_CMP (94.10,40.53) -> (98.67,19.80): blocked by BK1_SW, BOARD_ID, ETH_MDC, ETH_REFCLK, GND, MOT_ILIM, NTC_BRK, NTC_FET, SPI_SCK, VDDA, +12V, +3V3, ADC_DRDY, AUX_IO, BK1_BST, BK1_FB, BK1_PG, BRK_FORCE, BRK_IN, CANX_CS, ETH_CRSDV, ETH_MDIO, ETH_RXD0, ETH_RXD1, HSE_IN, HSE_OUT, IMU_CS, IMU_INT, MOT_IN1, MOT_IN2, NRST, PHY_RST, SPI_MISO, ~nc~U10~34, ~nc~U10~35
+  ADC_CS (83.33,18.30) -> (120.06,33.16): blocked by +3V3, CANX_CS, GND, HSE_OUT, IMU_CS, IMU_INT, IMU_SDO, SPI_SCK, VDDA, +12V, BK1_PG, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, HSE_IN, MOT_ILIM, MOT_IN1, NRST, SPI_MISO, USB_DM
+  ETH_MDIO (113.00,17.76) -> (96.50,27.48): blocked by +3V3, BOARD_ID, GND, IMU_CS, IMU_SDO, NTC_BRK, SPI_MOSI, SPI_SCK, BRK_REF, ETH_MDC, ETH_REFCLK, HSE_IN, HSE_OUT, PHY_VDDA, SPI_MISO, VDDA
+  AUX_IO (119.33,40.35) -> (98.67,21.80): blocked by +3V3, +5V, GND, HSE_OUT, IMU_INT, IMU_SDO, SPI_MISO, VDDA, +12V, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, ETH_RXD0, ETH_RXD1, HSE_IN, IMU_CS, SPI_SCK, ~nc~U10~34
+finish: black mask, #FF6600FF silk, ENIG (6 copper layers)
+placeholder models: AMASS_XT30PW-M_1x02_P2.50mm_Horizontal, AMASS_XT60PW-M_1x02_P7.20mm_Horizontal, RJ45_Hanrun_HR911105A_Horizontal
+premium: 45 449 (front designators to fab, teardrops)
 ./src/common/stdpbase.cpp(59): assert ""traits"" failed in Get(): create wxApp before calling this
-filled 7 zones
-dropped 6 dangling items
-dropped 4 dangling items
-dropped 2 dangling items
-dropped 3 dangling items
-dropped 3 dangling items
-Found 7 violations
-Found 16 unconnected items
+filled 9 zones
+stitching vias: 231
+dropped 1 dangling items
+closed 5 open connections (removed 5 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+Found 4 violations
+Found 6 unconnected items
+rendered render/board_{top,bottom,3d}.png

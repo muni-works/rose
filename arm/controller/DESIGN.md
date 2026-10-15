@@ -56,7 +56,7 @@ What it changed in the schematic:
 
 | | first schematic | simulated | now |
 |---|---|---|---|
-| brake comparator hysteresis | on 54.3 V / off 53.3 V: chatters (582 switch events in 100 ms) | | R16 309k, R17 10.2k, R20 309k: on 53.3 / off 50.0 V |
+| brake comparator hysteresis | on 54.3 V / off 53.3 V: chatters (582 switch events in 100 ms) | | R16 301k, R17 9.09k, R20 665k: on 57.0 / off 55.5 V (±1.2%: on ≤57.7, off ≥54.9, above a full 13S pack at 54.6) |
 | brake resistor | 10 Ω: holds 5 A of regen; 20 A runs the bus to 188 V | 4.7 Ω holds 10 A, 3.3 Ω holds 15 A at 54.2 V | **3.3 Ω, 200 W, on the foot** |
 | e-stop hold (R8 / C3) | 104-142 ms, depending on how long the board has been on | diode across R8 makes it fixed | C3 390 nF + BAT54 (D10): **188 ms** |
 
@@ -127,7 +127,7 @@ has Ethernet on board. The firmware then moves to this board unchanged.
 
 ## Power and safety
 
-**Power path.** 48 V comes in through an XT60. Next are a TVS (SMDJ58A) and a reverse-polarity
+**Power path.** 48 V comes in through an XT60. Next are a TVS (SMDJ60A) and a reverse-polarity
 FET. Then an LM5069 hot-swap controller drives a 100 V, about 2 mΩ MOSFET. The LM5069 does three jobs:
 
 - It limits inrush by limiting the rise rate, so no precharge resistor is needed.
@@ -135,7 +135,10 @@ FET. Then an LM5069 hot-swap controller drives a 100 V, about 2 mΩ MOSFET. The 
 - Its enable pin is driven only by the e-stop loop AND the watchdog. Firmware cannot hold it on.
 
 **Brake chopper.** It sits on the motor side of the switch. A comparator with hysteresis turns
-on at 53.5 V and off at 50.5 V, the same thresholds as RobStride's discharge module in 48 V mode.
+on at 57.0 V and off at 55.5 V: above a full 13S pack (54.6 V), so it never bleeds a charged pack,
+and below RS04's limit. Firmware may add braking (soft brake on 55.0 / off 54.4 V when the BMS can't
+take the regen) but never inhibits the comparator. TVS is SMDJ60A: 60 V stand-off clears the 57.7 V
+worst-case brake-on, clamp stays under the 100 V FETs.
 It drives a 100 V FET into an aluminium-clad resistor, 10 Ω / 100 W, bolted to the 6 mm foot.
 The foot is the heat sink. The MCU can also force it on, and it logs every event.
 
@@ -199,7 +202,7 @@ the board ID, and each block below is fitted only where a limb needs it.
 | Load cell | ADS1220 24-bit, ratiometric (SPI1) | CS PD4, DRDY PD2 | wrist force, grip force, foot contact (J14) |
 | 4th CAN-FD | MCP251863 (controller and transceiver, SPI1) | CS PD5, INT PC10 | second limb or tool bus (J15); the MCU's 3 FDCANs are taken |
 | Brushed motor | DRV8871 from +12 V, ILIM 0.78 A | TIM1 CH1/CH2 (PA8/PA9) | gripper or tool without a RobStride (J16) |
-| 48 V aux out | 3 A PTC, XT30 | - | the board doubles as the power distribution node (J17) |
+| 48 V aux out | 1.1 A PTC (60 V 2920s stop near 1 A), XT30 | - | the board doubles as the power distribution node (J17) |
 | PTP time sync | STM32H7 MAC timestamping | - | firmware only, no new parts |
 | Mounting | 4 x M3, grounded pads | - | fits any limb, not only the foot ring |
 
@@ -209,6 +212,14 @@ resistors onto the shared MISO line. The MCP251863's TXCAN-TXD link is a 0 R res
 gripper needs more, swap the buck for a 2 A part. Pick a real part number for F1.
 
 ### Layout as built (v0.1 draft, 150 x 40 mm)
+
+- **Hand work (v0.2):** three gaps the autorouter left, closed by hand and on record:
+  - +12V under L1 had no vias on its In2 run. manual_fixes.py adds them and widens the run to 0.5 mm.
+  - ETH_RXN: PHY to R66, routed in KiCad with push-and-shove (In4, then a via beside R66 pad 2).
+  - AUX_IO: pin-swapped from U10 pin 44 (PE13) to pin 34 (PB0), on the side facing J11, then
+    routed with astar_fix.py on a 0.05 mm grid. Firmware: AUX_IO is PB0.
+  A full re-route regenerates the board: replay pin_swap.py and astar_fix.py, then redo the ETH_RXN
+  fix (or route.sh's closer may get it).
 
 - **Flow:** `arm_controller.loon` → `place.py` (placement block) → `route.sh`. route.sh runs
   `vcad route`, then KiCad fills the zones (`fill_zones.py`) and runs DRC (`drc.rpt`).
