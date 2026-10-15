@@ -78,3 +78,42 @@ Code: `ipse` branch `claude/brain-bench`, `crates/ipse-sim/examples/brain_bench.
 - Limb-current numbers for max (rana-190) to size the hybrid connector and the spine's copper.
 - Board outline and mounting in each torso (the limb controller's lesson: envelope first).
 - RK3588S2 vs RK3576 pin-out and DDR layout reference (Rockchip reference + Radxa schematics).
+
+## v0 as designed (2026-10-15)
+
+**Flow** (all scripts here): `lib/gen_lib.py` (symbols and footprints from pin tables) ->
+`gen_brain.py` (the circuit as data -> `brain.loon`) -> `build.sh` (vcad schematic, netcheck, ERC)
+-> `place.py` -> `fanout.py` -> `route.sh` (vcad HDI route, KiCad DRC). Every pin is looked up by
+name in a datasheet table or a KiCad symbol; nothing is typed per pin.
+
+**References** (`reference/`): RK3588S datasheet Rev 1.6, Radxa ROCK 5C v1.1 schematic, RK806-1,
+RK860, Rayson LPDDR4X (JEDEC 200-ball map), Zetta eMMC. The RK3588S datasheet is marked
+"Rockchip Confidential" - fine in this private repo; remove it before the repo goes public.
+
+| block | choice | why |
+|---|---|---|
+| SoC | RK3588S2, FCCSP1253 0.4 mm | A76 cores for phyz (the S1 benchmark) |
+| power | RK806-1 + 3x RK860 (BIG0 -2, BIG1 -3, NPU -2) + SY8089 + SGM2576 | ROCK 5C's tree, values copied |
+| DRAM | 2x Winbond W66DP2RQQAGJ, 8 Gb x32 single-rank = 2 GB | in stock at LCSC (659 + 50k); S1 + map + OS fit in 2 GB |
+| eMMC | Zetta ZDEMMC32GA, 32 GB | LCSC part |
+| SoC input | 12 V from the spine -> LMR33640 -> 5 V VCC_SYSIN (ROCK 5C runs on USB-C 5 V) | |
+| realtime | STM32H723VG on its own held-up 12 V -> 5 V -> 3.3 V domain | the H7 outlives the SoC on a power cut |
+| CAN-FD | FDCAN1-3 + 3x MCP251863 = 6 buses (5 limbs + BMS) | limb controller's parts |
+| black box | W25Q128 16 MB on the H7 | |
+| cameras | CSI0 4-lane + DPHY0 RX 4-lane, Pi-style 22-pin FPC, triggers from the H7 | |
+| dev link | USB-C OTG0 (maskrom flashing, gadget Ethernet) | no PHY on v0 |
+| deferred to v1 | M.2 (no socket footprint yet; PCIE20_0 is free), USB3, HDMI | |
+
+**Layout**: 100 x 76 mm, 8-layer HDI: F sig / In1 sig (fanout) / In2 GND / In3 sig (DDR) /
+In4 power regions / In5 GND / In6 sig / B sig + caps. Every used ball of the SoC, the DRAMs and the
+eMMC has a laser via in its pad (0.25/0.10, VIPPO): signals F-In1 (microvia), GND F-In2, power
+stacked F-In4 into an In4 region per rail. The SoC's and DRAMs' 0201 decoupling is on the back,
+under the balls. vcad gained back-side placement, pinned vias, microvias and via-in-pad for this
+(ecto/vcad#927).
+
+**ERC**: 5 expected errors (MCP251863's exposed pad is "NC" in KiCad's symbol but is VSS; three
+MCP251863 SDO outputs share one SPI bus).
+
+**Open before ordering**: DDR length matching per byte lane (vcad `length_match`), impedance
+(40 ohm single / 80 ohm diff for LPDDR4X on this stackup), the fab's HDI rules, and a bring-up
+review of every ROCK 5C value copied here.

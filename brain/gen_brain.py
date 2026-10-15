@@ -197,9 +197,6 @@ flag('5V_RT')
 emit(';; 12V -> VCC_SYSIN 5 V (4 A, LMR33640): the PMIC and RK860 input, as ROCK 5C\'s USB-C 5 V')
 lmr('LMR33640ADDA', '12V', 'VCC_SYSIN', '100k', '24.9k', '3.3u', 'SOC_PWR_EN', None)
 r('100k', '12V', 'SOC_PWR_EN')
-emit(';; 12V -> 3V3_M2 (4 A, LMR33640): the M.2 slot (NVMe or a Hailo-8)')
-lmr('LMR33640ADDA', '12V', '3V3_M2', '100k', '43.2k', '2.2u', 'M2_PWR_EN', None)
-r('100k', 'M2_PWR_EN', 'GND')
 flag('VCC_SYSIN')
 
 # ================================================================ RK806-1 PMIC (sheet 24)
@@ -494,29 +491,7 @@ part(ref('U'), 'Power_Protection:USBLC6-2SC6', 'USBLC6-2SC6', 'Package_TO_SOT_SM
 r('100k', 'USB_VBUS', 'USB_VBUSDET')
 r('100k', 'USB_VBUSDET', 'GND')
 
-emit(';; ---- M.2 M-key (PCIe 2.0 x1): NVMe for the black box and maps, or a Hailo-8')
-soc('PCIE20_0_TXP', 'PCIE_TXP_SOC')
-soc('PCIE20_0_TXN', 'PCIE_TXN_SOC')
-soc('PCIE20_0_RXP', 'PCIE_RXP')
-soc('PCIE20_0_RXN', 'PCIE_RXN')
-soc('PCIE20_0_REFCLKP', 'PCIE_REFCLKP')
-soc('PCIE20_0_REFCLKN', 'PCIE_REFCLKN')
-soc('PCIE20X1_2_CLKREQN_M0', 'PCIE_CLKREQ_n')
-soc('PCIE20X1_2_WAKEN_M0', 'PCIE_WAKE_n')
-soc('PCIE20X1_2_PERSTN_M0', 'PCIE_PERST_n')
-c('100n', 'PCIE_TXP_SOC', 'PCIE_TXP')
-c('100n', 'PCIE_TXN_SOC', 'PCIE_TXN')
-M2 = kicad_pins('Connector', 'Bus_M.2_Socket_M')
-m2map = {'PERp0/SATA-B-': 'PCIE_TXP', 'PERn0/SATA-B+': 'PCIE_TXN', 'PETp0/SATA-A+': 'PCIE_RXP', 'PETn0/SATA-A-': 'PCIE_RXN',
-         'REFCLKp': 'PCIE_REFCLKP', 'REFCLKn': 'PCIE_REFCLKN', '~{CLKREQ}': 'PCIE_CLKREQ_n', '~{PEWAKE}': 'PCIE_WAKE_n',
-         '~{PERST}': 'PCIE_PERST_n',
-         '3.3V': '3V3_M2', 'GND': 'GND'}
-m2pins = [(n, m2map.get(k)) for k, nums in M2.items() for n in nums]
-part('J4', 'Connector:Bus_M.2_Socket_M', 'M.2 M-key 2242/2280', 'Connector_Card:TE_2199230-4', m2pins)
-for n in ('PCIE_CLKREQ_n', 'PCIE_WAKE_n', 'PCIE_PERST_n'):
-    r('10k', 'VCC_3V3_S0', n)
-soc('GPIO1_B0', 'M2_PWR_EN')
-
+emit(';; PCIe 2.0 (PCIE20_0) is left free for v1: an M.2 slot (NVMe / Hailo-8) needs a socket footprint we have not drawn yet')
 emit(';; ---- cameras: CSI0 (4-lane) and DPHY0 RX (4-lane) to Pi-style 22-pin FPCs; triggers from the H7 clock')
 cams = [(0, 'MIPI_CSI0', 'GPIO1_A3', 'GPIO1_A2', 'GPIO1_B5'), (1, 'MIPI_DPHY0_RX', 'GPIO1_D6', 'GPIO1_D7', 'GPIO1_A6')]
 for i, phy, scl, sda, pwdn in cams:
@@ -640,7 +615,7 @@ for a, b_ in (('SOC_PWR_EN_RT', 'SOC_PWR_EN'), ('ESTOP_OK', 'ESTOP_OK_RT'), ('PA
     r('1k', a, b_)
 
 emit(';; black-box flash: 16 MB, the last minutes of every bus frame and command')
-part(ref('U'), 'Memory_Flash:W25Q128JVS', 'W25Q128JVS', 'Package_SO:SOIC-8_5.23x5.23mm_P1.27mm',
+part(ref('U'), 'Memory_Flash:W25Q128JVS', 'W25Q128JVS', 'Package_SO:SOIC-8_5.3x5.3mm_P1.27mm',
      [('1', 'BB_CS_n'), ('2', 'BB_MISO'), ('3', 'BB_WP_n'), ('4', 'GND'), ('5', 'BB_MOSI'), ('6', 'BB_SCK'), ('7', 'BB_HOLD_n'), ('8', '3V3_RT')])
 r('10k', '3V3_RT', 'BB_WP_n')
 r('10k', '3V3_RT', 'BB_HOLD_n')
@@ -701,7 +676,7 @@ for k, limb in enumerate(LIMBS):
          [('1', f'CAN{k}_H'), ('2', f'CAN{k}_L'), ('3', f'SYNC{k}'), ('4', 'ESTOP_OK'), ('5', 'GND')])
 
 emit(';; power flags: rails a regulator or PMIC output drives (KiCad types those pins as inputs or passives)')
-for net in ('3V3_M2', '12V_RT', 'VDD_CPU_BIG0_S0', 'VDD_CPU_BIG1_S0', 'VDD_NPU_S0', 'VDD_GPU_S0', 'VDD_CPU_LIT_S0',
+for net in ('12V_RT', 'VDD_CPU_BIG0_S0', 'VDD_CPU_BIG1_S0', 'VDD_NPU_S0', 'VDD_GPU_S0', 'VDD_CPU_LIT_S0',
             'VDD_LOGIC_S0', 'VDD_VDENC_S0', 'VDD_DDR_S0', 'VDD2_DDR_S3', 'VDDQ_DDR_S0', 'VCC_2V0_PLDO_S3', 'VCC_3V3_S3', 'VCC_1V8_S3',
             'VCC_1V1_NLDO_S3', 'PMIC_VCCIO', 'VCC1V8_PMU_DDR_S3', 'VCC_3V3_PMU', 'AVDD1V8_DDR_PLL_S0',
             'VDDA_RT', 'EMMC_VDDI', 'VDD_CPU_BIG0_MEM_S0', 'VDD_CPU_BIG1_MEM_S0', 'VDD_CPU_LIT_MEM_S0', 'VDD_GPU_MEM_S0',
@@ -717,6 +692,18 @@ for k in range(4):
 unassigned = [(b, n) for b, n in SOC if b not in soc_net]
 part('U_SOC', 'brain:RK3588S2', 'RK3588S2', 'brain:Rockchip_FCCSP-1253_17x17mm_P0.4mm', sorted(soc_net.items()))
 emit(f';; {len(soc_net)} of {len(SOC)} SoC balls connected; {len(unassigned)} unused (no-connect)')
-open(os.path.join(HERE, 'brain.loon'), 'w').write('\n'.join(out) + '\n')
+# every footprint must exist: vcad's schematic export never opens them, so a typo only surfaces at layout
+KI_FP = '/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints'
+FP_LIBS = {'brain': os.path.join(HERE, 'brain.pretty'), 'art': os.path.join(HERE, '..', 'arm', 'controller', 'art.pretty')}
+missing_fp = sorted({fp for fp in re.findall(r'\[part "[^"]+" "[^"]+" "[^"]*" "([^"]+)"', '\n'.join(out))
+                     if not os.path.exists(os.path.join(FP_LIBS.get(fp.split(':')[0], os.path.join(KI_FP, fp.split(':')[0] + '.pretty')),
+                                                        fp.split(':')[1] + '.kicad_mod'))})
+assert not missing_fp, missing_fp
+placement = ''
+if os.path.exists(os.path.join(HERE, 'brain.loon')):
+    old = open(os.path.join(HERE, 'brain.loon')).read()
+    if ';; ---- placement (place.py)' in old:
+        placement = '\n' + old[old.index(';; ---- placement (place.py)'):]     # with the fanout block after it
+open(os.path.join(HERE, 'brain.loon'), 'w').write('\n'.join(out) + '\n' + placement)
 open(os.path.join(HERE, 'lib/rk3588s_unused.txt'), 'w').write(''.join(f'{b} {n}\n' for b, n in unassigned))
 print(f'brain.loon: {sum(refs.values()) + 12} parts, {len(soc_net)}/{len(SOC)} SoC balls, {len(h7_net)} H7 pins')
