@@ -64,11 +64,14 @@ doesn't fall.
 
 ## Before layout: benchmarks
 
-1. **phyz on an A76** (a Raspberry Pi 5 has the same cores): policy steps/s per core at S1 settings.
-   This picks RK3588S2 or RK3576.
-2. **S0 MLP int8 on an H7** (a Nucleo-H723, or the limb controller): µs per tick at 710→512→256→128→20.
-   If it's > 500 µs, use an H7 with more flash and RAM, or two cores.
-3. **CAN-FD at 1 kHz × 5 limbs:** bus load at 5 Mbit/s data phase with 22 joints of state and command.
+Code: `ipse` branch `claude/brain-bench`, `crates/ipse-sim/examples/brain_bench.rs` (phyz, S0 on a host);
+`brain/bench/` here (S0 kernel for the H7, CAN-FD load).
+
+| # | question | how | result so far |
+|---|---|---|---|
+| 1 | phyz policy steps/s per core (picks RK3588S2 or RK3576) | `brain_bench phyz` on a Pi 5 (A76) | M-series Mac: **580-790 steps/s on one thread**, 230-330 per thread with every core busy (noisy: the Mac was loaded). S1's ~1,250/s is about 2 Mac cores. If an A76 is about half that, ~4 cores: RK3588S2 fits; RK3576's A72s are marginal. **Run on a Pi 5.** |
+| 2 | S0 int8 µs per tick on an H7 | `brain/bench/s0_int8.c` (`gen_weights.py` makes the 518 KB weight header) in a Nucleo-H723 project | host: int8 10.6 µs, int8 agrees with f32 to 0.002. H7 number pending. Budget at 1 kHz: < 500 µs |
+| 3 | CAN-FD load at 1 kHz | `python3 brain/bench/canfd_load.py` | 1 Mbit/s arbitration, 5 Mbit/s data: arm 29 %, leg 36 %, head 23 %. At 500 k / 2 M: leg 85 % (too high). **Run the data phase at 5 Mbit/s** (MCP2562FD is rated to 8) |
 
 ## Open
 
