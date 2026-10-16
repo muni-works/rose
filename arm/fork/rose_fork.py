@@ -48,6 +48,16 @@ RS00 = motor(0.057, 0.051, 0.035, 0.001, 0.310, back=(4, 0.038, 0.0034), out=(6,
 # v5: RS04 at base yaw, shoulder, elbow. v7: hybrid wrist RS02 / RS02 / RS00. Three motor models.
 J1M, J2M, J4M = RS04, RS04, RS04
 J5M, J6M, J7M = RS02, RS02, RS00
+# (peak, stall-continuous) N.m from the manuals; RS02 / RS00 stall scaled from rated by RS06's 8/11 - ESTIMATES
+RATING = {id(RS04): (120.0, 25.0), id(RS02): (17.0, 4.4), id(RS00): (14.0, 3.6)}
+NAME = {id(RS04): 'RS04', id(RS02): 'RS02', id(RS00): 'RS00'}
+
+# ROSE_ARM=mini: the K1-scale arm (2026-10-16). Same fork, one size down: RS02 where full has RS04,
+# RS00 for the whole wrist. Upper / fore match rose mini's humanoid arm (180 / 170 mm).
+SIZE = os.environ.get('ROSE_ARM', 'full')
+if SIZE == 'mini':
+    J1M, J2M, J4M = RS02, RS02, RS02
+    J5M, J6M, J7M = RS00, RS00, RS00
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm) 5052 stock - SendCutSend and local supply
 T_FOOT = 0.00635      # 1/4" foot
@@ -59,6 +69,10 @@ BAR = 0.020
 Z_SH = 0.200          # shoulder axis height
 UPPER = 0.260
 FORE = 0.220          # elbow to wrist centre
+Z_TURRET = 0.120      # J1 output height
+if SIZE == 'mini':
+    Z_SH, UPPER, FORE, Z_TURRET = 0.130, 0.180, 0.170, 0.075
+JAW = 0.075 if SIZE != 'mini' else 0.050   # jaw length past the gripper motor
 W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006
 R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
@@ -102,7 +116,7 @@ Y_FORE_PROX = EL_CA
 
 LINKS = [  # name, joint, parent, axis, origin
     ('base', None, None, None, (0.0, 0.0, 0.0)),
-    ('turret', 'J1_yaw', 'base', (0, 0, 1), (0.0, 0.0, 0.120)),
+    ('turret', 'J1_yaw', 'base', (0, 0, 1), (0.0, 0.0, Z_TURRET)),
     ('upper', 'J2_sho_pitch', 'turret', (0, 1, 0), (0.0, 0.0, Z_SH)),
     ('fore', 'J4_elbow', 'upper', (0, 1, 0), (UPPER, 0.0, Z_SH)),
     ('yoke', 'J5_fore_roll', 'fore', (1, 0, 0), (W - 0.070, 0.0, Z_SH)),
@@ -452,15 +466,15 @@ def build():
     P.append(disc('tool', 'sheet', xt, 'x', J7M['d'] / 2 + 0.002, T, pattern(0.0, 0.0, J7M['out'], 0.0)))
     P.append(cyl('tool', 'actuator', (xt + T + EDU['d'] / 2, -EDU['L'] / 2, z), (xt + T + EDU['d'] / 2, EDU['L'] / 2, z), EDU['d'] / 2))
     for dy in (-0.010, 0.010):
-        jaw = [('line', (0.0, -0.016), (0.075, -0.006)), ('line', (0.075, -0.006), (0.075, 0.006)),
-               ('line', (0.075, 0.006), (0.0, 0.016)), ('line', (0.0, 0.016), (0.0, -0.016))]
+        jaw = [('line', (0.0, -0.016), (JAW, -0.006)), ('line', (JAW, -0.006), (JAW, 0.006)),
+               ('line', (JAW, 0.006), (0.0, 0.016)), ('line', (0.0, 0.016), (0.0, -0.016))]
         P.append(('tool', 'sheet', (xt + T + EDU['d'], dy - T / 2, z), (1, 0, 0), (0, 0, 1), jaw, (0, T, 0)))
     return P
 
 
 def flange_x():
     """Shoulder axis to the jaw tips (m)."""
-    return stations()['xt'] + T_PL + EDU['d'] + 0.075
+    return stations()['xt'] + T_PL + EDU['d'] + JAW
 
 
 # ---------------------------------------------------------------- cable (bus + camera, one bundle)
