@@ -180,12 +180,12 @@ def main():
     print('total %.2f kg   moving (shoulder outward) %.2f kg' % (tot, sum(by[k] for k in MOVING if k in by)))
     print('flange at %.0f mm from the shoulder' % (flange_x() * 1e3))
     print('\ngravity torque, arm straight out, %.1f kg at the flange:' % PAYLOAD)
-    R = lambda m: F.RATING[id(m)]
-    for name, x0, peak, stall in (('J2 shoulder (%s)' % F.NAME[id(F.J2M)], 0.0) + R(F.J2M), ('J4 elbow (%s)' % F.NAME[id(F.J4M)], F.UPPER) + R(F.J4M),
+    R = lambda m, j=None: tuple(v * (2 if (j == 'J2' and F.TWIN_SH) else 1) for v in F.RATING[id(m)])
+    for name, x0, peak, stall in (('J2 shoulder (%s%s)' % ('2x ' if F.TWIN_SH else '', F.NAME[id(F.J2M)]), 0.0) + R(F.J2M, 'J2'), ('J4 elbow (%s)' % F.NAME[id(F.J4M)], F.UPPER) + R(F.J4M),
                                   ('J6 wrist (%s)' % F.NAME[id(F.J6M)], F.W) + R(F.J6M)):
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
-    for name, x0, stall in (('J2', 0.0, R(F.J2M)[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
+    for name, x0, stall in (('J2', 0.0, R(F.J2M, 'J2')[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
         free = stall - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
 
