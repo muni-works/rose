@@ -96,14 +96,14 @@ def stiffness():
     d_f = (F_w * Fo ** 3 / 3 + m_w * Fo ** 2 / 2) / (E * If)
     # v9: the upper arm's lobes are rings round the motor bores (A: nose bore, B: centre hole), and
     # the covers stop short of them, so over one bore diameter at each end only the ring bends
-    R = F.R_LOBE_EL
-    def ring_I(r):
+    def ring_I(R, r):
         w = R - r
         return 2 * (F.T_PL * w ** 3 / 12 + F.T_PL * w * ((R + r) / 2) ** 2)
-    r_a, r_b = F.J2M['nose_d'] / 2 + 0.002, 0.045
-    I_lobe = ring_I(r_a) / 2 + ring_I(r_b) / 2
-    M_sh, M_el = moment(0.0), m_e
-    th_lobe = sum(M * 2 * r_a * (1 / I_lobe - 1 / Iu) for M in (M_sh, M_el)) / E
+    th_lobe = 0.0
+    for M, m, R in ((moment(0.0), F.J2M, F.R_LOBE_SH), (m_e, F.J4M, F.R_LOBE_EL)):   # each end's own motor
+        r_a, r_b = m['nose_d'] / 2 + 0.002, F.bhole(m)
+        I_lobe = ring_I(R, r_a) / 2 + ring_I(R, r_b) / 2
+        th_lobe += M * 2 * r_a * (1 / I_lobe - 1 / Iu) / E
     th_u += th_lobe
     d_u += th_lobe * U / 2
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)

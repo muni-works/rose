@@ -39,6 +39,56 @@ a constraint of the nesting that turned out to be the look.
 corners, recessed 1.5 mm covers top and bottom. That closes the section for
 torsion while the side plates are what you see.
 
+## mini (2026-10-16): K1-scale, same three motor models
+
+`ROSE_ARM=mini` in front of any script above builds the mini arm.
+
+![mini vs full](render/mini-vs-full.png)
+
+| joint | full | mini |
+|---|---|---|
+| J1 base yaw | RS04 | RS02 |
+| J2 shoulder | RS04 | RS04 |
+| J4 elbow | RS04 | RS02 |
+| J5 forearm roll | RS02 | — (5 DOF) |
+| J6 wrist pitch | RS02 | RS00 |
+| J7 tool roll | RS00 | RS00 |
+
+| | full | mini |
+|---|---:|---:|
+| upper / fore | 260 / 220 mm | 150 / 110 mm |
+| jaw tips from the shoulder | 731 mm | 476 mm |
+| mass | 8.3 kg | 4.8 kg |
+| holds straight out, continuously | 1.44 kg | **0.72 kg** (elbow binds; shoulder 4.24) |
+| sag / twist | 0.13 / 0.10 mm | 0.05 / 0.04 mm |
+| interference, 209 poses / DFM web violations | none / none | none / none |
+
+Why this selection, from the sweeps (`ROSE_ARM_MOTORS`, `ROSE_ARM_LEN`, `ROSE_ARM_TWIN_SH`,
+`ROSE_ARM_NO_J5` override it):
+
+- **An RS02 shoulder can't hold the arm at any length.** Even 100 / 90 mm holds only 0.16 kg: the
+  wrist, gripper and base are about 2.2 kg whatever the link lengths. Every joint has one motor, so
+  the shoulder is an RS04. Its mass sits on the axis, so it costs almost no torque.
+- **The elbow sets the payload.** An RS06 shoulder would hold about the same 0.7 kg, but it would add a
+  fourth motor model.
+- **No forearm roll.** J5 sat inside the elbow lobe at these lengths. Dropping it is what lets the
+  forearm come down to 110 mm.
+
+![mini vs full, posed](render/mini-vs-full-posed.png)
+
+What changed in the model to get there:
+
+- **Flat, parallel upper-arm plates with a shorter elbow motor.** The RS02 elbow backs onto plate B
+  at the shoulder's spacing. The forearm reaches its output through a 13.9 mm turned spacer instead
+  of the 3 mm disc.
+- **Holes sized per motor.** The plate-B centre hole and the nose bores follow each end's motor. The
+  turret's slots and windows scale with the yaw disc. The foot is Ø170 mm with bolts on Ø140.
+- **Higher shoulder.** The shoulder axis is at 150 mm, so the upper arm clears the base at +40°.
+
+Open, beyond the full arm's list: the RS02 base yaw carries the whole tipping moment through a smaller
+output bearing than the RS04's (check it against the manual). The checks still count RS04 sleeve
+masses. The fab package (`fab.py`) has not been run for mini.
+
 ## v9 (2026-10-13): complete - every part ready to cut
 
 ![fork v9 back](render/fork-v9-back.png)
