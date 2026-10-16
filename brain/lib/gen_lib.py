@@ -155,6 +155,9 @@ def main():
     if os.path.exists(os.path.join(HERE, 'emmc_153_pins.csv')):
         emmc = table('emmc_153_pins.csv')
         syms += symbol('eMMC_153', emmc, 'Package_BGA:LFBGA-153_11.5x13mm_Layout14x14_P0.5mm')
+    # board-to-board (module <-> carrier): Hirose DF40C 100-pin, 0.4 mm
+    syms += symbol('DF40_100', [(str(i), f'P{i}') for i in range(1, 101)],
+                   'Connector_Hirose_DF40:Hirose_DF40C-100DS-0.4V_2x50_P0.4mm', ref='J')
     lib = ['(kicad_symbol_lib', '\t(version 20241209)', '\t(generator "gen_lib.py")'] + syms + [')']
     open(os.path.join(HERE, 'brain.kicad_sym'), 'w').write('\n'.join(lib) + '\n')
     print('ok:', ', '.join(re.findall(r'^\t\(symbol "([^"]+)"$', '\n'.join(lib), re.M)))
