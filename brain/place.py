@@ -196,7 +196,7 @@ def main():
 
     lines = [BEGIN, f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK),
              f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 8.0]',
-             '[EcadRules 0.09 0.09 0.30 0.15 0.3 0.15]',
+             '[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]',
              '[EcadPour "GND" "In1.Cu"]', '[EcadPour "GND" "In5.Cu"]']
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]

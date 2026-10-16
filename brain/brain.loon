@@ -1242,7 +1242,7 @@
 ;; ---- placement (place.py)
 ;; board 110 x 84 mm, 8-layer HDI: F.Cu / In1.Cu / In2.Cu / In3.Cu / In4.Cu / In5.Cu / In6.Cu / B.Cu
 [EcadBoard 0.0 0.0 110.0 84.0 1.5 1.6 8.0]
-[EcadRules 0.09 0.09 0.30 0.15 0.3 0.15]
+[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]
 [EcadPour "GND" "In1.Cu"]
 [EcadPour "GND" "In5.Cu"]
 [EcadPlace "C1" 48.10 63.50 0.0]
