@@ -260,8 +260,32 @@ def emit(name, out):
 
 
 # ---------------------------------------------------------------- scene, render, overlay
-def scene(out, i):
+# Shop finishes for --photoreal (vcad's finish-by-name: "brushed" streaks the metal, "turned"
+# gives the turned-collar anisotropy). The flat render keeps rose_fork.MATERIALS.
+PHOTO_MATERIALS = '\n'.join([
+    '[material "actuator" 0.035 0.035 0.04 0.0 0.40]',      # anodized black
+    '[material "sheet_brushed" 0.74 0.75 0.76 1.0 0.42]',   # brushed aluminium
+    '[material "bar" 0.76 0.77 0.78 1.0 0.55]',             # bead-blasted aluminium
+    '[material "cover" 0.16 0.165 0.17 0.0 0.40]',          # anodized grey
+    '[material "base" 0.03 0.03 0.032 0.0 0.52]',           # powder-coat black
+    '[material "sleeve" 0.80 0.32 0.06 0.0 0.36]',          # orange anodize
+    '[material "cap" 0.80 0.32 0.06 0.0 0.36]',
+    '[material "printed" 0.20 0.21 0.22 0.0 0.66]',         # matte print
+    '[material "cassette" 0.80 0.32 0.06 0.0 0.36]',
+    '[material "collar" 0.035 0.035 0.04 0.0 0.40]',
+    '[material "collar_turned" 0.80 0.81 0.82 1.0 0.35]',   # turned aluminium
+    '[material "cable" 0.85 0.33 0.07 0.0 0.68]',           # silicone
+]) + '\n'
+PHOTO_RENAME = {'"sheet"]': '"sheet_brushed"]', '"collar_turn"]': '"collar_turned"]'}
+
+
+def scene(out, i, photo=False):
     import rose_fork as F
+    if photo:
+        src = scene(out, i).replace(F.MATERIALS, PHOTO_MATERIALS)
+        for a, b in PHOTO_RENAME.items():
+            src = src.replace(a, b)
+        return src
     L = [F.MATERIALS, '[material "table" 0.55 0.42 0.30 0.0 0.7]',
          '[let tab [translate -180 -950 -25 [cube 820 1600 25]]]', '[root tab "table"]',
          '[let a0 [translate -180 -950 -25 [sphere 0.3]]]', '[let a1 [translate 640 650 620 [sphere 0.3]]]',
