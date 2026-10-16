@@ -355,6 +355,9 @@ if __name__ == '__main__':
     for name, (env, _) in ARMS.items():
         subprocess.run([sys.executable, __file__, '--emit', name, out], env=dict(os.environ, **env), check=True)
     n = min(len(json.load(open(os.path.join(out, a + '.json')))['frames']) for a in ARMS)
+    # Frame 0 first, alone: it fills vcad's shape cache (parts are emitted in their own frame, so
+    # every later pose is a cache hit) and the workers then never repeat the booleans.
+    render(out, 0, n, 1)
     ps = [subprocess.Popen([sys.executable, __file__, out, '--render', str(w), str(k), str(n)]) for w in range(k)]
     for p in ps:
         p.wait()
