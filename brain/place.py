@@ -219,11 +219,11 @@ def main():
             sys.exit(f'no room for {ref}')
         put(ref, best[0], best[1], best[2], side)
 
-    lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 4-layer: F sig / In1 GND / In2 power / B sig' if BOARD == 'carrier'
+    lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 6-layer: F sig / In1 GND / In2 3V3_RT / In3 5V_RT / In4 GND / B sig' if BOARD == 'carrier'
                      else f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK)),
-             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {4.0 if BOARD == "carrier" else 8.0}]',
+             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {6.0 if BOARD == "carrier" else 8.0}]',
              '[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]',
-             '[EcadPour "GND" "In1.Cu"]'] + ([] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'])
+             '[EcadPour "GND" "In1.Cu"]'] + (['[EcadPour "3V3_RT" "In2.Cu"]', '[EcadPour "5V_RT" "In3.Cu"]', '[EcadPour "GND" "In4.Cu"]'] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'])
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]
         form = 'EcadPlaceBack' if side == 'B' else 'EcadPlace'
