@@ -66,6 +66,10 @@ for j in ('J_B2B1', 'J_B2B2'):
     CARRIER_ANCHORS[j] = (MODULE_AT[0] + x_, MODULE_AT[1] + y_, a_, 'F')
 KEEPOUTS = {'carrier': [(MODULE_AT[0], MODULE_AT[1], MODULE_AT[0] + MODULE_WH[0], MODULE_AT[1] + MODULE_WH[1])]}.get(BOARD, [])
 ANCHORS = {'brain': BRAIN_ANCHORS, 'module': MODULE_ANCHORS, 'carrier': CARRIER_ANCHORS}[BOARD]
+# search.py: PLACE_OVERRIDE='{"U_DRAM0": [x, y, rot, side], ...}' moves anchors
+if os.environ.get('PLACE_OVERRIDE'):
+    import json
+    ANCHORS.update({k: tuple(v) for k, v in json.loads(os.environ['PLACE_OVERRIDE']).items()})
 THT = re.compile(r'^(J\d|H|SW)')     # through-hole: blocks both sides
 SOC_RAILS = re.compile(r'^(VDD_|VCC|VDDA|VDDQ|AVDD|VCCA|VCCIO|PMIC_VCCIO|EMMC_VDDI)')
 PLANE = {'GND'}
