@@ -36,7 +36,7 @@ layer_of = lambda net: assign.get(net, POWER_LAYER)
 # Only the high-current rails get a plane region; the rest (analog, IO, PLL
 # supplies: tens of mA, pads scattered over the board) are routed like signals -
 # as regions they overlapped every other rail on In2 and fell into islands.
-PLANE_RAILS = re.compile(r'^(VDD_CPU_(BIG0|BIG1|LIT)(_MEM)?_S0|VDD_(GPU|NPU|VDENC)(_MEM)?_S0|VDD_LOGIC_S0|VDD_DDR_S0|VDD2_DDR_S3|VDDQ_DDR_S0)$')
+PLANE_RAILS = re.compile(r'^(VDD_CPU_(BIG0|BIG1|LIT)_S0|VDD_(GPU|NPU|VDENC)_S0|VDD_LOGIC_S0|VDD_DDR_S0|VDD2_DDR_S3|VDDQ_DDR_S0)$')
 
 
 def is_power(net):
@@ -68,6 +68,38 @@ def main():
             else:
                 lines.append(f'[EcadViaSpan {px:.4f} {py:.4f} {VIA[0]} {VIA[1]} "{net}" "F.Cu" "{SIGNAL_LAYER}"]')
                 n['signal'] += 1
+    # Ball-field webbing: at 0.4 mm pitch a via sits in every ball, and the
+    # plane's clearance to the foreign ones leaves no copper between them - the
+    # plane under the SoC breaks into islands and its ball vias land on nothing
+    # (most of the remaining unconnects). Join each net's ball vias to their
+    # orthogonal / diagonal same-net neighbours on the plane layer instead: a
+    # spanning tree of 0.1 mm links, which the plane outside the field then
+    # picks up. Diagonals clear the two foreign vias they pass by 0.11 mm.
+    web = defaultdict(list)
+    for l in lines:
+        if isinstance(l, tuple):
+            web[l[3]].append((l[1], l[2]))
+    for l in lines:
+        if isinstance(l, str) and l.startswith('[EcadViaSpan') and '"GND" "F.Cu" "In1.Cu"' in l:
+            x_, y_ = map(float, l.split()[1:3])
+            web['GND'].append((x_, y_))
+    webs = []
+    for net, pts in web.items():
+        par = list(range(len(pts)))
+        def find(i):
+            while par[i] != i:
+                par[i] = par[par[i]]
+                i = par[i]
+            return i
+        cell = {(round(px / 0.4), round(py / 0.4)): k for k, (px, py) in enumerate(pts)}
+        for (cx, cy), k in sorted(cell.items()):
+            for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
+                m = cell.get((cx + dx, cy + dy))
+                if m is None or find(k) == find(m):
+                    continue
+                par[find(k)] = find(m)
+                webs.append((net, pts[k], pts[m]))
+    n['web'] = len(webs)
     # Power regions: every rail gets one region over ALL its pads (BGA balls,
     # decoupling, the regulator that drives it) on In2 or In4. Largest rails
     # choose first, each taking the layer where it overlaps the least, so a rail
@@ -137,6 +169,69 @@ def main():
                         best, bn = d, net
                 row.append(bn)
             grid.append(row)
+        # Join each rail's patches: nearest-pad cells of one rail can come out
+        # as separate patches with other rails between them (each patch then a
+        # separate pour island). Cut a one-cell corridor from every stray patch
+        # to the rail's biggest one along the path that crosses the fewest
+        # foreign cells (0-1 BFS), smallest rails first so big ones route last
+        # around them. A corridor never cuts the last cell joining another rail.
+        import heapq
+        def comps(net):
+            seen, out = set(), []
+            for j in range(ny):
+                for i in range(nx):
+                    if grid[j][i] != net or (i, j) in seen:
+                        continue
+                    st, c = [(i, j)], []
+                    seen.add((i, j))
+                    while st:
+                        a_, b_ = st.pop()
+                        c.append((a_, b_))
+                        for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                            q = (a_ + da, b_ + db)
+                            if 0 <= q[0] < nx and 0 <= q[1] < ny and q not in seen and grid[q[1]][q[0]] == net:
+                                seen.add(q)
+                                st.append(q)
+                    out.append(c)
+            return sorted(out, key=len, reverse=True)
+        joined = 0
+        for net, _ in [m for _ in range(4) for m in sorted(members, key=lambda m: -len(rails[m[0]]))]:
+            cs = comps(net)
+            for stray in cs[1:]:
+                main = set(comps(net)[0])
+                if stray[0] in main:
+                    continue
+                if set(stray) & main:
+                    continue
+                dist = {c: 0 for c in stray}
+                prev = {}
+                pq = [(0, c) for c in stray]
+                heapq.heapify(pq)
+                end = None
+                while pq:
+                    d, c = heapq.heappop(pq)
+                    if c in main:
+                        end = c
+                        break
+                    if d > dist.get(c, 1e9):
+                        continue
+                    for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        q = (c[0] + da, c[1] + db)
+                        if not (0 <= q[0] < nx and 0 <= q[1] < ny):
+                            continue
+                        g = grid[q[1]][q[0]]
+                        w = 0 if g == net else (1 if g is None else 4)
+                        if d + w < dist.get(q, 1e9):
+                            dist[q] = d + w
+                            prev[q] = c
+                            heapq.heappush(pq, (d + w, q))
+                c = end
+                while c is not None and c in prev:
+                    grid[c[1]][c[0]] = net
+                    c = prev[c]
+                joined += 1
+        print(f'fanout: {layer}: joined {joined} stray rail patches; still split: ' +
+              str({net: len(comps(net)) for net, _ in members if len(comps(net)) > 1}))
         # row runs -> rects (merge a run with the identical run in the next row)
         open_ = {}
         def emit(net, i0, i1, j0, j1):
@@ -169,6 +264,9 @@ def main():
     rects = boxes
     lines = [f'[EcadViaSpan {l[1]:.4f} {l[2]:.4f} {VIA[0]} {VIA[1]} "{l[3]}" "F.Cu" "{layer_of(l[3])}"]'
              if isinstance(l, tuple) else l for l in lines]
+    for net, a_, b_ in webs:
+        lay = PLANE_GND if net == 'GND' else layer_of(net)
+        lines.append(f'[EcadTrace {a_[0]:.4f} {a_[1]:.4f} {b_[0]:.4f} {b_[1]:.4f} 0.1 "{lay}" "{net}"]')
     lines.append(END)
     block = '\n'.join(lines) + '\n'
     if BEGIN in src:
@@ -177,7 +275,7 @@ def main():
         src = src.rstrip('\n') + '\n\n' + block
     open(place.LOON, 'w').write(src)
     split = {l: sum(1 for v in assign.values() if v == l) for l in POWER_LAYERS}
-    print(f"fanout: {n['signal']} signal microvias, {n['gnd']} GND, {n['power']} power; rail regions {split}")
+    print(f"fanout: {n['signal']} signal microvias, {n['gnd']} GND, {n['power']} power, {n['web']} ball-field links; rail regions {split}")
 
 
 if __name__ == '__main__':
