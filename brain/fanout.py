@@ -44,6 +44,9 @@ def is_power(net):
 
 
 def main():
+    if place.BOARD == 'carrier':
+        print('fanout: carrier has no fine-pitch BGA - nothing to fan out')
+        return
     src, parts = place.parse_loon()
     placed = {r: (float(x), float(y), float(a), 'B' if f.endswith('Back') else 'F')
               for f, r, x, y, a in re.findall(r'\[(EcadPlace(?:Back)?) "([^"]+)" ([\-\d\.]+) ([\-\d\.]+) ([\-\d\.]+)\]', src)}
