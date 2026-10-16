@@ -68,25 +68,6 @@ def main():
             else:
                 lines.append(f'[EcadViaSpan {px:.4f} {py:.4f} {VIA[0]} {VIA[1]} "{net}" "F.Cu" "{SIGNAL_LAYER}"]')
                 n['signal'] += 1
-    # Back-side decoupling (0201s under the ball field): a via in each pad,
-    # straight into its plane - GND to In5, a plane rail to its own layer. The
-    # stitcher can't find room beside a pad in a field this dense; in the pad
-    # there always is. Signal-net pads are left to the router.
-    for ref, (fp, pins) in parts.items():
-        if ref not in placed or placed[ref][3] != 'B' or not fp.endswith('C_0201_0603Metric'):
-            continue
-        pads = place.footprint(fp)[1]
-        x, y, a, side = placed[ref]
-        for pin, net in pins.items():
-            if pin not in pads:
-                continue
-            px, py = place.world(fp, x, y, a, side, pads[pin])
-            if net == 'GND':
-                lines.append(f'[EcadViaSpan {px:.4f} {py:.4f} {VIA[0]} {VIA[1]} "GND" "In5.Cu" "B.Cu"]')
-                n['cap_gnd'] += 1
-            elif is_power(net):
-                lines.append(('CAPVIA', px, py, net))
-                n['cap_pwr'] += 1
     # Power regions: every rail gets one region over ALL its pads (BGA balls,
     # decoupling, the regulator that drives it) on In2 or In4. Largest rails
     # choose first, each taking the layer where it overlaps the least, so a rail
@@ -186,9 +167,7 @@ def main():
             open_ = nxt
     print(f'fanout: {nrect} region rects')
     rects = boxes
-    lines = [(f'[EcadViaSpan {l[1]:.4f} {l[2]:.4f} {VIA[0]} {VIA[1]} "{l[3]}" "F.Cu" "{layer_of(l[3])}"]'
-              if l[0] == 'POWERVIA' else
-              f'[EcadViaSpan {l[1]:.4f} {l[2]:.4f} {VIA[0]} {VIA[1]} "{l[3]}" "{layer_of(l[3])}" "B.Cu"]')
+    lines = [f'[EcadViaSpan {l[1]:.4f} {l[2]:.4f} {VIA[0]} {VIA[1]} "{l[3]}" "F.Cu" "{layer_of(l[3])}"]'
              if isinstance(l, tuple) else l for l in lines]
     lines.append(END)
     block = '\n'.join(lines) + '\n'
@@ -198,7 +177,7 @@ def main():
         src = src.rstrip('\n') + '\n\n' + block
     open(place.LOON, 'w').write(src)
     split = {l: sum(1 for v in assign.values() if v == l) for l in POWER_LAYERS}
-    print(f"fanout: {n['signal']} signal microvias, {n['gnd']} GND, {n['power']} power, back caps {n['cap_gnd']} GND + {n['cap_pwr']} rail; rail regions {split}")
+    print(f"fanout: {n['signal']} signal microvias, {n['gnd']} GND, {n['power']} power; rail regions {split}")
 
 
 if __name__ == '__main__':
