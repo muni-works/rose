@@ -58,6 +58,8 @@ SIZE = os.environ.get('ROSE_ARM', 'full')
 if SIZE == 'mini':
     J1M, J2M, J4M = RS02, RS02, RS02
     J5M, J6M, J7M = RS00, RS00, RS00
+if os.environ.get('ROSE_ARM_MOTORS'):      # e.g. RS02,RS02,RS02,RS00,RS00,RS00 for J1,J2,J4,J5,J6,J7
+    J1M, J2M, J4M, J5M, J6M, J7M = (globals()[n] for n in os.environ['ROSE_ARM_MOTORS'].split(','))
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm) 5052 stock - SendCutSend and local supply
 T_FOOT = 0.00635      # 1/4" foot
@@ -72,6 +74,8 @@ FORE = 0.220          # elbow to wrist centre
 Z_TURRET = 0.120      # J1 output height
 if SIZE == 'mini':
     Z_SH, UPPER, FORE, Z_TURRET = 0.130, 0.180, 0.170, 0.075
+if os.environ.get('ROSE_ARM_LEN'):         # upper,fore in mm
+    UPPER, FORE = (float(v) / 1e3 for v in os.environ['ROSE_ARM_LEN'].split(','))
 JAW = 0.075 if SIZE != 'mini' else 0.050   # jaw length past the gripper motor
 W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006

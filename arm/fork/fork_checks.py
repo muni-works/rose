@@ -43,7 +43,7 @@ def masses():
             pts = Gm.prim_points(p[:7], step=0.02)
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
-    rows.append(('harness', 0.20, 0.35))
+    rows.append(('harness', 0.20, 0.35 * F.W / 0.48))   # spread along the arm; 0.35 m on the full arm
     import fab
     for name, where, qty, m, sp, bush, ring, bore in fab.SLEEVES:
         kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
