@@ -622,13 +622,17 @@ def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=()):
         holes = p[7] if len(p) > 7 else []
         if link in skip or (link, mat) in skip:
             continue
-        O, U, V, VEC = xf(T, link, o), xd(T, link, u), xd(T, link, v), xd(T, link, vec)
-        body = prim_loon((link, mat, O, U, V, ol, VEC))
+        # Emitted in the link's own frame under one rigid [translate [rotate]]: between frames
+        # only the placement changes, so the renderer's shape cache hits.
+        R, t = T[link]
+        O = sub(o, ORIGIN[link])
+        body = prim_loon((link, mat, O, u, v, ol, vec))
         for h in holes:
             # the cutter: same sketch frame, started 1 mm behind the plate and 2 mm longer than it
-            n = unit(VEC)
-            cut = prim_loon((link, mat, sub(O, mul(n, 0.001)), U, V, h, add(VEC, mul(n, 0.002))))
+            n = unit(vec)
+            cut = prim_loon((link, mat, sub(O, mul(n, 0.001)), u, v, h, add(vec, mul(n, 0.002))))
             body = '[difference %s %s]' % (cut, body)
+        body = place_loon(R, t, body)
         L.append('[let %sp%d %s]' % (prefix, i, body))
         roots.append('[root %sp%d "%s"]' % (prefix, i, mat))
     cp, pts = cable_prims(T)
@@ -640,6 +644,21 @@ def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=()):
         L.append('[let %sk%d [translate %.3f %.3f %.3f [sphere %.3f]]]' % (prefix, i, p[0] * 1e3, p[1] * 1e3, p[2] * 1e3, R_CABLE * 1e3))
         roots.append('[root %sk%d "cable"]' % (prefix, i))
     return '\n'.join(L + [''] + roots) + '\n'
+
+
+def euler_xyz(R):
+    """Degrees (a, b, c) with R = Rx(a) Ry(b) Rz(c): the matrix vcad's [rotate a b c] composes to."""
+    b = math.asin(max(-1.0, min(1.0, R[0][2])))
+    if abs(R[0][2]) < 1 - 1e-9:
+        a, c = math.atan2(-R[1][2], R[2][2]), math.atan2(-R[0][1], R[0][0])
+    else:
+        a, c = math.atan2(R[2][1], R[1][1]), 0.0
+    return tuple(math.degrees(x) for x in (a, b, c))
+
+
+def place_loon(R, t, body):
+    a, b, c = euler_xyz(R)
+    return '[translate %.4f %.4f %.4f [rotate %.7f %.7f %.7f %s]]' % (t[0] * 1e3, t[1] * 1e3, t[2] * 1e3, a, b, c, body)
 
 
 # ---------------------------------------------------------------- numbers
