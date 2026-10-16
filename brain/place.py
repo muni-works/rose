@@ -12,10 +12,11 @@ centroid of the pins it connects to (rails excluded: they are planes).
 import math, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LOON = os.path.join(HERE, 'brain.loon')
+BOARD = os.environ.get('BOARD', 'brain')            # brain | module | carrier
+LOON = os.path.join(HERE, BOARD + '.loon')
 KI = '/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints'
 LIBS = {'brain': os.path.join(HERE, 'brain.pretty'), 'art': os.path.join(HERE, '..', 'arm', 'controller', 'art.pretty')}
-W, H = 110.0, 84.0
+W, H = {'brain': (110.0, 84.0), 'module': (50.0, 54.0), 'carrier': (110.0, 84.0)}[BOARD]
 MARGIN, GAP = 0.6, 0.2
 BEGIN, END = ';; ---- placement (place.py)', ';; ---- end placement'
 
@@ -23,7 +24,7 @@ BEGIN, END = ';; ---- placement (place.py)', ';; ---- end placement'
 # GND and power drop into planes next to the surface; only signals reach the signal layers.
 STACK = ['F.Cu', 'In1.Cu', 'In2.Cu', 'In3.Cu', 'In4.Cu', 'In5.Cu', 'In6.Cu', 'B.Cu']
 
-ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
+BRAIN_ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
     'U_SOC': (40.0, 36.0, 0, 'F'),
     'U_DRAM0': (24.0, 35.0, 0, 'F'),
     'U_DRAM1': (40.5, 19.5, 90, 'F'),
@@ -42,7 +43,30 @@ ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
     'H1': (3.5, 3.5, 0, 'F'), 'H2': (106.5, 80.5, 0, 'F'), 'H3': (3.5, 80.5, 0, 'F'), 'H4': (98.0, 80.5, 0, 'F'),
     'SW1': (14.0, 58.0, 0, 'F'), 'SW2': (14.0, 50.0, 0, 'F'),
 }
-THT = re.compile(r'^(J|H|SW)')     # through-hole: blocks both sides
+# the module: the brain's SoC block moved to the origin (same relative
+# placement, so the DDR geometry carries over), B2Bs on the back along the
+# bottom edge
+MODULE_ANCHORS = {
+    'U_SOC': (24.0, 24.0, 0, 'F'),
+    'U_DRAM0': (8.0, 23.0, 0, 'F'),
+    'U_DRAM1': (24.5, 7.5, 90, 'F'),
+    'U_EMMC': (40.5, 25.0, 0, 'F'),
+    'U_PMIC': (22.0, 43.0, 0, 'F'),
+    'J_B2B1': (13.0, 50.0, 0, 'B'),
+    'J_B2B2': (37.0, 50.0, 0, 'B'),
+}
+# the carrier: the module sits where the brain's SoC block was (its origin at
+# MODULE_AT), its B2B headers landing on the carrier's sockets; nothing else
+# may sit under it (the module's back carries caps and the headers)
+MODULE_AT = (16.0, 12.0)
+MODULE_WH = (50.0, 54.0)
+CARRIER_ANCHORS = {k: v for k, v in BRAIN_ANCHORS.items() if not k.startswith(('U_SOC', 'U_DRAM', 'U_EMMC', 'U_PMIC'))}
+for j in ('J_B2B1', 'J_B2B2'):
+    x_, y_, a_, _ = MODULE_ANCHORS[j]
+    CARRIER_ANCHORS[j] = (MODULE_AT[0] + x_, MODULE_AT[1] + y_, a_, 'F')
+KEEPOUTS = {'carrier': [(MODULE_AT[0], MODULE_AT[1], MODULE_AT[0] + MODULE_WH[0], MODULE_AT[1] + MODULE_WH[1])]}.get(BOARD, [])
+ANCHORS = {'brain': BRAIN_ANCHORS, 'module': MODULE_ANCHORS, 'carrier': CARRIER_ANCHORS}[BOARD]
+THT = re.compile(r'^(J\d|H|SW)')     # through-hole: blocks both sides
 SOC_RAILS = re.compile(r'^(VDD_|VCC|VDDA|VDDQ|AVDD|VCCA|VCCIO|PMIC_VCCIO|EMMC_VDDI)')
 PLANE = {'GND'}
 
@@ -142,9 +166,10 @@ def main():
                     pts.setdefault(net, []).append(world(fp, x, y, a, side, pads[pin]))
         return pts
 
-    soc = placed['U_SOC']
-    soc_box = box(parts['U_SOC'][0], *soc)
-    dram_boxes = {r: box(parts[r][0], *placed[r]) for r in ('U_DRAM0', 'U_DRAM1')}
+    for k in KEEPOUTS:                  # the module's footprint, front side
+        boxes['F'].append((k, 'module'))
+    soc_box = box(parts['U_SOC'][0], *placed['U_SOC']) if 'U_SOC' in placed else (0, 0, W, H)
+    dram_boxes = {r: box(parts[r][0], *placed[r]) for r in ('U_DRAM0', 'U_DRAM1') if r in placed}
     # order: ICs and inductors first, then the passives by how many signal nets tie them down
     rest = [r for r in parts if r not in placed]
     weight = lambda r: (0 if re.match(r'^(U|Y|L|D|F|Q)', r) else 1, -len(parts[r][1]))
@@ -194,10 +219,11 @@ def main():
             sys.exit(f'no room for {ref}')
         put(ref, best[0], best[1], best[2], side)
 
-    lines = [BEGIN, f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK),
-             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 8.0]',
-             '[EcadRules 0.09 0.09 0.30 0.15 0.3 0.15]',
-             '[EcadPour "GND" "In1.Cu"]', '[EcadPour "GND" "In5.Cu"]']
+    lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 4-layer: F sig / In1 GND / In2 power / B sig' if BOARD == 'carrier'
+                     else f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK)),
+             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {4.0 if BOARD == "carrier" else 8.0}]',
+             '[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]',
+             '[EcadPour "GND" "In1.Cu"]'] + ([] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'])
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]
         form = 'EcadPlaceBack' if side == 'B' else 'EcadPlace'
