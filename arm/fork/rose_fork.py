@@ -48,9 +48,23 @@ RS00 = motor(0.057, 0.051, 0.035, 0.001, 0.310, back=(4, 0.038, 0.0034), out=(6,
 # v5: RS04 at base yaw, shoulder, elbow. v7: hybrid wrist RS02 / RS02 / RS00. Three motor models.
 J1M, J2M, J4M = RS04, RS04, RS04
 J5M, J6M, J7M = RS02, RS02, RS00
+# (peak, stall-continuous) N.m from the manuals; RS02 / RS00 stall scaled from rated by RS06's 8/11 - ESTIMATES
+RATING = {id(RS04): (120.0, 25.0), id(RS02): (17.0, 4.4), id(RS00): (14.0, 3.6)}
+NAME = {id(RS04): 'RS04', id(RS02): 'RS02', id(RS00): 'RS00'}
+
+# ROSE_ARM=mini: the K1-scale arm (2026-10-16). Same three motor models as the full arm, one joint
+# fewer: RS02 base yaw, RS04 shoulder (an RS02 can't hold the arm at any length - sweep in PR #6),
+# RS02 elbow, RS00 wrist pitch and tool roll; no forearm roll. 150 / 110 mm. The elbow binds.
+SIZE = os.environ.get('ROSE_ARM', 'full')
+if SIZE == 'mini':
+    J1M, J2M, J4M = RS02, RS04, RS02
+    J5M, J6M, J7M = RS00, RS00, RS00
+if os.environ.get('ROSE_ARM_MOTORS'):      # e.g. RS02,RS02,RS02,RS00,RS00,RS00 for J1,J2,J4,J5,J6,J7
+    J1M, J2M, J4M, J5M, J6M, J7M = (globals()[n] for n in os.environ['ROSE_ARM_MOTORS'].split(','))
 EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm) 5052 stock - SendCutSend and local supply
 T_FOOT = 0.00635      # 1/4" foot
+R_FOOT, R_FOOT_BOLTS = (0.085, 0.070) if os.environ.get('ROSE_ARM') == 'mini' else (0.115, 0.095)
 T_CV = T_PL
 T_PB = T_PL
 GAP = 0.002
@@ -59,6 +73,19 @@ BAR = 0.020
 Z_SH = 0.200          # shoulder axis height
 UPPER = 0.260
 FORE = 0.220          # elbow to wrist centre
+Z_TURRET = 0.120      # J1 output height
+if SIZE == 'mini':
+    Z_SH, UPPER, FORE, Z_TURRET = 0.150, 0.150, 0.110, 0.075
+if os.environ.get('ROSE_ARM_ZSH'):        # shoulder axis height over the foot (m) - shorter turret for a body mount
+    Z_SH = float(os.environ['ROSE_ARM_ZSH'])
+# ROSE_ARM_TWIN_SH=1: two J2 motors back to back on a centre web in the upper arm's shoulder lobe,
+#   outputs facing out to both turret plates - the fork's bushing side becomes a second drive.
+# ROSE_ARM_NO_J5=1: no forearm roll - the J6 holder plates tab straight into the forearm's end plate (5 DOF).
+TWIN_SH = os.environ.get('ROSE_ARM_TWIN_SH') == '1'
+NO_J5 = os.environ.get('ROSE_ARM_NO_J5', '1' if SIZE == 'mini' else '0') == '1'
+if os.environ.get('ROSE_ARM_LEN'):         # upper,fore in mm
+    UPPER, FORE = (float(v) / 1e3 for v in os.environ['ROSE_ARM_LEN'].split(','))
+JAW = 0.075 if SIZE != 'mini' else 0.050   # jaw length past the gripper motor
 W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006
 R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
@@ -92,7 +119,20 @@ def joint_y(m):
 
 
 SH_PA, SH_CA, SH_PB, SH_CB, SH_OUT, SH_BACK = joint_y(J2M)   # shoulder: upper holds J2, turret straddles
+if TWIN_SH:   # centre web T thick on y = 0, each motor's back on one face; the stack is mirror-symmetric
+    SH_BACK = T_PL / 2
+    SH_OUT = SH_BACK + J2M['L']
+    SH_PA = SH_PB = SH_OUT - 0.001 - T_PL / 2
+    SH_CA = SH_CB = SH_OUT + SPACER_T + T_PL / 2
 EL_PA, EL_CA, EL_PB, EL_CB, EL_OUT, EL_BACK = joint_y(J4M)   # elbow: upper holds J4, forearm straddles
+EL_SPACER_T = SPACER_T
+if J4M is not J2M and not TWIN_SH:
+    # A shorter elbow motor than the shoulder's: keep the upper arm's plates flat and parallel at the
+    # shoulder's spacing. J4's back bolts to plate B like J2's; the forearm straddles at the shoulder's
+    # spacing and plate A of the forearm reaches the shorter motor's output through a thicker spacer.
+    EL_PA, EL_CA, EL_PB, EL_CB, EL_BACK = SH_PA, SH_CA, SH_PB, SH_CB, SH_BACK
+    EL_OUT = EL_BACK + J4M['L']
+    EL_SPACER_T = EL_CA - T_PL / 2 - EL_OUT
 WR_PA, WR_CA, WR_PB, WR_CB, WR_OUT, WR_BACK = joint_y(J6M)   # wrist pitch: yoke holds J6, wrist straddles
 Y_FORE_DIST = J5M['d'] / 2 + GAP + T_PL / 2 + 0.0005         # forearm tip encloses the J5 roll motor
 Y_UPPER = SH_PA
@@ -102,7 +142,7 @@ Y_FORE_PROX = EL_CA
 
 LINKS = [  # name, joint, parent, axis, origin
     ('base', None, None, None, (0.0, 0.0, 0.0)),
-    ('turret', 'J1_yaw', 'base', (0, 0, 1), (0.0, 0.0, 0.120)),
+    ('turret', 'J1_yaw', 'base', (0, 0, 1), (0.0, 0.0, Z_TURRET)),
     ('upper', 'J2_sho_pitch', 'turret', (0, 1, 0), (0.0, 0.0, Z_SH)),
     ('fore', 'J4_elbow', 'upper', (0, 1, 0), (UPPER, 0.0, Z_SH)),
     ('yoke', 'J5_fore_roll', 'fore', (1, 0, 0), (W - 0.070, 0.0, Z_SH)),
@@ -120,7 +160,8 @@ def fk(q):
             continue
         Rp, tp = T[parent]
         t = add(mv(Rp, sub(o, ORIGIN[parent])), tp)
-        T[name] = (mm_(Rp, rot(axis, q.get(joint, 0.0))), t)
+        a = 0.0 if (NO_J5 and joint == 'J5_fore_roll') else q.get(joint, 0.0)   # J5 is a bolted joint then
+        T[name] = (mm_(Rp, rot(axis, a)), t)
     return T
 
 
@@ -272,16 +313,24 @@ def disc(link, mat, x_or_y_or_z, axis, r, t, holes=(), c=(0.0, 0.0)):
     ol = [('arc', (c[0] + r, c[1]), (c[0] - r, c[1]), c, True), ('arc', (c[0] - r, c[1]), (c[0] + r, c[1]), c, True)]
     if axis == 'z':
         return (link, mat, (0.0, 0.0, x_or_y_or_z), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), ol, (0.0, 0.0, t), list(holes))
+    if axis == 'y':
+        return (link, mat, (c[0], x_or_y_or_z, Z_SH), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0),
+                [('arc', (r, 0.0), (-r, 0.0), (0.0, 0.0), True), ('arc', (-r, 0.0), (r, 0.0), (0.0, 0.0), True)], (0.0, t, 0.0), list(holes))
     if axis == 'x':
         return (link, mat, (x_or_y_or_z, 0.0, Z_SH), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), ol, (t, 0.0, 0.0), list(holes))
     raise ValueError(axis)
 
 
-def spacer(link, x, y0, pat):
+def bhole(m):
+    """Centre hole in a holder's plate B, inside the motor's back bolt circle."""
+    return 0.045 if m is RS04 else m['back'][1] / 2 - m['back'][2] - 0.0032
+
+
+def spacer(link, x, y0, pat, t=None):
     """The 3 mm spacer disc a straddler's plate A bolts to the motor output through (normal y)."""
     r = pat[1] / 2 + pat[2] + 0.005
     ol = [('arc', (r, 0.0), (-r, 0.0), (0.0, 0.0), True), ('arc', (-r, 0.0), (r, 0.0), (0.0, 0.0), True)]
-    return (link, 'sheet', (x, y0, Z_SH), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, SPACER_T, 0.0), pattern(0.0, 0.0, pat))
+    return (link, 'sheet' if t is None else 'collar', (x, y0, Z_SH), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, t or SPACER_T, 0.0), pattern(0.0, 0.0, pat))
 
 
 def motor_prims(link, m, along, at, y_or_x_back, sign=1):
@@ -321,6 +370,8 @@ def stations():
     """x of the distal stations along the arm at the zero pose (m)."""
     x5 = W - 0.078                                  # J5 output face
     x_cp = x5 - J5M['L'] - T_PL                     # forearm end plate, J5 back-mounted on its far face
+    if NO_J5:                                       # one end plate: forearm plates on one face, J6 holders on the other
+        x5 = x_cp = W - R_LOBE6W - 0.012
     x_ep = W + R_LOBE6W + 0.028                     # wrist end plate, J7 back-mounted on its far face
     xt = x_ep + T_PL + J7M['L']                     # J7 output face = tool flange
     return dict(x5=x5, x_cp=x_cp, x_ep=x_ep, xt=xt)
@@ -363,9 +414,9 @@ def build():
     T = T_PL
     # ---- base: 6 mm foot, the yaw RS04 back-mounted on it, printed cassette collar
     foot_holes = pattern(0.0, 0.0, J1M['back']) + [circ(0.0, 0.0, 0.040)] + \
-        [circ(0.095 * math.cos(a), 0.095 * math.sin(a), 0.0033) for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4)]
+        [circ(R_FOOT_BOLTS * math.cos(a), R_FOOT_BOLTS * math.sin(a), 0.0033) for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4)]
     P.append(('base', 'base', (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
-              [('arc', (0.115, 0.0), (-0.115, 0.0), (0.0, 0.0), True), ('arc', (-0.115, 0.0), (0.115, 0.0), (0.0, 0.0), True)],
+              [('arc', (R_FOOT, 0.0), (-R_FOOT, 0.0), (0.0, 0.0), True), ('arc', (-R_FOOT, 0.0), (R_FOOT, 0.0), (0.0, 0.0), True)],
               (0.0, 0.0, T_FOOT), foot_holes))
     zb = T_FOOT
     P += motor_prims('base', J1M, 'z', 0.0, zb)
@@ -374,8 +425,10 @@ def build():
              + ([circle_outline(J1M['d'] / 2 + 0.008)],))
     # ---- turret: disc on the yaw output, two tower plates tabbed into it, straddling the upper arm
     rd = J1M['d'] / 2 + 0.010
-    tower_tabs_x = (-0.040, 0.040)
-    disc_holes = pattern(0.0, 0.0, J1M['out']) + [circ(0.0, 0.045, 0.012), circ(0.0, -0.045, 0.012)]
+    ks = rd / 0.070                                 # turret features scale with the disc (1.0 on the full arm)
+    tx_max = math.sqrt((rd - 1.5 * T - 0.0005) ** 2 - (SH_CA + T) ** 2) - TAB_L / 2 - 0.001   # slot corners keep a rim web
+    tower_tabs_x = (-min(0.040 * ks, tx_max), min(0.040 * ks, tx_max))
+    disc_holes = pattern(0.0, 0.0, J1M['out']) + [circ(0.0, 0.045 * ks, 0.012 * ks), circ(0.0, -0.045 * ks, 0.012 * ks)]
     for side, yc in ((1, SH_CA), (-1, SH_CB)):
         for tx in tower_tabs_x:
             disc_holes.append(rect(tx, side * yc, SLOT_L, T + 0.0002))
@@ -391,12 +444,16 @@ def build():
             tabs += [(tx - TAB_L / 2, -h_t), (tx - TAB_L / 2, -h_t - T), (tx + TAB_L / 2, -h_t - T), (tx + TAB_L / 2, -h_t)]
         pts = [fl] + tabs + [fr]
         ol = [('line', pts[i], pts[i + 1]) for i in range(len(pts) - 1)] + ol[1:]
-        holes = [stadium(-0.030, 0.030, 0.016)]
-        holes = [[(it[0],) + tuple((pt[0], pt[1] - 0.105) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in w] for w in holes]
-        holes += [circ(0.0, 0.0, 0.009)] if cb else pattern(0.0, 0.0, J2M['out'])
+        holes = [stadium(-0.030 * ks, 0.030 * ks, 0.016 * ks)]
+        dz = 0.105 * h_t / 0.138425                 # tower window: 105 mm below the axis on the full arm
+        holes = [[(it[0],) + tuple((pt[0], pt[1] - dz) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in w] for w in holes]
+        holes += [circ(0.0, 0.0, 0.009)] if (cb and not TWIN_SH) else pattern(0.0, 0.0, J2M['out'])
         P.append(('turret', 'sheet', (0.0, side * (yc + T / 2), z), (1, 0, 0), (0, 0, 1), ol, (0, -side * T, 0), holes))
     P.append(spacer('turret', 0.0, SH_OUT, J2M['out']))
-    P += cap('turret', 0.0, -SH_CB - T / 2)
+    if TWIN_SH:
+        P.append(spacer('turret', 0.0, -SH_OUT - SPACER_T, J2M['out']))
+    else:
+        P += cap('turret', 0.0, -SH_CB - T / 2)
     # ---- upper arm: constant width; the same back-mounted RS04 joint at both ends
     h_cv = R_LOBE_EL - 0.012
     xa, xb = R_LOBE_SH + MOTOR_CLEAR, UPPER - R_LOBE_EL - MOTOR_CLEAR
@@ -407,37 +464,48 @@ def build():
         for tx in cover_tabs:
             slots.append(rect(tx, zc, SLOT_L, T + 0.0002))
     nose_bore = J2M['nose_d'] / 2 + 0.002
+    nose_bore4 = J4M['nose_d'] / 2 + 0.002
     back_keep = J2M['back'][1] / 2 + J2M['back'][2]
-    A_holes = [circ(0.0, 0.0, nose_bore), circ(UPPER, 0.0, nose_bore)] + slots
-    B_holes = [circ(0.0, 0.0, 0.045), circ(UPPER, 0.0, 0.045)] + pattern(0.0, 0.0, J2M['back']) + pattern(UPPER, 0.0, J4M['back']) + slots
-    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PA, EL_PA, R_LOBE_SH, R_LOBE_EL, 1, keep0=nose_bore, keep1=nose_bore, holes=A_holes, hmax=h_cv - T - 0.0062))
-    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PB, EL_PB, R_LOBE_SH, R_LOBE_EL, -1, t=T_PB, keep0=back_keep, keep1=back_keep, holes=B_holes, hmax=h_cv - T - 0.0062))
+    back_keep4 = J4M['back'][1] / 2 + J4M['back'][2]
+    A_holes = [circ(0.0, 0.0, nose_bore), circ(UPPER, 0.0, nose_bore4)] + slots
+    B_holes = [circ(0.0, 0.0, bhole(J2M)), circ(UPPER, 0.0, bhole(J4M))] + pattern(0.0, 0.0, J2M['back']) + pattern(UPPER, 0.0, J4M['back']) + slots
+    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PA, EL_PA, R_LOBE_SH, R_LOBE_EL, 1, keep0=nose_bore, keep1=nose_bore4, holes=A_holes, hmax=h_cv - T - 0.0062))
+    P.append(plate('upper', 'sheet', 0.0, UPPER, z, SH_PB, EL_PB, R_LOBE_SH, R_LOBE_EL, -1, t=T_PB, keep0=back_keep, keep1=back_keep4, holes=B_holes, hmax=h_cv - T - 0.0062))
     for zs in (1, -1):
         zc = z + zs * h_cv - (T if zs > 0 else 0.0)
         ol = tabbed_rect(xa, xb, -yi, yi, cover_tabs, cover_tabs, T)
         P.append(('upper', 'cover', (0.0, 0.0, zc), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), ol, (0.0, 0.0, T)))
     P += motor_prims('upper', J2M, 'y', 0.0, SH_BACK)
+    if TWIN_SH:   # second motor mirrored, and the centre web both backs bolt to (tabbed into the covers)
+        P += motor_prims('upper', J2M, 'y', 0.0, -SH_BACK, sign=-1)
+        P.append(disc('upper', 'sheet', -T / 2, 'y', R_LOBE_SH - 0.004, T,
+                      pattern(0.0, 0.0, J2M['back']) + [circ(0.0, 0.0, 0.012)]))
     P += motor_prims('upper', J4M, 'y', UPPER, EL_BACK)
     # ---- forearm: parallel plates straddling the elbow, flat ends tabbed through an end plate;
     #      the J5 roll RS02 back-mounts on the end plate's far face, a cartridge like the tool roll
     S = stations()
     x5, x_cp, x_ep, xt = S['x5'], S['x_cp'], S['x_ep'], S['xt']
-    h_f, tabs_f = 0.036, (-0.020, 0.020)
+    h_f, tabs_f = (0.026, (-0.012, 0.012)) if NO_J5 else (0.036, (-0.020, 0.020))   # no J5 cartridge: only the J6 holders to carry
     for side, yc, bush in ((1, EL_CA, False), (-1, EL_CB, True)):
         holes = [circ(0.0, 0.0, 0.009)] if bush else pattern(0.0, 0.0, J4M['out'])
         P.append(dplate('fore', UPPER, x_cp, z, yc, side, R_LOBE_EL, h_f, tabs_f, holes, keep=0.030))
-    P.append(end_plate('fore', x_cp, z, EL_CA, EL_CB, h_f, tabs_f, pattern(0.0, 0.0, J5M['back'], math.pi / 4) + [circ(0.0, 0.0, 0.018)]))
-    P += motor_prims('fore', J5M, 'x', 0.0, x_cp + T)
-    P.append(spacer('fore', UPPER, EL_OUT, J4M['out']))
+    if NO_J5:
+        P.append(end_plate('fore', x_cp, z, EL_CA, EL_CB, h_f, tabs_f, [circ(0.0, 0.0, 0.012)]
+                           + [rect(yy, tz, T_PL + 0.0002, SLOT_L) for yy in (WR_PA, -WR_PB) for tz in (-0.010, 0.010)]))
+    else:
+        P.append(end_plate('fore', x_cp, z, EL_CA, EL_CB, h_f, tabs_f, pattern(0.0, 0.0, J5M['back'], math.pi / 4) + [circ(0.0, 0.0, 0.018)]))
+        P += motor_prims('fore', J5M, 'x', 0.0, x_cp + T)
+    P.append(spacer('fore', UPPER, EL_OUT, J4M['out'], None if EL_SPACER_T == SPACER_T else EL_SPACER_T))
     P += cap('fore', UPPER, -EL_CB - T / 2)
     # ---- yoke: a bridge on the J5 output; two holder plates for J6 tab through it
     h_y, tabs_y = 0.022, (-0.010, 0.010)
     nose6 = J6M['nose_d'] / 2 + 0.002
     keep6b = J6M['back'][1] / 2 + J6M['back'][2]
-    P.append(end_plate('yoke', x5, z, WR_PA, WR_PB, 0.0205, tabs_y, pattern(0.0, 0.0, J5M['out'], math.pi / 6)))
+    if not NO_J5:
+        P.append(end_plate('yoke', x5, z, WR_PA, WR_PB, 0.0205, tabs_y, pattern(0.0, 0.0, J5M['out'], math.pi / 6)))
     P.append(dplate('yoke', W, x5 + T, z, WR_PA, 1, R_LOBE6W, h_y, tabs_y, [circ(0.0, 0.0, nose6)], keep=nose6))
     P.append(dplate('yoke', W, x5 + T, z, WR_PB, -1, R_LOBE6W, h_y, tabs_y,
-                    [circ(0.0, 0.0, 0.018)] + pattern(0.0, 0.0, J6M['back']), keep=keep6b))
+                    [circ(0.0, 0.0, min(0.018, bhole(J6M)))] + pattern(0.0, 0.0, J6M['back']), keep=keep6b))
     P += motor_prims('yoke', J6M, 'y', W, WR_BACK)
     # ---- wrist: straddles J6; flat ends tabbed through the end plate that carries the J7 cartridge
     h_w, tabs_w = 0.026, (-0.010, 0.010)
@@ -452,15 +520,15 @@ def build():
     P.append(disc('tool', 'sheet', xt, 'x', J7M['d'] / 2 + 0.002, T, pattern(0.0, 0.0, J7M['out'], 0.0)))
     P.append(cyl('tool', 'actuator', (xt + T + EDU['d'] / 2, -EDU['L'] / 2, z), (xt + T + EDU['d'] / 2, EDU['L'] / 2, z), EDU['d'] / 2))
     for dy in (-0.010, 0.010):
-        jaw = [('line', (0.0, -0.016), (0.075, -0.006)), ('line', (0.075, -0.006), (0.075, 0.006)),
-               ('line', (0.075, 0.006), (0.0, 0.016)), ('line', (0.0, 0.016), (0.0, -0.016))]
+        jaw = [('line', (0.0, -0.016), (JAW, -0.006)), ('line', (JAW, -0.006), (JAW, 0.006)),
+               ('line', (JAW, 0.006), (0.0, 0.016)), ('line', (0.0, 0.016), (0.0, -0.016))]
         P.append(('tool', 'sheet', (xt + T + EDU['d'], dy - T / 2, z), (1, 0, 0), (0, 0, 1), jaw, (0, T, 0)))
     return P
 
 
 def flange_x():
     """Shoulder axis to the jaw tips (m)."""
-    return stations()['xt'] + T_PL + EDU['d'] + 0.075
+    return stations()['xt'] + T_PL + EDU['d'] + JAW
 
 
 # ---------------------------------------------------------------- cable (bus + camera, one bundle)
@@ -502,7 +570,7 @@ def cable_points(T):
 
     zt = 0.006 + J1M['L']
     # base: in through the foot, up the yaw collar (cassette), into the turret, up inside its back plate
-    P('base', (-0.110, 0.0, 0.003))
+    P('base', (-(R_FOOT - 0.005), 0.0, 0.003))
     P('base', (-J1M['d'] / 2 - 0.004, 0.0, 0.003))
     P('base', (-J1M['d'] / 2 - 0.004, 0.0, zt - 0.010))
     P('turret', (-0.030, 0.0, zt + 0.012))
@@ -541,13 +609,19 @@ MATERIALS = ('[material "actuator" 0.09 0.09 0.10 0.6 0.5]\n[material "sheet" 0.
              '[material "cassette" 0.90 0.55 0.15 0.9 0.3]\n[material "collar" 0.20 0.21 0.22 0.85 0.45]\n[material "collar_turn" 0.84 0.85 0.86 0.9 0.32]\n[material "cable" 0.95 0.40 0.10 0.0 0.6]\n')
 
 
-def world_loon(q):
-    T = fk(q)
-    L = ['; rose arm - fork concept v1. GENERATED by arm/fork/rose_fork.py', MATERIALS]
+def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=()):
+    """The posed arm as loon. The base frame is placed by rotation R0 then offset at (m); prefix keeps
+    names unique when several arms share one scene; header=False leaves out the comment and
+    materials; skip is a set of (link, mat) or link names to leave out (e.g. the foot when mounted)."""
+    T0 = fk(q)
+    T = {k: (mm_(R0, Rk), add(mv(R0, tk), at)) for k, (Rk, tk) in T0.items()}
+    L = ['; rose arm - fork concept v1. GENERATED by arm/fork/rose_fork.py', MATERIALS] if header else []
     roots = []
     for i, p in enumerate(build()):
         link, mat, o, u, v, ol, vec = p[:7]
         holes = p[7] if len(p) > 7 else []
+        if link in skip or (link, mat) in skip:
+            continue
         O, U, V, VEC = xf(T, link, o), xd(T, link, u), xd(T, link, v), xd(T, link, vec)
         body = prim_loon((link, mat, O, U, V, ol, VEC))
         for h in holes:
@@ -555,15 +629,16 @@ def world_loon(q):
             n = unit(VEC)
             cut = prim_loon((link, mat, sub(O, mul(n, 0.001)), U, V, h, add(VEC, mul(n, 0.002))))
             body = '[difference %s %s]' % (cut, body)
-        L.append('[let p%d %s]' % (i, body))
-        roots.append('[root p%d "%s"]' % (i, mat))
+        L.append('[let %sp%d %s]' % (prefix, i, body))
+        roots.append('[root %sp%d "%s"]' % (prefix, i, mat))
     cp, pts = cable_prims(T)
     for i, p in enumerate(cp):
-        L.append('[let c%d %s]' % (i, prim_loon(p)))
-        roots.append('[root c%d "cable"]' % i)
+        link, mat, o, u, v, ol, vec = p[:7]
+        L.append('[let %sc%d %s]' % (prefix, i, prim_loon(p)))
+        roots.append('[root %sc%d "cable"]' % (prefix, i))
     for i, p in enumerate(pts):
-        L.append('[let k%d [translate %.3f %.3f %.3f [sphere %.3f]]]' % (i, p[0] * 1e3, p[1] * 1e3, p[2] * 1e3, R_CABLE * 1e3))
-        roots.append('[root k%d "cable"]' % i)
+        L.append('[let %sk%d [translate %.3f %.3f %.3f [sphere %.3f]]]' % (prefix, i, p[0] * 1e3, p[1] * 1e3, p[2] * 1e3, R_CABLE * 1e3))
+        roots.append('[root %sk%d "cable"]' % (prefix, i))
     return '\n'.join(L + [''] + roots) + '\n'
 
 

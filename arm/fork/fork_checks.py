@@ -43,7 +43,7 @@ def masses():
             pts = Gm.prim_points(p[:7], step=0.02)
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
-    rows.append(('harness', 0.20, 0.35))
+    rows.append(('harness', 0.20, 0.35 * F.W / 0.48))   # spread along the arm; 0.35 m on the full arm
     import fab
     for name, where, qty, m, sp, bush, ring, bore in fab.SLEEVES:
         kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
@@ -96,14 +96,14 @@ def stiffness():
     d_f = (F_w * Fo ** 3 / 3 + m_w * Fo ** 2 / 2) / (E * If)
     # v9: the upper arm's lobes are rings round the motor bores (A: nose bore, B: centre hole), and
     # the covers stop short of them, so over one bore diameter at each end only the ring bends
-    R = F.R_LOBE_EL
-    def ring_I(r):
+    def ring_I(R, r):
         w = R - r
         return 2 * (F.T_PL * w ** 3 / 12 + F.T_PL * w * ((R + r) / 2) ** 2)
-    r_a, r_b = F.J2M['nose_d'] / 2 + 0.002, 0.045
-    I_lobe = ring_I(r_a) / 2 + ring_I(r_b) / 2
-    M_sh, M_el = moment(0.0), m_e
-    th_lobe = sum(M * 2 * r_a * (1 / I_lobe - 1 / Iu) for M in (M_sh, M_el)) / E
+    th_lobe = 0.0
+    for M, m, R in ((moment(0.0), F.J2M, F.R_LOBE_SH), (m_e, F.J4M, F.R_LOBE_EL)):   # each end's own motor
+        r_a, r_b = m['nose_d'] / 2 + 0.002, F.bhole(m)
+        I_lobe = ring_I(R, r_a) / 2 + ring_I(R, r_b) / 2
+        th_lobe += M * 2 * r_a * (1 / I_lobe - 1 / Iu) / E
     th_u += th_lobe
     d_u += th_lobe * U / 2
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)
@@ -180,11 +180,12 @@ def main():
     print('total %.2f kg   moving (shoulder outward) %.2f kg' % (tot, sum(by[k] for k in MOVING if k in by)))
     print('flange at %.0f mm from the shoulder' % (flange_x() * 1e3))
     print('\ngravity torque, arm straight out, %.1f kg at the flange:' % PAYLOAD)
-    for name, x0, peak, stall in (('J2 shoulder (RS04)', 0.0, 120, 25), ('J4 elbow (RS04)', F.UPPER, 120, 25),
-                                  ('J6 wrist (RS02)', F.W, 17, 4.5)):
+    R = lambda m, j=None: tuple(v * (2 if (j == 'J2' and F.TWIN_SH) else 1) for v in F.RATING[id(m)])
+    for name, x0, peak, stall in (('J2 shoulder (%s%s)' % ('2x ' if F.TWIN_SH else '', F.NAME[id(F.J2M)]), 0.0) + R(F.J2M, 'J2'), ('J4 elbow (%s)' % F.NAME[id(F.J4M)], F.UPPER) + R(F.J4M),
+                                  ('J6 wrist (%s)' % F.NAME[id(F.J6M)], F.W) + R(F.J6M)):
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
-    for name, x0, stall in (('J2', 0.0, 25), ('J4', F.UPPER, 25), ('J6', F.W, 4.5)):
+    for name, x0, stall in (('J2', 0.0, R(F.J2M, 'J2')[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
         free = stall - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
 
