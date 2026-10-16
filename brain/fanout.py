@@ -65,6 +65,8 @@ def main():
                 lines.append(('POWERVIA', px, py, net))
                 rail_pts[net].append((px, py))
                 n['power'] += 1
+            elif os.environ.get('ESCAPE'):
+                n['signal'] += 0      # vcad route --escape plans these
             else:
                 lines.append(f'[EcadViaSpan {px:.4f} {py:.4f} {VIA[0]} {VIA[1]} "{net}" "F.Cu" "{SIGNAL_LAYER}"]')
                 n['signal'] += 1
