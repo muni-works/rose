@@ -101,10 +101,72 @@ def main():
     assign.clear()
     for area, net, b_ in boxes:
         assign[net] = RAIL_LAYER.get(net) or ('In4.Cu' if net in BOARD_RAILS else 'In2.Cu')
-    regions = sorted(boxes)
-    for k, (_, net, (x0, y0, x1, y1)) in enumerate(regions):
-        lines.append(f'[EcadPourRect "{net}" "{assign[net]}" {x0:.2f} {y0:.2f} {x1:.2f} {y1:.2f} {len(regions) - k}.0]')
-    rects = regions
+    # Regions per layer as a nearest-pad partition (Voronoi on a 0.4 mm grid,
+    # one cell per ball pitch): every cell goes to the rail whose pad is
+    # nearest, so rails meet along the lines between their ball groups instead
+    # of as overlapping boxes - where the bigger box lost its middle to the
+    # smaller one's priority and fell into islands (523 unconnects, most on
+    # the core rails). Cells merge into row runs, then runs into rectangles;
+    # each rect overhangs its cell by 0.05 mm so same-rail neighbours overlap
+    # (one fill) while a foreign overlap is settled by the per-rail priority.
+    STEP, OVER = 0.4, 0.05
+    by_layer = defaultdict(list)
+    for _, net, b_ in boxes:
+        by_layer[assign[net]].append((net, b_))
+    prio = {net: len(boxes) - k for k, (_, net, _) in enumerate(sorted(boxes))}
+    nrect = 0
+    for layer, members in sorted(by_layer.items()):
+        pads_ = [(px, py, net) for net, _ in members for px, py in rails[net]]
+        x0 = min(b_[0] for _, b_ in members); y0 = min(b_[1] for _, b_ in members)
+        x1 = max(b_[2] for _, b_ in members); y1 = max(b_[3] for _, b_ in members)
+        nx, ny = int((x1 - x0) / STEP) + 1, int((y1 - y0) / STEP) + 1
+        boxof = dict(members)
+        grid = []
+        for j in range(ny):
+            row = []
+            cy = y0 + (j + 0.5) * STEP
+            for i in range(nx):
+                cx = x0 + (i + 0.5) * STEP
+                best, bn = 1e18, None
+                for px, py, net in pads_:
+                    b_ = boxof[net]
+                    if not (b_[0] <= cx <= b_[2] and b_[1] <= cy <= b_[3]):
+                        continue      # never outside the rail's own box
+                    d = (px - cx) ** 2 + (py - cy) ** 2
+                    if d < best:
+                        best, bn = d, net
+                row.append(bn)
+            grid.append(row)
+        # row runs -> rects (merge a run with the identical run in the next row)
+        open_ = {}
+        def emit(net, i0, i1, j0, j1):
+            nonlocal nrect
+            lines.append(f'[EcadPourRect "{net}" "{layer}" {x0 + i0 * STEP - OVER:.2f} {y0 + j0 * STEP - OVER:.2f} '
+                         f'{x0 + (i1 + 1) * STEP + OVER:.2f} {y0 + (j1 + 1) * STEP + OVER:.2f} {prio[net]}.0]')
+            nrect += 1
+        for j in range(ny + 1):
+            runs = {}
+            if j < ny:
+                i = 0
+                while i < nx:
+                    net = grid[j][i]
+                    k = i
+                    while k + 1 < nx and grid[j][k + 1] == net:
+                        k += 1
+                    if net:
+                        runs[(i, k, net)] = True
+                    i = k + 1
+            nxt = {}
+            for key, j0 in open_.items():
+                if key in runs:
+                    nxt[key] = j0
+                else:
+                    emit(key[2], key[0], key[1], j0, j - 1)
+            for key in runs:
+                nxt.setdefault(key, j)
+            open_ = nxt
+    print(f'fanout: {nrect} region rects')
+    rects = boxes
     lines = [f'[EcadViaSpan {l[1]:.4f} {l[2]:.4f} {VIA[0]} {VIA[1]} "{l[3]}" "F.Cu" "{layer_of(l[3])}"]'
              if isinstance(l, tuple) else l for l in lines]
     lines.append(END)
