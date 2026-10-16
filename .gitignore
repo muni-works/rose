@@ -7,3 +7,5 @@ arm/controller/.best.*
 arm/controller/added.txt
 brain/route.vcad.log
 *.ckpt/
+brain/ddr_only.kicad_pcb
+brain/ddr_only.kicad_pro
