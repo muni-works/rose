@@ -12,7 +12,7 @@ hand in a 6 mm window round the open end:
 Additions go to added.txt so drop_added.py can remove anything DRC rejects.
 Logs every fix it makes, so the board's hand work is on record (route.log).
 """
-import heapq, json, math, sys
+import heapq, json, math, os, sys
 import pcbnew
 
 GRID = 0.05                       # mm
@@ -239,6 +239,11 @@ def reroute(t):
     return lay(w, t['net'], path, False)
 
 
+def via_at(net, p):
+    """A via of the net at p: every signal layer reaches it."""
+    return any(v['net'] == net and math.dist(v['c'], p) < 0.05 for v in vias)
+
+
 def pad_of(net, p):
     for pd in pads:
         if pd['net'] == net and pd['box'][0] - 0.05 <= p[0] <= pd['box'][2] + 0.05 and pd['box'][1] - 0.05 <= p[1] <= pd['box'][3] + 0.05:
@@ -289,20 +294,20 @@ for v in report.get('unconnected_items', []):
         p = w.pt(i, j)
         if goal_pad is not None and l in goal_pad['layers'] and box_pt(goal_pad['box'], p) < 0.01:
             return True
-        if 'Via' in db and math.dist(p, pb) < 0.1:
+        if ('Via' in db or 'Track' in db) and math.dist(p, pb) < 0.1 and (board.GetLayerName(l) in db or 'Via' in db or via_at(net, pb)):
             return True
         if net in planes and w.viaok[j * w.n + i] and math.dist(p, pda['c']) > 0.3:
             return True
         return False
-    if goal_pad is not None:
-        goal.target = w.idx(goal_pad['c'])
+    goal.target = w.idx(goal_pad['c'] if goal_pad is not None else pb)
     path = search(w, starts, goal, rip=False) or search(w, starts, goal)
     if path is None:
         sys.stderr.write('%-8s %-12s no path\n' % (net, pda['ref']))
         continue
     end = path[-1]
     p = w.pt(*end[:2])
-    end_via = net in planes and not (goal_pad is not None and box_pt(goal_pad['box'], p) < 0.01) and not ('Via' in db and math.dist(p, pb) < 0.1)
+    at_goal = (goal_pad is not None and box_pt(goal_pad['box'], p) < 0.01) or math.dist(p, pb) < 0.1
+    end_via = net in planes and not at_goal
     # tracks the path runs through: rip them, lay ours, reroute theirs
     ripped = {tid for (i, j, l) in path for tid in w.soft[l].get(j * w.n + i, ())}
     ripped = [w.by_id[tid] for tid in ripped]
@@ -314,8 +319,12 @@ for v in report.get('unconnected_items', []):
     redone, ok = [], True
     for t in ripped:
         r = reroute(t)
+        if r is None and os.environ.get('ASTAR_FORCE'):     # leave it open; a later pass (or a pin swap) closes it
+            sys.stderr.write('  left %s open (ASTAR_FORCE)\n' % t['net'])
+            continue
         if r is None:
             ok = False
+            sys.stderr.write('  cannot reroute %s on %s, %.1f mm\n' % (t['net'], board.GetLayerName(t['layer']), math.dist(t['a'], t['b'])))
             break
         redone += r
     if not ok:                          # undo: ours out, theirs back as they were

@@ -1,0 +1,11 @@
+(version 1)
+# HDI laser vias: 0.25 mm land / 0.10 mm hole, filled and capped (VIPPO)
+(rule "laser vias"
+  (condition "A.Type == 'Via' && A.Hole_Size < 0.15mm")
+  (constraint annular_width (min 0.07mm))
+  (constraint via_diameter (min 0.25mm))
+  (constraint hole_size (min 0.1mm)))
+# a via in a BGA pad is the point of HDI, not a clearance error with its own pad
+(rule "via in pad"
+  (condition "A.Type == 'Via' && B.Type == 'Pad' && A.Net == B.Net")
+  (constraint clearance (min 0mm)))

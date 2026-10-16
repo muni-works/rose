@@ -1,11 +1,7 @@
 ** Drc report for arm_controller.kicad_pcb **
-** Created on 2026-10-14T17:14:54-0400 **
+** Created on 2026-10-14T20:54:45-0400 **
 
-** Found 4 DRC violations **
-[clearance]: Clearance violation (netclass 'Power' clearance 0.2000 mm; actual 0.1366 mm)
-    Rule: netclass 'Power'; error
-    @(108.5250 mm, 36.6400 mm): Track [+12V] on F.Cu, length 2.5239 mm
-    @(108.7500 mm, 35.8750 mm): Via [ETH_REFCLK] on F.Cu - B.Cu
+** Found 3 DRC violations **
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(60.4000 mm, 30.8000 mm): Segment of ART1 on B.Silkscreen
@@ -16,11 +12,7 @@
     Local override; warning
     @(104.0000 mm, 32.6000 mm): Footprint text of ART1 (6L  1.6 mm  ENIG  black / muni orange)
 
-** Found 1 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(83.3250 mm, 19.8000 mm): Pad 88 [SPI_MOSI] of U10 on F.Cu
-    @(104.7600 mm, 23.0375 mm): Via [SPI_MOSI] on F.Cu - B.Cu
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 

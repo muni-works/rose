@@ -213,13 +213,15 @@ gripper needs more, swap the buck for a 2 A part. Pick a real part number for F1
 
 ### Layout as built (v0.1 draft, 150 x 40 mm)
 
-- **Hand work (v0.2):** three gaps the autorouter left, closed by hand and on record:
-  - +12V under L1 had no vias on its In2 run. manual_fixes.py adds them and widens the run to 0.5 mm.
-  - ETH_RXN: PHY to R66, routed in KiCad with push-and-shove (In4, then a via beside R66 pad 2).
-  - AUX_IO: pin-swapped from U10 pin 44 (PE13) to pin 34 (PB0), on the side facing J11, then
-    routed with astar_fix.py on a 0.05 mm grid. Firmware: AUX_IO is PB0.
-  A full re-route regenerates the board: replay pin_swap.py and astar_fix.py, then redo the ETH_RXN
-  fix (or route.sh's closer may get it).
+- **Hand work (v0.2, 150 x 46):** the router left SPI_MOSI open between U10 and the SPI devices.
+  - SPI_MOSI: astar_fix.py with ASTAR_FORCE=1 ASTAR_WIN=8 ASTAR_GRID=0.1 routed it, ripping
+    IMU_INT's escape.
+  - IMU_INT: pin-swapped from U10 pin 87 (PD6) to pin 7 (PC13), beside its remaining copper,
+    then astar_fix.py. Firmware: IMU_INT is PC13 (EXTI13).
+  - +12V near the ETH_REFCLK via at (108.75, 35.9): the 0.5 mm jog re-laid 1.4 mm to the left
+    (Power class needs 0.2 mm).
+  - AUX_IO stays on U10 pin 34 (PB0), facing J11 (from the 150 x 40 board).
+  A full re-route regenerates the board: replay pin_swap.py and astar_fix.py.
 
 - **Flow:** `arm_controller.loon` → `place.py` (placement block) → `route.sh`. route.sh runs
   `vcad route`, then KiCad fills the zones (`fill_zones.py`) and runs DRC (`drc.rpt`).
