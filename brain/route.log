@@ -1,2 +1,47 @@
-fanout: 361 signal microvias, 794 GND, 293 power; 28 In4 rail regions
-08:30:13
+fanout: 1068 region rects
+fanout: 440 signal microvias, 794 GND, 214 power; rail regions {'In2.Cu': 14, 'In4.Cu': 7, 'In6.Cu': 1}
+09:29:08
+[  188.8s] stitch 286/298 VDD_GPU_MEM_S0
+[  188.8s]   VDD_GPU_MEM_S0: 4 stranded pads
+[  188.9s] stitch 287/298 VDD_GPU_S0
+[  188.9s]   VDD_GPU_S0: 16 stranded pads
+[  189.3s] stitch 288/298 VDD_LOGIC_S0
+[  189.3s]   VDD_LOGIC_S0: 33 stranded pads
+[  189.5s] stitch 289/298 VDD_NPU_MEM_S0
+[  189.5s]   VDD_NPU_MEM_S0: 5 stranded pads
+[  189.7s] stitch 290/298 VDD_NPU_S0
+[  189.7s]   VDD_NPU_S0: 15 stranded pads
+[  190.2s] stitch 291/298 VDD_VDENC_MEM_S0
+[  190.2s]   VDD_VDENC_MEM_S0: 3 stranded pads
+[  190.3s] stitch 292/298 VDD_VDENC_S0
+[  190.3s]   VDD_VDENC_S0: 18 stranded pads
+[  190.5s] stitch 293/298 VSEL2
+[  190.5s] stitch 294/298 VSEL3
+[  190.5s] stitch 295/298 VSEL4
+[  190.5s] stitch 296/298 VSEL5
+[  190.5s] stitch 297/298 VSEL6
+[  190.5s] stitch 298/298 XOUT_24M
+[  190.5s] repairs done
+stitched 57 pads to their planes
+trimmed leaf copper: 691 traces, 212 vias
+Routed 83.1% of connections in 192.4 s: 3086 traces, 1641 vias, 3 synthesized pours -> brain.kicad_pcb
+unrouted nets (110): BB_MOSI, CAM0_D0N, CAM0_D0P, CAM0_D1N, CAM0_D1P, CAM0_D3N, CAM0_D3P, CAM0_PWDN, CAM0_TRIG_RT, CAM1_D1P, CAM1_D2P, CAM1_D3N, CAM1_D3P, CAM1_PWDN, CAM1_TRIG_RT, CAN0_RX, CAN0_STBY, CAN1_STBY, CAN3_TXD, CAN4_TXI, CANX_MOSI, D0A_CA2, D0A_CA3, D0A_CA4, D0A_CKE0_SOC, D0A_DQ12, D0A_DQ13, D0A_DQ4, D0A_DQ5, D0A_DQ6, D0A_DQ9, D0A_DQS0_t, D0A_DQS1_c, D0B_CA0, D0B_CA1, D0B_CA5, D0B_CKE0, D0B_CK_t, D0B_DMI0, D0B_DQ1, D0B_DQ11, D0B_DQ12, D0B_DQ13, D0B_DQ2, D0B_DQ6, D0B_DQS1_t, D1C_CA0, D1C_CA1, D1C_CKE0, D1C_DMI1, D1C_DQ0, D1C_DQ13, D1C_DQ3, D1C_DQ9, D1C_DQS1_c, D1C_DQS1_t, D1D_CA4, D1D_CK_c, D1D_CK_t, D1D_CS0, D1D_DMI1, D1D_DQ10, D1D_DQ6, D1D_DQ7, DRAM1_ODT_B, EMMC_CLK_SOC, EMMC_CMD, EMMC_DAT4, EMMC_DAT7, EMMC_VDDI, ESTOP_OK, GND, I2C0_SCL, I2C2_SCL, I2C2_SDA, MIPI_DC_PHY0_VREG, PMIC_INT_L, PMIC_PWRCTRL2, PMIC_PWRCTRL3, PMIC_RESET_L, PMIC_SPI_CLK_SOC, PMIC_SPI_CS, PMIC_SPI_MOSI_SOC, PMIC_SW10, PMIC_SW7, PMIC_VCCIO, RT_IRQ, RT_SCK, SARADC_IN0_BOOT, SOC_UART2_RX, SOC_UART2_TX, SOC_ZQ_1C, TYPEC0_USB20_OTG0_REXT, USB_VBUSDET, VCCA_1V8_S0, VCCA_3V3_S0, VCCIO_SD_S0, VCC_1V1_NLDO_S3, VCC_1V8_S3, VCC_3V3_S0, VDDA_0V75_S0, VDDA_0V85_S0, VDDA_1V2_S0, VDD_0V75_S3, VDD_CPU_BIG0_S0, VDD_CPU_LIT_S0, VSEL2, VSEL3, VSEL4, VSEL6
+09:32:21
+** Found 1507 DRC violations **
+** Found 472 unconnected pads **
+** Found 0 Footprint errors **
+unconnected (KiCad connectivity): 472
+1003 [zones_intersect]
+ 472 [unconnected_items]
+ 199 [via_dangling]
+ 151 [track_dangling]
+ 102 [isolated_copper]
+  16 [copper_edge_clearance]
+  15 [clearance]
+   4 [starved_thermal]
+   4 [silk_over_copper]
+   4 [silk_edge_clearance]
+   3 [shorting_items]
+   3 [courtyards_overlap]
+   2 [copper_sliver]
+   1 [solder_mask_bridge]
