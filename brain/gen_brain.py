@@ -407,6 +407,38 @@ for name, val in (('HDMI/eDP_TX0_REXT', '8.2k'), ('TYPEC0_DP0_REXT', '8.2k'), ('
 emit(';; ---- LPDDR4X: CH0 -> U_DRAM0, CH1 -> U_DRAM1; SoC sub-channel A/C -> DRAM a, B/D -> b (sheet 12)')
 DRAM = [(r_['ball'], r_['name']) for r_ in csv.DictReader(open(os.path.join(HERE, 'lib/lpddr4x_200_pins.csv')))]
 soc('DDR_CH0_RESET_A', 'DDR_RESET')
+# DQ swizzle: LPDDR4X lets the bits of a byte swap freely (DMI and DQS stay
+# put; the DDR init is told the map). Pair each byte's DRAM balls with the SoC
+# balls in the same order across the channel - sorted along the axis the bus
+# crosses - so the lane routes without crossings. The map goes to
+# ddr_swizzle.csv for the DDR configuration.
+def dq_swizzle():
+    import place
+    socball = {n: b for b, n in csv.reader(open(os.path.join(HERE, 'lib/rk3588s_pins.csv'))) if b != 'ball'}
+    sfp = 'brain:Rockchip_FCCSP-1253_17x17mm_P0.4mm'
+    dfp = 'Package_BGA:BGA-200_10x14.5mm_Layout12x22_P0.8x0.65mm'
+    spads, dpads = place.footprint(sfp)[1], place.footprint(dfp)[1]
+    dball = {n: b for b, n in DRAM}
+    perm = {}
+    for ch, subs in ((0, ('A', 'B')), (1, ('C', 'D'))):
+        sx, sy, sa, ss = place.ANCHORS['U_SOC']
+        dx_, dy_, da, ds = place.ANCHORS[f'U_DRAM{ch}']
+        # the bus crosses along the SoC->DRAM axis: order lanes across it
+        across = 1 if abs(dx_ - sx) >= abs(dy_ - sy) else 0
+        for side, sub in zip('AB', subs):
+            for byte in (0, 1):
+                bits = range(8 * byte, 8 * byte + 8)
+                spos = {k: place.world(sfp, sx, sy, sa, ss, spads[socball[f'DDR_CH{ch}_DQ{k}_{sub}']])[across] for k in bits}
+                dpos = {k: place.world(dfp, dx_, dy_, da, ds, dpads[dball[f'DQ{k}_{side}']])[across] for k in bits}
+                for dk, sk in zip(sorted(bits, key=dpos.get), sorted(bits, key=spos.get)):
+                    perm[(ch, side, dk)] = sk
+    with open(os.path.join(HERE, 'ddr_swizzle.csv'), 'w') as f:
+        f.write('channel,dram_side,dram_dq,soc_dq\n')
+        for (ch, side, dk), sk in sorted(perm.items()):
+            f.write(f'{ch},{side},{dk},{sk}\n')
+    return perm
+SWIZ = dq_swizzle()
+
 for ch, subs in ((0, ('A', 'B')), (1, ('C', 'D'))):
     dram = {}
     for b, n in DRAM:
@@ -426,6 +458,12 @@ for ch, subs in ((0, ('A', 'B')), (1, ('C', 'D'))):
         assert m, n
         sig, side = m.group(1), m.group(2)
         sub = subs[0] if side == 'A' else subs[1]
+        if sig.startswith('DQ') and not sig.startswith('DQS'):
+            # this DRAM bit lands on the SoC bit the swizzle pairs it with
+            k = SWIZ[(ch, side, int(sig[2:]))]
+            soc(f'DDR_CH{ch}_DQ{k}_{sub}', f'D{ch}{sub}_DQ{k}')
+            dram[b] = f'D{ch}{sub}_DQ{k}'
+            continue
         if sig == 'ODT_CA':
             dram[b] = f'DRAM{ch}_ODT_{side}'
             continue
