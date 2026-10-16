@@ -84,6 +84,22 @@ def main():
             x_, y_ = map(float, l.split()[1:3])
             web['GND'].append((x_, y_))
     webs = []
+    allv = [(px, py, net) for net, pts in web.items() for px, py in pts]
+    for l in lines:
+        if isinstance(l, str) and l.startswith('[EcadViaSpan'):
+            f_ = l.split()
+            allv.append((float(f_[1]), float(f_[2]), f_[5].strip('"')))
+    def clear_of_foreign(a_, b_, net):
+        ax, ay = a_; bx, by = b_
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy
+        for px, py, n_ in allv:
+            if n_ == net or abs(px - (ax + bx) / 2) > 0.8 or abs(py - (ay + by) / 2) > 0.8:
+                continue
+            t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+            if math.hypot(ax + t * dx - px, ay + t * dy - py) < 0.27:
+                return False
+        return True
     for net, pts in web.items():
         par = list(range(len(pts)))
         def find(i):
@@ -91,12 +107,22 @@ def main():
                 par[i] = par[par[i]]
                 i = par[i]
             return i
-        cell = {(round(px / 0.4), round(py / 0.4)): k for k, (px, py) in enumerate(pts)}
-        for (cx, cy), k in sorted(cell.items()):
-            for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
-                m = cell.get((cx + dx, cy + dy))
-                if m is None or find(k) == find(m):
-                    continue
+        # Kruskal over close same-net pairs (any ball pitch: the SoC's 0.4,
+        # the DRAMs' 0.8 x 0.65) whose link passes no foreign via
+        bucket = defaultdict(list)
+        for k, (px, py) in enumerate(pts):
+            bucket[(int(px), int(py))].append(k)
+        edges = []
+        for k, (px, py) in enumerate(pts):
+            for gx in (int(px) - 1, int(px), int(px) + 1):
+                for gy in (int(py) - 1, int(py), int(py) + 1):
+                    for m in bucket.get((gx, gy), ()):
+                        if m > k:
+                            d = math.hypot(pts[m][0] - px, pts[m][1] - py)
+                            if 1e-6 < d <= 1.05:
+                                edges.append((d, k, m))
+        for d, k, m in sorted(edges):
+            if find(k) != find(m) and clear_of_foreign(pts[k], pts[m], net):
                 par[find(k)] = find(m)
                 webs.append((net, pts[k], pts[m]))
     n['web'] = len(webs)
