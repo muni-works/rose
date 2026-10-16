@@ -48,9 +48,9 @@ BRAIN_ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
 # bottom edge
 MODULE_ANCHORS = {
     'U_SOC': (24.0, 24.0, 0, 'F'),
-    'U_DRAM0': (8.0, 23.0, 0, 'F'),
-    'U_DRAM1': (24.5, 7.5, 90, 'F'),
-    'U_EMMC': (40.5, 25.0, 0, 'F'),
+    'U_DRAM0': (10.77, 23.58, 180, 'F'),     # search.py: flipped, far balls face the SoC
+    'U_DRAM1': (24.37, 10.08, 270, 'F'),
+    'U_EMMC': (40.38, 27.73, 0, 'F'),
     'U_PMIC': (22.0, 43.0, 0, 'F'),
     'J_B2B1': (13.0, 50.0, 0, 'B'),
     'J_B2B2': (37.0, 50.0, 0, 'B'),
