@@ -10,7 +10,7 @@ The mask is "matte black" at the fab (order note); KiCad's stackup only knows
 import re, sys
 
 MASK, SILK, FINISH = 'Black', 'White', 'ENIG'
-DIELECTRIC = 0.17       # 8 layers over 1.6 mm, prepreg / core alternating
+DIELECTRIC = 0.17       # per gap, prepreg / core alternating (8 layers: 1.6 mm)
 
 
 def main(path):

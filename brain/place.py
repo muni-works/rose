@@ -220,10 +220,11 @@ def main():
         put(ref, best[0], best[1], best[2], side)
 
     lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 6-layer: F sig / In1 GND / In2 3V3_RT / In3 5V_RT / In4 sig / B sig' if BOARD == 'carrier'
+                     else f';; board {W:g} x {H:g} mm, 10-layer HDI: ' + ' / '.join(STACK[:-1] + ['In7.Cu sig', 'In8.Cu GND', 'B.Cu']) if BOARD == 'module'
                      else f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK)),
-             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {6.0 if BOARD == "carrier" else 8.0}]',
+             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {6.0 if BOARD == "carrier" else 10.0 if BOARD == "module" else 8.0}]',
              '[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]',
-             '[EcadPour "GND" "In1.Cu"]'] + (['[EcadPour "3V3_RT" "In2.Cu"]', '[EcadPour "5V_RT" "In3.Cu"]'] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'])
+             '[EcadPour "GND" "In1.Cu"]'] + (['[EcadPour "3V3_RT" "In2.Cu"]', '[EcadPour "5V_RT" "In3.Cu"]'] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'] + (['[EcadPour "GND" "In8.Cu"]'] if BOARD == 'module' else []))
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]
         form = 'EcadPlaceBack' if side == 'B' else 'EcadPlace'
