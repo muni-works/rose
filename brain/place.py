@@ -48,9 +48,9 @@ BRAIN_ANCHORS = {   # ref: (x, y, rot, side)  side 'F' / 'B'
 # bottom edge
 MODULE_ANCHORS = {
     'U_SOC': (24.0, 24.0, 0, 'F'),
-    'U_DRAM0': (8.0, 23.0, 0, 'F'),
-    'U_DRAM1': (24.5, 7.5, 90, 'F'),
-    'U_EMMC': (40.5, 25.0, 0, 'F'),
+    'U_DRAM0': (10.77, 23.58, 180, 'F'),     # search.py: flipped, far balls face the SoC
+    'U_DRAM1': (24.37, 10.08, 270, 'F'),
+    'U_EMMC': (40.38, 27.73, 0, 'F'),
     'U_PMIC': (22.0, 43.0, 0, 'F'),
     'J_B2B1': (13.0, 50.0, 0, 'B'),
     'J_B2B2': (37.0, 50.0, 0, 'B'),
@@ -66,6 +66,10 @@ for j in ('J_B2B1', 'J_B2B2'):
     CARRIER_ANCHORS[j] = (MODULE_AT[0] + x_, MODULE_AT[1] + y_, a_, 'F')
 KEEPOUTS = {'carrier': [(MODULE_AT[0], MODULE_AT[1], MODULE_AT[0] + MODULE_WH[0], MODULE_AT[1] + MODULE_WH[1])]}.get(BOARD, [])
 ANCHORS = {'brain': BRAIN_ANCHORS, 'module': MODULE_ANCHORS, 'carrier': CARRIER_ANCHORS}[BOARD]
+# search.py: PLACE_OVERRIDE='{"U_DRAM0": [x, y, rot, side], ...}' moves anchors
+if os.environ.get('PLACE_OVERRIDE'):
+    import json
+    ANCHORS.update({k: tuple(v) for k, v in json.loads(os.environ['PLACE_OVERRIDE']).items()})
 THT = re.compile(r'^(J\d|H|SW)')     # through-hole: blocks both sides
 SOC_RAILS = re.compile(r'^(VDD_|VCC|VDDA|VDDQ|AVDD|VCCA|VCCIO|PMIC_VCCIO|EMMC_VDDI)')
 PLANE = {'GND'}
@@ -219,11 +223,12 @@ def main():
             sys.exit(f'no room for {ref}')
         put(ref, best[0], best[1], best[2], side)
 
-    lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 4-layer: F sig / In1 GND / In2 power / B sig' if BOARD == 'carrier'
+    lines = [BEGIN, (f';; board {W:g} x {H:g} mm, 6-layer: F sig / In1 GND / In2 3V3_RT / In3 5V_RT / In4 sig / B sig' if BOARD == 'carrier'
+                     else f';; board {W:g} x {H:g} mm, 10-layer HDI: ' + ' / '.join(STACK[:-1] + ['In7.Cu sig', 'In8.Cu GND', 'B.Cu']) if BOARD == 'module'
                      else f';; board {W:g} x {H:g} mm, 8-layer HDI: ' + ' / '.join(STACK)),
-             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {4.0 if BOARD == "carrier" else 8.0}]',
+             f'[EcadBoard 0.0 0.0 {W:.1f} {H:.1f} 1.5 1.6 {6.0 if BOARD == "carrier" else 10.0 if BOARD == "module" else 8.0}]',
              '[EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]',
-             '[EcadPour "GND" "In1.Cu"]'] + ([] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'])
+             '[EcadPour "GND" "In1.Cu"]'] + (['[EcadPour "3V3_RT" "In2.Cu"]', '[EcadPour "5V_RT" "In3.Cu"]'] if BOARD == 'carrier' else ['[EcadPour "GND" "In5.Cu"]'] + (['[EcadPour "GND" "In8.Cu"]'] if BOARD == 'module' else []))
     for ref in sorted(placed, key=lambda r: (re.sub(r'\d+$', '', r), int(re.sub(r'\D', '', r) or 0))):
         x, y, a, side = placed[ref]
         form = 'EcadPlaceBack' if side == 'B' else 'EcadPlace'

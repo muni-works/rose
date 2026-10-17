@@ -388,10 +388,12 @@
   #["1" "VCC_SYSIN" "2" "VCC_SYSIN" "3" "VCC_SYSIN" "4" "VCC_SYSIN" "5" "VCC_SYSIN" "6" "VCC_SYSIN" "7" "VCC_SYSIN" "8" "VCC_SYSIN" "9" "VCC_SYSIN" "10" "VCC_SYSIN" "11" "VCC_SYSIN" "12" "VCC_SYSIN" "13" "VCC_SYSIN" "14" "VCC_SYSIN" "15" "VCC_SYSIN" "16" "VCC_SYSIN" "17" "VCC_SYSIN" "18" "VCC_SYSIN" "19" "VCC_SYSIN" "20" "VCC_SYSIN" "21" "VCC_3V3_S0" "22" "VCC_3V3_S0" "23" "VCC_3V3_S0" "24" "VCC_3V3_S0" "25" "USB_VBUS" "26" "USB_VBUS" "27" "GND" "28" "GND" "29" "CAM0_PWDN" "30" "GND" "31" "CAM0_SCL" "32" "GND" "33" "CAM0_SDA" "34" "GND" "35" "CAM1_PWDN" "36" "GND" "37" "CAM1_SCL" "38" "GND" "39" "CAM1_SDA" "40" "GND" "41" "PWRON_L" "42" "GND" "43" "RECOVERY_KEY" "44" "GND" "45" "RT_BOOT0" "46" "GND" "47" "RT_CS_n" "48" "GND" "49" "RT_IRQ" "50" "GND" "51" "RT_MISO" "52" "GND" "53" "RT_MOSI" "54" "GND" "55" "RT_NRST" "56" "GND" "57" "RT_RX" "58" "GND" "59" "RT_SCK" "60" "GND" "61" "RT_TX" "62" "GND" "63" "SOC_UART2_RX" "64" "GND" "65" "SOC_UART2_TX" "66" "GND" "67" "GND" "68" "GND" "69" "GND" "70" "GND" "71" "GND" "72" "GND" "73" "GND" "74" "GND" "75" "GND" "76" "GND" "77" "GND" "78" "GND" "79" "GND" "80" "GND" "81" "GND" "82" "GND" "83" "GND" "84" "GND" "85" "GND" "86" "GND" "87" "GND" "88" "GND" "89" "GND" "90" "GND" "91" "GND" "92" "GND" "93" "GND" "94" "GND" "95" "GND" "96" "GND" "97" "GND" "98" "GND" "99" "GND" "100" "GND"]]
 
 ;; ---- placement (place.py)
-;; board 110 x 84 mm, 4-layer: F sig / In1 GND / In2 power / B sig
-[EcadBoard 0.0 0.0 110.0 84.0 1.5 1.6 4.0]
+;; board 110 x 84 mm, 6-layer: F sig / In1 GND / In2 3V3_RT / In3 5V_RT / In4 sig / B sig
+[EcadBoard 0.0 0.0 110.0 84.0 1.5 1.6 6.0]
 [EcadRules 0.09 0.09 0.40 0.20 0.3 0.15]
 [EcadPour "GND" "In1.Cu"]
+[EcadPour "3V3_RT" "In2.Cu"]
+[EcadPour "5V_RT" "In3.Cu"]
 [EcadPlace "C1" 66.96 64.09 90.0]
 [EcadPlace "C2" 66.17 67.05 0.0]
 [EcadPlace "C3" 83.56 55.78 90.0]
