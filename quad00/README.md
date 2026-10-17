@@ -35,7 +35,12 @@ vcad-render out/assembly/leg.loon --azimuth=-55 --elevation 18 --size 1400 --fil
 
 DXF names are `part-Lk_3.2mm_xN`, where N is how many to cut for one leg. `_csk-1` means one of
 those N gets 90° M3 countersinks; the countersink circles are on layer `CSK_M3_90DEG`.
-STLs are fused laminates, already lying flat for printing.
+STLs are fused laminates, already lying flat for printing. `out/3mf/` has the same parts laid
+out on three Bambu P1S plates (256 × 256): `plate1_PETG_links` (shin and both thigh plates),
+`plate2_PETG_gears-carrier` (2 carriers, 2 idlers, pinion), `plate3_TPU_paw`. Open each one in
+Bambu Studio, set the filament and process, and slice. The pinion and outer thigh plate are valid
+manifolds (manifold3d, genus = their hole count), but they have coincident vertices at the
+countersink seams, so a strict mesh check may flag them. Bambu repairs this on import.
 
 The pinion hub layer is 3.6 mm in the STL. In aluminium, cut it from 3.2 mm and add a 0.4 mm shim
 under it, so the teeth sit centred between the thigh plates.

@@ -294,6 +294,7 @@ def write():
     out = os.path.join(HERE, 'out')
     for d in ('dxf', 'stl'):
         os.makedirs(os.path.join(out, d), exist_ok=True)
+    built = {}
     flat = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]], float)  # thickness (Y) -> print Z
     for name, spec in parts().items():
         layers, y0, csks, qty = spec
@@ -310,13 +311,56 @@ def write():
         m = solid(name, spec).apply_transform(flat)
         m.apply_translation(-m.bounds[0])
         m.export(os.path.join(out, 'stl', f'{name}_x{qty}.stl'))
+        built[f'{name}_x{qty}'] = m
     paw = trimesh.creation.cylinder(radius=16, height=28, sections=64)
     slot = trimesh.creation.box((40, 2 * G + 0.4, 20)).apply_translation([0, 0, 10])
     bolt = trimesh.creation.cylinder(radius=2.65, height=40, sections=32)
     bolt.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0])).apply_translation([0, 0, 6])
     paw = trimesh.boolean.difference([paw, slot, bolt], engine='manifold').apply_translation([0, 0, 14])
     paw.export(os.path.join(out, 'stl', 'paw_TPU_x1.stl'))
+    built['paw_TPU_x1'] = paw
     print(f'wrote {out}/dxf + {out}/stl')
+    plates(out, built)
+
+
+# Bambu P1S: 256 x 256 bed. (stl, copies, x, y, rotate 90 about Z) -- min corners, mm from the bed corner
+BED = 256.0
+PLATES = {
+    'plate1_PETG_links': [('shin_x1', 1, 8, 24, False), ('thigh-outer_x1', 1, 106, 30, False),
+                          ('thigh-inner_x1', 1, 176, 30, False)],
+    'plate2_PETG_gears-carrier': [('carrier_x2', 2, 18, 12, False), ('idler_x2', 2, 22, 150, False),
+                                  ('pinion_x1', 1, 140, 150, False)],
+    'plate3_TPU_paw': [('paw_TPU_x1', 1, 112, 112, False)],
+}
+
+
+def plates(out, built):
+    """one 3MF per P1S plate, parts already flat and laid out; Bambu Studio opens each as one plate.
+    Built from the in-memory solids, not the STLs: STL drops the indexed topology at the countersinks."""
+    d = os.path.join(out, '3mf')
+    os.makedirs(d, exist_ok=True)
+    for plate, items in PLATES.items():
+        scene = trimesh.Scene()
+        boxes = []
+        for stl, copies, x, y, rot in items:
+            base = built[stl].copy()
+            if rot:
+                base.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 0, 1]))
+            base.apply_translation(-base.bounds[0])
+            w = base.extents[0]
+            for k in range(copies):
+                m = base.copy().apply_translation([x + k * (w + 8), y, 0])
+                scene.add_geometry(m, node_name=f'{stl.rsplit("_x", 1)[0]}-{k + 1}', geom_name=f'{stl}-{k}')
+                boxes.append(m.bounds)
+        lo = np.min([b[0] for b in boxes], axis=0)
+        hi = np.max([b[1] for b in boxes], axis=0)
+        assert lo[0] >= 5 and lo[1] >= 5 and hi[0] <= BED - 5 and hi[1] <= BED - 5, f'{plate} off the bed: {lo} {hi}'
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                assert (a[1][:2] + 3 <= b[0][:2]).any() or (b[1][:2] + 3 <= a[0][:2]).any(), f'{plate}: parts {i},{j} overlap'
+        scene.export(os.path.join(d, plate + '.3mf'))
+        print(f'  {plate}.3mf: {len(boxes)} parts, x {lo[0]:.0f}..{hi[0]:.0f}  y {lo[1]:.0f}..{hi[1]:.0f}')
 
 
 def mass():
