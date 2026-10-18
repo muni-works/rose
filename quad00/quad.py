@@ -849,8 +849,10 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
 
 
 def humanoid_tiny():
-    """TINY humanoid, ~70 cm: the largest an all-RS00 humanoid carries (walking knee ~94% of 0.7 x 14 N.m)."""
-    return humanoid_family('tiny humanoid', leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=86.0)
+    """TINY humanoid, ~56 cm: the largest all-RS00 humanoid once its plates are weighed (10.2 kg est.; walking
+    knee 94% of 0.7 x 14 N.m). The 70 cm version was 134% -- shrinking barely lightens it (the motors and
+    their rings are fixed), so the size came down to x0.72."""
+    return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0)
 
 
 def humanoid_mini():
