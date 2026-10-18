@@ -856,7 +856,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
-                    arm_pose=(90.0, 12.0), stand=0.97, ankle_roll=False, head=None, legpk=None):
+                    arm_pose=(90.0, 12.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -870,6 +870,22 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     y0a = y0 + dl['OUT'][1] - IL_SHIN[0] + 8.0             # arms just outboard of the legs (thigh box's outer plate)
     ya = y0a + da['ABAD']
     chest = ya + 20.0 * ma['D'] / 57.0
+    hp = yy + my['D'] / 2 + 6.0                            # pelvis half-width
+    ka = ma['D'] / 57.0
+    if rect:
+        # one rectangular torso: the arms come in over the legs' line, the shoulder motors as close to the
+        # neck/waist motor as they fit; the pelvis widens to the chest, and the torso grows until the
+        # hanging hands clear the thighs (instead of the arms hanging outside them)
+        mid = MOTORS[head] if head else mw
+        ya = max(mid['D'] / 2 + 5.0 + ma['D'] / 2, hp - 20.0 * ka)
+        y0a = ya - da['ABAD']
+        chest = ya + 20.0 * ka
+        hp = chest
+        T2_ = 2 * L.T
+        s2h0 = (-T2_ - da['IPOUT']) - ((-T2_ - 1.0 - mw['L'] - 1.0) - T2_ - 1.0 - T2_ - 1.0 - my['L'] - 1.0 - T2_ - 1.0 - L.T
+                                       - ((MOTORS[legpk]['D'] + 7.0) / 2 + 8.0))
+        reach = arm[0] + arm[1] + 70.0 * ka + 11.0 * ka        # shoulder axis to the hanging hand's tip
+        chest_h = max(chest_h, reach + (MOTORS[legpk]['D'] + 7.0) / 2 + 20.0 - s2h0)
     H = max(41.0, ma['D'] / 2 + 12.0, mw['D'] / 2 + 12.0, my['D'] / 2 + 12.0)
     T2 = 2 * L.T
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
@@ -905,7 +921,6 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     # pelvis: top wall takes the waist output; the two hip-yaw motors stand between its walls, outputs down
     xp = xf - T2 - 1.0
     xpb = xp - T2 - 1.0 - my['L'] - 1.0
-    hp = yy + my['D'] / 2 + 6.0
     extra.append(('chassis-pelvis-top', ext(wallp(hp, [(0, mw['out'], 90, mw['out'][0] * 0.6, mw['hole'])]), 'yz', xp - T2, T2)))
     extra.append(('chassis-pelvis-bottom', ext(wallp(hp, [(s * yy, my['front'], 0, my['out'][0] + 11, my['hole']) for s in (1, -1)]), 'yz', xpb - T2, T2)))
     pskin = L.rounded(xpb - T2, -hp, xp, hp, 8).difference(L.circle((xp + xpb) / 2 - L.T, 0, 0.5 * (xp - xpb)))
@@ -983,7 +998,7 @@ def humanoid_mini():
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
     return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
                            legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
-                           legpk='rs04')
+                           legpk='rs04', rect=True)
 
 
 def build(arch):
