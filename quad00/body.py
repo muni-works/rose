@@ -32,9 +32,11 @@ import leg as L
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-def configure(plane=87.0, flange_outer=None, hip_x=210.0):
-    """(re)derive every body dimension from the leg plane and how far inboard the hip cluster reaches."""
-    global HIP_X, PLANE, YA, CLIP, WIDE, NECK, X_NOSE, X_MID, X_CHEST0, X_BELLY1, X_BELLY0, X_TAIL, RIBS
+def configure(plane=87.0, flange_outer=None, hip_x=210.0, ends=True):
+    """(re)derive every body dimension from the leg plane and how far inboard the hip cluster reaches.
+    ends=False: belly only -- no chest, necks or tail; the front legs' ab/ad point back into the belly,
+    and the body stops short of every hip cluster in x, so abduction can never bring a cluster into it."""
+    global HIP_X, PLANE, YA, CLIP, WIDE, NECK, X_NOSE, X_MID, X_CHEST0, X_BELLY1, X_BELLY0, X_TAIL, RIBS, ENDS, X_END, INTERNALS
     HIP_X, PLANE = hip_x, plane
     flange_outer = L.Y_FLANGE + L.YOKE_T if flange_outer is None else flange_outer
     YA = PLANE + L.ABAD_Y                            # ab/ad axes
@@ -49,16 +51,34 @@ def configure(plane=87.0, flange_outer=None, hip_x=210.0):
     X_TAIL = -HIP_X - 70.0
     RIBS = {'nose': (X_NOSE, 2 * T, WIDE), 'rib-a': (X_BELLY1 - T, T, WIDE), 'rib-0': (-T / 2, T, WIDE),
             'mid': (X_MID, 2 * T, WIDE), 'tail': (X_TAIL, T, NECK)}
+    INTERNALS = INTERNALS_ENDS
+    ENDS = ends
+    X_END = HIP_X - 46.0                             # belly-only: ends 46 short of each hip (hip gear tip r42.5)
+    if not ends:
+        wall = HIP_X - L.X_BULK[0]                   # ab/ad back faces, both ends: 119.8
+        RIBS = {'nose': (wall - 2 * T, 2 * T, WIDE), 'mid': (-wall, 2 * T, WIDE)}
+        INTERNALS = INTERNALS_BELLY
 
 
 H_IN = 41.0                                          # decks' inner faces at z = +/-41 (ab/ad motor r 28.5)
 T = L.T
+# internals: (name, size x y z, centre, kg)
+INTERNALS_ENDS = [
+    ('battery', (140, 126, 44), (82, 0, -18), 1.70),       # 12S2P 21700, 44.4 V 10 Ah: 24 cells, 2 x 6 x 2 lying
+    ('compute', (95, 63, 28), (-60, 0, 22), 0.12),         # Raspberry Pi 5 + CAN hat, on the top deck
+    ('power', (60, 45, 22), (-60, 0, -26), 0.10),          # DC-DC 48 -> 5 V, e-stop relay, fuse
+]
+INTERNALS_BELLY = [('battery', (140, 126, 44), (40, 0, -18), 1.70),
+                   ('compute', (95, 63, 28), (-60, 0, 22), 0.12),
+                   ('power', (60, 45, 22), (-80, 0, -26), 0.10)]
 configure(87.0)                                      # leg planes at +/-87: 301 overall (Go2 ~310)
 TAB_W = 16.0
 
 
 def deck_outline():
     """plan profile (x, y) of a deck, concave corners rounded r6, convex r10."""
+    if not ENDS:
+        return L.rounded(-X_END, -WIDE, X_END, WIDE, 22)
     p = unary_union([box(X_TAIL, -NECK, X_NOSE + 2 * T, NECK),
                      box(X_CHEST0, -WIDE, X_NOSE + 2 * T, WIDE),
                      box(X_BELLY0, -WIDE, X_BELLY1, WIDE)])
@@ -71,13 +91,17 @@ def tab_ys(half):
 
 def deck(part):
     """one deck half ('front' x > 0, 'rear' x < 0) with slots for every rib's tabs."""
-    d = deck_outline().intersection(box(0, -500, 1000, 500) if part == 'front' else box(-1000, -500, 0, 500))
+    d = deck_outline()
+    if part != 'whole':
+        d = d.intersection(box(0, -500, 1000, 500) if part == 'front' else box(-1000, -500, 0, 500))
     for x0, t, half in RIBS.values():
         for y in tab_ys(half):
             d = d.difference(box(x0 - 0.1, y - TAB_W / 2 - 0.1, x0 + t + 0.1, y + TAB_W / 2 + 0.1))
-    for x0, x1 in ((X_TAIL + 20, X_MID - 20), (X_MID + 30, -30), (30, X_BELLY1 - 30)):   # lightening
+    spans = ((X_TAIL + 20, X_MID - 20), (X_MID + 30, -30), (30, X_BELLY1 - 30)) if ENDS else \
+        ((-X_END + 70, -20), (20, X_END - 70))
+    for x0, x1 in spans:                                                     # lightening
         if x1 - x0 > 40:
-            w = NECK - 12 if x0 < X_MID else WIDE - 26
+            w = NECK - 12 if (ENDS and x0 < X_MID) else WIDE - 26
             d = d.difference(L.rounded(x0, -w, x1, w, 12))
     return d
 
@@ -100,19 +124,13 @@ def rib(name):
     return r
 
 
-# internals: (name, size x y z, centre, kg)
-INTERNALS = [
-    ('battery', (140, 126, 44), (82, 0, -18), 1.70),       # 12S2P 21700, 44.4 V 10 Ah: 24 cells, 2 x 6 x 2 lying
-    ('compute', (95, 63, 28), (-60, 0, 22), 0.12),         # Raspberry Pi 5 + CAN hat, on the top deck
-    ('power', (60, 45, 22), (-60, 0, -26), 0.10),          # DC-DC 48 -> 5 V, e-stop relay, fuse
-]
 WIRING_KG = 0.25
 
 
 def plates():
     """(name, manifold in the body frame, cut profile, qty) for every body plate."""
     out = []
-    for part in ('front', 'rear'):
+    for part in (('front', 'rear') if ENDS else ('whole',)):
         prof = deck(part)
         cs = CrossSection(L.rings(prof), FillRule.EvenOdd)
         out.append((f'deck-{part}-top', cs.extrude(T).translate((0, 0, H_IN)), prof, 1))
@@ -157,16 +175,19 @@ def report(alu=True):
 
 def check():
     ok = True
-    print(f'body: length {X_NOSE + 2 * T - X_TAIL:.0f}, chest/belly +/-{WIDE:.1f}, necks +/-{NECK:.1f}, '
-          f'height {2 * (H_IN + T):.0f}')
+    if ENDS:
+        print(f'body: length {X_NOSE + 2 * T - X_TAIL:.0f}, chest/belly +/-{WIDE:.1f}, necks +/-{NECK:.1f}, '
+              f'height {2 * (H_IN + T):.0f}')
+    else:
+        print(f'body (belly only): {2 * X_END:.0f} x {2 * WIDE:.0f} x {2 * (H_IN + T):.0f}; '
+              f'ends {HIP_X - X_END:.0f} mm short of each hip axis')
     g = CLIP - WIDE
     print(f'thigh E-clip (y {CLIP:.1f}) to deck edge: {g:.1f} mm  (the thigh never crosses the body)')
     ok &= g >= 3
-    g = PLANE - (L.Y_FLANGE + L.YOKE_T) - NECK
-    print(f'yoke flange to neck: {g:.1f} mm')
-    ok &= g >= 3
-    g = (HIP_X + L.X_YOKE + L.YOKE_T) - X_CHEST0
-    print(f'front yoke base to chest start: {-g:.1f} mm (ab/ad output face sits in the gap); same at the belly for the rear legs')
+    if ENDS:
+        g = PLANE - (L.Y_FLANGE + L.YOKE_T) - NECK
+        print(f'yoke flange to neck: {g:.1f} mm')
+        ok &= g >= 3
     reach = -L.Z_KNEEAX + L.M * (L.Z_KNEE + 2) / 2
     print(f'front/rear thighs over the top meet at {2 * HIP_X - 2 * reach:.0f} mm apart (hips {2 * HIP_X:.0f}, thigh+knee gear reach {reach:.0f})')
     ok &= 2 * HIP_X > 2 * reach

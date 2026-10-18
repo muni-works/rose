@@ -109,16 +109,17 @@ def inboard():
     import body as B
     importlib.reload(B)
     plane = 102.0
-    B.configure(plane, flange_outer=-Y_LFL[0])
-    legs = [(t, x, s, False) for t, x, s in (('fl', B.HIP_X, 1), ('fr', B.HIP_X, -1), ('rl', -B.HIP_X, 1), ('rr', -B.HIP_X, -1))]
+    B.configure(plane, flange_outer=-Y_LFL[0], ends=False)          # belly only: nothing beside a hip cluster
+    legs = [(t, x, s, x > 0) for t, x, s in (('fl', B.HIP_X, 1), ('fr', B.HIP_X, -1), ('rl', -B.HIP_X, 1), ('rr', -B.HIP_X, -1))]
     l1, hh = -L.Z_KNEEAX, 255.0
     th_t = np.degrees(np.arccos((l1 ** 2 + hh ** 2 - L.SHIN ** 2) / (2 * l1 * hh)))
     extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
     extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
-    note = (f'inboard hip: {2 * (plane + L.Y_PLATE[1] + 1.5):.0f} wide overall, body {2 * B.WIDE:.0f}, '
-            f'necks {2 * B.NECK:.0f}; hip {HIP_RATIO[1] // HIP_RATIO[0]}:1, turns full circle')
+    gap = (B.HIP_X - L.M * (HIP_RATIO[1] + 2) / 2) - B.X_END              # thigh-gear tip to belly end, in x
+    note = (f'inboard hip, belly only: {2 * (plane + L.Y_PLATE[1] + 1.5):.0f} wide overall, body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; '
+            f'hip {HIP_RATIO[1] // HIP_RATIO[0]}:1, full circle; clusters clear the body by {gap:.1f} mm in x at any abduction')
     B.configure(87.0)
-    return dict(hip_x=B.HIP_X, plane=plane, legs=legs, body=None, walls=[], extra=extra, note=note,
+    return dict(hip_x=210.0, plane=plane, legs=legs, body=None, walls=[], extra=extra, note=note,
                 replace=inboard_parts(th_t), drop=('bulkhead',))
 
 
