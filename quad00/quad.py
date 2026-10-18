@@ -10,6 +10,7 @@ Body frame: X forward, Y left, Z up, hip axes at z = 0. Run leg.py --assembly fi
   python3 quad.py  ->  out/assembly/quad-<name>.glb
 """
 import glob
+import math
 import os
 
 import numpy as np
@@ -324,6 +325,44 @@ def inline():
                 replace=inline_parts(th_t, 2 * th_t), only=True)
 
 
+def dog():
+    """the inline hybrid in dog proportions: a deep chest (depth / withers ~0.47) with the battery in a
+    tray under the ab/ad motors, compute on the withers, hips pulled in as far as the inward knees allow:
+    same-side thighs must clear through a +/-30 deg stride about the stance angle."""
+    import importlib
+    import body as B
+    importlib.reload(B)
+    hh = 255.0 * HY_L / 150.0
+    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    stride = 30.0
+    hip_x = math.ceil(HY_L * math.sin(math.radians(th_t + stride)) + 32 + 3)   # thigh box r32, 3 mm between
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
+    B.configure(80.0, hip_x=hip_x, ends=False)
+    B.PLANE, B.YA = y0, y0 + IL_ABAD
+    B.WIDE = y0 + IL_SHIN[0] - 4.0
+    B.H_TOP, B.H_BOT = 50.0 - L.T, 77.0 - L.T            # deck outer faces at +50 / -77
+    wall = hip_x - L.X_BULK[0]
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
+    B.INTERNALS = [('battery', (126, 70, 42), (0, 20.5, -51), 0.85),     # 12S1P 21700 (44.4 V, 5 Ah) under the ab/ad
+                   ('power', (60, 40, 22), (0, -35.5, -61), 0.10)]
+    legs = [(t, x, s, 'yoke' if x > 0 else 'leg') for t, x, s in
+            (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    withers_pack = Manifold.cube((95, 63, 28)).translate((-47.5, -31.5, 50.0))   # Pi 5 + CAN hat, on the withers
+    extra.append(('int-compute', L.tri(withers_pack)))
+    ok = B.check()
+    withers = hh + 50 + 28
+    length = 2 * hip_x + 2 * 35
+    note = (f'dog: withers {withers:.0f}, length/withers {length / (hh + 50):.2f}, chest/withers {127 / (hh + 50):.2f}; '
+            f'hips {2 * hip_x:.0f} apart (thighs clear a +/-{stride:.0f} deg stride), body {2 * B.X_END:.0f} long; '
+            f'checks {"pass" if ok else "FAIL"}')
+    B.configure(87.0)
+    B.H_TOP = B.H_BOT = B.H_IN
+    return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+                replace=inline_parts(th_t, 2 * th_t), only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -357,7 +396,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)

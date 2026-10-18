@@ -61,6 +61,7 @@ def configure(plane=87.0, flange_outer=None, hip_x=210.0, ends=True):
 
 
 H_IN = 41.0                                          # decks' inner faces at z = +/-41 (ab/ad motor r 28.5)
+H_TOP, H_BOT = H_IN, H_IN                            # top deck inner face at +H_TOP, bottom at -H_BOT
 T = L.T
 # internals: (name, size x y z, centre, kg)
 INTERNALS_ENDS = [
@@ -109,9 +110,9 @@ def deck(part):
 def rib(name):
     """YZ profile (u = y, v = z) of a rib or wall, tabs up and down into the decks."""
     x0, t, half = RIBS[name]
-    r = box(-half, -H_IN, half, H_IN)
+    r = box(-half, -H_BOT, half, H_TOP)
     for y in tab_ys(half):
-        r = r.union(box(y - TAB_W / 2, -H_IN - T, y + TAB_W / 2, H_IN + T))
+        r = r.union(box(y - TAB_W / 2, -H_BOT - T, y + TAB_W / 2, H_TOP + T))
     if name in ('nose', 'mid'):
         for s in (1, -1):
             r = r.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * YA, 0)))
@@ -133,8 +134,8 @@ def plates():
     for part in (('front', 'rear') if ENDS else ('whole',)):
         prof = deck(part)
         cs = CrossSection(L.rings(prof), FillRule.EvenOdd)
-        out.append((f'deck-{part}-top', cs.extrude(T).translate((0, 0, H_IN)), prof, 1))
-        out.append((f'deck-{part}-bottom', cs.extrude(T).translate((0, 0, -H_IN - T)), prof, 1))
+        out.append((f'deck-{part}-top', cs.extrude(T).translate((0, 0, H_TOP)), prof, 1))
+        out.append((f'deck-{part}-bottom', cs.extrude(T).translate((0, 0, -H_BOT - T)), prof, 1))
     for name, (x0, t, half) in RIBS.items():
         prof = rib(name)
         m = L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, x0)), 'yz')
@@ -179,7 +180,7 @@ def check():
         print(f'body: length {X_NOSE + 2 * T - X_TAIL:.0f}, chest/belly +/-{WIDE:.1f}, necks +/-{NECK:.1f}, '
               f'height {2 * (H_IN + T):.0f}')
     else:
-        print(f'body (belly only): {2 * X_END:.0f} x {2 * WIDE:.0f} x {2 * (H_IN + T):.0f}; '
+        print(f'body (belly only): {2 * X_END:.0f} x {2 * WIDE:.0f} x {H_TOP + H_BOT + 2 * T:.0f}; '
               f'ends {HIP_X - X_END:.0f} mm short of each hip axis')
     g = CLIP - WIDE
     print(f'thigh E-clip (y {CLIP:.1f}) to deck edge: {g:.1f} mm  (the thigh never crosses the body)')
@@ -189,10 +190,10 @@ def check():
         print(f'yoke flange to neck: {g:.1f} mm')
         ok &= g >= 3
     reach = -L.Z_KNEEAX + L.M * (L.Z_KNEE + 2) / 2
-    print(f'front/rear thighs over the top meet at {2 * HIP_X - 2 * reach:.0f} mm apart (hips {2 * HIP_X:.0f}, thigh+knee gear reach {reach:.0f})')
-    ok &= 2 * HIP_X > 2 * reach
+    gap = 2 * HIP_X - 2 * reach
+    print(f'front/rear thighs both swung fully toward each other: {"clear by %.0f mm" % gap if gap > 0 else "overlap %.0f mm (limit in software)" % -gap}')
     for n, (s, c, _) in [(n, (s, c, k)) for n, s, c, k in INTERNALS]:
-        fits = abs(c[1]) + s[1] / 2 <= WIDE - T and abs(c[2]) + s[2] / 2 <= H_IN
+        fits = abs(c[1]) + s[1] / 2 <= WIDE - T and c[2] - s[2] / 2 >= -H_BOT and c[2] + s[2] / 2 <= H_TOP
         print(f'  {n:8s} {s[0]}x{s[1]}x{s[2]} at x {c[0]:+.0f}: {"fits" if fits else "DOES NOT FIT"}')
         ok &= fits
     return ok
