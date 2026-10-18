@@ -288,6 +288,12 @@ def pocket(prof, keep, rim=8.0, rib=7.0, struts=(), min_area=120.0):
     return prof.difference(win) if not win.is_empty else prof
 
 
+def shapely_mirror(p):
+    """mirror a profile across u = 0 (the body's centre plane, for the right-hand copy)."""
+    from shapely import affinity
+    return affinity.scale(p, xfact=-1, yfact=1, origin=(0, 0))
+
+
 def warren(p0, p1, half, n):
     """struts of a Warren truss between p0 and p1 (a beam of half-width `half`): n bays of diagonals."""
     (x0, y0), (x1, y1) = p0, p1
@@ -361,7 +367,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -LS])
     e = MOTORS[end_mot or mot]
     if end:
-        DM = DM or max(80.0, (W / 2 + e['D'] / 2 + 4.0) / math.sin(math.radians(127)))   # clears the thigh to a 127 deg knee (K1's stop)
+        DM = DM or max(80.0, (W / 2 + e['D'] / 2 + 4.0) / math.sin(math.radians(127))) + (20.0 if end == 'wrist' and dual else 0.0)   # clears the thigh to a 127 deg knee (K1's stop); a 2-rod wrist sits lower so its rods clear the upper arm
         CR = CR or 0.4 * e['D']
         shin = L.stadium([(0, 0, hub_d + 4), (0, -DM, e['D'] + 7), (0, -LS, 30 * k)])
         rh, rm, rp = hub_d / 2 + 6, e['back'][0] / 2 + 8, 15 * k
@@ -402,8 +408,8 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     pins = [trimesh.creation.cylinder(radius=3, segment=[[cx, yl - 0.5, cz + zz], [cx, yr_ + 2 * L.T + (L.T + 1.5 if end == 'wrist' and zz == -LS else 1), cz + zz]], sections=24) for zz in (-DM, -LS)]
     parts[f'link-{end}'] = trimesh.util.concatenate([xz(rod, yr_, 2 * L.T)] + pins).apply_transform(shin_T)
     parts[f'pivot-{end}'] = trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 1, -LS], [0, (yr_ + 3 * L.T + 1.0) if end == 'wrist' else yl + L.T, -LS]], sections=24).apply_transform(shin_T)
-    if dual and end == 'ankle':
-        return ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank)
+    if dual:
+        return ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, end=end)
     eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a)
     lobe = (CR, 0)                                           # foot / hand crank pin, in its own frame
     if end == 'ankle':
@@ -500,9 +506,13 @@ def _bar(P, Q, w, t):
     return trimesh.creation.box(extents=[w, t, ln + w]).apply_transform(M)
 
 
-def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank):
-    CR = 0.8 * e['D']                                        # long cranks: less crank swing per degree of roll (swept: 0.8 D, beta -12)
-    G = ankle2_geom(LS, DM, CR, e)
+def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, end='ankle'):
+    if end == 'ankle':
+        CR = 0.8 * e['D']                                    # long cranks: less crank swing per degree of roll (swept: 0.8 D, beta -12)
+        G = ankle2_geom(LS, DM, CR, e)
+    else:                                                    # wrist: pitch +/-45 x yaw +/-20 (swept: 1.0 D, beta -5)
+        CR = 1.0 * e['D']
+        G = ankle2_geom(LS, DM, CR, e, beta=-5.0)
     ry = lambda d_: trimesh.transformations.rotation_matrix(np.radians(d_), [0, 1, 0])
     cyl = lambda r, y0, y1, z: trimesh.creation.cylinder(radius=r, segment=[[0, y0, z], [0, y1, z]], sections=64)
     shin_T = th @ knee @ ry(-rel)
@@ -524,43 +534,48 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank):
     parts['shin'] = trimesh.util.concatenate([xz(inner, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1]),
                                               xz(outer, y_os, L.T)]).apply_transform(shin_T)
     oring = e['out'][0] / 2 + 4
-    parts[f'{en}-ankle'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM1), cyl(oring, m0 + e['L'], yA, -DM1)]).apply_transform(shin_T)
-    parts[f'{en}-ankle-b'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM2), cyl(oring, yB + L.T, m0, -DM2)]).apply_transform(shin_T)
+    parts[f'{en}-{end}'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM1), cyl(oring, m0 + e['L'], yA, -DM1)]).apply_transform(shin_T)
+    parts[f'{en}-{end}-b'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM2), cyl(oring, yB + L.T, m0, -DM2)]).apply_transform(shin_T)
     # foot pose: level (+ commanded pitch) and roll
-    a = rel - th_t + ank[0]
+    a = (rel - th_t if end == 'ankle' else 0.0) + ank[0]   # foot level / hand inline, + command
     sol = ankle2_ik(G, a, ank[1])
     if any(s_ is None for s_ in sol):
-        raise ValueError(f'ankle linkage cannot reach pitch {a:.0f} roll {ank[1]:.0f}')
+        raise ValueError(f'{end} linkage cannot reach pitch {a:.0f} roll {ank[1]:.0f}')
     for (al, tm, P, Qp), (DMi, yi), yl_, tag in zip(sol, G['rods'], (yA, yB), ('', '-b')):
         cx, cz = CR * math.cos(math.radians(al)), -CR * math.sin(math.radians(al))
         crank = L.stadium([(0, 0, e['out'][0] + 13), (cx, cz, 16 * ke)]).difference(L.holes_on(e['out'][0], e['out'][1], e['hole'])).difference(L.circle(cx, cz, 6.4))
-        parts[f'crank-ankle{tag}'] = xz(crank, yl_, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DMi])).apply_transform(shin_T)
+        parts[f'crank-{end}{tag}'] = xz(crank, yl_, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DMi])).apply_transform(shin_T)
         y0_, y1_ = (yA, yRA + 2 * L.T) if tag == '' else (yRB, yB + L.T)      # pin: crank / foot post layer .. rod layer (ball ends)
         pins = [trimesh.creation.cylinder(radius=3, segment=[[pt[0], y0_ - 0.5, pt[2]], [pt[0], y1_ + 0.5, pt[2]]], sections=20) for pt in (P, Qp)]
-        parts[f'link-ankle{tag}'] = trimesh.util.concatenate([_bar(P, Qp, 14 * ke, 2 * L.T)] + pins).apply_transform(shin_T)
+        parts[f'link-{end}{tag}'] = trimesh.util.concatenate([_bar(P, Qp, 14 * ke, 2 * L.T)] + pins).apply_transform(shin_T)
     # ankle: a universal joint at the shin's end -- a cross block on the pitch pin (through both shin plates)
     # carries the roll pin (fore-aft); the foot hangs from the roll pin on two lugs, and the rods land on
     # posts rising from the sole IN FRONT of the shin box, so the foot rolls without touching the box
     sb = 12 * ke                                             # cross block half-size: fits between the shin plates
-    parts['pivot-ankle'] = trimesh.util.concatenate([
+    parts[f'pivot-{end}'] = trimesh.util.concatenate([
         trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 0.5, -LS], [0, y_os + L.T + 0.5, -LS]], sections=24),
         trimesh.creation.box(extents=[2 * sb, y_os - IL_SHIN[1] - 2.0, 2 * sb]).apply_translation([0, (y_os + IL_SHIN[1]) / 2, -LS - G['h'] / 2])]).apply_transform(shin_T)
-    fz, fl_ = 46 * k, 0.6 * LS
-    lx, lz = G['foot_pin']             # rod pins on the foot, ankle frame (x fore, z up)
+    fz, fl_ = (46 * k, 0.6 * LS) if end == 'ankle' else (30 * k, 0.35 * LS)
+    lx, lz = G['foot_pin']             # rod pins on the foot / hand, joint frame (x fore, z up)
     sw0, sw1 = yRB - 4, yRA + 2 * L.T + 4
-    sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10)
+    sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10) if end == 'ankle' else L.rounded(lx - 12 * ke, sw0, 0.45 * fl_, sw1, 8)
     sp = pocket(sp, [(0, yc, 14 * k), (lx, yRA + L.T, 10), (lx, yRB + L.T, 10)], rim=10.0, rib=8.0,
-                struts=warren((-0.38 * fl_, yc), (0.56 * fl_, yc), (sw1 - sw0) / 2 - 10, 6))
+                struts=warren((-0.38 * fl_, yc), (0.56 * fl_, yc), (sw1 - sw0) / 2 - 10, 6) if end == 'ankle' else [((lx, yc), (0.4 * fl_, yc))])
     sole = L.tri(L.to_world(CrossSection(L.rings(sp), FillRule.EvenOdd).extrude(2 * L.T).translate((0, 0, -fz - 2 * L.T)), 'xy'))
     post = L.unary_union([L.stadium([(lx, lz, 14 * ke), (lx, -fz, 24 * ke)]), L.box(lx - 18 * ke, -fz, lx + 18 * ke, -fz + 10)]).difference(L.circle(lx, lz, 6.4))
     hh = G['h']
     lug = L.unary_union([L.circle(yc, -hh, 2 * sb), L.box(yc - sb, -fz, yc + sb, -hh)]).difference(L.circle(yc, -hh, 8.4 * k))
     yz = lambda prof, x0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, x0)), 'yz'))
     rollpin = trimesh.creation.cylinder(radius=4 * k, segment=[[-sb - L.T - 1.5, yc, -hh], [sb + L.T + 1.5, yc, -hh]], sections=24)
-    foot = trimesh.util.concatenate([sole, xz(post, yA, L.T), xz(post, yB, L.T),
-                                     yz(lug, sb + 1.0, L.T), yz(lug, -sb - 1.0 - L.T, L.T), rollpin])
+    body_ = [sole, xz(post, yA, L.T), xz(post, yB, L.T), yz(lug, sb + 1.0, L.T), yz(lug, -sb - 1.0 - L.T, L.T), rollpin]
+    if end != 'ankle':
+        # hand: the same U-joint and posts on a short palm, with a paddle (tool plate) carrying on along the forearm
+        hl = 70 * k
+        paddle = L.unary_union([L.rounded(-0.2 * fl_, -fz - hl, 0.45 * fl_, -fz, 10)]).difference(L.rounded(0, -fz - hl + 14, 0.3 * fl_, -fz - 14, 6))
+        body_.append(xz(paddle, yc - L.T, 2 * L.T))
+    foot = trimesh.util.concatenate(body_)
     Rx = trimesh.transformations.rotation_matrix(np.radians(ank[1]), [1, 0, 0], [0, yc, -hh])
-    parts['foot'] = foot.apply_transform(shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a) @ Rx)
+    parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a) @ Rx)
     return parts
 
 AB_OUT = IP_OUT                                         # ab/ad output face (body side) from the hip: 26.5
@@ -856,7 +871,8 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
-                    arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False):
+                    arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False,
+                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -905,8 +921,17 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     # corners, nothing above the shoulder line) .. floor; the waist motor inside on its front flange, output down
     xt = 0.0
     xf = xt - T2 - 1.0 - mw['L'] - 1.0 - chest_h
-    bar = wallp(chest, [(s * ya, ma['out'], 90, ma['out'][0] * 0.6, ma['hole']) for s in (1, -1)]
-               + ([(0, MOTORS[head]['front'], 0, MOTORS[head]['out'][0] + 11, MOTORS[head]['hole'])] if head else []))
+    neck_port = [(0, MOTORS[head]['front'], 0, MOTORS[head]['out'][0] + 11, MOTORS[head]['hole'])] if head else []
+    if arm_chain:
+        # arms = the leg chain, hung from the shoulders: a yaw motor as a spacer in a shoulder box at each end
+        # of the bar (the pelvis idiom), its flange + roll plate, then the limb module (ab/ad = shoulder roll)
+        mya = MOTORS[arm_yawm]
+        ys = chest + math.hypot(ma['D'] / 2, ma['L'] / 2) + 4.0      # yaw = roll axis, the roll motor yaws outside the chest
+        y0a = ys - da['ABAD']
+        hs = ys + mya['D'] / 2 + 6.0                                  # bar half-width: over the shoulder boxes
+        bar = wallp(hs, neck_port)
+    else:
+        bar = wallp(chest, [(s * ya, ma['out'], 90, ma['out'][0] * 0.6, ma['hole']) for s in (1, -1)] + neck_port)
     extra.append(('chassis-shoulder-bar', ext(bar, 'yz', xt - T2, T2)))
     extra.append(('chassis-chest-floor', ext(wallp(chest, [(0, mw['front'], 0, mw['out'][0] + 11, mw['hole'])]), 'yz', xf - T2, T2)))
     skin = L.rounded(xf - T2, -chest, xt, chest, 10)
@@ -975,8 +1000,38 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     hip_a = xt - T2 - da['IPOUT']
     legs = [('al', hip_a, 1, 'none'), ('ar', hip_a, -1, 'none')]
     poses = {'none': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1], mot=armm, end_mot=wristm)}
+    if arm_chain:
+        xsb = xt - T2 - 1.0 - mya['L'] - 1.0                  # shoulder floor's top face (yaw motor between bar and floor)
+        xso = xsb - T2 - 1.0                                   # yaw output face
+        sh_x = xso - L.T - ((ma['D'] + 7.0) / 2 + 8.0) - arm_drop   # shoulder pitch axis; the drop buys abduction
+        zra = da['IPOUT']
+        rfa = mya['out'][0] + 33
+        rla = ma['out'][0] + 33
+        apart = inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1], mot=armm, ab_mot=armm, end_mot=wristm, dual=True)
+        for tag, s in (('al', 1), ('ar', -1)):
+            # shoulder box: the bar above, a floor below (front flange of the yaw motor), skins fore and aft
+            fl0 = L.unary_union([L.circle(ys, 0, mya['front'][0] + 16), L.rounded(chest - 20.0, -0.6 * H, ys, 0.6 * H, 8)]).difference(L.holes_on(mya['front'][0], mya['front'][1], mya['hole'], at=(ys, 0))).difference(L.circle(ys, 0, mya['out'][0] + 11))
+            if s < 0:
+                fl0 = shapely_mirror(fl0)
+            extra.append((f'chassis-shoulder-floor.{tag}', ext(fl0, 'yz', xsb - T2, T2)))
+            sk = L.rounded(xsb - T2, chest + 0.5, xt, hs, 6)
+            if s < 0:
+                sk = shapely_mirror(sk)
+            extra += [(f'chassis-shoulder-front.{tag}', ext(sk, 'xy', H, L.T)), (f'chassis-shoulder-back.{tag}', ext(sk, 'xy', -H - L.T, L.T))]
+            extra.append((f'{arm_yawm}-shoulderyaw.{tag}', cyl(mya['D'] / 2, xsb + 1.0, xsb + 1.0 + mya['L'], s * ys)))
+            extra.append((f'{arm_yawm}-shoulderyaw-out.{tag}', cyl(mya['out'][0] / 2 + 4, xso, xsb + 1.0, s * ys)))
+            fla = L.unary_union([L.circle(s * ys, 0, rfa), L.rounded(s * ys - 12, -10, s * ys + 12, zra + T2, 6)]).difference(L.holes_on(mya['out'][0], mya['out'][1], mya['hole'], at=(s * ys, 0)))
+            extra.append((f'chassis-shoulderflange.{tag}', ext(fla, 'yz', xso - L.T, L.T)))
+            rpa = L.unary_union([L.circle(sh_x, s * ys, rla), L.rounded(sh_x, s * ys - 12, xso - L.T, s * ys + 12, 6)])
+            rpa = rpa.difference(L.holes_on(ma['out'][0], ma['out'][1], ma['hole'], phase=90, at=(sh_x, s * ys))).difference(L.circle(sh_x, s * ys, ma['out'][0] * 0.6))
+            extra.append((f'chassis-shoulderplate.{tag}', ext(rpa, 'xy', zra, T2)))
+            place = trimesh.transformations.translation_matrix([sh_x, s * y0a, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
+            for n, g in apart.items():
+                extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
+        hip_a, legs, poses = sh_x, [], {}
     count = {}
-    for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + [armm] * 6 + [wristm or armm] * 2 + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
+    arms_ = ([armm] * 6 + [wristm] * 4 + [arm_yawm] * 2) if arm_chain else ([armm] * 6 + [wristm or armm] * 2)
+    for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + arms_ + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
         count[mm] = count.get(mm, 0) + 1
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
     mix = ' + '.join(f'{n_} {k_.upper()}' for k_, n_ in count.items())
@@ -999,8 +1054,8 @@ def humanoid_mini():
     (an RS06 knee walks at ~120% of 0.7 x peak once the plates are weighed), RS06 hip roll, ankles + waist,
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
     return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
-                           legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
-                           legpk='rs04', rect=True)
+                           legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
+                           legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(10.0, 60.0))
 
 
 def build(arch):
