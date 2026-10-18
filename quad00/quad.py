@@ -275,20 +275,20 @@ IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead
 IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
 
 
-def inline_parts(th_t, rel, end=None):
+def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L):
     """THE limb module, all 8 limbs: thigh box (hip + knee RS00 as spacers), inline shin, ab/ad centred
     fore-aft on the hip (stator on the yoke base behind, output face IP_OUT ahead -> the body wall)."""
     xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
     ry = lambda d: trimesh.transformations.rotation_matrix(np.radians(d), [0, 1, 0])
     cyl = lambda r, y0, y1, x=0, z=0: trimesh.creation.cylinder(radius=r, segment=[[x, y0, z], [x, y1, z]], sections=64)
-    box_thigh = L.stadium([(0, 0, 64), (0, -HY_L, 64)])
-    inner = box_thigh.difference(L.circle(0, 0, 50)).difference(L.circle(0, -HY_L, 40))
-    inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
-    outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_L)))
-    outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
-    shin = L.stadium([(0, 0, 40), (0, -HY_SHIN_L, 30 if end else 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
-        .difference(L.rounded(-5, -HY_SHIN_L + 32, 5, -32, 5))
-    knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
+    box_thigh = L.stadium([(0, 0, 64), (0, -LT, 64)])
+    inner = box_thigh.difference(L.circle(0, 0, 50)).difference(L.circle(0, -LT, 40))
+    inner = inner.difference(L.rounded(-12, -LT + 45, 12, -45, 10))
+    outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -LT)))
+    outer = outer.difference(L.rounded(-12, -LT + 45, 12, -45, 10))
+    shin = L.stadium([(0, 0, 40), (0, -LS, 30 if end else 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -LS + 32, 5, -32, 5))
+    knee = trimesh.transformations.translation_matrix([0, 0, -LT])
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, 56), L.box(IP_BASE[0], -26, 0, 26)]).convex_hull
     boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
@@ -297,9 +297,9 @@ def inline_parts(th_t, rel, end=None):
     base = L.unary_union([L.circle(IL_ABAD, 0, 29), L.box(IL_ABAD, -32, HY_FL[0], 32)]).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
     hub = L.circle(0, 0, 36)
-    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -LS])
     if end:
-        shin = shin.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_SHIN_L)))
+        shin = shin.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -LS)))
     parts = {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
@@ -320,8 +320,8 @@ def inline_parts(th_t, rel, end=None):
     del parts['paw']
     shin_T = th @ knee @ ry(-rel)
     m0, m1 = IL_SHIN[1] + 1.0, IL_SHIN[1] + 1.0 + L.RS00_L
-    eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -HY_SHIN_L]) @ (ry(rel - th_t) if end == 'ankle' else np.eye(4))   # foot level, hand inline
-    parts[f'rs00-{end}'] = cyl(L.RS00_D / 2, m0, m1, z=-HY_SHIN_L).apply_transform(shin_T)
+    eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ (ry(rel - th_t) if end == 'ankle' else np.eye(4))   # foot level, hand inline
+    parts[f'rs00-{end}'] = cyl(L.RS00_D / 2, m0, m1, z=-LS).apply_transform(shin_T)
     if end == 'ankle':
         ank = L.unary_union([L.circle(0, 0, 60), L.box(-40, -46, 60, -30)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3))
         sole = trimesh.creation.box(extents=[130, m1 + 4 - IL_SHIN[0] + 8, 2 * L.T]).apply_translation([12, (IL_SHIN[0] - 8 + m1 + 4) / 2, -46 - L.T])
@@ -379,7 +379,7 @@ def dog():
     hh = 255.0
     th_t, rel_t = stance(hh)
     stride = 30.0
-    hip_x = math.ceil(HY_L * math.sin(math.radians(th_t + stride)) + 32 + 3)   # thigh box r32, 3 mm between
+    hip_x = math.ceil(LT * math.sin(math.radians(th_t + stride)) + 32 + 3)   # thigh box r32, 3 mm between
     y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
     B.configure(80.0, hip_x=hip_x, ends=False)
     B.PLANE, B.YA = y0, y0 + IL_ABAD
@@ -415,7 +415,7 @@ def humanoid():
     ya = y0 + IL_ABAD
     torso_h = 200.0                                       # hip axis -> shoulder axis
     arm_up, arm_bend = 10.0, 80.0                         # arm pose (deg)
-    leg_hh = 0.96 * (HY_L + HY_SHIN_L)                    # nearly straight legs
+    leg_hh = 0.96 * (LT + LS)                    # nearly straight legs
     leg_th, leg_rel = stance(leg_hh)
     x_back = -AB_OUT                                      # ab/ad output faces, behind the limb axes
     hip_z = leg_hh + L.PAW_D / 2
@@ -454,7 +454,7 @@ def humanoid2():
     ya = y0 + IL_ABAD
     torso_h = 200.0
     arm_up, arm_bend = 10.0, 80.0
-    leg_hh = 0.96 * (HY_L + HY_SHIN_L)
+    leg_hh = 0.96 * (LT + LS)
     leg_th, leg_rel = stance(leg_hh)
     hip_z = leg_hh + L.PAW_D / 2
     sh_z = hip_z + torso_h
@@ -625,8 +625,9 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 
-def humanoid_mini(arm_pose=(100.0, 70.0)):
-    """MINI humanoid: the tiny's limbs and lengths, plus waist yaw, hip yaw, ankle pitch, wrist -- 19 RS00.
+def humanoid_mini(arm_pose=(100.0, 70.0), leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=32.0):
+    """MINI humanoid, ~70 cm: the largest an all-RS00 humanoid carries (walking knee ~94% of 0.7 x 14 N.m).
+    The tiny's limb module stretched (thigh 170, shin 220; arm 150/170), plus waist yaw, hip yaw, ankle, wrist -- 19 RS00.
     Every added joint uses an idiom already in the design: the waist and hip-yaw motors are spacers
     between two walls (as the hip/knee in the thigh box); ankle and wrist are the knee again, one joint down."""
     yy = 42.0                                             # hip-yaw axes = roll axes: a roll motor yaws in its own
@@ -642,7 +643,7 @@ def humanoid_mini(arm_pose=(100.0, 70.0)):
     FRONT_PCD, FRONT_N = 50.0, 6                          # RS00 stator front flange: hangs a motor output-down
     # chest: shoulder bar (arm ab/ad outputs) .. floor; the waist RS00 sits inside on its front flange, output down
     xt = 0.0                                              # shoulder bar's outer face
-    xf = xt - T2 - 1.0 - L.RS00_L - 1.0                   # chest floor's top face: the waist motor fits between
+    xf = xt - T2 - 1.0 - L.RS00_L - 1.0 - chest_h         # chest floor's top face: waist motor + electronics bay
     def wallp(half, ports, cut=True):
         w = L.rounded(-half, -H, half, H, 8)
         for (y, pcd, n, ph, hole) in ports:
@@ -669,9 +670,9 @@ def humanoid_mini(arm_pose=(100.0, 70.0)):
     extra += [('chassis-pelvis-front', ext(pskin, 'xy', H, L.T)), ('chassis-pelvis-back', ext(pskin, 'xy', -H - L.T, L.T))]
     xo = xpb - T2 - 1.0                                   # hip-yaw output faces
     # legs: yaw output -> hip bracket (a flange on the yaw + the roll plate, as the tiny's pelvis plate) -> module
-    leg_hh = 0.96 * (HY_L + HY_SHIN_L) - 40.0             # the foot plate is 40 lower than the paw centre
-    th, rel = stance(leg_hh)
-    parts = inline_parts(th, rel, end='ankle')
+    leg_hh = 0.96 * sum(leg) - 40.0                       # the foot plate is 40 lower than the paw centre
+    th, rel = stance(leg_hh, *leg)
+    parts = inline_parts(th, rel, end='ankle', LT=leg[0], LS=leg[1])
     hip_x = xo - L.T - 40.0
     zr, yr = IP_OUT, y0 + IL_ABAD
     Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
@@ -689,9 +690,9 @@ def humanoid_mini(arm_pose=(100.0, 70.0)):
             extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
     hip_a = xt + AB_OUT
     legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
-    poses = {'yoke': inline_parts(*arm_pose, end='wrist')}
+    poses = {'yoke': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1])}
     note = (f'MINI humanoid: 19 RS00 -- waist yaw, hip yaw-roll-pitch, knee, ankle; shoulder yaw-pitch, elbow, wrist; '
-            f'tiny lengths; shoulder-to-hip {hip_a - hip_x:.0f}, shoulders {2 * (y0a + HY_OUT[1]):.0f} wide')
+            f'~70 cm; shoulder-to-hip {hip_a - hip_x:.0f}, shoulders {2 * (y0a + HY_OUT[1]):.0f} wide')
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
     return dict(hip_x=hip_a, plane=y0a, legs=legs, body=None, walls=[], extra=extra, note=note,
                 posed=poses, only=True, world=R, ground=True)
