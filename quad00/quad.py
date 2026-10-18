@@ -460,6 +460,66 @@ def humanoid2():
     return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
 
 
+# --- in-plane: the ab/ad RS00 sits level with its limb -- centred fore-aft on the hip/shoulder axis, just
+#     inboard of the shin layer -- so limb, ab/ad and torso share one ~66 mm slab. Its stator back-mounts on
+#     the yoke base behind the axis; its output (front) bolts to the torso wall in front of the axis.
+IP_AB = (-L.RS00_L / 2, L.RS00_L / 2)                  # ab/ad stator, x
+IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead of the limb axis
+IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
+
+
+def inplane_parts(th_t, rel):
+    parts = inline_parts(th_t, rel)
+    xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
+    fl = L.unary_union([L.circle(0, 0, 56), L.box(IP_BASE[0], -26, 0, 26)]).convex_hull
+    boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
+    base = L.box(IL_ABAD - 32, -32, HY_FL[0], 32).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
+    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
+    parts['yoke'] = trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m])
+    parts['rs00-abad'] = trimesh.util.concatenate([
+        trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[IP_AB[0], IL_ABAD, 0], [IP_AB[1], IL_ABAD, 0]], sections=64),
+        trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[IP_AB[1], IL_ABAD, 0], [IP_OUT, IL_ABAD, 0]], sections=48)])
+    return parts
+
+
+def humanoid3():
+    """slab humanoid: every ab/ad in the limb's own plane. Arms (as drawn: elbow back) put their ab/ad
+    output on a FRONT wall; legs (mirrored fore-aft: knee forward) on a BACK wall. The torso is the two
+    walls and the sides between them -- the same depth as the limbs."""
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
+    ya = y0 + IL_ABAD
+    torso_h = 200.0
+    arm_up, arm_bend = 6.0, 70.0
+    leg_hh = 0.96 * (HY_L + HY_SHIN_L)
+    leg_th, leg_rel = stance(leg_hh)
+    hip_z = leg_hh + L.PAW_D / 2
+    sh_z = hip_z + torso_h
+    legs = [('ll', 0.0, 1, 'all', hip_z), ('lr', 0.0, -1, 'all', hip_z),
+            ('al', 0.0, 1, 'none', sh_z), ('ar', 0.0, -1, 'none', sh_z)]
+    poses = {'all': inplane_parts(leg_th, leg_rel), 'none': inplane_parts(arm_up, arm_bend)}
+    ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    wide = ya + L.RS00_D / 2 + 3.0
+    z0, z1 = hip_z - 40, sh_z + 40
+    def wall(z_ports):
+        w = L.rounded(-wide, z0, wide, z1, 12)
+        for s in (1, -1):
+            w = w.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(s * ya, z_ports))).difference(L.circle(s * ya, z_ports, 16))
+        return w.difference(L.rounded(-wide + 14, (z0 + z1) / 2 - 50, wide - 14, (z0 + z1) / 2 + 50, 10))
+    side = L.rounded(-IP_OUT - 2 * L.T, z0, IP_OUT + 2 * L.T, z1, 12)
+    extra = [('chassis-wall-front', ext(wall(sh_z), 'yz', IP_OUT, 2 * L.T)),
+             ('chassis-wall-back', ext(wall(hip_z), 'yz', -IP_OUT - 2 * L.T, 2 * L.T)),
+             ('chassis-side-l', ext(side, 'xz', wide - L.T, L.T)), ('chassis-side-r', ext(side, 'xz', -wide, L.T)),
+             ('chassis-cap', ext(L.rounded(-IP_OUT - 2 * L.T, -wide, IP_OUT + 2 * L.T, wide, 8), 'xy', z1, L.T))]
+    extra.append(('int-battery', L.tri(Manifold.cube((44, 2 * wide - 16, 120)).translate((-22, -wide + 8, hip_z + 40)))))
+    head = Manifold.cube((60, 80, 60)).translate((-30, -40, z1 + L.T + 25))
+    neck = Manifold.cylinder(25, 14, 14, 32).translate((0, 0, z1 + L.T))
+    extra.append(('head', L.tri(head + neck)))
+    depth = 2 * (IP_OUT + 2 * L.T)
+    note = (f'slab humanoid: ab/ad in each limb\'s plane; torso {depth:.0f} deep x {2 * wide:.0f} wide, the limbs\' own depth; '
+            f'~{z1 + 90:.0f} tall')
+    return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -505,7 +565,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)

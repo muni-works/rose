@@ -58,7 +58,8 @@ canvas:active { cursor: grabbing; }
   <div class="status" id="status">loading model…</div>
   <div class="tools">
     <button id="v-inline" aria-pressed="false">Mini quad</button>
-    <button id="v-humanoid2" aria-pressed="true">Mini humanoid (S-torso)</button>
+    <button id="v-humanoid3" aria-pressed="true">Mini humanoid</button>
+    <button id="v-humanoid2" aria-pressed="false">S-torso</button>
     <button id="v-humanoid" aria-pressed="false">Humanoid (backpack)</button>
     <button id="v-dog" aria-pressed="false">Dog proportions</button>
     <button id="v-hybrid" aria-pressed="false">Outboard shin</button>
@@ -87,7 +88,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { humanoid2: '__HUMANOID2_GLB_BASE64__', hybrid: '__HYBRID_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', dog: '__DOG_GLB_BASE64__', inline: '__INLINE_GLB_BASE64__', direct: '__DIRECT_GLB_BASE64__', inboard: '__INBOARD_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', corner: '__CORNER_GLB_BASE64__', leg: '__GLB_BASE64__' };
+const MODELS = { humanoid3: '__HUMANOID3_GLB_BASE64__', humanoid2: '__HUMANOID2_GLB_BASE64__', hybrid: '__HYBRID_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', dog: '__DOG_GLB_BASE64__', inline: '__INLINE_GLB_BASE64__', direct: '__DIRECT_GLB_BASE64__', inboard: '__INBOARD_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', corner: '__CORNER_GLB_BASE64__', leg: '__GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -138,6 +139,7 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
+  humanoid3: 'mini humanoid: every ab/ad sits in its limb\'s plane; the torso is two walls + sides, 66 mm deep like the limbs',
   humanoid2: 'mini humanoid, S-torso: arm ab/ad forward into a chest, leg ab/ad back into a pelvis; nothing behind the limbs',
   humanoid: 'mini humanoid (locked): the same module x4, each carrying its ab/ad; the back plate is just bolt patterns',
   dog: 'inline hybrid in dog proportions: deep chest, battery under the ab/ad, compute on the withers; hips 300 apart',
@@ -254,7 +256,7 @@ function frame(obj) {
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
 buildKey();
 for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
-show('humanoid2');
+show('humanoid3');
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {
