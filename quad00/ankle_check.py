@@ -40,7 +40,7 @@ def mini():
     bad = {}
     for rel in (0, 60, 127):
         for p, r in itertools.product((-20, -10, 0, 20, 35, 50), (-20, -10, 0, 10, 20)):
-            parts = Q.inline_parts(30, rel, 'ankle', 230, 300, mot='rs04', ab_mot='rs06', end_mot='rs06', dual=True, ank=(p - (rel - 30), r))
+            parts = Q.inline_parts(30, rel, 'ankle', 210, 300, mot='rs04', ab_mot='rs06', end_mot='rs06', dual=True, ank=(p - (rel - 30), r))
             c = collide(parts, 'rs06')
             if c: bad[(rel, p, r)] = c
     print('  collisions (knee x ankle pitch x roll):', bad or 'none')

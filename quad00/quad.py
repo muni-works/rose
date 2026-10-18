@@ -579,7 +579,7 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, 
         trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 0.5, -LS], [0, y_os + L.T + 0.5, -LS]], sections=24),
         (lambda y0_, y1_: trimesh.creation.box(extents=[2 * sb, y1_ - y0_, 2 * sb]).apply_translation([0, (y0_ + y1_) / 2, -LS - G['h'] / 2]))(
             (yB + L.T + 1.0) if G['tuck'] else IL_SHIN[1] + 1.0, y_os - 1.0)]).apply_transform(shin_T)
-    fz, fl_ = (46 * k, 0.6 * LS) if end == 'ankle' else (30 * k, 0.35 * LS)
+    fz, fl_ = (G['h'] + 2 * sb + 6.0, 0.6 * LS) if end == 'ankle' else (30 * k, 0.35 * LS)   # sole just under the U-joint's lugs
     lx, lz = G['foot_pin']             # rod pins on the foot / hand, joint frame (x fore, z up)
     sw0, sw1 = yRB - 4, yRA + 2 * L.T + 4
     sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10) if end == 'ankle' else L.rounded(lx - 12 * ke, sw0, 0.45 * fl_, sw1, 8)
@@ -919,7 +919,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
                     arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False,
-                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0, shoulder=(0.0, 0.0, 0.0)):
+                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0, shoulder=(0.0, 0.0, 0.0), head_h=None):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -953,7 +953,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         else:
             reach = arm[0] + (ma['D'] + 7.0) / 2               # shoulder axis to the bottom of the elbow: only the elbows
                                                               # must clear the thighs; forearms work in front of them
-        chest_h = max(chest_h, reach + (MOTORS[legpk]['D'] + 7.0) / 2 + 20.0 - s2h0)
+        chest_h = max(chest_h, reach + (MOTORS[legpk]['D'] + 7.0) / 2 + 8.0 - s2h0)   # elbow box 8 mm over the thigh box
     H = max(41.0, ma['D'] / 2 + 12.0, mw['D'] / 2 + 12.0, my['D'] / 2 + 12.0)
     T2 = 2 * L.T
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
@@ -1034,14 +1034,37 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         pa = L.stadium([(xb + L.T + 20 * kp, 0, 40 * kp), (xh, 0, mp['D'] + 7)]).difference(L.holes_on(mp['back'][0], mp['back'][1], mp['hole'], phase=45, at=(xh, 0)))
         extra.append(('chassis-neck-plate', ext(pa, 'xz', yb_ - L.T, L.T)))
         extra.append((f'{head}-neckpitch', trimesh.creation.cylinder(radius=mp['D'] / 2, segment=[[xh, yb_ + 1.0, 0], [xh, ya_ - 1.0, 0]], sections=64)))
-        hw = mp['L'] / 2 + 1 + 2 * L.T + 6.0                # head half-width
-        side = L.unary_union([L.circle(xh, 0, mp['D'] + 10), L.rounded(xh - 20 * kp, -10, xh + 60 * kp, 50 * kp, 10)])
-        extra.append(('head-side.r', ext(side.difference(L.holes_on(mp['out'][0], mp['out'][1], mp['hole'], at=(xh, 0))), 'xz', ya_, L.T)))
-        extra.append(('head-side.l', ext(side.difference(L.circle(xh, 0, 12)), 'xz', yb_ - 2 * L.T - 1.0, L.T)))
-        extra.append(('head-pivot', trimesh.creation.cylinder(radius=5, segment=[[xh, yb_ - 2 * L.T - 1.5, 0], [xh, yb_ - L.T, 0]], sections=24)))
-        face = L.rounded(xh - 20 * kp, -hw, xh + 60 * kp, hw, 10).difference(L.circle(xh + 25 * kp, -hw * 0.45, 18 * kp)).difference(L.circle(xh + 25 * kp, hw * 0.45, 18 * kp))
-        extra.append(('head-face', ext(face, 'xy', 50 * kp, L.T)))
-        extra.append(('int-camera', L.tri(Manifold.cube((22 * kp, ya_ - yb_ + L.T - 4, 20 * kp)).translate((xh + 14 * kp, yb_ - L.T + 2, 50 * kp - 20 * kp - 1)))))
+        if head_h:
+            # a human-proportioned head: height head_h (~1/7.5 of standing height), width 0.66 h, depth 0.8 h --
+            # a closed plate shell (face, back, crown, cheeks) on the pitch motor's two plates, eyes in the face
+            hh = head_h
+            hw, dep = 0.33 * hh, 0.8 * hh
+            x0 = xb + L.T + 6.0
+            x1 = x0 + hh
+            zf, zb = 0.55 * dep, -0.45 * dep
+            side = L.unary_union([L.circle(xh, 0, mp['D'] + 10), L.rounded(x0, zb + L.T + 1, x1 - L.T - 1, zf - 1, 10)])
+            side = pocket(side, [(xh, 0, mp['D'] / 2 + 8)], rim=8.0, struts=[((xh, 0), (x1 - 12, zf - 12)), ((xh, 0), (x1 - 12, zb + 12))])
+            extra.append(('head-side.r', ext(side.difference(L.holes_on(mp['out'][0], mp['out'][1], mp['hole'], at=(xh, 0))), 'xz', ya_, L.T)))
+            extra.append(('head-side.l', ext(side.difference(L.circle(xh, 0, 12)), 'xz', yb_ - 2 * L.T - 1.0, L.T)))
+            extra.append(('head-pivot', trimesh.creation.cylinder(radius=5, segment=[[xh, yb_ - 2 * L.T - 1.5, 0], [xh, yb_ - L.T, 0]], sections=24)))
+            ex_ = x0 + 0.55 * hh
+            face = L.rounded(x0, -hw, x1, hw, 0.18 * hh).difference(L.circle(ex_, -0.42 * hw, 0.16 * hh)).difference(L.circle(ex_, 0.42 * hw, 0.16 * hh))
+            extra.append(('head-face', ext(face, 'xy', zf, L.T)))
+            extra.append(('head-back', ext(L.rounded(x0, -hw, x1, hw, 0.18 * hh), 'xy', zb - L.T, L.T)))
+            extra.append(('head-crown', ext(L.rounded(-hw, zb, hw, zf, 0.1 * hh), 'yz', x1, L.T)))
+            cheek = L.rounded(x0, zb, x1, zf, 0.15 * hh)
+            cheek = pocket(cheek, [], rim=9.0, struts=warren((x0 + 10, (zb + zf) / 2), (x1 - 10, (zb + zf) / 2), (zf - zb) / 2 - 10, 2))
+            extra += [('head-cheek.r', ext(cheek, 'xz', hw - L.T, L.T)), ('head-cheek.l', ext(cheek, 'xz', -hw, L.T))]
+            extra.append(('int-camera', L.tri(Manifold.cube((26, ya_ - (yb_ - L.T) - 4, 22)).translate((ex_ - 13, yb_ - L.T + 2, zf - 22 - 1)))))
+        else:
+            hw = mp['L'] / 2 + 1 + 2 * L.T + 6.0                # head half-width
+            side = L.unary_union([L.circle(xh, 0, mp['D'] + 10), L.rounded(xh - 20 * kp, -10, xh + 60 * kp, 50 * kp, 10)])
+            extra.append(('head-side.r', ext(side.difference(L.holes_on(mp['out'][0], mp['out'][1], mp['hole'], at=(xh, 0))), 'xz', ya_, L.T)))
+            extra.append(('head-side.l', ext(side.difference(L.circle(xh, 0, 12)), 'xz', yb_ - 2 * L.T - 1.0, L.T)))
+            extra.append(('head-pivot', trimesh.creation.cylinder(radius=5, segment=[[xh, yb_ - 2 * L.T - 1.5, 0], [xh, yb_ - L.T, 0]], sections=24)))
+            face = L.rounded(xh - 20 * kp, -hw, xh + 60 * kp, hw, 10).difference(L.circle(xh + 25 * kp, -hw * 0.45, 18 * kp)).difference(L.circle(xh + 25 * kp, hw * 0.45, 18 * kp))
+            extra.append(('head-face', ext(face, 'xy', 50 * kp, L.T)))
+            extra.append(('int-camera', L.tri(Manifold.cube((22 * kp, ya_ - yb_ + L.T - 4, 20 * kp)).translate((xh + 14 * kp, yb_ - L.T + 2, 50 * kp - 20 * kp - 1)))))
     hip_a = xt - T2 - da['IPOUT']
     legs = [('al', hip_a, 1, 'none'), ('ar', hip_a, -1, 'none')]
     poses = {} if arm_chain else {'none': inline_parts(*arm_pose[:2], end='wrist', LT=arm[0], LS=arm[1], mot=armm, end_mot=wristm)}
@@ -1132,9 +1155,9 @@ def humanoid_mini():
     """MINI humanoid, a full Booster K1 replacement (~95 cm, K1's 22 DoF + a waist = 23): RS04 hip pitch + knee
     (an RS06 knee walks at ~120% of 0.7 x peak once the plates are weighed), RS06 hip roll, ankles + waist,
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
-    return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(120.0, 220.0), chest_h=120.0,
+    return humanoid_family('mini humanoid', leg=(210.0, 300.0), arm=(80.0, 220.0), chest_h=60.0,
                            legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
-                           legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(0.0, 60.0))
+                           legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(0.0, 60.0), head_h=145.0)
 
 
 def build(arch):
