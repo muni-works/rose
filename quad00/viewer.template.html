@@ -57,19 +57,8 @@ canvas:active { cursor: grabbing; }
   <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
-    <button id="v-inline" aria-pressed="false">Mini quad</button>
-    <button id="v-humanoid5" aria-pressed="true">Mini humanoid</button>
-    <button id="v-humanoid4" aria-pressed="false">Reared quad</button>
-    <button id="v-humanoid3" aria-pressed="false">Slab humanoid</button>
-    <button id="v-humanoid2" aria-pressed="false">S-torso</button>
-    <button id="v-humanoid" aria-pressed="false">Humanoid (backpack)</button>
-    <button id="v-dog" aria-pressed="false">Dog proportions</button>
-    <button id="v-hybrid" aria-pressed="false">Outboard shin</button>
-    <button id="v-direct" aria-pressed="false">Zero gears</button>
-    <button id="v-inboard" aria-pressed="false">Inboard hip</button>
-    <button id="v-corner" aria-pressed="false">Corner pods</button>
-    <button id="v-side" aria-pressed="false">Side-hung (real body)</button>
-    <button id="v-leg" aria-pressed="false">One leg</button>
+    <button id="v-quad" aria-pressed="true">Mini quad</button>
+    <button id="v-humanoid" aria-pressed="false">Mini humanoid</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -90,7 +79,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { humanoid5: '__HUMANOID5_GLB_BASE64__', humanoid4: '__HUMANOID4_GLB_BASE64__', humanoid3: '__HUMANOID3_GLB_BASE64__', humanoid2: '__HUMANOID2_GLB_BASE64__', hybrid: '__HYBRID_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', dog: '__DOG_GLB_BASE64__', inline: '__INLINE_GLB_BASE64__', direct: '__DIRECT_GLB_BASE64__', inboard: '__INBOARD_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', corner: '__CORNER_GLB_BASE64__', leg: '__GLB_BASE64__' };
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -141,19 +130,8 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
-  humanoid5: 'mini humanoid: the mini quad chassis upright; legs yaw + roll + pitch + knee (yaw RS00 + bracket + the quad limb module)',
-  humanoid4: 'the mini quad reared up: same body and limbs, hips pitched 90 deg; ab/ad become hip/shoulder yaw',
-  humanoid3: 'mini humanoid: every ab/ad sits in its limb\'s plane; the torso is two walls + sides, 66 mm deep like the limbs',
-  humanoid2: 'mini humanoid, S-torso: arm ab/ad forward into a chest, leg ab/ad back into a pelvis; nothing behind the limbs',
-  humanoid: 'mini humanoid (locked): the same module x4, each carrying its ab/ad; the back plate is just bolt patterns',
-  dog: 'inline hybrid in dog proportions: deep chest, battery under the ab/ad, compute on the withers; hips 300 apart',
-  inline: 'mini quad (locked): limb modules carry their ab/ad, shins inline, knees inward; body = two plain walls + decks',
-  hybrid: 'earlier: shin outboard of the thigh box (99 mm ab/ad lever)',
-  direct: 'zero gears: a motor at every joint, all RS00, 130 mm links; 174 mm wide at the hips, 278 at the knees',
-  inboard: 'inboard hip, belly-only body: 224 mm wide, hips turn full circle, abduction can\'t catch',
-  corner: 'a low slab as wide as the legs; each leg plugs into a corner',
-  side: 'two flat decks + ribs, open sides; battery in the belly, compute aft',
-  leg: 'one leg',
+  quad: 'mini quad: 4 limb modules, each carrying its ab/ad; body = two walls + decks',
+  humanoid: 'mini humanoid: the mini quad chassis upright; legs add hip yaw, the module\'s ab/ad is hip roll',
 };
 const MATS = {
   aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',
@@ -260,7 +238,7 @@ function frame(obj) {
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
 buildKey();
 for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
-show('humanoid5');
+show('quad');
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {

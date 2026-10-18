@@ -665,7 +665,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3), ('humanoid4', humanoid4), ('humanoid5', humanoid5)):
+    for name, fn in (('inline', inline), ('humanoid5', humanoid5)):          # the mini quad, the mini humanoid
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
