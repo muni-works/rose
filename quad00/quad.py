@@ -948,7 +948,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         # one rectangular torso: the arms come in over the legs' line, the shoulder motors as close to the
         # neck/waist motor as they fit; the pelvis widens to the chest, and the torso grows until the
         # hanging hands clear the thighs (instead of the arms hanging outside them)
-        mid = MOTORS[head] if head else mw
+        mid = MOTORS[head] if head and head != 'fixed' else mw
         ya = max(mid['D'] / 2 + 5.0 + ma['D'] / 2, hp - 20.0 * ka)
         y0a = ya - da['ABAD']
         chest = ya + 20.0 * ka
@@ -981,7 +981,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     # corners, nothing above the shoulder line) .. floor; the waist motor inside on its front flange, output down
     xt = 0.0
     xf = xt - T2 - 1.0 - mw['L'] - 1.0 - chest_h
-    neck_port = [(0, MOTORS[head]['front'], 0, MOTORS[head]['out'][0] + 11, MOTORS[head]['hole'])] if head else []
+    neck_port = [(0, MOTORS[head]['front'], 0, MOTORS[head]['out'][0] + 11, MOTORS[head]['hole'])] if head and head != 'fixed' else []
     if arm_chain:
         bar = wallp(chest, neck_port)
     else:
@@ -996,7 +996,8 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     extra.append((f'{waistm}-waist-out', cyl(mw['out'][0] / 2 + 4, xf - T2 - 1.0, xf)))
     bw = 0.9 * H
     for s in (1, -1):
-        extra.append((f'int-battery.{"l" if s > 0 else "r"}', L.tri(Manifold.cube((0.6 * chest_h + 20, 0.4 * chest, 2 * bw * 0.85))
+        bh = (0.35 * chest_h + 10) if rect and not arm_chain else (0.6 * chest_h + 20)   # stay under the arms' yokes
+        extra.append((f'int-battery.{"l" if s > 0 else "r"}', L.tri(Manifold.cube((bh, 0.4 * chest, 2 * bw * 0.85))
                       .translate((xf + 4, s * (mw['D'] / 2 + 6 + 0.2 * chest) - 0.2 * chest, -bw * 0.85)))))
     # pelvis: top wall takes the waist output; the two hip-yaw motors stand between its walls, outputs down
     xp = xf - T2 - 1.0
@@ -1025,7 +1026,25 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         place = trimesh.transformations.translation_matrix([hip_x, s * y0, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
         for n, g in parts.items():
             extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
-    if head:
+    if head == 'fixed':
+        # a fixed head (no DoF, for a torque-limited size): the same shell on a short neck plate bolted to the bar
+        hh = head_h or 75.0
+        hw, dep = 0.33 * hh, 0.8 * hh
+        x0 = xt + 14.0
+        x1 = x0 + hh
+        zf, zb = 0.55 * dep, -0.45 * dep
+        extra.append(('chassis-neck', ext(L.rounded(-hw + L.T, zb, hw - L.T, zf, 6), 'yz', xt, L.T)))
+        post = L.rounded(xt + L.T, -0.3 * dep, x0 + 0.4 * hh, 0.3 * dep, 6)
+        extra.append(('chassis-neck-post', ext(post, 'xz', -L.T, 2 * L.T)))
+        ex_ = x0 + 0.55 * hh
+        face = L.rounded(x0, -hw, x1, hw, 0.18 * hh).difference(L.circle(ex_, -0.42 * hw, 0.16 * hh)).difference(L.circle(ex_, 0.42 * hw, 0.16 * hh))
+        extra.append(('head-face', ext(face, 'xy', zf, L.T)))
+        extra.append(('head-back', ext(L.rounded(x0, -hw, x1, hw, 0.18 * hh), 'xy', zb - L.T, L.T)))
+        extra.append(('head-crown', ext(L.rounded(-hw, zb, hw, zf, 0.1 * hh), 'yz', x1, L.T)))
+        cheek = L.rounded(x0, zb, x1, zf, 0.15 * hh)
+        extra += [('head-cheek.r', ext(cheek, 'xz', hw - L.T, L.T)), ('head-cheek.l', ext(cheek, 'xz', -hw, L.T))]
+        extra.append(('int-camera', L.tri(Manifold.cube((18, 2 * hw - 4 * L.T, 14)).translate((ex_ - 9, -hw + 2 * L.T, zf - 15)))))
+    elif head:
         # head: neck yaw motor INSIDE the chest, hung from the shoulder bar on its front flange, output up
         # through the bar (the waist idiom); on it a neck bracket holding the pitch motor as a spacer between
         # two plates (the thigh-box idiom); the head is a U on the pitch output + a plain pivot, camera in front
@@ -1142,7 +1161,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         y0a = y0a  # for the width note
     count = {}
     arms_ = ([armm] * 6 + [wristm] * 4 + ['rs00'] * 2 + [arm_yawm] * 2) if arm_chain else ([armm] * 6 + [wristm or armm] * 2)
-    for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + arms_ + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
+    for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + arms_ + [yawm] * 2 + [waistm] + ([head] * 2 if head and head != 'fixed' else []):
         count[mm] = count.get(mm, 0) + 1
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
     mix = ' + '.join(f'{n_} {k_.upper()}' for k_, n_ in count.items())
@@ -1157,7 +1176,7 @@ def humanoid_tiny():
     """TINY humanoid, ~56 cm: the largest all-RS00 humanoid once its plates are weighed (10.2 kg est.; walking
     knee 94% of 0.7 x 14 N.m). The 70 cm version was 134% -- shrinking barely lightens it (the motors and
     their rings are fixed), so the size came down to x0.72."""
-    return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0)
+    return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0, rect=True, head='fixed', head_h=75.0)
 
 
 def humanoid_mini():
