@@ -420,6 +420,46 @@ def humanoid():
     return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
 
 
+def humanoid2():
+    """the quad's chassis rule applied to a biped: every ab/ad points INTO the body. Arms: ab/ad ahead of the
+    shoulder, output on a chest wall; legs: ab/ad behind the hip, output on a pelvis wall. The torso is the
+    box joining the two walls -- chest forward, pelvis back -- so nothing sits behind the limbs."""
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
+    ya = y0 + IL_ABAD
+    torso_h = 200.0
+    arm_up, arm_bend = 10.0, 80.0
+    leg_hh = 0.96 * (HY_L + HY_SHIN_L)
+    leg_th, leg_rel = stance(leg_hh)
+    hip_z = leg_hh + L.PAW_D / 2
+    sh_z = hip_z + torso_h
+    legs = [('ll', 0.0, 1, 'all', hip_z), ('lr', 0.0, -1, 'all', hip_z),
+            ('al', 0.0, 1, 'none', sh_z), ('ar', 0.0, -1, 'none', sh_z)]
+    poses = {'all': inline_parts(leg_th, leg_rel), 'none': inline_parts(arm_up, arm_bend)}
+    ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    wide = ya + L.RS00_D / 2 + 3.0                         # covers the ab/ad motors, clears the limbs
+    half = wide
+    def wall(z, x0):
+        w = L.rounded(-half, z - 42, half, z + 42, 10)
+        for s in (1, -1):
+            w = w.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(s * ya, z))).difference(L.circle(s * ya, z, 16))
+        return ext(w, 'yz', x0, 2 * L.T)
+    chest_x, pelvis_x = AB_OUT, -AB_OUT                    # wall faces = ab/ad output faces
+    # side profile (x, z): pelvis box behind the hips, chest box ahead of the shoulders, an abdomen joining them
+    prof = L.unary_union([L.rounded(pelvis_x, hip_z - 42, 34, hip_z + 70, 14),
+                          L.rounded(-34, sh_z - 70, chest_x, sh_z + 42, 14),
+                          L.rounded(-34, hip_z + 20, 34, sh_z - 20, 10)])
+    prof = prof.buffer(8, join_style=1).buffer(-8, join_style=1)
+    extra = [('chassis-wall-chest', wall(sh_z, chest_x)), ('chassis-wall-pelvis', wall(hip_z, pelvis_x - 2 * L.T)),
+             ('chassis-side-l', ext(prof, 'xz', wide - L.T, L.T)), ('chassis-side-r', ext(prof, 'xz', -wide, L.T))]
+    extra.append(('int-battery', L.tri(Manifold.cube((60, 2 * wide - 20, 126)).translate((-30, -wide + 10, hip_z + 45)))))
+    head = Manifold.cube((70, 80, 60)).translate((-35, -40, sh_z + 42 + 25))
+    neck = Manifold.cylinder(25, 14, 14, 32).translate((0, 0, sh_z + 42))
+    extra.append(('head', L.tri(head + neck)))
+    note = (f'humanoid, S-torso: chest {chest_x:.0f} ahead of the shoulders, pelvis {-pelvis_x:.0f} behind the hips, '
+            f'nothing behind the limbs; ~{sh_z + 42 + 85:.0f} tall, {2 * (y0 + HY_OUT[1]):.0f} wide')
+    return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -443,7 +483,7 @@ def build(arch):
         place = trimesh.transformations.translation_matrix([x, s * arch['plane'], z]) @ np.diag([1, s, 1, 1.0])
         if 'posed' in arch:
             for n in arch['posed'][flip]:
-                mirrored = flip == 'all' or (flip == 'yoke' and n in YOKE_SIDE)
+                mirrored = flip == 'all' or (flip == 'yoke' and n in YOKE_SIDE)       # 'none': as drawn
                 m = place @ np.diag([-1, 1, 1, 1.0]) if mirrored else place
                 scene.graph.update(frame_to=f'{n}.{tag}', frame_from=scene.graph.base_frame, matrix=m, geometry=f'{n}~{flip}')
             continue
@@ -465,7 +505,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
