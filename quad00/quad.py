@@ -21,7 +21,7 @@ import leg as L
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 A = os.path.join(HERE, 'out', 'assembly')
-YOKE_SIDE = ('yoke', 'rs00-abad', 'rs02-abad', 'rs06-abad')          # the parts that flip fore-aft on a corner-pod front leg
+YOKE_SIDE = ('yoke', 'rs00-abad', 'rs02-abad', 'rs04-abad', 'rs06-abad')          # the parts that flip fore-aft on a corner-pod front leg
 BODY_Z = (-36.0, 46.0)                     # low: just clears the ab/ad motors (r 28.5) with a 3 mm skin
 
 
@@ -281,25 +281,29 @@ MOTORS = {
     'rs00': dict(D=57.0, L=51.0, out=(27.0, 6), back=(38.0, 4), front=(50.0, 6), hole=3.4, kg=0.310, peak=14.0, cont=3.6),
     'rs02': dict(D=78.5, L=41.5, out=(24.0, 6), back=(52.0, 4), front=(73.0, 9), hole=4.5, kg=0.380, peak=17.0, cont=4.4),
     'rs06': dict(D=88.0, L=64.0, out=(36.0, 8), back=(60.0, 8), front=(82.0, 8), hole=3.4, kg=0.621, peak=36.0, cont=8.0),
+    'rs04': dict(D=120.0, L=52.2, out=(36.0, 8), back=(106.0, 10), front=(106.0, 10), hole=4.5, kg=1.420, peak=120.0, cont=25.0),
 }
 
 
-def module_dims(mot='rs00'):
-    """the module's layer stack for a motor: the same rules as the RS00 module, solved for its body."""
-    m = MOTORS[mot]
+def module_dims(mot='rs00', ab=None):
+    """the module's layer stack: thigh-box motor (hip pitch + knee) `mot`, ab/ad motor `ab` (default the same),
+    by the same rules as the RS00 module, solved for their bodies."""
+    m, a = MOTORS[mot], MOTORS[ab or mot]
     mot_y = (HY_IN[1] + 1.0, HY_IN[1] + 1.0 + m['L'])
     out_y = (mot_y[1] + 1.0, mot_y[1] + 1.0 + L.T)
-    abad = IL_SHIN[0] - 3.0 - m['D'] / 2
-    ip_ab = (-m['L'] / 2, m['L'] / 2)
-    return dict(m=m, MOT=mot_y, OUT=out_y, ABAD=abad, AB=ip_ab, IPOUT=ip_ab[1] + 1.0, BASE=(ip_ab[0] - L.YOKE_T, ip_ab[0]))
+    abad = IL_SHIN[0] - 3.0 - a['D'] / 2
+    ip_ab = (-a['L'] / 2, a['L'] / 2)
+    return dict(m=m, a=a, MOT=mot_y, OUT=out_y, ABAD=abad, AB=ip_ab, IPOUT=ip_ab[1] + 1.0, BASE=(ip_ab[0] - L.YOKE_T, ip_ab[0]))
 
 
-def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, mot='rs00', end_mot=None, dual=False):
+def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, mot='rs00', end_mot=None, dual=False, ab_mot=None):
     """THE limb module, all limbs: thigh box (hip + knee motor as spacers), inline shin, ab/ad centred
     fore-aft on the hip (stator on the yoke base behind, output face IPOUT ahead -> the body wall).
     Any RobStride in MOTORS; the RS00 build is the reference (plate widths scale with the motor body)."""
-    d = module_dims(mot)
-    m, MOT, OUTY, ABAD, AB, IPO, BASE = d['m'], d['MOT'], d['OUT'], d['ABAD'], d['AB'], d['IPOUT'], d['BASE']
+    d = module_dims(mot, ab_mot)
+    m, ma_, MOT, OUTY, ABAD, AB, IPO, BASE = d['m'], d['a'], d['MOT'], d['OUT'], d['ABAD'], d['AB'], d['IPOUT'], d['BASE']
+    ab_n = ab_mot or mot
+    ka = ma_['D'] / 57.0
     k = m['D'] / 57.0                                        # plate-width scale vs the RS00 reference
     H = m['hole']
     hon = lambda pat, **kw: L.holes_on(pat[0], pat[1], H, **kw)
@@ -321,7 +325,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     boss = L.circle(0, 0, boss_d).difference(hon(m['back'], phase=45))
     # ab/ad reversed: its stator back-mounts on the yoke base, its output bolts to the body wall, so the
     # limb module carries all three of its motors and the body is only plates with bolt patterns
-    base = L.unary_union([L.circle(ABAD, 0, 29 * k), L.box(ABAD, -32 * k, HY_FL[0], 32 * k)]).difference(hon(m['back'], phase=45, at=(ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
+    base = L.unary_union([L.circle(ABAD, 0, 29 * ka), L.box(ABAD, -32 * ka, HY_FL[0], 32 * ka)]).difference(L.holes_on(ma_['back'][0], ma_['back'][1], ma_['hole'], phase=45, at=(ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, BASE[0])), 'yz'))
     hub = L.circle(0, 0, hub_d)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -LS])
@@ -341,9 +345,9 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
         f'{mot}-hip': cyl(m['D'] / 2, *MOT),
         f'{mot}-knee': cyl(m['D'] / 2, *MOT).apply_transform(knee).apply_transform(th),
         'yoke': trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], MOT[0] - HY_FL[1]), base_m]),
-        f'{mot}-abad': trimesh.util.concatenate([
-            trimesh.creation.cylinder(radius=m['D'] / 2, segment=[[AB[0], ABAD, 0], [AB[1], ABAD, 0]], sections=64),
-            trimesh.creation.cylinder(radius=m['out'][0] / 2 + 4, segment=[[AB[1], ABAD, 0], [IPO, ABAD, 0]], sections=48)]),
+        f'{ab_n}-abad': trimesh.util.concatenate([
+            trimesh.creation.cylinder(radius=ma_['D'] / 2, segment=[[AB[0], ABAD, 0], [AB[1], ABAD, 0]], sections=64),
+            trimesh.creation.cylinder(radius=ma_['out'][0] / 2 + 4, segment=[[AB[1], ABAD, 0], [IPO, ABAD, 0]], sections=48)]),
     }
     if not end:
         return parts
@@ -389,7 +393,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
             foot.append(xz(ank, y_in, L.T))                  # inboard side plate: the ankle is a U, rods on both sides
             # roll: a cross-pin block under the pitch pivot (pitch about y, roll about x) -- rods in step pitch it,
             # rods opposed roll it; lateral lever = the rod spacing, the two motors share every ankle load
-            foot.append(trimesh.creation.box(extents=[0.5 * fl_, yl - y_in - L.T - 2, 14 * k]).apply_translation([0, (yl + y_in + L.T) / 2, -fz + 8 * k + 7 * k]))
+            foot.append(trimesh.creation.cylinder(radius=7 * k, segment=[[-0.15 * fl_, (yl + y_in + L.T) / 2, -fz + 8 * k + 7 * k], [0.15 * fl_, (yl + y_in + L.T) / 2, -fz + 8 * k + 7 * k]], sections=32))
         foot = trimesh.util.concatenate(foot)
     else:
         hl = 70 * k
@@ -693,16 +697,18 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
-                    arm_pose=(90.0, 12.0), stand=0.97, ankle_roll=False, head=None):
+                    arm_pose=(90.0, 12.0), stand=0.97, ankle_roll=False, head=None, legpk=None):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
-    dl, da = module_dims(legm), module_dims(armm)
+    legpk = legpk or legm                                  # hip pitch + knee (the thigh box); legm: ab/ad (roll) + ankle
+    dl, da = module_dims(legpk, legm), module_dims(armm)
     ml, ma, my, mw = MOTORS[legm], MOTORS[armm], MOTORS[yawm], MOTORS[waistm]
+    mpk = MOTORS[legpk]
     roll_r = math.hypot(ml['D'] / 2, ml['L'] / 2)         # a roll motor yaws inside this circle
     yy = max(roll_r + 4.0, my['D'] / 2 + 8.0)             # hip-yaw axes = roll axes
     y0 = yy - dl['ABAD']                                   # leg plane
-    y0a = y0 + dl['OUT'][1] - IL_SHIN[0] + 8.0             # arms just outboard of the legs
+    y0a = y0 + dl['OUT'][1] - IL_SHIN[0] + 8.0             # arms just outboard of the legs (thigh box's outer plate)
     ya = y0a + da['ABAD']
     chest = ya + 20.0 * ma['D'] / 57.0
     H = max(41.0, ma['D'] / 2 + 12.0, mw['D'] / 2 + 12.0, my['D'] / 2 + 12.0)
@@ -743,8 +749,8 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     extra += [('chassis-pelvis-front', ext(pskin, 'xy', H, L.T)), ('chassis-pelvis-back', ext(pskin, 'xy', -H - L.T, L.T))]
     xo = xpb - T2 - 1.0
     th, rel = stance(stand * sum(leg), *leg)
-    parts = inline_parts(th, rel, end='ankle', LT=leg[0], LS=leg[1], mot=legm, dual=ankle_roll)
-    hip_x = xo - L.T - ((ml['D'] + 7.0) / 2 + 8.0)
+    parts = inline_parts(th, rel, end='ankle', LT=leg[0], LS=leg[1], mot=legpk, ab_mot=legm, end_mot=legm, dual=ankle_roll)
+    hip_x = xo - L.T - ((mpk['D'] + 7.0) / 2 + 8.0)
     zr, yr = dl['IPOUT'], y0 + dl['ABAD']
     rf, rl = my['out'][0] + 33, ml['out'][0] + 33         # flange / roll-plate port discs
     Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
@@ -790,7 +796,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     legs = [('al', hip_a, 1, 'none'), ('ar', hip_a, -1, 'none')]
     poses = {'none': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1], mot=armm, end_mot=wristm)}
     count = {}
-    for mm in [legm] * (10 if ankle_roll else 8) + [armm] * 6 + [wristm or armm] * 2 + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
+    for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + [armm] * 6 + [wristm or armm] * 2 + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
         count[mm] = count.get(mm, 0) + 1
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
     mix = ' + '.join(f'{n_} {k_.upper()}' for k_, n_ in count.items())
@@ -811,6 +817,13 @@ def humanoid_mini():
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
     return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
                            legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00')
+
+
+def humanoid_mini_rs04():
+    """the mini with RS04 in the thigh box (hip pitch + knee); ab/ad, ankle, waist stay RS06."""
+    return humanoid_family('mini humanoid (RS04 hip pitch + knee)', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
+                           legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
+                           legpk='rs04')
 
 def build(arch):
     scene = trimesh.Scene()
@@ -861,7 +874,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini)):          # the mini quad, the mini humanoid
+    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini), ('humanoid_mini_rs04', humanoid_mini_rs04)):          # the mini quad, the mini humanoid
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)

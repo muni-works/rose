@@ -61,7 +61,8 @@ canvas:active { cursor: grabbing; }
     <button id="v-all" aria-pressed="true">All</button>
     <button id="v-quad" aria-pressed="false">Tiny quad</button>
     <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
-    <button id="v-mini" aria-pressed="false">Mini humanoid</button>
+    <button id="v-mini" aria-pressed="false">Mini (RS06)</button>
+    <button id="v-mini04" aria-pressed="false">Mini (RS04 knees)</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -82,7 +83,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__' };
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', mini04: '__MINI04_GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -136,6 +137,7 @@ const NOTES = {
   all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, one style, RobStride only, zero gears',
   quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
   humanoid: 'tiny humanoid: 19 RS00, ~70 cm (the most RS00 carries); waist, hip yaw, pushrod ankle + wrist',
+  mini04: 'mini humanoid with RS04 hip pitch + knee: ~25 kg est., walking knee ~44% of 0.7 x peak (RS06: ~21 kg, 120%)',
   mini: 'mini humanoid, a full Booster K1 replacement: 23 DoF (K1 22 + waist) -- 11 RS06 + 8 RS02 + 4 RS00; 2-motor pushrod ankle (pitch + roll), 2-DoF head',
 };
 const MATS = {
@@ -213,8 +215,8 @@ function load(which, done) {
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
 }
 
-const ORDER = ['quad', 'humanoid', 'mini'];
-const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid' };
+const ORDER = ['quad', 'humanoid', 'mini', 'mini04'];
+const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini · RS06', mini04: 'mini · RS04 knees' };
 function settle(g) {                     // stand the model on the floor (world y = 0)
   g.position.z = 0; g.position.y = 0; root.updateMatrixWorld(true);
   const b = new THREE.Box3().setFromObject(g);
@@ -295,7 +297,7 @@ function decorate(list) {
     x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z1 = Math.max(z1, b.max.z);
   }
   // Booster K1 for comparison: a ghost of its height (95 cm) and stance width (~ 35 cm), behind the mini
-  const mini = list.find(([k]) => k === 'mini');
+  const mini = list.find(([k]) => k === 'mini04') || list.find(([k]) => k === 'mini');
   if (mini) {
     const b = mini[1], g = new THREE.Mesh(new THREE.BoxGeometry(220, 950, 350),
       new THREE.MeshBasicMaterial({ color: 0x6fa8ff, transparent: true, opacity: 0.08, depthWrite: false }));
