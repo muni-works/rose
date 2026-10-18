@@ -56,27 +56,32 @@ RS00_D, RS00_L = 57.0, 51.0
 OUT_PCD, OUT_N = 27.0, 6
 BACK_PCD, BACK_N = 38.0, 4
 M3, M3_CSK = 3.4, 6.3
-SHAFT, BUSH_OD = 8.1, 10.0          # M8 shoulder bolt / 8x10x8 plain sleeve (no flange: 0.4 mm gap)
+SHAFT, BUSH_OD = 8.1, 10.0          # Ø8 clevis pin (head outboard, E-clip inboard) / 8x10x8 plain sleeve;
+                                    # 0.4 mm thrust washers fill the gear-to-plate gaps
 HUB_D = 34.0                        # pinion hub: inner thigh plate rides on it (printed: direct)
 
 # stack along Y (outboard +)
 G = GEAR_LAYERS * T / 2                              # gear half-face, 4.8
 Y_PLATE = (G + PLATE_GAP, G + PLATE_GAP + T)         # thigh plates at +/- this
 Y_MOTOR = (Y_PLATE[1] + 1.0, Y_PLATE[1] + 1.0 + RS00_L)   # stator body (1 mm nose)
+Y_FASTEN = Y_PLATE[1] + 1.5                          # inboard: clevis-pin E-clip stands 1.5 proud of the plate
 Y_FLANGE = Y_MOTOR[1]                                # yoke flange inner face = hip/knee motor back face
 
 # the yoke: ONE bent U. Base (YZ) ahead of the hip carries the ab/ad output; two flanges bend 90 deg back
 # and hold the hip and knee RS00 by their back faces. The ab/ad RS00 back-mounts on the torso.
-ABAD_Z = 40.0                       # ab/ad axis height above the hip, in the leg plane (y=0). Lower = less
-                                    # metal, less forward hip swing: 60 -> 81 deg fwd, 40 -> ~60, 25 -> 35
+# all three motor axes lie in one plane, z = 0: the ab/ad sits level with the hip, beside the leg plane
+# (in front of the knee motor), so the thigh never sweeps through it
+ABAD_Z = 0.0                        # ab/ad axis height: level with the hip axis
+ABAD_Y = -42.0                      # inboard of the leg plane: body clears the E-clips, bolt holes clear the bend
+BRIDGE_Z = 30.0                     # the U's bridge over the leg plane starts here: 30 -> 88 deg fwd, 50 -> 114
 YOKE_T = T                          # bent 5052-H32, one layer
 PRINT_YOKE_T = 2 * T                # the printed U is twice as thick; it grows outward, clearances unchanged
 BEND_R, K_FACTOR = T, 0.44          # inside bend radius, K-factor for 5052 air bend
 X_YOKE = 35.0                       # base inner face: clears the hip/knee motors (r28.5) by 6.5
 X_ABAD = (X_YOKE + YOKE_T + 1.0, X_YOKE + YOKE_T + 1.0 + RS00_L)   # ab/ad stator; output bears on the base
 X_BULK = (X_ABAD[1], X_ABAD[1] + 2 * T)                            # bench plate (stands in for the torso)
-YOKE_Z = (min(-18.0, ABAD_Z - 50), ABAD_Z + 30)                    # yoke height at the bends
-NOTCH = (18.0, ABAD_Z - 20)         # leg-plane notch under the bridge that carries the ab/ad output pattern
+YOKE_Z = (-22.0, BRIDGE_Z + 30)                                    # yoke height at the bends
+NOTCH = (18.0, BRIDGE_Z)            # leg-plane notch the thigh swings through, under the bridge
 
 
 # ------------------------------------------------------------------ 2D helpers
@@ -178,8 +183,9 @@ def yoke_base(t):
     a = box(-yo, YOKE_Z[0], yo, YOKE_Z[1])
     a = a.difference(rounded(-NOTCH[0], YOKE_Z[0] - 20, NOTCH[0], NOTCH[1], 6))
     zc = (YOKE_Z[0] + YOKE_Z[1]) / 2
-    a = a.difference(rounded(26, zc - 20, 50, zc + 20, 8)).difference(rounded(-50, zc - 20, -26, zc + 20, 8))
-    return a.difference(holes_on(OUT_PCD, OUT_N, M3, at=(0, ABAD_Z)))
+    a = a.difference(rounded(26, zc - 20, 50, zc + 20, 8))                    # lightening, outboard half
+    # pattern turned 90 deg so no hole sits on the y axis: keeps them off the bend
+    return a.difference(holes_on(OUT_PCD, OUT_N, M3, phase=90, at=(ABAD_Y, ABAD_Z))).difference(circle(ABAD_Y, ABAD_Z, 10))
 
 
 def yoke_flange(t):
@@ -187,7 +193,7 @@ def yoke_flange(t):
     f = unary_union([circle(0, 0, RS00_D + 14), box(0, YOKE_Z[0] + 0.3, X_YOKE + t - 0.3, YOKE_Z[1] - 0.3)]).convex_hull   # 0.3 inside the base faces
     f = f.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45))
     f = f.difference(circle(0, 0, 16))                                         # cable exit
-    return f.difference(circle(16, ABAD_Z * 0.55 + 14, 18))                    # lightening
+    return f.difference(circle(16, 36, 18))                                   # lightening
 
 
 def yoke_manifold(t):
@@ -217,12 +223,11 @@ def yoke_blank(t=YOKE_T):
 
 def bulkhead():
     """YZ. Bench plate standing in for the torso: holds the ab/ad RS00 by its back face."""
-    b = rounded(-36, ABAD_Z - 36, 36, ABAD_Z + 36, 8)
-    b = b.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45, at=(0, ABAD_Z)))
-    b = b.difference(circle(0, ABAD_Z, 16))
-    for sy in (1, -1):
-        for sz in (1, -1):
-            b = b.difference(circle(sy * 27, ABAD_Z + sz * 27, 6.4))
+    b = rounded(ABAD_Y - 28, ABAD_Z - 36, ABAD_Y + 28, ABAD_Z + 36, 8)
+    b = b.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45, at=(ABAD_Y, ABAD_Z)))
+    b = b.difference(circle(ABAD_Y, ABAD_Z, 16))
+    for sz in (1, -1):
+        b = b.difference(circle(ABAD_Y, ABAD_Z + sz * 28, 6.4))
     return b
 
 
@@ -431,9 +436,10 @@ def hip_range():
     Returns (forward limit, backward limit) in degrees from straight down; None if it goes all the way round."""
     leg = unary_union([stadium([(0, 0, 60), (0, Z_IDLER1, 54), (0, Z_IDLER2, 54), (0, Z_KNEEAX, 32)]),
                        circle(0, Z_KNEEAX, M * (Z_KNEE + 2))])
-    walls = unary_union([box(X_YOKE, NOTCH[1], X_YOKE + YOKE_T, YOKE_Z[1]),
-                         box(X_ABAD[0], ABAD_Z - RS00_D / 2, X_ABAD[1], ABAD_Z + RS00_D / 2),
-                         box(X_BULK[0], ABAD_Z - 36, X_BULK[1], ABAD_Z + 36)]).buffer(2.0)   # 2 mm clearance
+    walls = [box(X_YOKE, NOTCH[1], X_YOKE + YOKE_T, YOKE_Z[1])]
+    if abs(ABAD_Y) - RS00_D / 2 < Y_FASTEN + 2:                               # ab/ad body reaches the swinging thigh
+        walls.append(box(X_ABAD[0], ABAD_Z - RS00_D / 2, X_ABAD[1], ABAD_Z + RS00_D / 2))
+    walls = unary_union(walls).buffer(2.0)                                     # 2 mm clearance
     blocked = [a for a in range(360) if affinity.rotate(leg, a, origin=(0, 0)).intersects(walls)]  # CCW = forward
     if not blocked:
         return None
@@ -462,7 +468,14 @@ def check():
     print(f'stack (y): gear +/-{G:.1f}, plates {Y_PLATE[0]:.1f}..{Y_PLATE[1]:.1f}, motors {Y_MOTOR[0]:.1f}..{Y_MOTOR[1]:.1f}, '
           f'yoke flanges {Y_FLANGE:.1f}..{Y_FLANGE + YOKE_T:.1f}  -> {2 * (Y_FLANGE + YOKE_T):.0f} mm wide')
     print(f'yoke (x): base {X_YOKE:.1f}..{X_YOKE + YOKE_T:.1f}, ab/ad RS00 {X_ABAD[0]:.1f}..{X_ABAD[1]:.1f}, '
-          f'bulkhead {X_BULK[0]:.1f}..{X_BULK[1]:.1f}; ab/ad axis z={ABAD_Z:.0f}, y=0 (leg plane)')
+          f'bench plate {X_BULK[0]:.1f}..{X_BULK[1]:.1f}; ab/ad axis y={ABAD_Y:.0f} z={ABAD_Z:.0f} (hip level)')
+    gap = abs(ABAD_Y) - RS00_D / 2 - Y_FASTEN
+    ok &= gap > 2
+    print(f'ab/ad body to the thigh\'s E-clips (y {Y_FASTEN:.1f}): {gap:.1f} mm')
+    edge = abs(ABAD_Y) + OUT_PCD / 2 * math.cos(math.radians(30)) + M3 / 2
+    flat = Y_FLANGE - BEND_R
+    ok &= edge < flat - 1
+    print(f'ab/ad bolt holes reach y {edge:.1f}; flat of the base ends at {flat:.1f} (bend starts)')
     c = X_YOKE - RS00_D / 2
     ok &= c > 3
     print(f'yoke base to hip/knee motor bodies: {c:.1f} mm')
@@ -516,7 +529,7 @@ def assembly(hip_height=255.0):
     cyl = lambda r, p0, p1, n=64: trimesh.creation.cylinder(radius=r, segment=[p0, p1], sections=n)
     out['rs00-hip'] = cyl(RS00_D / 2, [0, Y_MOTOR[0], 0], [0, Y_MOTOR[1], 0])
     out['rs00-knee'] = cyl(RS00_D / 2, [0, -Y_MOTOR[1], 0], [0, -Y_MOTOR[0], 0])
-    out['rs00-abad'] = cyl(RS00_D / 2, [X_ABAD[0], 0, ABAD_Z], [X_ABAD[1], 0, ABAD_Z])
+    out['rs00-abad'] = cyl(RS00_D / 2, [X_ABAD[0], ABAD_Y, ABAD_Z], [X_ABAD[1], ABAD_Y, ABAD_Z])
     shafts = [cyl(SHAFT / 2, [0, -Y_PLATE[1] - 1, zz], [0, Y_PLATE[1] + 1, zz], 24) for zz in (Z_IDLER1, Z_IDLER2, Z_KNEEAX)]
     out['shafts'] = trimesh.util.concatenate(shafts).apply_transform(thigh)
     out['paw'] = paw().apply_transform(Ry(-rel)).apply_translation([0, 0, Z_KNEEAX]).apply_transform(thigh)

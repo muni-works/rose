@@ -9,22 +9,23 @@ There are no belts, rods or cables.
 ```
 torso ── ab/ad RS00 ── bent U yoke ─┬─ hip RS00 (outboard flange) ──> thigh-outer plate ┐
                                     └─ knee RS00 (inboard flange) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
-                                                                      idler z17         │ idlers on M8 shoulder bolts
+                                                                      idler z17         │ idlers on Ø8 clevis pins
                                                                       idler z17         │ + 8×10×8 plain sleeves
                                                                       knee gear z34 ════╧═ shin ── TPU ball paw
 ```
 
 The upper assembly is **one part**: a U bent from 3.2 mm 5052, plus three motors and 14 screws.
 
-- **The U's base is the only bridge** between the hip and knee motors. It sits ahead of the hip, in
-  the forward-up sector where a quadruped thigh never goes, so the thigh swings 56° forward (under the
-  base's leg-plane notch) and 184° back, over the top: 240° of travel. `ABAD_Z` trades forward swing
-  against metal.
+- **All three motor axes lie in one plane**, level with the hip. The ab/ad sits beside the leg, in front
+  of the knee motor and 40 mm inboard of the leg plane, so the thigh never sweeps through it.
+- **The U's bridge is the only thing over the leg plane.** It spans the thigh's notch from 30 mm above
+  the hip, so the thigh swings 88° forward (past horizontal) and 184° back, over the top: 272° of
+  travel. `BRIDGE_Z` trades forward swing against metal.
 - **The flanges are the motor mounts.** The hip and knee RS00 back-mount to them; the base carries the
   ab/ad output. Flat blank 263 × 105 mm, two 90° bends, inside radius 3.2, K 0.44
   (`out/dxf/yoke-blank_*.dxf`, bend lines on `BEND_UP_90`). The printed U is 6.4 mm thick, grown outward.
-- **The ab/ad axis lies in the leg plane** (y = 0), 40 mm above the hip, so standing load puts almost
-  no torque on it. The ab/ad motor back-mounts on the torso; a bench plate stands in for it.
+- **The ab/ad carries a 40 mm lever** to the leg plane: worst case 59% of RS00 peak (landing), 27% of
+  stall standing. It back-mounts on the torso; a bench plate stands in for it.
 - **The paw is a TPU ball** that slots over the shin tip and is held by two cross bolts, so it can't spin.
 
 | | |
@@ -32,8 +33,8 @@ The upper assembly is **one part**: a U bent from 3.2 mm 5052, plus three motors
 | links | thigh 148.75 (hip to knee axis), shin 150, standing hip height 255 |
 | knee | 2:1, module 2.5, 20°, 3 × 3.2 mm face; 0.2 mm backlash per mesh (`BACKLASH`) |
 | stock | 3.2 mm everywhere; gears and shin are 3-layer laminates; the yoke is one bent sheet |
-| width | 127 mm over the yoke flanges; the leg itself is 17 mm thick |
-| ranges | knee folds to 35° interior (shin meets idler 2); hip 56° forward to 184° back from straight down |
+| width | 127 mm over the yoke flanges (the ab/ad body stands 4 mm proud inboard); the leg itself is 17 mm thick |
+| ranges | knee folds to 35° interior (shin meets idler 2); hip 88° forward to 184° back from straight down |
 | mass, per leg | 620 g aluminium / ~160 g printed, + 3 × RS00 (930 g) |
 
 ## Files
@@ -66,8 +67,9 @@ The goal is fit, backlash, range and stair clearance. It is not built to take lo
 - **Real hardware:** see [assembly.html](assembly.html) for the full list and the build steps
   (`out/assembly-guide.html` is the same page with the images inlined). Corrections to earlier notes:
   the bushings are plain 8×10×8 sleeves, **not flanged**, because a flange won't fit in the 0.4 mm
-  gear-to-plate gap. The shafts are Ø8 × 20 shoulder bolts, with two 1.6 mm washers under each head
-  so the shoulder sets the 16.8 mm plate spacing.
+  gear-to-plate gap. The shafts are Ø8 clevis pins, head outboard and E-clip inboard, with a 0.4 mm
+  thrust washer each side of every gear. Nothing to tighten, and the inboard side stays within 1.5 mm
+  of the plate, which is what lets the ab/ad sit beside the thigh.
   The inner thigh plate runs directly on the printed pinion hub (Ø34).
 
 Tests:
@@ -83,7 +85,8 @@ Tests:
 - The aluminium build needs a real bushing or bearing for the inner plate on the hub.
 - RS00 stall torque is an estimate, scaled from the RS06 manual.
 - The torso isn't designed yet; the bench plate stands in for it.
-- The bent U's bend allowance assumes K 0.44 for 5052 air bending; confirm with the shop.
+- The bent U's bend allowance assumes K 0.44 for 5052 air bending; confirm with the shop. The ab/ad bolt
+  holes end 1.8 mm before the inboard bend starts: ask whether they will distort, or drill after bending.
 - 620 g of aluminium per leg; the shin laminate (202 g) is now the heaviest part to lighten. Re-run the RS00
   sizing sweep with the real masses.
 - The paw's flat sits on the shin axis, so it only touches the ground with the shin vertical; it is there for printing.
