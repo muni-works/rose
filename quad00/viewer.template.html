@@ -1,4 +1,4 @@
-<title>quad00 Leg</title>
+<title>quad00 Quadruped</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -44,18 +44,20 @@ canvas:active { cursor: grabbing; }
 </style>
 
 <header>
-  <h1>quad00 leg</h1>
+  <h1>quad00</h1>
   <div class="spec">
-    <span><b>3 × RS00</b> hip · knee · ab/ad</span>
+    <span><b>12 × RS00</b>, 3 per leg</span><span>hips <b>420 × 204 mm</b></span>
     <span>knee <b>2:1</b> m2.5 sheet gears</span>
     <span>hip <b>88° fwd / 184° back</b></span><span>motors <b>coplanar</b></span><span>yoke <b>1 bent part</b></span>
     <span>stock <b>3.2 mm</b></span>
   </div>
 </header>
 <div class="stage" id="stage">
-  <canvas id="c" aria-label="3D model of the quad00 leg; drag to rotate, scroll or pinch to zoom"></canvas>
+  <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
+    <button id="v-quad" aria-pressed="true">Quad</button>
+    <button id="v-leg" aria-pressed="false">One leg</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -76,7 +78,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const GLB = '__GLB_BASE64__';
+const MODELS = { quad: '__QUAD_GLB_BASE64__', leg: '__GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -99,7 +101,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 sun.position.set(300, 600, 250);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 10, far: 2000 });
+Object.assign(sun.shadow.camera, { left: -600, right: 600, top: 600, bottom: -600, near: 10, far: 3000 });
 scene.add(sun);
 
 // --- procedural textures: brushed grain for aluminium, fine speckle for TPU
@@ -140,7 +142,7 @@ const MATS = {
 };
 const GROUP = name =>
   /^(pinion|idler)/.test(name) ? 'gear' : /^rs00/.test(name) ? 'motor' :
-  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : 'aluminium';
+  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
 const EXPLODE = {
@@ -159,39 +161,60 @@ function planarUV(geo) {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
-const leg = new THREE.Group();
-leg.rotation.x = -Math.PI / 2;                    // Z-up leg frame -> Y-up three
-scene.add(leg);
-const parts = [];
-const bytes = Uint8Array.from(atob(GLB), c => c.charCodeAt(0));
-new GLTFLoader().parse(bytes.buffer, '', gltf => {
-  gltf.scene.traverse(o => {
-    if (!o.isMesh) return;
-    const name = (o.name || o.parent?.name || '').replace(/_\d+$/, '');
-    o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
-    o.geometry.computeVertexNormals();
-    planarUV(o.geometry);
-    const g = GROUP(name);
-    o.material = MATS[g].m;
-    o.castShadow = o.receiveShadow = true;
-    o.userData = { name, group: g, home: o.position.clone(), off: new THREE.Vector3(...(EXPLODE[name] || [0, 0, 0])) };
-    parts.push(o);
-  });
-  leg.add(gltf.scene);
-  // ground at the paw, soft contact shadow
-  const box = new THREE.Box3().setFromObject(leg);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.18 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.y = box.min.y; ground.receiveShadow = true;
-  scene.add(ground);
-  const c = box.getCenter(new THREE.Vector3());
-  controls.target.copy(c);
-  home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(330, 120, 420)) };
-  camera.position.copy(home.pos);
-  document.getElementById('status').hidden = true;
-  buildKey();
-}, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
+const root = new THREE.Group();
+root.rotation.x = -Math.PI / 2;                   // Z-up leg/body frame -> Y-up three
+scene.add(root);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.18 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+scene.add(ground);
+let parts = [];
+const loaded = {};
+
+function show(which) {
+  for (const [k, g] of Object.entries(loaded)) g.visible = k === which;
+  for (const k of ['quad', 'leg']) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
+  if (loaded[which]) { parts = loaded[which].userData.parts; frame(loaded[which]); return; }
+  document.getElementById('status').hidden = false;
+  const bytes = Uint8Array.from(atob(MODELS[which]), c => c.charCodeAt(0));
+  new GLTFLoader().parse(bytes.buffer, '', gltf => {
+    const list = [];
+    gltf.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const [raw, tag = ''] = (o.name || o.parent?.name || '').split('.');
+      const name = raw.replace(/_\d+$/, '');
+      o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
+      o.geometry.computeVertexNormals();
+      planarUV(o.geometry);
+      const g = GROUP(name);
+      o.material = MATS[g].m;
+      o.castShadow = o.receiveShadow = true;
+      const off = new THREE.Vector3(...(EXPLODE[name] || [0, 0, 0]));
+      if (tag.endsWith('r')) off.y *= -1;               // right-side legs are mirrored
+      o.userData = { name, group: g, home: o.position.clone(), off };
+      list.push(o);
+    });
+    gltf.scene.userData.parts = list;
+    root.add(gltf.scene);
+    loaded[which] = gltf.scene;
+    parts = list;
+    document.getElementById('status').hidden = true;
+    frame(gltf.scene);
+  }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
+}
+
+function frame(obj) {
+  const box = new THREE.Box3().setFromObject(obj);
+  ground.position.y = box.min.y;
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
+  home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(0.75, 0.32, 0.95).multiplyScalar(r * 1.35)) };
+  controls.target.copy(home.target); camera.position.copy(home.pos);
+}
 
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
+buildKey();
+document.getElementById('v-quad').onclick = () => show('quad');
+document.getElementById('v-leg').onclick = () => show('leg');
+show('quad');
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {
