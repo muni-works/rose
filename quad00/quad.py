@@ -270,7 +270,14 @@ IL_SHIN = (-(1.0 + L.T + 1.0 + 2 * L.T + 1.0), -(1.0 + L.T + 2.0))   # inboard o
 IL_ABAD = IL_SHIN[0] - 3.0 - L.RS00_D / 2                            # ab/ad body clears the shin layer by 3
 
 
+IP_AB = (-L.RS00_L / 2, L.RS00_L / 2)                  # ab/ad stator, x
+IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead of the limb axis
+IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
+
+
 def inline_parts(th_t, rel):
+    """THE limb module, all 8 limbs: thigh box (hip + knee RS00 as spacers), inline shin, ab/ad centred
+    fore-aft on the hip (stator on the yoke base behind, output face IP_OUT ahead -> the body wall)."""
     xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
     ry = lambda d: trimesh.transformations.rotation_matrix(np.radians(d), [0, 1, 0])
     cyl = lambda r, y0, y1, x=0, z=0: trimesh.creation.cylinder(radius=r, segment=[[x, y0, z], [x, y1, z]], sections=64)
@@ -283,13 +290,12 @@ def inline_parts(th_t, rel):
         .difference(L.rounded(-5, -HY_SHIN_L + 32, 5, -32, 5))
     knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
     th = ry(th_t)
-    fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
+    fl = L.unary_union([L.circle(0, 0, 56), L.box(IP_BASE[0], -26, 0, 26)]).convex_hull
     boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
     # ab/ad reversed: its stator back-mounts on the yoke base, its output bolts to the body wall, so the
     # limb module carries all three of its motors and the body is only plates with bolt patterns
-    base = L.box(IL_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
-    base = base.difference(L.circle(IL_ABAD, 0, 16))
-    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
+    base = L.box(IL_ABAD - 32, -32, HY_FL[0], 32).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
+    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
     hub = L.circle(0, 0, 36)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
     return {
@@ -302,12 +308,12 @@ def inline_parts(th_t, rel):
         'rs00-knee': cyl(L.RS00_D / 2, *HY_MOT).apply_transform(knee).apply_transform(th),
         'yoke': trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m]),
         'rs00-abad': trimesh.util.concatenate([
-            trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_YOKE + L.YOKE_T, IL_ABAD, 0], [L.X_YOKE + L.YOKE_T + L.RS00_L, IL_ABAD, 0]], sections=64),
-            trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[L.X_YOKE + L.YOKE_T + L.RS00_L, IL_ABAD, 0], [L.X_YOKE + L.YOKE_T + L.RS00_L + 1, IL_ABAD, 0]], sections=48)]),
+            trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[IP_AB[0], IL_ABAD, 0], [IP_AB[1], IL_ABAD, 0]], sections=64),
+            trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[IP_AB[1], IL_ABAD, 0], [IP_OUT, IL_ABAD, 0]], sections=48)]),
     }
 
 
-AB_OUT = L.X_YOKE + L.YOKE_T + L.RS00_L + 1.0           # ab/ad output face (body side) from the hip: 90.2
+AB_OUT = IP_OUT                                         # ab/ad output face (body side) from the hip: 26.5
 
 
 def inline():
@@ -463,23 +469,7 @@ def humanoid2():
 # --- in-plane: the ab/ad RS00 sits level with its limb -- centred fore-aft on the hip/shoulder axis, just
 #     inboard of the shin layer -- so limb, ab/ad and torso share one ~66 mm slab. Its stator back-mounts on
 #     the yoke base behind the axis; its output (front) bolts to the torso wall in front of the axis.
-IP_AB = (-L.RS00_L / 2, L.RS00_L / 2)                  # ab/ad stator, x
-IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead of the limb axis
-IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
-
-
-def inplane_parts(th_t, rel):
-    parts = inline_parts(th_t, rel)
-    xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
-    fl = L.unary_union([L.circle(0, 0, 56), L.box(IP_BASE[0], -26, 0, 26)]).convex_hull
-    boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
-    base = L.box(IL_ABAD - 32, -32, HY_FL[0], 32).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
-    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
-    parts['yoke'] = trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m])
-    parts['rs00-abad'] = trimesh.util.concatenate([
-        trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[IP_AB[0], IL_ABAD, 0], [IP_AB[1], IL_ABAD, 0]], sections=64),
-        trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[IP_AB[1], IL_ABAD, 0], [IP_OUT, IL_ABAD, 0]], sections=48)])
-    return parts
+inplane_parts = inline_parts                            # one module now
 
 
 def humanoid3():
@@ -553,7 +543,7 @@ def humanoid4(leg_pose=(84.0, -12.0), arm_pose=(100.0, 70.0), hip_x=140.0):
                 posed=poses, only=True, world=R, ground=True)
 
 
-def humanoid5(hip_a=140.0, arm_pose=(100.0, 70.0)):
+def humanoid5(hip_a=49.8 + IP_OUT, arm_pose=(100.0, 70.0)):
     """the mini quad's chassis, upright, with hip roll. Built in the quad's body frame (x = spine), then
     stood up. Arms: the quad's front pair, exactly as on the quad (ab/ad output on the top wall -> shoulder
     yaw). Legs: a hip-yaw RS00 hangs from the pelvis wall (the quad's rear wall); an L-bracket on its output
