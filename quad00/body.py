@@ -32,22 +32,28 @@ import leg as L
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-HIP_X, PLANE = 210.0, 87.0                           # hips at +/-210, leg planes at +/-87: 301 overall (Go2 ~310)
-YA = PLANE + L.ABAD_Y                                # ab/ad axes at +/-60
-CLIP = PLANE - L.Y_FASTEN                            # thigh's innermost point (E-clip): 92.1
-WIDE = CLIP - 4.0                                    # chest / belly half-width: 4 mm from the swinging thigh
-NECK = PLANE - (L.Y_FLANGE + L.YOKE_T) - 3.0         # neck half-width: 3 mm from the yoke flanges: 35.4
+def configure(plane=87.0, flange_outer=None, hip_x=210.0):
+    """(re)derive every body dimension from the leg plane and how far inboard the hip cluster reaches."""
+    global HIP_X, PLANE, YA, CLIP, WIDE, NECK, X_NOSE, X_MID, X_CHEST0, X_BELLY1, X_BELLY0, X_TAIL, RIBS
+    HIP_X, PLANE = hip_x, plane
+    flange_outer = L.Y_FLANGE + L.YOKE_T if flange_outer is None else flange_outer
+    YA = PLANE + L.ABAD_Y                            # ab/ad axes
+    CLIP = PLANE - L.Y_FASTEN                        # thigh's innermost point (E-clip)
+    WIDE = CLIP - 4.0                                # chest / belly half-width: 4 mm from the swinging thigh
+    NECK = PLANE - flange_outer - 3.0                # neck half-width: 3 mm from the hip cluster
+    X_NOSE = HIP_X + L.X_BULK[0]                     # nose wall back face (front ab/ad back faces)
+    X_MID = -HIP_X + L.X_BULK[0]                     # mid wall
+    X_CHEST0 = HIP_X + L.X_ABAD[0]                   # chest starts at the front ab/ad body
+    X_BELLY1 = HIP_X - 46.0                          # belly ends ahead of the front hip clusters
+    X_BELLY0 = -HIP_X + L.X_ABAD[0]                  # belly starts at the rear ab/ad bodies
+    X_TAIL = -HIP_X - 70.0
+    RIBS = {'nose': (X_NOSE, 2 * T, WIDE), 'rib-a': (X_BELLY1 - T, T, WIDE), 'rib-0': (-T / 2, T, WIDE),
+            'mid': (X_MID, 2 * T, WIDE), 'tail': (X_TAIL, T, NECK)}
+
+
 H_IN = 41.0                                          # decks' inner faces at z = +/-41 (ab/ad motor r 28.5)
 T = L.T
-
-X_NOSE = HIP_X + L.X_BULK[0]                         # nose wall back face (front ab/ad back faces): 300.2
-X_MID = -HIP_X + L.X_BULK[0]                         # mid wall: -119.8
-X_CHEST0 = HIP_X + L.X_ABAD[0]                       # chest starts at the front ab/ad body: 249.2
-X_BELLY1 = HIP_X - 46.0                              # belly ends ahead of the front hip clusters (yoke flange r35.5)
-X_BELLY0 = -HIP_X + L.X_ABAD[0]                      # belly starts at the rear ab/ad bodies: -170.8
-X_TAIL = -HIP_X - 70.0
-RIBS = {'nose': (X_NOSE, 2 * T, WIDE), 'rib-a': (X_BELLY1 - T, T, WIDE), 'rib-0': (-T / 2, T, WIDE),
-        'mid': (X_MID, 2 * T, WIDE), 'tail': (X_TAIL, T, NECK)}
+configure(87.0)                                      # leg planes at +/-87: 301 overall (Go2 ~310)
 TAB_W = 16.0
 
 

@@ -56,7 +56,8 @@ canvas:active { cursor: grabbing; }
   <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
-    <button id="v-corner" aria-pressed="true">Corner pods</button>
+    <button id="v-inboard" aria-pressed="true">Inboard hip (new)</button>
+    <button id="v-corner" aria-pressed="false">Corner pods</button>
     <button id="v-side" aria-pressed="false">Side-hung (real body)</button>
     <button id="v-leg" aria-pressed="false">One leg</button>
     <button id="explode" aria-pressed="false">Explode</button>
@@ -79,7 +80,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { corner: '__CORNER_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', leg: '__GLB_BASE64__' };
+const MODELS = { inboard: '__INBOARD_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', corner: '__CORNER_GLB_BASE64__', leg: '__GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -130,6 +131,7 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
+  inboard: 'both pitch motors inboard; hip motor above the hip drives a 2:1 gear on the thigh; 224 mm wide',
   corner: 'a low slab as wide as the legs; each leg plugs into a corner',
   side: 'two flat decks + ribs, open sides; battery in the belly, compute aft',
   leg: 'one leg',
@@ -239,7 +241,7 @@ function frame(obj) {
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
 buildKey();
 for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
-show('corner');
+show('inboard');
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {
