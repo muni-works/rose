@@ -74,6 +74,7 @@ INTERNALS_BELLY = [('battery', (140, 126, 44), (40, 0, -18), 1.70),
                    ('power', (60, 45, 22), (-80, 0, -26), 0.10)]
 configure(87.0)                                      # leg planes at +/-87: 301 overall (Go2 ~310)
 TAB_W = 16.0
+WALL_TAKES_OUTPUT = False
 
 
 def deck_outline():
@@ -115,7 +116,10 @@ def rib(name):
         r = r.union(box(y - TAB_W / 2, -H_BOT - T, y + TAB_W / 2, H_TOP + T))
     if name in ('nose', 'mid'):
         for s in (1, -1):
-            r = r.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * YA, 0)))
+            if WALL_TAKES_OUTPUT:     # ab/ad reversed: the wall carries the motor's OUTPUT (6 x M3 on D27)
+                r = r.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(s * YA, 0)))
+            else:
+                r = r.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * YA, 0)))
             r = r.difference(L.circle(s * YA, 0, 16))
         r = r.difference(L.rounded(-18, -26, 18, 26, 6))                      # harness pass
     else:

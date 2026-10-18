@@ -285,7 +285,10 @@ def inline_parts(th_t, rel):
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
     boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
-    base = L.box(IL_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(IL_ABAD, 0)))
+    # ab/ad reversed: its stator back-mounts on the yoke base, its output bolts to the body wall, so the
+    # limb module carries all three of its motors and the body is only plates with bolt patterns
+    base = L.box(IL_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
+    base = base.difference(L.circle(IL_ABAD, 0, 16))
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
     hub = L.circle(0, 0, 36)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
@@ -298,8 +301,13 @@ def inline_parts(th_t, rel):
         'rs00-hip': cyl(L.RS00_D / 2, *HY_MOT),
         'rs00-knee': cyl(L.RS00_D / 2, *HY_MOT).apply_transform(knee).apply_transform(th),
         'yoke': trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m]),
-        'rs00-abad': trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_ABAD[0], IL_ABAD, 0], [L.X_ABAD[1], IL_ABAD, 0]], sections=64),
+        'rs00-abad': trimesh.util.concatenate([
+            trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_YOKE + L.YOKE_T, IL_ABAD, 0], [L.X_YOKE + L.YOKE_T + L.RS00_L, IL_ABAD, 0]], sections=64),
+            trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[L.X_YOKE + L.YOKE_T + L.RS00_L, IL_ABAD, 0], [L.X_YOKE + L.YOKE_T + L.RS00_L + 1, IL_ABAD, 0]], sections=48)]),
     }
+
+
+AB_OUT = L.X_YOKE + L.YOKE_T + L.RS00_L + 1.0           # ab/ad output face (body side) from the hip: 90.2
 
 
 def inline():
@@ -312,10 +320,12 @@ def inline():
     B.configure(80.0, hip_x=hip_x, ends=False)
     B.PLANE, B.YA = y0, ya
     B.WIDE = y0 + IL_SHIN[0] - 4.0                       # 4 mm inside the shin layer
-    wall = hip_x - L.X_BULK[0]
+    B.WALL_TAKES_OUTPUT = True
+    wall = hip_x - AB_OUT                                # wall's outer face = the ab/ad output face
+    B.X_END = wall                                       # the body is just the box between the two walls
     B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
-    B.INTERNALS = [('battery', (140, 105, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
-                   ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
+    B.INTERNALS = [('battery', (140, 105, 44), (10, 0, -18), 1.70), ('compute', (95, 63, 28), (-30, 0, 22), 0.12),
+                   ('power', (60, 45, 22), (-55, 0, -26), 0.10)]
     hh = 255.0
     th_t, rel_t = stance(hh)
     # front: yoke + ab/ad mirrored fore-aft (ab/ad behind the hip, into the body), knee back as drawn.
@@ -326,8 +336,8 @@ def inline():
     extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
     foot = y0 + sum(IL_SHIN) / 2
     lever = foot - ya
-    note = (f'inline: {2 * (y0 + HY_OUT[1]):.0f} wide overall, feet at +/-{foot:.0f}, ab/ad lever {lever:.0f} mm '
-            f'(hybrid 99); body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; knees point inward')
+    note = (f'mini quad: {2 * (y0 + HY_OUT[1]):.0f} wide overall, feet at +/-{foot:.0f}, ab/ad lever {lever:.0f} mm; '
+            f'body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f} between two plain walls; knees point inward')
     B.configure(87.0)
     return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
                 replace=inline_parts(th_t, rel_t), only=True)
@@ -375,24 +385,24 @@ def humanoid():
     """the hybrid limb module on a biped, mounted exactly as on the quad: every limb hangs from a
     fore-aft ab/ad RS00 whose back face bolts to the torso's back plate. Legs: whole module mirrored
     fore-aft (knee bends forward). Arms: only the yoke flipped (elbow points back)."""
-    y0 = 70.0                                             # inner thigh plate at |y| = 70, as on the quad
-    ya = y0 + HY_ABAD                                     # ab/ad axes at +/-35
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD                     # as on the mini quad
+    ya = y0 + IL_ABAD
     torso_h = 200.0                                       # hip axis -> shoulder axis
     arm_up, arm_bend = 10.0, 80.0                         # arm pose (deg)
     leg_hh = 0.96 * (HY_L + HY_SHIN_L)                    # nearly straight legs
     leg_th, leg_rel = stance(leg_hh)
-    x_back = -L.X_BULK[0]                                 # ab/ad back faces, behind the limb axes
+    x_back = -AB_OUT                                      # ab/ad output faces, behind the limb axes
     hip_z = leg_hh + L.PAW_D / 2
     legs = [('ll', 0.0, 1, 'all', hip_z), ('lr', 0.0, -1, 'all', hip_z),
             ('al', 0.0, 1, 'yoke', hip_z + torso_h), ('ar', 0.0, -1, 'yoke', hip_z + torso_h)]
-    poses = {'all': hybrid_parts(leg_th, leg_rel), 'yoke': hybrid_parts(arm_up, arm_bend)}
+    poses = {'all': inline_parts(leg_th, leg_rel), 'yoke': inline_parts(arm_up, arm_bend)}
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
     half = ya + L.RS00_D / 2 + 4                          # back plate holds both ab/ad of a pair
     back = L.rounded(-half, hip_z - 40, half, hip_z + torso_h + 40, 10)
     for z in (hip_z, hip_z + torso_h):
         for s in (1, -1):
-            back = back.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * ya, z))).difference(L.circle(s * ya, z, 16))
-    wide = y0 - 8.0                                        # torso sides 8 mm inside the limbs
+            back = back.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(s * ya, z))).difference(L.circle(s * ya, z, 16))
+    wide = y0 + IL_SHIN[0] - 8.0                           # torso sides 8 mm inside the shins
     x_front = 40.0
     side = L.rounded(x_back, hip_z - 30, x_front, hip_z + torso_h + 30, 10)
     cap = L.rounded(x_back, -wide, x_front, wide, 10)
@@ -406,7 +416,7 @@ def humanoid():
     neck = Manifold.cylinder(25, 14, 14, 32).translate((-20, 0, hip_z + torso_h + 30 + L.T))
     extra.append(('head', L.tri(head + neck)))
     note = (f'humanoid: hybrid limbs x4, hips {hip_z:.0f} high, overall ~{hip_z + torso_h + 30 + 90:.0f} tall, '
-            f'{2 * (y0 + HY_SHIN[1]):.0f} wide; legs and arms hang from fore-aft ab/ad on one back plate')
+            f'{2 * (y0 + HY_OUT[1]):.0f} wide; every limb carries its ab/ad, the back plate takes their outputs')
     return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
 
 
