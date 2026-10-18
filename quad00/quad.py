@@ -187,6 +187,72 @@ def direct():
                 replace=direct_parts(th_t, rel), only=True)
 
 
+# --- hybrid: zero gears, both motors inside the thigh. The thigh is a box -- two plates with the hip
+#     and knee RS00 as its spacers. Leg frame y = 0 at the inner thigh plate's inner face, outboard +.
+HY_L = 130.0
+HY_IN = (0.0, L.T)                                       # inner thigh plate
+HY_MOT = (HY_IN[1] + 1.0, HY_IN[1] + 1.0 + L.RS00_L)     # both motors, back faces inboard
+HY_OUT = (HY_MOT[1] + 1.0, HY_MOT[1] + 1.0 + L.T)        # outer thigh plate (on the hip motor's output)
+HY_SHIN = (HY_OUT[1] + 1.0, HY_OUT[1] + 1.0 + 2 * L.T)   # shin, outside the box, on the knee output
+HY_FL = (-L.T - 1.0, -1.0)                               # L-yoke flange, just inboard of the thigh
+HY_ABAD = -35.0                                          # ab/ad axis: its body clears the thigh by 6.5
+
+
+def hybrid_parts(th_t, rel):
+    xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
+    ry = lambda d: trimesh.transformations.rotation_matrix(np.radians(d), [0, 1, 0])
+    cyl = lambda r, y0, y1, x=0, z=0: trimesh.creation.cylinder(radius=r, segment=[[x, y0, z], [x, y1, z]], sections=64)
+    box_thigh = L.stadium([(0, 0, 64), (0, -HY_L, 64)])
+    inner = box_thigh.difference(L.circle(0, 0, 50)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_L)))
+    inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
+    outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.circle(0, -HY_L, 40))
+    outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
+    shin = L.stadium([(0, 0, 40), (0, -HY_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -HY_L + 32, 5, -32, 5))
+    knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
+    th = ry(th_t)
+    fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
+    boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
+    base = L.box(HY_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(HY_ABAD, 0)))
+    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, (HY_SHIN[0] + HY_SHIN[1]) / 2, -HY_L])
+    return {
+        'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
+        'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
+        'shin': xz(shin, HY_SHIN[0], 2 * L.T).apply_transform(ry(-rel)).apply_transform(knee).apply_transform(th),
+        'paw': paw.apply_transform(ry(-rel)).apply_transform(knee).apply_transform(th),
+        'rs00-hip': cyl(L.RS00_D / 2, *HY_MOT),
+        'rs00-knee': cyl(L.RS00_D / 2, *HY_MOT).apply_transform(knee).apply_transform(th),
+        'yoke': trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m]),
+        'rs00-abad': trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_ABAD[0], HY_ABAD, 0], [L.X_ABAD[1], HY_ABAD, 0]], sections=64),
+    }
+
+
+def hybrid():
+    import importlib
+    import body as B
+    importlib.reload(B)
+    y0, hip_x = 70.0, 190.0                              # inner thigh plate at |y| = 70
+    B.configure(y0, hip_x=hip_x, ends=False)
+    B.PLANE, B.YA, B.CLIP = y0, y0 + HY_ABAD, y0
+    B.WIDE = y0 - 4.0
+    wall = hip_x - L.X_BULK[0]
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
+    B.INTERNALS = [('battery', (140, 120, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
+                   ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
+    hh = 255.0 * HY_L / 150.0
+    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    legs = [(t, x, s, x > 0) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    pair_gap = 2 * (B.YA - L.RS00_D / 2)
+    note = (f'hybrid: {2 * (y0 + HY_SHIN[1]):.0f} wide at the feet, {2 * (y0 + HY_OUT[1]):.0f} at the hips, nothing proud of '
+            f'the leg; body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; ab/ad pair gap {pair_gap:.0f}, thigh clears ab/ad by {-(HY_ABAD + L.RS00_D / 2):.1f}')
+    B.configure(87.0)
+    return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+                replace=hybrid_parts(th_t, 2 * th_t), only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -216,7 +282,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
