@@ -76,7 +76,9 @@ def viewer():
     import quad
     quad.main()
     page = page.replace('__GLB_BASE64__', base64.b64encode(open(glb, 'rb').read()).decode())
-    page = page.replace('__QUAD_GLB_BASE64__', base64.b64encode(open(os.path.join(A, 'quad.glb'), 'rb').read()).decode())
+    for k in ('corner', 'side'):
+        page = page.replace(f'__{k.upper()}_GLB_BASE64__',
+                            base64.b64encode(open(os.path.join(A, f'quad-{k}.glb'), 'rb').read()).decode())
     open(os.path.join(HERE, 'out', 'viewer.html'), 'w').write(page)
     print(f'viewer: {glb} + out/viewer.html')
 

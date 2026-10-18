@@ -44,7 +44,7 @@ canvas:active { cursor: grabbing; }
 </style>
 
 <header>
-  <h1>quad00</h1>
+  <h1>quad00 architectures</h1>
   <div class="spec">
     <span><b>12 × RS00</b>, 3 per leg</span><span>hips <b>420 × 204 mm</b></span>
     <span>knee <b>2:1</b> m2.5 sheet gears</span>
@@ -56,14 +56,15 @@ canvas:active { cursor: grabbing; }
   <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
-    <button id="v-quad" aria-pressed="true">Quad</button>
+    <button id="v-corner" aria-pressed="true">Corner pods</button>
+    <button id="v-side" aria-pressed="false">Side-hung</button>
     <button id="v-leg" aria-pressed="false">One leg</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
   </div>
   <div class="key" id="key" aria-label="parts"></div>
-  <div class="hint">drag to orbit · right-drag to pan · scroll to zoom</div>
+  <div class="hint"><span id="note"></span> · grid 100 mm · can 330 ml</div>
 </div>
 
 <script type="importmap">
@@ -78,7 +79,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { quad: '__QUAD_GLB_BASE64__', leg: '__GLB_BASE64__' };
+const MODELS = { corner: '__CORNER_GLB_BASE64__', side: '__SIDE_GLB_BASE64__', leg: '__GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -128,6 +129,11 @@ const speckle = canvasTex((g, s) => {
 });
 speckle.repeat.set(0.05, 0.05);
 
+const NOTES = {
+  corner: 'body as wide as the legs, legs at the corners, ab/ad into the end walls',
+  side: 'legs along the sides, ab/ad on cross walls, body pocketed at the hips',
+  leg: 'one leg',
+};
 const MATS = {
   aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',
     m: new THREE.MeshPhysicalMaterial({ color: 0xd3d7dc, metalness: 0.8, roughness: 0.38, roughnessMap: brushed, envMapIntensity: 1.4 }) },
@@ -137,12 +143,14 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
   steel: { label: 'gear shafts', swatch: '#9aa1a8',
     m: new THREE.MeshPhysicalMaterial({ color: 0xb4bac1, metalness: 0.9, roughness: 0.22, envMapIntensity: 1.4 }) },
+  body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
 const GROUP = name =>
   /^(pinion|idler)/.test(name) ? 'gear' : /^rs00/.test(name) ? 'motor' :
-  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : 'aluminium';
+  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
 const EXPLODE = {
@@ -172,7 +180,8 @@ const loaded = {};
 
 function show(which) {
   for (const [k, g] of Object.entries(loaded)) g.visible = k === which;
-  for (const k of ['quad', 'leg']) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
+  for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
+  document.getElementById('note').textContent = NOTES[which];
   if (loaded[which]) { parts = loaded[which].userData.parts; frame(loaded[which]); return; }
   document.getElementById('status').hidden = false;
   const bytes = Uint8Array.from(atob(MODELS[which]), c => c.charCodeAt(0));
@@ -202,9 +211,24 @@ function show(which) {
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
 }
 
+// scale reference: 100 mm floor grid and a 330 ml can (66 x 115 mm)
+const grid = new THREE.GridHelper(3000, 30, 0x8a9099, 0xb9bec5);
+grid.material.transparent = true; grid.material.opacity = 0.35;
+scene.add(grid);
+const can = new THREE.Group();
+const canBody = new THREE.Mesh(new THREE.CylinderGeometry(33, 33, 115, 48),
+  new THREE.MeshPhysicalMaterial({ color: 0xc8342c, metalness: 0.7, roughness: 0.3, clearcoat: 0.6 }));
+const canTop = new THREE.Mesh(new THREE.CylinderGeometry(27, 33, 6, 48),
+  new THREE.MeshPhysicalMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.25 }));
+canBody.position.y = 57.5; canTop.position.y = 118; canBody.castShadow = canTop.castShadow = true;
+can.add(canBody, canTop);
+scene.add(can);
+
 function frame(obj) {
   const box = new THREE.Box3().setFromObject(obj);
   ground.position.y = box.min.y;
+  grid.position.y = box.min.y + 0.5;
+  can.position.set(box.max.x + 90, box.min.y, box.max.z - 40);
   const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
   home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(0.75, 0.32, 0.95).multiplyScalar(r * 1.35)) };
   controls.target.copy(home.target); camera.position.copy(home.pos);
@@ -212,9 +236,8 @@ function frame(obj) {
 
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
 buildKey();
-document.getElementById('v-quad').onclick = () => show('quad');
-document.getElementById('v-leg').onclick = () => show('leg');
-show('quad');
+for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
+show('corner');
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {
