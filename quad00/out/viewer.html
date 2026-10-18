@@ -66,7 +66,7 @@ canvas:active { cursor: grabbing; }
     <button id="reset">Reset view</button>
   </div>
   <div class="key" id="key" aria-label="parts"></div>
-  <div class="hint"><span id="note"></span> · grid 100 mm · can 330 ml</div>
+  <div class="hint"><span id="note"></span> · grid 100 mm · pole 1 m · stair 175 mm · can 330 ml</div>
 </div>
 
 <script type="importmap">
@@ -213,6 +213,15 @@ function load(which, done) {
 }
 
 const ORDER = ['quad', 'humanoid', 'mini'];
+const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid' };
+function settle(g) {                     // stand the model on the floor (world y = 0)
+  g.position.z = 0; g.position.y = 0; root.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(g);
+  g.position.z = -b.min.y;                 // feet on y = 0
+  g.position.y = (b.min.z + b.max.z) / 2;  // centred on the z = 0 line (root maps model y -> world -z)
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(g);
+}
 function press(which) {
   for (const k of ['all', ...Object.keys(MODELS)]) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
 }
@@ -221,7 +230,8 @@ function show(which) {
   document.getElementById('note').textContent = NOTES[which];
   load(which, g => {
     for (const [k, o] of Object.entries(loaded)) { o.visible = k === which; o.position.x = 0; }
-    parts = g.userData.parts; frame(g);
+    parts = g.userData.parts;
+    decorate([[which, settle(g)]]); frame(g);
   });
 }
 function showAll() {
@@ -235,13 +245,14 @@ function layout() {                      // side by side along x, 120 mm apart, 
   parts = [];
   for (const k of ORDER) {
     const g = loaded[k];
-    g.visible = true; g.position.x = 0; g.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(g);
-    g.position.x = x - b.min.x; x += b.max.x - b.min.x + 120;
+    g.visible = true; g.position.x = 0; root.updateMatrixWorld(true);
+    const b = settle(g);
+    g.position.x = x - b.min.x; x += b.max.x - b.min.x + 160;
     parts.push(...g.userData.parts);
   }
-  for (const k of ORDER) loaded[k].position.x -= (x - 120) / 2;
+  for (const k of ORDER) loaded[k].position.x -= (x - 160) / 2;
   root.updateMatrixWorld(true);
+  decorate(ORDER.map(k => [k, new THREE.Box3().setFromObject(loaded[k])]));
   frame(root);
 }
 
@@ -258,13 +269,54 @@ canBody.position.y = 57.5; canTop.position.y = 118; canBody.castShadow = canTop.
 can.add(canBody, canTop);
 scene.add(can);
 
+// size comparisons: a height tag over each robot, a 1 m pole, a 175 mm stair step, the can
+const refs = new THREE.Group(); scene.add(refs);
+function tag(text, at, h = 34) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  x.font = '600 44px ui-monospace, Menlo, monospace';
+  c.width = Math.ceil(x.measureText(text).width) + 32; c.height = 64;
+  x.font = '600 44px ui-monospace, Menlo, monospace';
+  x.fillStyle = 'rgba(20,22,26,0.72)'; x.beginPath(); x.roundRect(0, 0, c.width, c.height, 14); x.fill();
+  x.fillStyle = '#e8ebef'; x.textBaseline = 'middle'; x.fillText(text, 16, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false }));
+  s.scale.set(h * c.width / c.height, h, 1); s.position.copy(at); s.renderOrder = 10;
+  return s;
+}
+const MAT_A = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.6 });
+const MAT_B = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.6 });
+function decorate(list) {
+  refs.clear();
+  let x0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const [k, b] of list) {
+    const h = b.max.y - b.min.y;
+    refs.add(tag(`${NAMES[k]} · ${(h / 10).toFixed(0)} cm`, new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 40, (b.min.z + b.max.z) / 2)));
+    x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z1 = Math.max(z1, b.max.z);
+  }
+  // 1 m pole, 100 mm bands, left of the row
+  const pole = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(14, 100, 14), i % 2 ? MAT_B : MAT_A);
+    m.position.y = 50 + 100 * i; m.castShadow = true; pole.add(m);
+  }
+  pole.add(tag('1 m', new THREE.Vector3(0, 1040, 0), 30));
+  pole.add(tag('50 cm', new THREE.Vector3(-70, 500, 0), 24));
+  pole.position.set(x0 - 140, 0, 0);
+  refs.add(pole);
+  // a standard stair step, 175 rise x 280 run, right of the row
+  const step = new THREE.Mesh(new THREE.BoxGeometry(280, 175, 300), MAT_A);
+  step.position.set(x1 + 400, 87.5, 0); step.castShadow = step.receiveShadow = true;
+  refs.add(step, tag('stair 175', new THREE.Vector3(x1 + 400, 215, 0), 26));
+}
+
 function frame(obj) {
   const box = new THREE.Box3().setFromObject(obj);
   ground.position.y = box.min.y;
+  const view = box.clone().union(new THREE.Box3().setFromObject(refs));   // keep the size references in frame
   grid.position.y = box.min.y + 0.5;
-  can.position.set(box.max.x + 90, box.min.y, box.max.z - 40);
-  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
-  home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(0.75, 0.32, 0.95).multiplyScalar(r * 1.35)) };
+  can.position.set(box.max.x + 90, box.min.y, 0);
+  const c = view.getCenter(new THREE.Vector3()), r = view.getSize(new THREE.Vector3()).length();
+  home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(0.35, 0.3, 1.0).multiplyScalar(r * 1.05)) };
   controls.target.copy(home.target); camera.position.copy(home.pos);
 }
 
