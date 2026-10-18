@@ -1,5 +1,17 @@
 # quad00 leg
 
+> **Locked (2026-10-18): the mini quad and mini humanoid** -- `quad.py`'s `hybrid` and `humanoid` builds.
+> One limb module, four per robot, 12 × RS00, zero gears: the thigh is a box of two 3.2 mm plates with
+> the hip and knee RS00 as its spacers (the L-yoke reaches the hip motor's back through a bearing hole in
+> the inner plate; the knee output comes through the outer plate to the shin). Thigh 130, shin 170.
+> Each limb hangs from a fore-aft ab/ad RS00. Quad: belly-only body, hips 380 x 140, 255 high, front
+> yokes flipped so every ab/ad points into the body. Humanoid: the same module on a back plate, legs
+> mirrored fore-aft (knees forward), arms with the yoke flipped (elbows back), ~630 mm tall.
+> Open before building: the knee runs ~97% of RS00 in the non-backflip cases with the 170 shin; the
+> ab/ad lever is 99 mm (89%) -- the inline variant (shin inside the box) cuts it to 35; the humanoid
+> needs an ankle and arms outboard of the legs. Everything below this note describes the earlier geared
+> leg, kept as the printed prototype.
+
 One leg of an RS00 quadruped, with its hip yoke and ab/ad motor, on a bench bulkhead. All twelve joints of the dog are RobStride RS00.
 The knee is driven from the hip through a gear train cut from the same flat stock as everything else.
 There are no belts, rods or cables.

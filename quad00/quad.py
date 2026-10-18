@@ -190,7 +190,16 @@ def direct():
 
 # --- hybrid: zero gears, both motors inside the thigh. The thigh is a box -- two plates with the hip
 #     and knee RS00 as its spacers. Leg frame y = 0 at the inner thigh plate's inner face, outboard +.
-HY_L = 130.0
+HY_L = 130.0                                            # thigh
+HY_SHIN_L = 170.0                                       # shin: longer than the thigh (knee lever 78 mm at hips 255)
+
+
+def stance(hh, L1=HY_L, L2=None):
+    """thigh angle and shin-relative angle (deg, this file's R_y convention) with the foot under the hip."""
+    L2 = HY_SHIN_L if L2 is None else L2
+    a1 = math.acos((L1 ** 2 + hh ** 2 - L2 ** 2) / (2 * L1 * hh))
+    a2 = math.asin(L1 * math.sin(a1) / L2)
+    return math.degrees(a1), math.degrees(a1 + a2)
 HY_IN = (0.0, L.T)                                       # inner thigh plate
 HY_MOT = (HY_IN[1] + 1.0, HY_IN[1] + 1.0 + L.RS00_L)     # both motors, back faces inboard
 HY_OUT = (HY_MOT[1] + 1.0, HY_MOT[1] + 1.0 + L.T)        # outer thigh plate (on the hip motor's output)
@@ -208,15 +217,15 @@ def hybrid_parts(th_t, rel):
     inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
     outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.circle(0, -HY_L, 40))
     outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
-    shin = L.stadium([(0, 0, 40), (0, -HY_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
-        .difference(L.rounded(-5, -HY_L + 32, 5, -32, 5))
+    shin = L.stadium([(0, 0, 40), (0, -HY_SHIN_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -HY_SHIN_L + 32, 5, -32, 5))
     knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
     boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
     base = L.box(HY_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(HY_ABAD, 0)))
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
-    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, (HY_SHIN[0] + HY_SHIN[1]) / 2, -HY_L])
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, (HY_SHIN[0] + HY_SHIN[1]) / 2, -HY_SHIN_L])
     return {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
@@ -241,8 +250,7 @@ def hybrid():
     B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
     B.INTERNALS = [('battery', (140, 120, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
                    ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
-    hh = 255.0 * HY_L / 150.0
-    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    th_t, rel = stance(255.0)
     legs = [(t, x, s, x > 0) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
     extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
     extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
@@ -251,7 +259,7 @@ def hybrid():
             f'the leg; body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; ab/ad pair gap {pair_gap:.0f}, thigh clears ab/ad by {-(HY_ABAD + L.RS00_D / 2):.1f}')
     B.configure(87.0)
     return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
-                replace=hybrid_parts(th_t, 2 * th_t), only=True)
+                replace=hybrid_parts(th_t, rel), only=True)
 
 
 # --- inline: the hybrid with the knee motor flipped (back on the outer plate, output through the inner
@@ -271,8 +279,8 @@ def inline_parts(th_t, rel):
     inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
     outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_L)))
     outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
-    shin = L.stadium([(0, 0, 40), (0, -HY_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
-        .difference(L.rounded(-5, -HY_L + 32, 5, -32, 5))
+    shin = L.stadium([(0, 0, 40), (0, -HY_SHIN_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -HY_SHIN_L + 32, 5, -32, 5))
     knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
@@ -280,7 +288,7 @@ def inline_parts(th_t, rel):
     base = L.box(IL_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(IL_ABAD, 0)))
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
     hub = L.circle(0, 0, 36)
-    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_L])
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
     return {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
@@ -308,8 +316,8 @@ def inline():
     B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
     B.INTERNALS = [('battery', (140, 105, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
                    ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
-    hh = 255.0 * HY_L / 150.0
-    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    hh = 255.0
+    th_t, rel_t = stance(hh)
     # front: yoke + ab/ad mirrored fore-aft (ab/ad behind the hip, into the body), knee back as drawn.
     # rear: yoke as drawn (ab/ad ahead, into the body), the rest of the leg mirrored -> knee forward.
     legs = [(t, x, s, 'yoke' if x > 0 else 'leg') for t, x, s in
@@ -322,7 +330,7 @@ def inline():
             f'(hybrid 99); body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; knees point inward')
     B.configure(87.0)
     return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
-                replace=inline_parts(th_t, 2 * th_t), only=True)
+                replace=inline_parts(th_t, rel_t), only=True)
 
 
 def dog():
@@ -332,8 +340,8 @@ def dog():
     import importlib
     import body as B
     importlib.reload(B)
-    hh = 255.0 * HY_L / 150.0
-    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    hh = 255.0
+    th_t, rel_t = stance(hh)
     stride = 30.0
     hip_x = math.ceil(HY_L * math.sin(math.radians(th_t + stride)) + 32 + 3)   # thigh box r32, 3 mm between
     y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
@@ -360,7 +368,7 @@ def dog():
     B.configure(87.0)
     B.H_TOP = B.H_BOT = B.H_IN
     return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
-                replace=inline_parts(th_t, 2 * th_t), only=True)
+                replace=inline_parts(th_t, rel_t), only=True)
 
 
 def humanoid():
@@ -370,12 +378,14 @@ def humanoid():
     y0 = 70.0                                             # inner thigh plate at |y| = 70, as on the quad
     ya = y0 + HY_ABAD                                     # ab/ad axes at +/-35
     torso_h = 200.0                                       # hip axis -> shoulder axis
-    leg_bend, arm_up, arm_bend = 12.0, 10.0, 80.0         # pose (deg)
+    arm_up, arm_bend = 10.0, 80.0                         # arm pose (deg)
+    leg_hh = 0.96 * (HY_L + HY_SHIN_L)                    # nearly straight legs
+    leg_th, leg_rel = stance(leg_hh)
     x_back = -L.X_BULK[0]                                 # ab/ad back faces, behind the limb axes
-    hip_z = 2 * HY_L * np.cos(np.radians(leg_bend)) + L.PAW_D / 2
+    hip_z = leg_hh + L.PAW_D / 2
     legs = [('ll', 0.0, 1, 'all', hip_z), ('lr', 0.0, -1, 'all', hip_z),
             ('al', 0.0, 1, 'yoke', hip_z + torso_h), ('ar', 0.0, -1, 'yoke', hip_z + torso_h)]
-    poses = {'all': hybrid_parts(leg_bend, 2 * leg_bend), 'yoke': hybrid_parts(arm_up, arm_bend)}
+    poses = {'all': hybrid_parts(leg_th, leg_rel), 'yoke': hybrid_parts(arm_up, arm_bend)}
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
     half = ya + L.RS00_D / 2 + 4                          # back plate holds both ab/ad of a pair
     back = L.rounded(-half, hip_z - 40, half, hip_z + torso_h + 40, 10)
