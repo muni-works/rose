@@ -275,7 +275,7 @@ IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead
 IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
 
 
-def inline_parts(th_t, rel):
+def inline_parts(th_t, rel, end=None):
     """THE limb module, all 8 limbs: thigh box (hip + knee RS00 as spacers), inline shin, ab/ad centred
     fore-aft on the hip (stator on the yoke base behind, output face IP_OUT ahead -> the body wall)."""
     xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
@@ -286,7 +286,7 @@ def inline_parts(th_t, rel):
     inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
     outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_L)))
     outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
-    shin = L.stadium([(0, 0, 40), (0, -HY_SHIN_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+    shin = L.stadium([(0, 0, 40), (0, -HY_SHIN_L, 30 if end else 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
         .difference(L.rounded(-5, -HY_SHIN_L + 32, 5, -32, 5))
     knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
     th = ry(th_t)
@@ -298,7 +298,9 @@ def inline_parts(th_t, rel):
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
     hub = L.circle(0, 0, 36)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
-    return {
+    if end:
+        shin = shin.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_SHIN_L)))
+    parts = {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
         'shin': trimesh.util.concatenate([xz(shin, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1])])
@@ -311,6 +313,24 @@ def inline_parts(th_t, rel):
             trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[IP_AB[0], IL_ABAD, 0], [IP_AB[1], IL_ABAD, 0]], sections=64),
             trimesh.creation.cylinder(radius=L.OUT_PCD / 2 + 4, segment=[[IP_AB[1], IL_ABAD, 0], [IP_OUT, IL_ABAD, 0]], sections=48)]),
     }
+    if not end:
+        return parts
+    # mini: an RS00 at the shin's end, in the thigh box's band (stator on the shin, output outboard), and a
+    # foot (ankle) or hand (wrist) on its output -- the knee idiom again, one joint further down
+    del parts['paw']
+    shin_T = th @ knee @ ry(-rel)
+    m0, m1 = IL_SHIN[1] + 1.0, IL_SHIN[1] + 1.0 + L.RS00_L
+    eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -HY_SHIN_L]) @ (ry(rel - th_t) if end == 'ankle' else np.eye(4))   # foot level, hand inline
+    parts[f'rs00-{end}'] = cyl(L.RS00_D / 2, m0, m1, z=-HY_SHIN_L).apply_transform(shin_T)
+    if end == 'ankle':
+        ank = L.unary_union([L.circle(0, 0, 60), L.box(-40, -46, 60, -30)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3))
+        sole = trimesh.creation.box(extents=[130, m1 + 4 - IL_SHIN[0] + 8, 2 * L.T]).apply_translation([12, (IL_SHIN[0] - 8 + m1 + 4) / 2, -46 - L.T])
+        foot = trimesh.util.concatenate([xz(ank, m1 + 1, L.T), sole])
+    else:
+        hand = L.stadium([(0, 0, 32), (0, -70, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.rounded(-8, -58, 8, -30, 6))
+        foot = xz(hand, m1 + 1, L.T)
+    parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(eT)
+    return parts
 
 
 AB_OUT = IP_OUT                                         # ab/ad output face (body side) from the hip: 26.5
@@ -604,6 +624,78 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
                 posed=poses, only=True, world=R, ground=True)
 
 
+
+def humanoid_mini(arm_pose=(100.0, 70.0)):
+    """MINI humanoid: the tiny's limbs and lengths, plus waist yaw, hip yaw, ankle pitch, wrist -- 19 RS00.
+    Every added joint uses an idiom already in the design: the waist and hip-yaw motors are spacers
+    between two walls (as the hip/knee in the thigh box); ankle and wrist are the knee again, one joint down."""
+    yy = 42.0                                             # hip-yaw axes = roll axes: a roll motor yaws in its own
+                                                          # circle (r 38), so the pair sits 84 apart, not 63
+    y0 = yy - IL_ABAD                                     # leg plane 86 (tiny: 75.6)
+    y0a = y0 + HY_OUT[1] - IL_SHIN[0] + L.PAW_D / 2       # arms outboard of the legs
+    ya = y0a + IL_ABAD
+    chest = ya + 20.0
+    H, T2 = 41.0, 2 * L.T                                 # skins' inner faces at z = +/-H, as the quad decks
+    ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    cyl = lambda r, x0, x1, y=0.0: trimesh.creation.cylinder(radius=r, segment=[[x0, y, 0], [x1, y, 0]], sections=64)
+    extra = []
+    FRONT_PCD, FRONT_N = 50.0, 6                          # RS00 stator front flange: hangs a motor output-down
+    # chest: shoulder bar (arm ab/ad outputs) .. floor; the waist RS00 sits inside on its front flange, output down
+    xt = 0.0                                              # shoulder bar's outer face
+    xf = xt - T2 - 1.0 - L.RS00_L - 1.0                   # chest floor's top face: the waist motor fits between
+    def wallp(half, ports, cut=True):
+        w = L.rounded(-half, -H, half, H, 8)
+        for (y, pcd, n, ph, hole) in ports:
+            w = w.difference(L.holes_on(pcd, n, L.M3, phase=ph, at=(y, 0))).difference(L.circle(y, 0, hole))
+        return w
+    bar = wallp(chest, [(s * ya, L.OUT_PCD, L.OUT_N, 90, 16) for s in (1, -1)])
+    extra.append(('chassis-shoulder-bar', ext(bar, 'yz', xt - T2, T2)))
+    extra.append(('chassis-chest-floor', ext(wallp(chest, [(0, FRONT_PCD, FRONT_N, 0, 38)]), 'yz', xf - T2, T2)))
+    skin = L.rounded(xf - T2, -chest, xt, chest, 10).difference(L.rounded(xf + 10, -chest + 16, xt - 16, chest - 16, 8))
+    extra += [('chassis-chest-front', ext(skin, 'xy', H, L.T)), ('chassis-chest-back', ext(skin, 'xy', -H - L.T, L.T))]
+    extra.append(('rs00-waist', cyl(L.RS00_D / 2, xf, xf + L.RS00_L)))
+    extra.append(('rs00-waist-out', cyl(L.OUT_PCD / 2 + 4, xf - T2 - 1.0, xf)))
+    for s in (1, -1):
+        extra.append((f'int-battery.{"l" if s > 0 else "r"}', L.tri(Manifold.cube((44, 50, 70)).translate((xf + 4, s * 70 - 25, -35)))))
+    # pelvis: top wall takes the waist output; the two hip-yaw RS00 stand between its walls, outputs down
+    xp = xf - T2 - 1.0                                    # pelvis top wall's top face
+    xpb = xp - T2 - 1.0 - L.RS00_L - 1.0                  # bottom wall's top face
+    hp = yy + L.RS00_D / 2 + 6.0
+    top = wallp(hp, [(0, L.OUT_PCD, L.OUT_N, 90, 16)])
+    extra.append(('chassis-pelvis-top', ext(top, 'yz', xp - T2, T2)))
+    extra.append(('chassis-pelvis-bottom', ext(wallp(hp, [(s * yy, FRONT_PCD, FRONT_N, 0, 38) for s in (1, -1)]), 'yz', xpb - T2, T2)))
+    pskin = L.rounded(xpb - T2, -hp, xp, hp, 8).difference(L.rounded(xpb + 8, -hp + 14, xp - T2 - 8, -6, 6)) \
+        .difference(L.rounded(xpb + 8, 6, xp - T2 - 8, hp - 14, 6))
+    extra += [('chassis-pelvis-front', ext(pskin, 'xy', H, L.T)), ('chassis-pelvis-back', ext(pskin, 'xy', -H - L.T, L.T))]
+    xo = xpb - T2 - 1.0                                   # hip-yaw output faces
+    # legs: yaw output -> hip bracket (a flange on the yaw + the roll plate, as the tiny's pelvis plate) -> module
+    leg_hh = 0.96 * (HY_L + HY_SHIN_L) - 40.0             # the foot plate is 40 lower than the paw centre
+    th, rel = stance(leg_hh)
+    parts = inline_parts(th, rel, end='ankle')
+    hip_x = xo - L.T - 40.0
+    zr, yr = IP_OUT, y0 + IL_ABAD
+    Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
+    for tag, s in (('ll', 1), ('lr', -1)):
+        extra.append((f'rs00-hipyaw.{tag}', cyl(L.RS00_D / 2, xpb + 1.0, xpb + 1.0 + L.RS00_L, s * yy)))
+        extra.append((f'rs00-hipyaw-out.{tag}', cyl(L.OUT_PCD / 2 + 4, xo, xpb + 1.0, s * yy)))
+        y_lo, y_hi = sorted((s * (yy + 24), s * (yr - 24)))
+        fl = L.unary_union([L.circle(s * yy, 0, 60), L.rounded(y_lo, -10, y_hi, zr + T2, 6)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, at=(s * yy, 0)))
+        extra.append((f'chassis-hipflange.{tag}', ext(fl, 'yz', xo - L.T, L.T)))
+        rp = L.unary_union([L.circle(hip_x, s * yr, 60), L.rounded(hip_x, y_lo, xo - L.T, y_hi, 6)])
+        rp = rp.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, s * yr))).difference(L.circle(hip_x, s * yr, 16))
+        extra.append((f'chassis-rollplate.{tag}', ext(rp, 'xy', zr, T2)))
+        place = trimesh.transformations.translation_matrix([hip_x, s * y0, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
+        for n, g in parts.items():
+            extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
+    hip_a = xt + AB_OUT
+    legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
+    poses = {'yoke': inline_parts(*arm_pose, end='wrist')}
+    note = (f'MINI humanoid: 19 RS00 -- waist yaw, hip yaw-roll-pitch, knee, ankle; shoulder yaw-pitch, elbow, wrist; '
+            f'tiny lengths; shoulder-to-hip {hip_a - hip_x:.0f}, shoulders {2 * (y0a + HY_OUT[1]):.0f} wide')
+    R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
+    return dict(hip_x=hip_a, plane=y0a, legs=legs, body=None, walls=[], extra=extra, note=note,
+                posed=poses, only=True, world=R, ground=True)
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -653,7 +745,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('inline', inline), ('humanoid5', humanoid5)):          # the mini quad, the mini humanoid
+    for name, fn in (('inline', inline), ('humanoid5', humanoid5), ('humanoid_mini', humanoid_mini)):          # the mini quad, the mini humanoid
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)

@@ -57,8 +57,9 @@ canvas:active { cursor: grabbing; }
   <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
-    <button id="v-quad" aria-pressed="true">Mini quad</button>
-    <button id="v-humanoid" aria-pressed="false">Mini humanoid</button>
+    <button id="v-quad" aria-pressed="true">Tiny quad</button>
+    <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
+    <button id="v-mini" aria-pressed="false">Mini humanoid</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -79,7 +80,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__' };
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -130,8 +131,9 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
-  quad: 'mini quad: 4 limb modules, each carrying its ab/ad; body = two walls + decks',
-  humanoid: 'mini humanoid: the mini quad chassis upright; legs add hip yaw, the module\'s ab/ad is hip roll',
+  quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
+  humanoid: 'tiny humanoid: 12 RS00; the quad module on all limbs; hip roll on one pelvis plate',
+  mini: 'mini humanoid: 19 RS00; adds waist yaw, hip yaw, ankle, wrist -- same lengths, same module',
 };
 const MATS = {
   aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',

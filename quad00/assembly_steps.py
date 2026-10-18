@@ -75,7 +75,7 @@ def viewer():
     page = open(os.path.join(HERE, 'viewer.template.html')).read()
     import quad
     quad.main()
-    for key, build in (('QUAD', 'inline'), ('HUMANOID', 'humanoid5')):
+    for key, build in (('QUAD', 'inline'), ('HUMANOID', 'humanoid5'), ('MINI', 'humanoid_mini')):
         page = page.replace(f'__{key}_GLB_BASE64__',
                             base64.b64encode(open(os.path.join(A, f'quad-{build}.glb'), 'rb').read()).decode())
     open(os.path.join(HERE, 'out', 'viewer.html'), 'w').write(page)
