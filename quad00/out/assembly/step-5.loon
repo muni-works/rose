@@ -1,0 +1,9 @@
+;; step 5: shafts, idlers and shin
+[root [import-mesh "carrier-in.stl"] "aluminum"]
+[root [import-mesh "rs00-knee.stl"] "black"]
+[root [import-mesh "pinion.stl"] "aluminum"]
+[root [import-mesh "thigh-inner.stl"] "aluminum"]
+[root [translate 0 25 0 [import-mesh "shafts.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "idler-1.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "idler-2.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "shin.stl"]] "copper"]

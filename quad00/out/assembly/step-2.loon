@@ -1,0 +1,4 @@
+;; step 2: pinion onto the knee motor
+[root [import-mesh "carrier-in.stl"] "aluminum"]
+[root [import-mesh "rs00-knee.stl"] "black"]
+[root [translate 0 35 0 [import-mesh "pinion.stl"]] "copper"]

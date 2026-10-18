@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>quad00 leg assembly</title>
+<style>
+:root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#6b6a65; --line:#e3e1da; --accent:#b0603a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1b1b1a; --card:#242423; --ink:#ecebe6; --muted:#a3a19a; --line:#3a3936; --accent:#e08a5f; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 -apple-system, system-ui, sans-serif; }
+main { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+h1 { font-size:26px; font-weight:600; margin:0 0 4px; }
+h2 { font-size:19px; font-weight:600; margin:0 0 8px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin:0 0 16px; }
+.step { display:grid; grid-template-columns:260px 1fr; gap:18px; align-items:start; }
+.step img { width:100%; border-radius:8px; background:#f3f2ee; }
+@media (max-width:640px) { .step { grid-template-columns:1fr; } }
+.n { color:var(--accent); font-weight:600; margin-right:6px; }
+ul { margin:6px 0 0; padding-left:20px; }
+li { margin:3px 0; }
+table { width:100%; border-collapse:collapse; font-size:15px; }
+td { padding:6px 4px; border-top:1px solid var(--line); vertical-align:top; }
+td:first-child { white-space:nowrap; padding-right:14px; font-weight:500; }
+.warn { border-left:3px solid var(--accent); padding:10px 14px; background:color-mix(in srgb, var(--accent) 8%, var(--card)); border-radius:0 8px 8px 0; margin:10px 0 0; }
+code { font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+<h1>quad00 leg assembly</h1>
+<p class="sub">One leg on its bench carrier. In each picture, the copper part is the one going on, pulled out along the hip axis in the direction you fit it.</p>
+
+<div class="card">
+<h2>Hardware for one leg</h2>
+<table>
+<tr><td>Motors</td><td>2 × RS00. Cables exit through the Ø16 hole in each carrier.</td></tr>
+<tr><td>Gear shafts</td><td>3 × ISO 7379 shoulder bolt, Ø8 × 20 mm shoulder, M6 thread, with an M6 nylock nut each, and 6 × M8 DIN 125 washers (1.6 mm), two under each head.</td></tr>
+<tr><td>Gear bushings</td><td>3 × plain sleeve bushing, 8 × 10 × 8 mm, <b>not flanged</b> (two idlers and the knee gear).</td></tr>
+<tr><td>Pinion to knee motor</td><td>6 × M3 flat head (90°), ~16 mm long.</td></tr>
+<tr><td>Outer plate to hip motor</td><td>6 × M3 flat head (90°), ~8 mm long.</td></tr>
+<tr><td>Motors to carriers</td><td>8 × M3 socket head, ~12 mm long.</td></tr>
+<tr><td>Carrier bridge</td><td>3 × M5 threaded rod, 150 mm, and 12 × M5 nuts.</td></tr>
+<tr><td>Paw</td><td>1 × M5 × 35 bolt with an M5 nylock nut.</td></tr>
+</table>
+<div class="warn"><b>Check the RS00 thread depth before you drive any screw into a motor.</b> The RS00 manual says a screw must not go deeper than the housing thread, but it doesn't give the depth. Measure it with a depth gauge or a marked screw, then shorten screws to fit. The lengths above assume about 5 mm.</div>
+</div>
+
+<div class="card">
+<h2>Prep the prints</h2>
+<ul>
+<li>Clean up the gear teeth: knock off any elephant's foot on the first layer with a deburring blade. The teeth only have 0.2 mm of backlash, and first-layer flare will bind them.</li>
+<li>Drill or ream the Ø10 bores in both idlers and the shin to a press fit for the bushings, then press the bushings in flush.</li>
+<li>Run an 8 mm drill through the shaft holes in both thigh plates. The bolts should slide through with no slop.</li>
+<li>Test-fit the inner thigh plate on the pinion hub (Ø34 hub in a Ø34.4 bore). It should turn freely. If it drags, sand the bore, not the hub.</li>
+</ul>
+</div>
+
+<div class="card step"><img src="render/step-1.png" alt="motors onto carriers"><div>
+<h2><span class="n">1</span>Motors onto the carriers</h2>
+<ul>
+<li>Back-mount each RS00 to its carrier with 4 × M3 socket head through the Ø38 bolt circle. The output faces point toward each other.</li>
+<li>Route each motor's cable out through the carrier's centre hole now, while there's room.</li>
+<li>Decide which carrier is the hip side: the <b>outer</b> carrier holds the hip motor, the <b>inner</b> one holds the knee motor.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-2.png" alt="pinion onto knee motor"><div>
+<h2><span class="n">2</span>Pinion onto the knee motor</h2>
+<ul>
+<li>The pinion has a plain round hub on one face and countersinks on the other. Put the hub face against the knee motor's output.</li>
+<li>Fit 6 × M3 flat heads from the countersunk face into the output. Tighten them in a star pattern and seat the heads flush or slightly below. Anything proud will rub the outer thigh plate, which sits only 0.4 mm away.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-3.png" alt="outer thigh plate onto hip motor"><div>
+<h2><span class="n">3</span>Outer thigh plate onto the hip motor</h2>
+<ul>
+<li>The outer plate is the one with the six-hole pattern at the hip end. Its countersunk face goes <b>away</b> from the motor, toward the gears.</li>
+<li>Fit 6 × M3 flat heads through the plate into the hip motor's output, flush. Same reason as step 2: the pinion turns just behind these heads.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-4.png" alt="inner thigh plate over pinion hub"><div>
+<h2><span class="n">4</span>Inner thigh plate over the pinion hub</h2>
+<ul>
+<li>Lay the knee side on the bench with the pinion facing up.</li>
+<li>Drop the inner thigh plate (the one with the big Ø34 bore) over the pinion hub. The hub is the inner plate's hip bearing, so it should spin freely around it.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-5.png" alt="shafts, idlers, shin"><div>
+<h2><span class="n">5</span>Shafts, idlers and shin</h2>
+<ul>
+<li>Put two M8 washers on each shoulder bolt, under the head. Push the bolts up through the inner plate's three shaft holes from underneath.</li>
+<li>Drop the gears onto the bolts <b>in order</b>, turning each one until its teeth drop into the previous gear: idler 1 meshes with the pinion, then idler 2 with idler 1, then the shin's knee gear on the last bolt.</li>
+<li>Before you close the fork, set the shin pointing straight along the thigh, fully extended. That's your knee zero. Note it, or put a paint mark across the knee gear and idler 2.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-6.png" alt="close the fork"><div>
+<h2><span class="n">6</span>Close the fork with the hip side</h2>
+<ul>
+<li>Lower the hip side (outer carrier, hip motor, outer plate) onto the stack. The three bolt tips go through the outer plate's shaft holes, and the hip motor sits coaxial with the knee motor.</li>
+<li>Run M6 nylocks onto the bolts and tighten until each nut seats on its shoulder. The shoulder sets the plate spacing, so the gears can't be clamped.</li>
+<li><b>Check:</b> turn the knee motor's output by hand (or the pinion through a lightening hole). The shin should swing smoothly through its whole range, from straight down to 35° folded, with no tight spots. A tight spot is a tooth burr or flare: find it, clean it, repeat.</li>
+</ul></div></div>
+
+<div class="card step"><img src="render/step-7.png" alt="standoffs and paw"><div>
+<h2><span class="n">7</span>Standoffs and paw</h2>
+<ul>
+<li>Run the three M5 rods through the carriers' standoff holes, above the hip, with a nut on each side of each carrier.</li>
+<li>Bring the carriers in until the leg has a hair of side play, about 0.3 mm, and spins freely on the hip axis, then lock the nuts. Too tight and the plates drag on the gears; too loose and the gears walk off the shafts' centre.</li>
+<li>Slide the TPU paw onto the end of the shin and bolt it through with the M5 × 35 and nylock.</li>
+<li>The hip can swing ±129° from straight down. Past that the thigh hits the standoffs.</li>
+</ul></div></div>
+
+<div class="card">
+<h2>First power</h2>
+<ul>
+<li><b>Current-limit the knee to about 4 N·m</b> on printed teeth. Leave the hip at a moderate limit too until the gear mesh has been checked under power.</li>
+<li>The knee motor turns <b>2 turns per knee turn</b>, in the <b>opposite</b> direction to the knee. The train has three external meshes (pinion to idler, idler to idler, idler to knee gear), and each one reverses. Set the knee's sign and 2:1 scale in software before closing the loop.</li>
+<li>The knee joint angle depends on the hip too: <code>knee = −(knee_motor − hip_motor) / 2</code>, plus your zero offset. The pinion is on the hip axis, but the idlers ride on the thigh. Swinging the thigh with the knee motor held still turns the knee by half the hip motion.</li>
+<li>Then run the four bench tests in the README: backlash at the paw, knee range, crouched poses on a real 180 mm step, and standing under the limit.</li>
+</ul>
+</div>
+</main>
+</body>
+</html>

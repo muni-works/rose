@@ -9,7 +9,7 @@ There are no belts, rods or cables.
 ```
 carrier ── hip RS00 (outboard) ──> thigh-outer plate ┐
         └─ knee RS00 (inboard) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
-                                    idler z17         │ idlers on M8 shoulder bolts + 8×10 plain bushings
+                                    idler z17         │ idlers on M8 shoulder bolts + 8×10×8 plain sleeves
                                     idler z17         │
                                     knee gear z34 ════╧═ shin (same 3-layer laminate) ── paw (TPU)
 ```
@@ -52,8 +52,11 @@ The goal is fit, backlash, range and stair clearance. It is not built to take lo
 - **Material:** PETG, or nylon-CF if you have it. Print the gears flat, at 0.12–0.16 mm layers, with 100% infill on the gears.
 - **Knee current limit:** cap the knee motor at about **4 N·m** (PLA/PETG teeth). That is enough to stand
   (~1 N·m) and step slowly. Do not jump on printed teeth. In aluminium at RS00 peak × 1.5 shock, the Lewis safety factor is 2.1.
-- **Real hardware:** RS00 × 2, M8 shoulder bolts × 3, 8×10 flanged plain bushings × 6, M3 flat-head
-  screws (pinion → knee motor, thigh-outer → hip motor), M3 for the laminates, M5 rod × 3 with spacers.
+- **Real hardware:** see [assembly.html](assembly.html) for the full list and the build steps
+  (`out/assembly-guide.html` is the same page with the images inlined). Corrections to earlier notes:
+  the bushings are plain 8×10×8 sleeves, **not flanged**, because a flange won't fit in the 0.4 mm
+  gear-to-plate gap. The shafts are Ø8 × 20 shoulder bolts, with two 1.6 mm washers under each head
+  so the shoulder sets the 16.8 mm plate spacing.
   The inner thigh plate runs directly on the printed pinion hub (Ø34).
 
 Tests:

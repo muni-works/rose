@@ -1,0 +1,5 @@
+;; step 4: inner thigh plate over the pinion hub
+[root [import-mesh "carrier-in.stl"] "aluminum"]
+[root [import-mesh "rs00-knee.stl"] "black"]
+[root [import-mesh "pinion.stl"] "aluminum"]
+[root [translate 0 35 0 [import-mesh "thigh-inner.stl"]] "copper"]
