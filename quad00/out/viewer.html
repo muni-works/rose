@@ -39,17 +39,17 @@ canvas:active { cursor: grabbing; }
 .tools button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hint { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: 11px; }
-.status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+.status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+.status[hidden] { display: none; }
 @media (max-width: 520px) { .hint { display: none; } h1 { font-size: 22px; } }
 </style>
 
 <header>
   <h1>quad00 mini family</h1>
   <div class="spec">
-    <span><b>12 × RS00</b>, one per joint</span>
-    <span><b>zero gears</b>: motors inside the thigh box</span>
-    <span>thigh <b>130</b> / shin <b>170</b> mm</span>
-    <span>hips <b>255</b> (quad) / <b>310</b> (humanoid)</span>
+    <span><b>all RS00</b>, one per joint, <b>zero gears</b></span>
+    <span>tiny: <b>12</b> RS00, thigh <b>130</b> / shin <b>170</b></span>
+    <span>mini: <b>19</b> RS00, thigh <b>170</b> / shin <b>220</b>, ~<b>70 cm</b></span>
     <span>stock <b>3.2 mm</b></span>
   </div>
 </header>
@@ -57,7 +57,8 @@ canvas:active { cursor: grabbing; }
   <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
   <div class="status" id="status">loading model…</div>
   <div class="tools">
-    <button id="v-quad" aria-pressed="true">Tiny quad</button>
+    <button id="v-all" aria-pressed="true">All</button>
+    <button id="v-quad" aria-pressed="false">Tiny quad</button>
     <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
     <button id="v-mini" aria-pressed="false">Mini humanoid</button>
     <button id="explode" aria-pressed="false">Explode</button>
@@ -131,6 +132,7 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
+  all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, all RS00, zero gears',
   quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
   humanoid: 'tiny humanoid: 12 RS00; the quad module on all limbs; hip roll on one pelvis plate',
   mini: 'mini humanoid: 19 RS00, ~70 cm (the most RS00 carries); thigh 170, shin 220; adds waist, hip yaw, ankle, wrist',
@@ -181,11 +183,8 @@ scene.add(ground);
 let parts = [];
 const loaded = {};
 
-function show(which) {
-  for (const [k, g] of Object.entries(loaded)) g.visible = k === which;
-  for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
-  document.getElementById('note').textContent = NOTES[which];
-  if (loaded[which]) { parts = loaded[which].userData.parts; frame(loaded[which]); return; }
+function load(which, done) {
+  if (loaded[which]) return done(loaded[which]);
   document.getElementById('status').hidden = false;
   const bytes = Uint8Array.from(atob(MODELS[which]), c => c.charCodeAt(0));
   new GLTFLoader().parse(bytes.buffer, '', gltf => {
@@ -208,10 +207,42 @@ function show(which) {
     gltf.scene.userData.parts = list;
     root.add(gltf.scene);
     loaded[which] = gltf.scene;
-    parts = list;
     document.getElementById('status').hidden = true;
-    frame(gltf.scene);
+    done(gltf.scene);
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
+}
+
+const ORDER = ['quad', 'humanoid', 'mini'];
+function press(which) {
+  for (const k of ['all', ...Object.keys(MODELS)]) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
+}
+function show(which) {
+  press(which);
+  document.getElementById('note').textContent = NOTES[which];
+  load(which, g => {
+    for (const [k, o] of Object.entries(loaded)) { o.visible = k === which; o.position.x = 0; }
+    parts = g.userData.parts; frame(g);
+  });
+}
+function showAll() {
+  press('all');
+  document.getElementById('note').textContent = NOTES.all;
+  let n = 0;
+  for (const k of ORDER) load(k, () => { if (++n === ORDER.length) layout(); });
+}
+function layout() {                      // side by side along x, 120 mm apart, centred
+  let x = 0;
+  parts = [];
+  for (const k of ORDER) {
+    const g = loaded[k];
+    g.visible = true; g.position.x = 0; g.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(g);
+    g.position.x = x - b.min.x; x += b.max.x - b.min.x + 120;
+    parts.push(...g.userData.parts);
+  }
+  for (const k of ORDER) loaded[k].position.x -= (x - 120) / 2;
+  root.updateMatrixWorld(true);
+  frame(root);
 }
 
 // scale reference: 100 mm floor grid and a 330 ml can (66 x 115 mm)
@@ -240,7 +271,8 @@ function frame(obj) {
 let home = null, exploded = 0, explodeTarget = 0, focus = null;
 buildKey();
 for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
-show('quad');
+document.getElementById('v-all').onclick = showAll;
+showAll();
 function buildKey() {
   const key = document.getElementById('key');
   for (const [g, { label, swatch }] of Object.entries(MATS)) {
