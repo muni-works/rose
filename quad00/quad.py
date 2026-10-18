@@ -296,6 +296,7 @@ def pocket(prof, keep, rim=8.0, rib=7.0, struts=(), min_area=120.0):
 
 
 POCKETED = []                                           # every pocketed profile, for dfm.py
+SHIN_PROFILES = []                                      # last two-motor shin's plates (profile, y0, t), for shin_check.py
 
 
 def shapely_mirror(p):
@@ -540,9 +541,12 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, 
     pas = lambda z: L.circle(0, z, e['out'][0] + 11)
     # inner shin plate: knee hub .. A's stator (back) .. B's output (pass) .. pivot
     rh, rm, rp = hub_d / 2 + 6, e['back'][0] / 2 + 8, 15 * k
-    inner = L.stadium([(0, 0, hub_d + 4), (0, -DM1, W), (0, -DM2, W), (0, -LS, 30 * k)])
-    st = warren((0, -rh), (0, -DM1 + rm), e['D'] / 2 - 6, 2) + warren((0, -DM2 - rm), (0, -LS + rp), 8 * k, 2)
-    inner = pocket(inner, [(0, 0, rh), (0, -DM1, rm), (0, -DM2, rm), (0, -LS, rp)], rim=7.0, struts=st + [((0, -DM1), (0, -DM2))])
+    inner = L.stadium([(0, 0, W), (0, -DM1, W), (0, -DM2, W), (0, -LS, 30 * k)])
+    st = warren((0, -DM2 - rm), (0, -LS + rp), 8 * k, 2)
+    # knee .. upper motor: the shin is ONE plate here (the outer plate can't reach up past the thigh box when
+    # the knee folds), so it stays solid and full width -- it carries the landing load off-centre (shin_check.py)
+    solid_top = inner.intersection(L.box(-W, -DM1, W, W))
+    inner = pocket(inner, [(0, 0, rh), (0, -DM1, rm), (0, -DM2, rm), (0, -LS, rp)], rim=7.0, struts=st + [((0, -DM1), (0, -DM2))]).union(solid_top)
     inner = inner.difference(L.holes_on(m['out'][0], m['out'][1], m['hole'])).difference(L.circle(0, -LS, 8.4 * k))
     if not G['tuck']:
         inner = inner.difference(pas(-DM2)).difference(bk(-DM1))
@@ -552,6 +556,7 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, 
     if G['tuck']:      # tucked: A hangs from the outer plate on its front flange, so the slot is clear end to end
         outer = outer.difference(L.holes_on(e['front'][0], e['front'][1], e['hole'], at=(0, -DM1)))
     hub = L.circle(0, 0, hub_d)
+    SHIN_PROFILES[:] = [(inner, IL_SHIN[0], 2 * L.T), (outer, y_os, L.T)]     # for shin_check.py
     parts['shin'] = trimesh.util.concatenate([xz(inner, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1]),
                                               xz(outer, y_os, L.T)]).apply_transform(shin_T)
     oring = e['out'][0] / 2 + 4
