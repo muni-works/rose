@@ -90,3 +90,22 @@ Tests:
 - 620 g of aluminium per leg; the shin laminate (202 g) is now the heaviest part to lighten. Re-run the RS00
   sizing sweep with the real masses.
 - The paw's flat sits on the shin axis, so it only touches the ground with the shin vertical; it is there for printing.
+
+## The whole quad (side-hung)
+
+`body.py` is the body; `quad.py` puts four legs on it (and on the corner-pod alternative) for the viewer.
+
+- **Two flat decks + cross ribs, open sides.** The decks' plan shape is the silhouette: a chest ahead of
+  the front hips and a belly between the hip pairs, both ±88 mm to hold the ab/ad pairs, and ±35 mm
+  necks where the hip clusters tuck in. The thighs' E-clips pass 4 mm outside the decks, so the legs
+  never cross the body, and there is no room for side walls (the decks carry it).
+- **Ribs:** a nose wall and a mid wall (two layers each) take the front and rear ab/ad pairs on their
+  back faces; rib A closes the belly, rib 0 is the splice where the front and rear deck halves meet, and
+  a tail rib closes the tail. Every rib tabs into slots in both decks.
+- **Every plate fits the 4040** (largest 307 mm): `out/dxf/body-*.dxf`.
+- **Inside:** a 12S2P 21700 pack (44.4 V, 10 Ah, 1.7 kg) in the belly, a Pi 5 + CAN hat and the
+  48 V → 5 V supply aft of the splice rib.
+- **Mass:** 10.2 kg with aluminium structure (legs 6.5, body 3.7), 7.2 kg printed; CoM 27 mm ahead of
+  the hips' midpoint. 10.2 kg is about 12% over the RS00 sizing (9.1 kg), which puts the backflip knee
+  at ~100% of RS00 peak: lighten, or drop backflips.
+- **Leg-to-leg:** a front thigh swung back over the top and a rear thigh swung forward stop 32 mm apart.

@@ -3,9 +3,8 @@
   corner  -- Mini Cheetah layout. One body box as wide as the legs; the four leg clusters sit at its
              corners, just past each end. Every ab/ad RS00 points back into the body and bolts to an
              end wall, so the front legs carry their yoke + ab/ad mirrored fore-aft.
-  side    -- Go2 layout. Legs hang along the body's sides, all facing forward. Each ab/ad sits ahead
-             of its hip inside the body, on a cross wall; the body is pocketed where the hip clusters
-             tuck in.
+  side    -- Go2 layout, the one being developed: body.py. Legs hang along the body's sides, all
+             facing forward; two flat decks + cross ribs, necked where the hip clusters tuck in.
 
 Body frame: X forward, Y left, Z up, hip axes at z = 0. Run leg.py --assembly first.
   python3 quad.py  ->  out/assembly/quad-<name>.glb
@@ -63,21 +62,13 @@ def corner():
 
 
 def side():
-    """dog-shaped: a full-width chest ahead of the front hips and a full-width belly between the hip
-    pairs (it houses the rear ab/ad pair); the body necks in only where the legs tuck against it."""
-    hip_x, plane = 210.0, 102.0
-    ya = plane + L.ABAD_Y                                  # 60
-    half = ya + 32                                         # shoulder half-width: holds the ab/ad motors
-    waist = plane - (L.Y_FLANGE + L.YOKE_T) - 3            # waist half-width: clears the yoke flanges by 3
-    legs = [(t, x, s, False) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
-    sh0, sh1 = L.X_YOKE + L.YOKE_T + 1.0, L.X_BULK[1]      # shoulder spans, relative to its hip
-    shell = softbox(-hip_x - 70, hip_x + sh1, -waist, waist, *BODY_Z, r_plan=14, r_side=14)    # spine, tail to chest
-    shell = shell + softbox(hip_x + sh0, hip_x + sh1, -half, half, *BODY_Z, r_plan=16, r_side=14)  # chest
-    shell = shell + softbox(-hip_x + sh0, hip_x - 44, -half, half, *BODY_Z, r_plan=22, r_side=14)  # belly
-    walls = [(wall([ya, -ya]), [x + L.X_BULK[0], 0, 0]) for x in (hip_x, -hip_x)]
-    return dict(hip_x=hip_x, plane=plane, legs=legs, body=L.tri(shell), walls=walls,
-                note=f'chest + belly {2 * half:.0f} wide, necked to {2 * waist:.0f} at the hips, length {2 * hip_x + 70 + sh1:.0f}, '
-                     f'overall ~{2 * (plane + L.Y_FLANGE + L.YOKE_T):.0f} wide')
+    """the real side-hung body (body.py): two flat decks + cross ribs, open sides, internals."""
+    import body as B
+    legs = [(t, x, s, False) for t, x, s in (('fl', B.HIP_X, 1), ('fr', B.HIP_X, -1), ('rl', -B.HIP_X, 1), ('rr', -B.HIP_X, -1))]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    return dict(hip_x=B.HIP_X, plane=B.PLANE, legs=legs, body=None, walls=[], extra=extra,
+                note=f'decks + ribs, {B.X_NOSE + 2 * B.T - B.X_TAIL:.0f} long, {2 * B.WIDE:.0f} wide at chest and belly')
 
 
 def build(arch):
@@ -93,7 +84,10 @@ def build(arch):
         for n in geoms:
             m = place @ np.diag([-1, 1, 1, 1.0]) if (flip and n in YOKE_SIDE) else place
             scene.graph.update(frame_to=f'{n}.{tag}', frame_from=scene.graph.base_frame, matrix=m, geometry=n)
-    scene.add_geometry(arch['body'], geom_name='chassis-body', node_name='chassis-body')
+    if arch.get('body') is not None:
+        scene.add_geometry(arch['body'], geom_name='chassis-body', node_name='chassis-body')
+    for n, m in arch.get('extra', []):
+        scene.add_geometry(m, geom_name=n, node_name=n)
     for i, (w, at) in enumerate(arch['walls']):
         scene.add_geometry(w, geom_name=f'chassis-wall-{i}', node_name=f'chassis-wall-{i}',
                            transform=trimesh.transformations.translation_matrix(at))

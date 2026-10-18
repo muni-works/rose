@@ -57,7 +57,7 @@ canvas:active { cursor: grabbing; }
   <div class="status" id="status">loading model…</div>
   <div class="tools">
     <button id="v-corner" aria-pressed="true">Corner pods</button>
-    <button id="v-side" aria-pressed="false">Side-hung</button>
+    <button id="v-side" aria-pressed="false">Side-hung (real body)</button>
     <button id="v-leg" aria-pressed="false">One leg</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
@@ -131,7 +131,7 @@ speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
   corner: 'a low slab as wide as the legs; each leg plugs into a corner',
-  side: 'chest and belly full width, necked in where the legs tuck against it',
+  side: 'two flat decks + ribs, open sides; battery in the belly, compute aft',
   leg: 'one leg',
 };
 const MATS = {
@@ -143,6 +143,8 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
   steel: { label: 'gear shafts', swatch: '#9aa1a8',
     m: new THREE.MeshPhysicalMaterial({ color: 0xb4bac1, metalness: 0.9, roughness: 0.22, envMapIntensity: 1.4 }) },
+  internals: { label: 'battery, compute, power', swatch: '#3d6b4f',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
   body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
     m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
@@ -150,7 +152,7 @@ const MATS = {
 };
 const GROUP = name =>
   /^(pinion|idler)/.test(name) ? 'gear' : /^rs00/.test(name) ? 'motor' :
-  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : 'aluminium';
+  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
 const EXPLODE = {
