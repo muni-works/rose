@@ -553,6 +553,68 @@ def humanoid4(leg_pose=(84.0, -12.0), arm_pose=(100.0, 70.0), hip_x=140.0):
                 posed=poses, only=True, world=R, ground=True)
 
 
+def humanoid5(hip_a=140.0, arm_pose=(100.0, 70.0)):
+    """the mini quad's chassis, upright, with hip roll. Built in the quad's body frame (x = spine), then
+    stood up. Arms: the quad's front pair, exactly as on the quad (ab/ad output on the top wall -> shoulder
+    yaw). Legs: a hip-yaw RS00 hangs from the pelvis wall (the quad's rear wall); an L-bracket on its output
+    takes the quad limb module's ab/ad output, so that ab/ad is hip ROLL, as on the quad: yaw-roll-pitch-knee."""
+    import importlib
+    import body as B
+    importlib.reload(B)
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD                     # 75.6: same limb plane as the quad
+    ya = y0 + IL_ABAD                                     # arm ab/ad axes
+    wall = hip_a - AB_OUT                                 # walls at +/-49.8, as the reared quad
+    B.configure(80.0, hip_x=hip_a, ends=False)
+    B.PLANE, B.YA = y0, ya
+    B.WIDE = y0 + IL_SHIN[0] - 4.0
+    B.X_END = wall
+    B.WALL_TAKES_OUTPUT = True
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE)}                   # top wall: arm ab/ad outputs
+    B.INTERNALS = [('battery', (70, 105, 44), (0, 0, -18), 0.85), ('compute', (60, 63, 28), (0, 0, 22), 0.12)]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    foot_y = y0 + sum(IL_SHIN) / 2                        # 66: the yaw axis runs through the foot line
+    # pelvis wall (the quad's rear wall): yaw stators back-mount on it
+    pw = L.rounded(-B.WIDE, -42, B.WIDE, 42, 10)
+    pw = L.unary_union([pw, L.rounded(-foot_y - 34, -34, foot_y + 34, 34, 10)])
+    for s in (1, -1):
+        pw = pw.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * foot_y, 0))).difference(L.circle(s * foot_y, 0, 16))
+    extra.append(('chassis-wall-pelvis', ext(pw, 'yz', -wall - 2 * L.T, 2 * L.T)))
+    # legs, in body coordinates: leg frame (x_l fore-aft, y_l out, z_l down) -> body (z, y, -x)
+    leg_hh = 0.96 * (HY_L + HY_SHIN_L)
+    th, rel = stance(leg_hh)
+    parts = inline_parts(th, rel)
+    yaw0 = -wall - 2 * L.T                                # yaw stator back on the pelvis wall's underside
+    yaw_out = yaw0 - L.RS00_L - 1.0
+    hip_x = yaw_out - L.T - 34.0                          # hip axis 34 below the bracket (thigh box r32)
+    # leg frame -> body at the hip: the leg's down (-z_l) runs down the spine (-x), its fore-aft (x_l) along
+    # body z; mirrored fore-aft so the knee bends forward and the roll (ab/ad) output faces +z
+    Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
+    for tag, s in (('ll', 1), ('lr', -1)):
+        place = trimesh.transformations.translation_matrix([hip_x, s * y0, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
+        for n, g in parts.items():
+            extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
+        ys = s * foot_y
+        extra.append((f'rs00-yaw.{tag}', trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[yaw0, ys, 0], [yaw0 - L.RS00_L, ys, 0]], sections=64)))
+        # L-bracket: a plate on the yaw output (YZ) + a roll wall (XY) taking the module's ab/ad (roll) output
+        zr = AB_OUT                                       # roll output face, body z (the module's fore-aft)
+        yr = s * (y0 + IL_ABAD)
+        y_lo, y_hi = sorted((ys + s * 36, yr - s * 36))
+        top = L.rounded(y_lo, -36, y_hi, zr + 2 * L.T, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, at=(ys, 0)))
+        extra.append((f'chassis-bracket.{tag}', ext(top, 'yz', yaw_out - L.T, L.T)))
+        rw = L.rounded(hip_x - 36, y_lo, yaw_out, y_hi, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, yr)))
+        extra.append((f'chassis-rollwall.{tag}', ext(rw, 'xy', zr, 2 * L.T)))
+    legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
+    poses = {'yoke': inline_parts(*arm_pose)}
+    note = (f'mini humanoid: the mini quad chassis upright; legs yaw-roll-pitch-knee (yaw RS00 + L-bracket + the '
+            f'quad limb module), arms as the quad\'s front pair; shoulder-to-hip {hip_a - hip_x:.0f}')
+    B.configure(87.0)
+    R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
+    return dict(hip_x=hip_a, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+                posed=poses, only=True, world=R, ground=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -602,7 +664,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3), ('humanoid4', humanoid4)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3), ('humanoid4', humanoid4), ('humanoid5', humanoid5)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
