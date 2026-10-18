@@ -294,7 +294,7 @@ def inline_parts(th_t, rel):
     boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
     # ab/ad reversed: its stator back-mounts on the yoke base, its output bolts to the body wall, so the
     # limb module carries all three of its motors and the body is only plates with bolt patterns
-    base = L.box(IL_ABAD - 32, -32, HY_FL[0], 32).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))
+    base = L.unary_union([L.circle(IL_ABAD, 0, 29), L.box(IL_ABAD, -32, HY_FL[0], 32)]).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(IL_ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
     hub = L.circle(0, 0, 36)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_SHIN_L])
@@ -555,28 +555,38 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
     ya = y0 + IL_ABAD                                     # arm ab/ad axes
     wall = hip_a - AB_OUT                                 # walls at +/-49.8, as the reared quad
     B.configure(80.0, hip_x=hip_a, ends=False)
+    y0a = y0 + HY_OUT[1] - IL_SHIN[0] + L.PAW_D / 2       # arms outboard of the legs: the hands hang past the thighs
+    ya = y0a + IL_ABAD                                    # arm ab/ad (shoulder) axes
+    chest = ya + 20.0                                     # chest half-width: the arm's thigh box yaws +/-30 past it
     B.PLANE, B.YA = y0, ya
     B.WIDE = y0 + IL_SHIN[0] - 4.0
     B.X_END = wall
     B.WALL_TAKES_OUTPUT = True
-    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE)}                   # top wall: arm ab/ad outputs
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, chest)}                    # top wall = shoulder bar
     B.INTERNALS = [('battery', (70, 105, 44), (0, 0, -18), 0.85), ('compute', (60, 63, 28), (0, 0, 22), 0.12)]
     extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
     extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    # chest: the belly box widens under the shoulder bar -- front/back skins + a floor, a T-torso
+    ch_x = wall - 2 * L.T - 70.0
+    skin = L.rounded(ch_x, -chest, wall, chest, 10).difference(L.rounded(ch_x + 14, -chest + 14, wall - 16, chest - 14, 8))
+    extra.append(('chassis-chest-front', ext(skin, 'xy', B.H_TOP, L.T)))
+    extra.append(('chassis-chest-back', ext(skin, 'xy', -B.H_BOT - L.T, L.T)))
+    fl = L.box(-chest, -B.H_BOT, chest, B.H_TOP).difference(L.rounded(-B.WIDE + 4, -B.H_BOT + 12, B.WIDE - 4, B.H_TOP - 12, 8))
+    extra.append(('chassis-chest-floor', ext(fl, 'yz', ch_x, 2 * L.T)))
     # legs, in body coordinates: leg frame (x_l fore-aft, y_l out, z_l down) -> body (z, y, -x)
     leg_hh = 0.96 * (HY_L + HY_SHIN_L)
     th, rel = stance(leg_hh)
     parts = inplane_parts(th, rel)                        # the same module as every other limb
     hip_x = -wall - 2 * L.T - 40.0                        # hip axis 40 under the pelvis wall (thigh box r32)
     zr = IP_OUT                                           # roll output face, 26.5 ahead of the hips
-    yr = y0 + IL_ABAD                                     # roll axes: the arms' ab/ad line, mirrored
+    yr = y0 + IL_ABAD                                     # roll axes
     # pelvis: ONE plate in the torso's mid-depth, between the decks, hanging below the pelvis wall; both
     # roll outputs bolt to it -- no yaw stage, no brackets: 12 RS00, as the quad
-    pp = L.rounded(hip_x - 36, -yr - 36, -wall + 60, yr + 36, 10)
+    pp = L.rounded(hip_x - 24, -yr - 24, -wall + 60, yr + 24, 10)          # port rings only: the thighs roll past it
     for s in (1, -1):
         pp = pp.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, s * yr))).difference(L.circle(hip_x, s * yr, 16))
-    pp = pp.difference(L.rounded(hip_x + 30, -yr + 22, -wall + 40, yr - 22, 8))
+    pp = pp.difference(L.rounded(hip_x + 28, -yr + 14, -wall + 40, yr - 14, 8))
     extra.append(('chassis-pelvis', ext(pp, 'xy', zr, 2 * L.T)))
     Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
     for tag, s in (('ll', 1), ('lr', -1)):
@@ -584,12 +594,13 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
         for n, g in parts.items():
             extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
     legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
+    plane_arm = y0a
     poses = {'yoke': inline_parts(*arm_pose)}
     note = (f'mini humanoid: the mini quad chassis upright; legs roll-pitch-knee on one pelvis plate (the '
             f'quad limb module, 12 RS00), arms as the quad\'s front pair; shoulder-to-hip {hip_a - hip_x:.0f}')
     B.configure(87.0)
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
-    return dict(hip_x=hip_a, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+    return dict(hip_x=hip_a, plane=plane_arm, legs=legs, body=None, walls=[], extra=extra, note=note,
                 posed=poses, only=True, world=R, ground=True)
 
 
