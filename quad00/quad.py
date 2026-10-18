@@ -564,42 +564,29 @@ def humanoid5(hip_a=190.0, arm_pose=(100.0, 70.0)):
     extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
     extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
     ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
-    foot_y = y0 + sum(IL_SHIN) / 2                        # 66: the yaw axis runs through the foot line
-    # pelvis wall (the quad's rear wall): yaw stators back-mount on it
-    pw = L.rounded(-B.WIDE, -42, B.WIDE, 42, 10)
-    pw = L.unary_union([pw, L.rounded(-foot_y - 34, -34, foot_y + 34, 34, 10)])
-    for s in (1, -1):
-        pw = pw.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * foot_y, 0))).difference(L.circle(s * foot_y, 0, 16))
-    extra.append(('chassis-wall-pelvis', ext(pw, 'yz', -wall - 2 * L.T, 2 * L.T)))
     # legs, in body coordinates: leg frame (x_l fore-aft, y_l out, z_l down) -> body (z, y, -x)
     leg_hh = 0.96 * (HY_L + HY_SHIN_L)
     th, rel = stance(leg_hh)
-    parts = inplane_parts(th, rel)                        # roll motor centred on the hip: no seat
-    yaw0 = -wall - 2 * L.T                                # yaw stator back on the pelvis wall's underside
-    yaw_out = yaw0 - L.RS00_L - 1.0
-    hip_x = yaw_out - L.T - 34.0                          # hip axis 34 below the bracket (thigh box r32)
-    # leg frame -> body at the hip: the leg's down (-z_l) runs down the spine (-x), its fore-aft (x_l) along
-    # body z; mirrored fore-aft so the knee bends forward and the roll (ab/ad) output faces +z
+    parts = inplane_parts(th, rel)                        # the same module as every other limb
+    hip_x = -wall - 2 * L.T - 40.0                        # hip axis 40 under the pelvis wall (thigh box r32)
+    zr = IP_OUT                                           # roll output face, 26.5 ahead of the hips
+    yr = y0 + IL_ABAD                                     # roll axes: the arms' ab/ad line, mirrored
+    # pelvis: ONE plate in the torso's mid-depth, between the decks, hanging below the pelvis wall; both
+    # roll outputs bolt to it -- no yaw stage, no brackets: 12 RS00, as the quad
+    pp = L.rounded(hip_x - 36, -yr - 36, -wall + 60, yr + 36, 10)
+    for s in (1, -1):
+        pp = pp.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, s * yr))).difference(L.circle(hip_x, s * yr, 16))
+    pp = pp.difference(L.rounded(hip_x + 30, -yr + 22, -wall + 40, yr - 22, 8))
+    extra.append(('chassis-pelvis', ext(pp, 'xy', zr, 2 * L.T)))
     Tl = np.array([[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1.0]])
     for tag, s in (('ll', 1), ('lr', -1)):
         place = trimesh.transformations.translation_matrix([hip_x, s * y0, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
         for n, g in parts.items():
             extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
-        ys = s * foot_y
-        extra.append((f'rs00-yaw.{tag}', trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[yaw0, ys, 0], [yaw0 - L.RS00_L, ys, 0]], sections=64)))
-        # L-bracket: a plate on the yaw output (YZ) + a roll wall (XY) taking the module's ab/ad (roll) output
-        zr = IP_OUT                                       # roll output face, body z: 26.5 off the hip axis
-        yr = s * (y0 + IL_ABAD)
-        y_lo, y_hi = sorted((ys + s * 36, yr - s * 36))
-        top = L.rounded(y_lo, -36, y_hi, zr + 2 * L.T, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, at=(ys, 0)))
-        extra.append((f'chassis-bracket.{tag}', ext(top, 'yz', yaw_out - L.T, L.T)))
-        rw = L.rounded(hip_x - 36, y_lo, yaw_out, y_hi, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, yr)))
-        rw = rw.difference(L.circle(hip_x, yr, 16))
-        extra.append((f'chassis-rollwall.{tag}', ext(rw, 'xy', zr, 2 * L.T)))
     legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
     poses = {'yoke': inline_parts(*arm_pose)}
-    note = (f'mini humanoid: the mini quad chassis upright; legs yaw-roll-pitch-knee (yaw RS00 + L-bracket + the '
-            f'quad limb module), arms as the quad\'s front pair; shoulder-to-hip {hip_a - hip_x:.0f}')
+    note = (f'mini humanoid: the mini quad chassis upright; legs roll-pitch-knee on one pelvis plate (the '
+            f'quad limb module, 12 RS00), arms as the quad\'s front pair; shoulder-to-hip {hip_a - hip_x:.0f}')
     B.configure(87.0)
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
     return dict(hip_x=hip_a, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
