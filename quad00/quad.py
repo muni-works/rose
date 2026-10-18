@@ -123,11 +123,77 @@ def inboard():
                 replace=inboard_parts(th_t), drop=('bulkhead',))
 
 
+# --- zero gears: a motor at every joint. Hip RS00 coaxial and inboard, bolted to the thigh; knee RS00
+#     at the knee, outboard, bolted to the shin. Links 130 / 130. Same L-yoke idea as the inboard hip.
+DG_L = 130.0
+DG_SHIN_T = 2 * L.T                                     # shin: 2 layers, centred on the leg plane
+DG_PLATE = (DG_SHIN_T / 2 + 0.4, DG_SHIN_T / 2 + 0.4 + L.T)   # thigh fork plates at +/- this
+DG_HIP = (-(DG_PLATE[1] + 1.0 + L.RS00_L), -(DG_PLATE[1] + 1.0))
+DG_KNEE = (DG_PLATE[1] + 1.0, DG_PLATE[1] + 1.0 + L.RS00_L)
+DG_LFL = (DG_HIP[0] - L.T, DG_HIP[0])
+
+
+def direct_parts(th_t, rel):
+    xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
+    ry = lambda d: trimesh.transformations.rotation_matrix(np.radians(d), [0, 1, 0])
+    cyl = lambda r, y0, y1, x=0, z=0: trimesh.creation.cylinder(radius=r, segment=[[x, y0, z], [x, y1, z]], sections=64)
+    thigh = L.stadium([(0, 0, 44), (0, -DG_L, 44)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.circle(0, -DG_L, 38)).difference(L.rounded(-8, -DG_L + 40, 8, -40, 8))
+    shin = L.stadium([(0, 0, 36), (0, -DG_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -DG_L + 30, 5, -30, 5))
+    knee_T = trimesh.transformations.translation_matrix([0, 0, -DG_L])
+    th = ry(th_t)
+    fl = L.unary_union([L.circle(0, 0, L.RS00_D + 14), L.box(0, -22, L.X_YOKE + L.YOKE_T, 30)]).convex_hull
+    fl = fl.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45)).difference(L.circle(0, 0, 16))
+    base = L.box(DG_LFL[0], -22, DG_HIP[1] - 1, 30).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(L.ABAD_Y, 0)))
+    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, 0, -DG_L])
+    shin_m = trimesh.util.concatenate([xz(shin, -DG_SHIN_T / 2, DG_SHIN_T)])
+    return {
+        'thigh-outer': xz(thigh, DG_PLATE[0], L.T).apply_transform(th),
+        'thigh-inner': xz(thigh, -DG_PLATE[1], L.T).apply_transform(th),
+        'shin': shin_m.apply_transform(ry(-rel)).apply_transform(knee_T).apply_transform(th),
+        'paw': paw.apply_transform(ry(-rel)).apply_transform(knee_T).apply_transform(th),
+        'rs00-hip': cyl(L.RS00_D / 2, *DG_HIP),
+        'rs00-knee': cyl(L.RS00_D / 2, *DG_KNEE).apply_transform(knee_T).apply_transform(th),
+        'yoke': trimesh.util.concatenate([xz(fl, DG_LFL[0], L.YOKE_T), base_m]),
+        'rs00-abad': cyl(L.RS00_D / 2, L.ABAD_Y, L.ABAD_Y, 0, 0).apply_transform(np.eye(4)) if False else
+                     trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_ABAD[0], L.ABAD_Y, 0], [L.X_ABAD[1], L.ABAD_Y, 0]], sections=64),
+    }
+
+
+def direct():
+    import importlib
+    import body as B
+    importlib.reload(B)
+    plane, hip_x = 80.0, 190.0
+    B.configure(plane, flange_outer=-DG_LFL[0], hip_x=hip_x, ends=False)
+    B.CLIP = plane - DG_PLATE[1]                         # no E-clips: the thigh's inner face
+    B.WIDE = B.CLIP - 4.0
+    wall = hip_x - L.X_BULK[0]
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
+    B.INTERNALS = [('battery', (140, 126, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
+                   ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
+    hh = 255.0 * DG_L / 150.0
+    th_t = np.degrees(np.arccos((hh / 2) / DG_L))
+    rel = 2 * th_t                                       # shin back under the hip
+    legs = [(t, x, s, x > 0) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    note = (f'zero gears: {2 * (plane + DG_KNEE[1]):.0f} wide at the knees, {2 * (plane + DG_PLATE[1]):.0f} at the hips; '
+            f'body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; hips {hh:.0f} high')
+    B.configure(87.0)
+    return dict(hip_x=hip_x, plane=plane, legs=legs, body=None, walls=[], extra=extra, note=note,
+                replace=direct_parts(th_t, rel), only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
                    if not os.path.basename(f).startswith(('step', 'bulkhead')))
     geoms = {os.path.basename(f)[:-4]: trimesh.load(f) for f in files}
+    if arch.get('only'):
+        geoms = {}
     for n in arch.get('drop', ()):
         geoms.pop(n, None)
     geoms.update(arch.get('replace', {}))
@@ -150,7 +216,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
