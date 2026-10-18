@@ -1,4 +1,4 @@
 ;; step 3: outer thigh plate onto the hip motor
-[root [import-mesh "carrier-out.stl"] "aluminum"]
+[root [import-mesh "side-out.stl"] "aluminum"]
 [root [import-mesh "rs00-hip.stl"] "black"]
 [root [translate 0 -35 0 [import-mesh "thigh-outer.stl"]] "copper"]

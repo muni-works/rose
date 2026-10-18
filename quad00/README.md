@@ -1,46 +1,55 @@
 # quad00 leg
 
-One leg of an RS00 quadruped, as a bench rig. All twelve joints of the dog are RobStride RS00.
+One leg of an RS00 quadruped, with its hip yoke and ab/ad motor, on a bench bulkhead. All twelve joints of the dog are RobStride RS00.
 The knee is driven from the hip through a gear train cut from the same flat stock as everything else.
 There are no belts, rods or cables.
 
 ![iso](render/leg-iso.png)
 
 ```
-carrier ── hip RS00 (outboard) ──> thigh-outer plate ┐
-        └─ knee RS00 (inboard) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
-                                    idler z17         │ idlers on M8 shoulder bolts + 8×10×8 plain sleeves
-                                    idler z17         │
-                                    knee gear z34 ════╧═ shin (same 3-layer laminate) ── paw (TPU)
+bulkhead (torso) ── ab/ad RS00 ── arch ══ keyed tenons ══ side plates ─┬─ hip RS00 (outboard) ──> thigh-outer plate ┐
+                                                                     └─ knee RS00 (inboard) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
+                                                                                                 idler z17         │ idlers on M8 shoulder bolts
+                                                                                                 idler z17         │ + 8×10×8 plain sleeves
+                                                                                                 knee gear z34 ════╧═ shin ── TPU ball paw
 ```
+
+The upper assembly is plates and keys only, with no rods or standoffs:
+
+- **The arch is the only bridge** between the two side plates. It sits ahead of the hip, in the
+  forward-up sector where a quadruped thigh never goes, so the thigh swings 81° forward (under the
+  arch's leg-plane notch) and 184° back, over the top: 265° of travel. That is about Go2's thigh range.
+- **The side plates key into the arch** with tapered keys through tusk tenons: the classic flat-pack
+  joint. It is 2D-cuttable, self-tightening, and needs no edge-drilled holes or threads in plastic.
+- **The ab/ad axis lies in the leg plane** (y = 0), 60 mm above the hip. The arch bolts straight to
+  the ab/ad output, so standing load puts almost no torque on ab/ad.
+- **The paw is a TPU ball** that slots over the shin tip and is held by two cross bolts, so it can't spin.
 
 | | |
 |---|---|
 | links | thigh 148.75 (hip to knee axis), shin 150, standing hip height 255 |
 | knee | 2:1, module 2.5, 20°, 3 × 3.2 mm face; 0.2 mm backlash per mesh (`BACKLASH`) |
-| stock | 3.2 mm everywhere; gears and shin are 3-layer laminates |
-| width | 134 mm over the carrier; the leg itself is 17 mm thick |
-| ranges | knee folds to 35° interior (shin meets idler 2); hip ±129° from down (carrier bridge) |
-| mass, leg below carrier | 455 g aluminium / ~120 g printed, + 2 × RS00 (620 g) |
+| stock | 3.2 mm everywhere; gears and shin are 3-layer laminates, side plates, arch and bulkhead are 2-layer |
+| width | 134 mm over the side plates; the leg itself is 17 mm thick |
+| ranges | knee folds to 35° interior (shin meets idler 2); hip 81° forward to 184° back from straight down |
+| mass, per leg | 900 g aluminium / ~230 g printed (bulkhead excluded), + 3 × RS00 (930 g) |
 
 ## Files
 
 ```bash
-pip install shapely trimesh manifold3d ezdxf mapbox_earcut numpy
-python3 leg.py              # checks + out/dxf (router, one file per distinct layer) + out/stl (print)
+pip install shapely trimesh manifold3d ezdxf mapbox_earcut numpy networkx lxml
+python3 leg.py              # checks + out/dxf (router) + out/stl + out/3mf (P1S plates)
 python3 leg.py --check      # gear mesh sweep, stack, ranges only
 python3 leg.py --assembly   # posed parts + out/assembly/leg.loon
-vcad-render out/assembly/leg.loon --azimuth=-55 --elevation 18 --size 1400 --fill 0.9 --auto-aspect -o render/leg-iso.png
+python3 assembly_steps.py   # step renders + out/assembly-guide.html
 ```
 
 DXF names are `part-Lk_3.2mm_xN`, where N is how many to cut for one leg. `_csk-1` means one of
 those N gets 90° M3 countersinks; the countersink circles are on layer `CSK_M3_90DEG`.
-STLs are fused laminates, already lying flat for printing. `out/3mf/` has the same parts laid
-out on three Bambu P1S plates (256 × 256): `plate1_PETG_links` (shin and both thigh plates),
-`plate2_PETG_gears-carrier` (2 carriers, 2 idlers, pinion), `plate3_TPU_paw`. Open each one in
-Bambu Studio, set the filament and process, and slice. The pinion and outer thigh plate are valid
-manifolds (manifold3d, genus = their hole count), but they have coincident vertices at the
-countersink seams, so a strict mesh check may flag them. Bambu repairs this on import.
+STLs are fused laminates, already lying flat for printing, and watertight. `out/3mf/` has them
+shelf-packed onto Bambu P1S plates (256 × 256): `plate1_PETG_links`, `plate2_PETG_yoke` (arch, 2 side
+plates, bulkhead), `plate3_PETG_gears-keys`, and `plate4_TPU_paw`. Open each in Bambu Studio, set the
+filament and process, and slice.
 
 The pinion hub layer is 3.6 mm in the STL. In aluminium, cut it from 3.2 mm and add a 0.4 mm shim
 under it, so the teeth sit centred between the thigh plates.
@@ -71,5 +80,7 @@ Tests:
 - Tooth wear is not checked. Hard-anodise the aluminium version.
 - The aluminium build needs a real bushing or bearing for the inner plate on the hub.
 - RS00 stall torque is an estimate, scaled from the RS06 manual.
-- The ab/ad and torso aren't designed yet. The carrier is a bench rig.
-- 455 g of aluminium per leg is above the ~0.4 kg the RS00 sizing assumed. The shin and gear laminate (202 g) is the place to lighten.
+- The torso isn't designed yet; the bulkhead stands in for it on the bench.
+- 900 g of aluminium per leg (yoke included) is heavy. The candidates to lighten are the arch (225 g), the side plates (214 g) and
+  the shin laminate (202 g). Re-run the RS00 sizing sweep with the real masses.
+- The paw's flat sits on the shin axis, so it only touches the ground with the shin vertical; it is there for printing.
