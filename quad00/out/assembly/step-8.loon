@@ -1,7 +1,5 @@
-;; step 8: ab/ad motor and bulkhead
-[root [import-mesh "side-in.stl"] "aluminum"]
+;; step 8: paw, and the bench plate
 [root [import-mesh "rs00-knee.stl"] "black"]
-[root [import-mesh "side-out.stl"] "aluminum"]
 [root [import-mesh "rs00-hip.stl"] "black"]
 [root [import-mesh "pinion.stl"] "aluminum"]
 [root [import-mesh "thigh-inner.stl"] "aluminum"]
@@ -10,7 +8,7 @@
 [root [import-mesh "idler-1.stl"] "aluminum"]
 [root [import-mesh "idler-2.stl"] "aluminum"]
 [root [import-mesh "shin.stl"] "aluminum"]
-[root [import-mesh "arch.stl"] "aluminum"]
-[root [import-mesh "keys.stl"] "steel"]
-[root [translate 45 0 0 [import-mesh "rs00-abad.stl"]] "copper"]
-[root [translate 80 0 0 [import-mesh "bulkhead.stl"]] "copper"]
+[root [import-mesh "yoke.stl"] "aluminum"]
+[root [import-mesh "rs00-abad.stl"] "black"]
+[root [translate 0 0 -35 [import-mesh "paw.stl"]] "copper"]
+[root [translate 40 0 0 [import-mesh "bulkhead.stl"]] "copper"]

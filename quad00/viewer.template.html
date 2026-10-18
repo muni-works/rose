@@ -48,7 +48,7 @@ canvas:active { cursor: grabbing; }
   <div class="spec">
     <span><b>3 × RS00</b> hip · knee · ab/ad</span>
     <span>knee <b>2:1</b> m2.5 sheet gears</span>
-    <span>hip <b>60° fwd / 184° back</b></span>
+    <span>hip <b>56° fwd / 184° back</b></span><span>yoke <b>1 bent part</b></span>
     <span>stock <b>3.2 mm</b></span>
   </div>
 </header>
@@ -127,26 +127,26 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const MATS = {
-  aluminium: { label: 'aluminium plates (3.2 mm)', swatch: '#c3c8ce',
+  aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',
     m: new THREE.MeshPhysicalMaterial({ color: 0xd3d7dc, metalness: 0.8, roughness: 0.38, roughnessMap: brushed, envMapIntensity: 1.4 }) },
   gear: { label: 'gear train, z17 / z17 / z17 / z34', swatch: '#b8722e',
     m: new THREE.MeshPhysicalMaterial({ color: 0xd09a5e, metalness: 0.9, roughness: 0.3, envMapIntensity: 1.4 }) },
   motor: { label: 'RS00 actuators', swatch: '#2b2f36',
     m: new THREE.MeshPhysicalMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
-  steel: { label: 'shafts and tenon keys', swatch: '#9aa1a8',
+  steel: { label: 'gear shafts', swatch: '#9aa1a8',
     m: new THREE.MeshPhysicalMaterial({ color: 0xb4bac1, metalness: 0.9, roughness: 0.22, envMapIntensity: 1.4 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
 const GROUP = name =>
   /^(pinion|idler)/.test(name) ? 'gear' : /^rs00/.test(name) ? 'motor' :
-  /^(shafts|keys)/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : 'aluminium';
+  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
 const EXPLODE = {
-  'side-out': [0, 45, 0], 'rs00-hip': [0, 45, 0], 'thigh-outer': [0, 30, 0],
-  'side-in': [0, -45, 0], 'rs00-knee': [0, -45, 0], 'thigh-inner': [0, -30, 0], 'pinion': [0, -15, 0],
-  'arch': [45, 0, 0], 'keys': [45, 0, 0], 'rs00-abad': [85, 0, 0], 'bulkhead': [120, 0, 0], 'paw': [0, 0, -45],
+  'rs00-hip': [0, 45, 0], 'thigh-outer': [0, 30, 0],
+  'rs00-knee': [0, -45, 0], 'thigh-inner': [0, -30, 0], 'pinion': [0, -15, 0],
+  'yoke': [70, 0, 0], 'rs00-abad': [100, 0, 0], 'bulkhead': [130, 0, 0], 'paw': [0, 0, -45],
 };
 
 // planar UVs on the part's two largest extents, so the brushed grain runs along the plate

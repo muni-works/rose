@@ -1,5 +1,8 @@
-;; step 4: inner thigh plate over the pinion hub
-[root [import-mesh "side-in.stl"] "aluminum"]
+;; step 4: shafts, idlers and shin
 [root [import-mesh "rs00-knee.stl"] "black"]
 [root [import-mesh "pinion.stl"] "aluminum"]
-[root [translate 0 35 0 [import-mesh "thigh-inner.stl"]] "copper"]
+[root [import-mesh "thigh-inner.stl"] "aluminum"]
+[root [translate 0 25 0 [import-mesh "shafts.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "idler-1.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "idler-2.stl"]] "copper"]
+[root [translate 0 45 0 [import-mesh "shin.stl"]] "copper"]

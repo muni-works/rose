@@ -7,33 +7,34 @@ There are no belts, rods or cables.
 ![iso](render/leg-iso.png)
 
 ```
-bulkhead (torso) ── ab/ad RS00 ── arch ══ keyed tenons ══ side plates ─┬─ hip RS00 (outboard) ──> thigh-outer plate ┐
-                                                                     └─ knee RS00 (inboard) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
-                                                                                                 idler z17         │ idlers on M8 shoulder bolts
-                                                                                                 idler z17         │ + 8×10×8 plain sleeves
-                                                                                                 knee gear z34 ════╧═ shin ── TPU ball paw
+torso ── ab/ad RS00 ── bent U yoke ─┬─ hip RS00 (outboard flange) ──> thigh-outer plate ┐
+                                    └─ knee RS00 (inboard flange) ──> pinion z17        │ thigh fork, 2 × 3.2 mm
+                                                                      idler z17         │ idlers on M8 shoulder bolts
+                                                                      idler z17         │ + 8×10×8 plain sleeves
+                                                                      knee gear z34 ════╧═ shin ── TPU ball paw
 ```
 
-The upper assembly is plates and keys only, with no rods or standoffs:
+The upper assembly is **one part**: a U bent from 3.2 mm 5052, plus three motors and 14 screws.
 
-- **The arch is the only bridge** between the two side plates. It sits ahead of the hip, in the
-  forward-up sector where a quadruped thigh never goes, so the thigh swings 60° forward (under the
-  arch's leg-plane notch) and 184° back, over the top: 244° of travel. `ABAD_Z` trades that forward swing
-  against metal: at 60 mm it was 81° forward but 100 g more aluminium in the arch and side plates.
-- **The side plates key into the arch** with tapered keys through tusk tenons: the classic flat-pack
-  joint. It is 2D-cuttable, self-tightening, and needs no edge-drilled holes or threads in plastic.
-- **The ab/ad axis lies in the leg plane** (y = 0), 40 mm above the hip. The arch bolts straight to
-  the ab/ad output, so standing load puts almost no torque on ab/ad.
+- **The U's base is the only bridge** between the hip and knee motors. It sits ahead of the hip, in
+  the forward-up sector where a quadruped thigh never goes, so the thigh swings 56° forward (under the
+  base's leg-plane notch) and 184° back, over the top: 240° of travel. `ABAD_Z` trades forward swing
+  against metal.
+- **The flanges are the motor mounts.** The hip and knee RS00 back-mount to them; the base carries the
+  ab/ad output. Flat blank 263 × 105 mm, two 90° bends, inside radius 3.2, K 0.44
+  (`out/dxf/yoke-blank_*.dxf`, bend lines on `BEND_UP_90`). The printed U is 6.4 mm thick, grown outward.
+- **The ab/ad axis lies in the leg plane** (y = 0), 40 mm above the hip, so standing load puts almost
+  no torque on it. The ab/ad motor back-mounts on the torso; a bench plate stands in for it.
 - **The paw is a TPU ball** that slots over the shin tip and is held by two cross bolts, so it can't spin.
 
 | | |
 |---|---|
 | links | thigh 148.75 (hip to knee axis), shin 150, standing hip height 255 |
 | knee | 2:1, module 2.5, 20°, 3 × 3.2 mm face; 0.2 mm backlash per mesh (`BACKLASH`) |
-| stock | 3.2 mm everywhere; gears and shin are 3-layer laminates, side plates, arch and bulkhead are 2-layer |
-| width | 134 mm over the side plates; the leg itself is 17 mm thick |
-| ranges | knee folds to 35° interior (shin meets idler 2); hip 60° forward to 184° back from straight down |
-| mass, per leg | 800 g aluminium / ~210 g printed (bulkhead excluded), + 3 × RS00 (930 g) |
+| stock | 3.2 mm everywhere; gears and shin are 3-layer laminates; the yoke is one bent sheet |
+| width | 127 mm over the yoke flanges; the leg itself is 17 mm thick |
+| ranges | knee folds to 35° interior (shin meets idler 2); hip 56° forward to 184° back from straight down |
+| mass, per leg | 620 g aluminium / ~160 g printed, + 3 × RS00 (930 g) |
 
 ## Files
 
@@ -48,8 +49,8 @@ python3 assembly_steps.py   # step renders + out/assembly-guide.html + out/viewe
 DXF names are `part-Lk_3.2mm_xN`, where N is how many to cut for one leg. `_csk-1` means one of
 those N gets 90° M3 countersinks; the countersink circles are on layer `CSK_M3_90DEG`.
 STLs are fused laminates, already lying flat for printing, and watertight. `out/3mf/` has them
-shelf-packed onto Bambu P1S plates (256 × 256): `plate1_PETG_links`, `plate2_PETG_yoke` (arch, 2 side
-plates, bulkhead), `plate3_PETG_gears-keys`, and `plate4_TPU_paw`. Open each in Bambu Studio, set the
+shelf-packed onto Bambu P1S plates (256 × 256): `plate1_PETG_links`, `plate2_PETG_yoke` (the U and the
+bench plate), `plate3_PETG_gears`, and `plate4_TPU_paw`. Open each in Bambu Studio, set the
 filament and process, and slice.
 
 The pinion hub layer is 3.6 mm in the STL. In aluminium, cut it from 3.2 mm and add a 0.4 mm shim
@@ -81,7 +82,8 @@ Tests:
 - Tooth wear is not checked. Hard-anodise the aluminium version.
 - The aluminium build needs a real bushing or bearing for the inner plate on the hub.
 - RS00 stall torque is an estimate, scaled from the RS06 manual.
-- The torso isn't designed yet; the bulkhead stands in for it on the bench.
-- 800 g of aluminium per leg (yoke included) is still heavy. The candidates to lighten are the side plates (178 g), the arch (159 g) and
-  the shin laminate (202 g). Re-run the RS00 sizing sweep with the real masses.
+- The torso isn't designed yet; the bench plate stands in for it.
+- The bent U's bend allowance assumes K 0.44 for 5052 air bending; confirm with the shop.
+- 620 g of aluminium per leg; the shin laminate (202 g) is now the heaviest part to lighten. Re-run the RS00
+  sizing sweep with the real masses.
 - The paw's flat sits on the shin axis, so it only touches the ground with the shin vertical; it is there for printing.

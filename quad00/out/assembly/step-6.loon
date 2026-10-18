@@ -1,12 +1,3 @@
-;; step 6: close the fork with the hip side
-[root [import-mesh "side-in.stl"] "aluminum"]
-[root [import-mesh "rs00-knee.stl"] "black"]
-[root [import-mesh "pinion.stl"] "aluminum"]
-[root [import-mesh "thigh-inner.stl"] "aluminum"]
-[root [import-mesh "shafts.stl"] "steel"]
-[root [import-mesh "idler-1.stl"] "aluminum"]
-[root [import-mesh "idler-2.stl"] "aluminum"]
-[root [import-mesh "shin.stl"] "aluminum"]
-[root [translate 0 45 0 [import-mesh "thigh-outer.stl"]] "copper"]
-[root [translate 0 45 0 [import-mesh "rs00-hip.stl"]] "copper"]
-[root [translate 0 45 0 [import-mesh "side-out.stl"]] "copper"]
+;; step 6: ab/ad motor onto the yoke
+[root [translate 0 0 0 [import-mesh "yoke.stl"]] "copper"]
+[root [translate 40 0 0 [import-mesh "rs00-abad.stl"]] "copper"]

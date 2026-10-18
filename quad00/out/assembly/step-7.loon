@@ -1,7 +1,5 @@
-;; step 7: arch over the tenons, drive the keys
-[root [import-mesh "side-in.stl"] "aluminum"]
+;; step 7: yoke over the leg
 [root [import-mesh "rs00-knee.stl"] "black"]
-[root [import-mesh "side-out.stl"] "aluminum"]
 [root [import-mesh "rs00-hip.stl"] "black"]
 [root [import-mesh "pinion.stl"] "aluminum"]
 [root [import-mesh "thigh-inner.stl"] "aluminum"]
@@ -10,5 +8,5 @@
 [root [import-mesh "idler-1.stl"] "aluminum"]
 [root [import-mesh "idler-2.stl"] "aluminum"]
 [root [import-mesh "shin.stl"] "aluminum"]
-[root [translate 40 0 0 [import-mesh "arch.stl"]] "copper"]
-[root [translate 0 0 30 [import-mesh "keys.stl"]] "copper"]
+[root [translate 70 0 0 [import-mesh "yoke.stl"]] "copper"]
+[root [translate 70 0 0 [import-mesh "rs00-abad.stl"]] "copper"]

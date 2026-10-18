@@ -13,28 +13,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 A = os.path.join(HERE, 'out', 'assembly')
 R = os.environ.get('VCAD_RENDER', os.path.expanduser('~/Developer/vcad/target/release/vcad-render'))
 
-HIP = ['side-out', 'rs00-hip']
-KNEE = ['side-in', 'rs00-knee']
+HIP = ['rs00-hip']
+KNEE = ['rs00-knee']
 TRAIN = ['shafts', 'idler-1', 'idler-2', 'shin']
 LEG = KNEE + HIP + ['pinion', 'thigh-inner', 'thigh-outer'] + TRAIN
-YOKE = ['arch', 'keys', 'rs00-abad', 'bulkhead']
 
 # (title, already fitted, [(new part, (dx, dy, dz) explode)], camera azimuth)
 STEPS = [
-    ('motors onto the side plates', [], [('side-out', (0, 30, 0)), ('rs00-hip', (0, 0, 0)),
-                                         ('side-in', (0, -30, 0)), ('rs00-knee', (0, 0, 0))], 50),
     ('pinion onto the knee motor', KNEE, [('pinion', (0, 35, 0))], 50),
     ('outer thigh plate onto the hip motor', HIP, [('thigh-outer', (0, -35, 0))], -50),
     ('inner thigh plate over the pinion hub', KNEE + ['pinion'], [('thigh-inner', (0, 35, 0))], 50),
     ('shafts, idlers and shin', KNEE + ['pinion', 'thigh-inner'],
      [('shafts', (0, 25, 0)), ('idler-1', (0, 45, 0)), ('idler-2', (0, 45, 0)), ('shin', (0, 45, 0))], 50),
     ('close the fork with the hip side', KNEE + ['pinion', 'thigh-inner'] + TRAIN,
-     [('thigh-outer', (0, 45, 0)), ('rs00-hip', (0, 45, 0)), ('side-out', (0, 45, 0))], 50),
-    ('arch over the tenons, drive the keys', LEG, [('arch', (40, 0, 0)), ('keys', (0, 0, 30))], 35),
-    ('ab/ad motor and bulkhead', LEG + ['arch', 'keys'], [('rs00-abad', (45, 0, 0)), ('bulkhead', (80, 0, 0))], 35),
-    ('paw', LEG + YOKE, [('paw', (0, 0, -35))], 35),
+     [('thigh-outer', (0, 45, 0)), ('rs00-hip', (0, 45, 0))], 50),
+    ('ab/ad motor onto the yoke', [], [('yoke', (0, 0, 0)), ('rs00-abad', (40, 0, 0))], 35),
+    ('yoke over the leg', LEG, [('yoke', (70, 0, 0)), ('rs00-abad', (70, 0, 0))], 35),
+    ('paw, and the bench plate', LEG + ['yoke', 'rs00-abad'], [('paw', (0, 0, -35)), ('bulkhead', (40, 0, 0))], 35),
 ]
-MAT = {'rs00': 'black', 'shafts': 'steel', 'keys': 'steel', 'paw': 'rubber'}
+MAT = {'rs00': 'black', 'shafts': 'steel', 'paw': 'rubber'}
 
 
 def mat(name, new):

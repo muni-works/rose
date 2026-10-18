@@ -2,13 +2,13 @@
 
 One leg, as a bench rig:
 
-  bulkhead (torso) -- ab/ad RS00 -- arch --keyed tenons-- side plates -- hip RS00 (outboard)
-                                                                    \\-- knee RS00 (inboard)
+  torso -- ab/ad RS00 -- bent U yoke (one part) -- hip RS00 (outboard flange)
+                                               \\-- knee RS00 (inboard flange)
   hip RS00 -> outer thigh plate;  knee RS00 -> pinion z17 -> idler z17 -> idler z17 -> knee gear z34 (2:1)
   knee gear + shin = one laminate -> ball paw (TPU, two bolts)
 
 The ab/ad axis runs fore-aft in the leg plane (y=0), 60 mm above the hip axis, so standing load puts
-no moment on it. The arch is the only bridge between the two hip-side motors, and it sits in the
+no moment on it. The U's base is the only bridge between the two hip-side motors, and it sits in the
 forward-up sector, the one place a quadruped thigh never goes. The thigh swings from ~horizontal
 forward, down, back and over the top.
 
@@ -63,21 +63,20 @@ HUB_D = 34.0                        # pinion hub: inner thigh plate rides on it 
 G = GEAR_LAYERS * T / 2                              # gear half-face, 4.8
 Y_PLATE = (G + PLATE_GAP, G + PLATE_GAP + T)         # thigh plates at +/- this
 Y_MOTOR = (Y_PLATE[1] + 1.0, Y_PLATE[1] + 1.0 + RS00_L)   # stator body (1 mm nose)
-Y_SIDE = (Y_MOTOR[1], Y_MOTOR[1] + 2 * T)            # side plates: 2 layers, motor back-mounted
+Y_FLANGE = Y_MOTOR[1]                                # yoke flange inner face = hip/knee motor back face
 
-# the yoke: arch (YZ plane, 2 layers) ahead of the hip, ab/ad RS00 ahead of that, bulkhead = torso
+# the yoke: ONE bent U. Base (YZ) ahead of the hip carries the ab/ad output; two flanges bend 90 deg back
+# and hold the hip and knee RS00 by their back faces. The ab/ad RS00 back-mounts on the torso.
 ABAD_Z = 40.0                       # ab/ad axis height above the hip, in the leg plane (y=0). Lower = less
                                     # metal, less forward hip swing: 60 -> 81 deg fwd, 40 -> ~60, 25 -> 35
-X_ARCH = (35.0, 35.0 + 2 * T)       # clears the hip/knee motors (r28.5) by 6.5
-X_ABAD = (X_ARCH[1] + 1.0, X_ARCH[1] + 1.0 + RS00_L)    # ab/ad stator; output face bears on the arch
-X_BULK = (X_ABAD[1], X_ABAD[1] + 2 * T)
-ARCH_W = 74.0                       # arch half-width: mortises sit at the side plates, y 60..67
-ARCH_Z = (min(-18.0, ABAD_Z - 50), ABAD_Z + 30)          # arch z extent
+YOKE_T = T                          # bent 5052-H32, one layer
+PRINT_YOKE_T = 2 * T                # the printed U is twice as thick; it grows outward, clearances unchanged
+BEND_R, K_FACTOR = T, 0.44          # inside bend radius, K-factor for 5052 air bend
+X_YOKE = 35.0                       # base inner face: clears the hip/knee motors (r28.5) by 6.5
+X_ABAD = (X_YOKE + YOKE_T + 1.0, X_YOKE + YOKE_T + 1.0 + RS00_L)   # ab/ad stator; output bears on the base
+X_BULK = (X_ABAD[1], X_ABAD[1] + 2 * T)                            # bench plate (stands in for the torso)
+YOKE_Z = (min(-18.0, ABAD_Z - 50), ABAD_Z + 30)                    # yoke height at the bends
 NOTCH = (18.0, ABAD_Z - 20)         # leg-plane notch under the bridge that carries the ab/ad output pattern
-TENON_Z = (ARCH_Z[0] + 16, ABAD_Z + 6)                   # side-plate tenons through the arch
-TENON_H, TENON_OUT = 12.0, 11.0     # tenon height, how far it stands proud of the arch front
-KEY_HOLE = (5.0, 3.6)               # through the tenon, starts 0.4 inside the arch front face
-KEY_L, KEY_W = (34.0, (2.8, 4.8))   # tapered key from 3.2 stock: length, width tip -> head
 
 
 # ------------------------------------------------------------------ 2D helpers
@@ -173,35 +172,51 @@ def thigh_plate(outer):
 
 
 # ------------------------------------------------------------------ parts: the yoke
-def side_plate():
-    """XZ. Holds a hip or knee RS00 by its back face; two keyed tenons run forward through the arch."""
-    body = unary_union([circle(0, 0, RS00_D + 14), box(0, ARCH_Z[0] + 6, X_ARCH[0], TENON_Z[1] + TENON_H)]).convex_hull
-    front = X_ARCH[1]
-    for zt in TENON_Z:
-        body = body.union(box(X_ARCH[0] - 1, zt - TENON_H / 2, front + TENON_OUT, zt + TENON_H / 2))
-        body = body.difference(box(front - 0.4, zt - KEY_HOLE[1] / 2, front - 0.4 + KEY_HOLE[0], zt + KEY_HOLE[1] / 2))
-    body = body.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45))
-    body = body.difference(circle(0, 0, 16))                                   # cable exit
-    body = body.difference(circle(17, ABAD_Z * 0.55 + 14, 18))                 # lightening
-    return body
-
-
-def arch():
-    """YZ profile (u = y, v = z). The leg-plane notch lets the thigh swing to horizontal forward."""
-    a = rounded(-ARCH_W, ARCH_Z[0], ARCH_W, ARCH_Z[1], 10)
-    a = a.difference(rounded(-NOTCH[0], ARCH_Z[0] - 20, NOTCH[0], NOTCH[1], 6))
-    for s in (1, -1):
-        for zt in TENON_Z:                                                     # mortises, +0.2 fit
-            y0, y1 = sorted((s * (Y_SIDE[0] - 0.2), s * (Y_SIDE[1] + 0.2)))
-            a = a.difference(box(y0, zt - TENON_H / 2 - 0.2, y1, zt + TENON_H / 2 + 0.2))
-        a = a.difference(rounded(s * 26, (TENON_Z[0] + TENON_Z[1]) / 2 - 20, s * 52,
-                                 (TENON_Z[0] + TENON_Z[1]) / 2 + 20, 8) if s > 0 else
-                         rounded(-52, (TENON_Z[0] + TENON_Z[1]) / 2 - 20, -26, (TENON_Z[0] + TENON_Z[1]) / 2 + 20, 8))  # lightening / cable pass
+def yoke_base(t):
+    """YZ profile (u = y, v = z) of the U's base. Square ends: those edges are the bends."""
+    yo = Y_FLANGE + t - 0.3          # stops 0.3 inside the flange's outer face: no coincident faces in the fused U
+    a = box(-yo, YOKE_Z[0], yo, YOKE_Z[1])
+    a = a.difference(rounded(-NOTCH[0], YOKE_Z[0] - 20, NOTCH[0], NOTCH[1], 6))
+    zc = (YOKE_Z[0] + YOKE_Z[1]) / 2
+    a = a.difference(rounded(26, zc - 20, 50, zc + 20, 8)).difference(rounded(-50, zc - 20, -26, zc + 20, 8))
     return a.difference(holes_on(OUT_PCD, OUT_N, M3, at=(0, ABAD_Z)))
 
 
+def yoke_flange(t):
+    """XZ profile of one flange: wraps the motor's back face, runs forward to the bend at the base."""
+    f = unary_union([circle(0, 0, RS00_D + 14), box(0, YOKE_Z[0] + 0.3, X_YOKE + t - 0.3, YOKE_Z[1] - 0.3)]).convex_hull   # 0.3 inside the base faces
+    f = f.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45))
+    f = f.difference(circle(0, 0, 16))                                         # cable exit
+    return f.difference(circle(16, ABAD_Z * 0.55 + 14, 18))                    # lightening
+
+
+def yoke_manifold(t):
+    """the U in the leg frame (sharp-cornered: the bend radius only matters for the blank)."""
+    base = to_world(CrossSection(rings(yoke_base(t)), FillRule.EvenOdd).extrude(t).translate((0, 0, X_YOKE)), 'yz')
+    fl = CrossSection(rings(yoke_flange(t)), FillRule.EvenOdd).extrude(t)
+    right = to_world(fl.translate((0, 0, Y_FLANGE)), 'xz')
+    left = to_world(fl.translate((0, 0, -Y_FLANGE - t)), 'xz')
+    return base + right + left
+
+
+def yoke_blank(t=YOKE_T):
+    """flat pattern: base in the middle, each flange unfolded outward past a bend allowance.
+    Returns (outline, bend-line y positions, bend allowance)."""
+    ossb = BEND_R + t                                   # outside setback, each side of each bend
+    ba = math.pi / 2 * (BEND_R + K_FACTOR * t)          # bend allowance
+    half = Y_FLANGE + t - ossb                          # flat half-width of the base
+    x_end = X_YOKE + t - ossb                           # flange flat ends here (its x)
+    base = yoke_base(t).intersection(box(-half, YOKE_Z[0] - 50, half, YOKE_Z[1] + 50))
+    fl = yoke_flange(t).intersection(box(-200, -200, x_end, 200))
+    right = affinity.translate(affinity.scale(fl, -1, 1, origin=(0, 0)), half + ba + x_end, 0)
+    left = affinity.scale(right, -1, 1, origin=(0, 0))
+    bends = [box(half, YOKE_Z[0], half + ba, YOKE_Z[1]), box(-half - ba, YOKE_Z[0], -half, YOKE_Z[1])]
+    outline = unary_union([base, right, left] + bends).buffer(0.01).buffer(-0.01)
+    return outline, (-half - ba / 2, half + ba / 2), ba
+
+
 def bulkhead():
-    """YZ. Stand-in for the torso: holds the ab/ad RS00 by its back face, bolts to the bench."""
+    """YZ. Bench plate standing in for the torso: holds the ab/ad RS00 by its back face."""
     b = rounded(-36, ABAD_Z - 36, 36, ABAD_Z + 36, 8)
     b = b.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45, at=(0, ABAD_Z)))
     b = b.difference(circle(0, ABAD_Z, 16))
@@ -209,12 +224,6 @@ def bulkhead():
         for sz in (1, -1):
             b = b.difference(circle(sy * 27, ABAD_Z + sz * 27, 6.4))
     return b
-
-
-def key():
-    """XY profile, tapered: drives along Y through a tenon, flat side on the arch face."""
-    w0, w1 = KEY_W
-    return Polygon([(0, 0), (w0, 0), (w1, KEY_L), (w1 + 3, KEY_L), (w1 + 3, KEY_L + 5), (0, KEY_L + 5)])
 
 
 # ------------------------------------------------------------------ the bill
@@ -232,10 +241,7 @@ def parts():
         'shin': P([(shin_layer(), T)] * GEAR_LAYERS, -G),
         'thigh-outer': P([(thigh_plate(True), T)], Y_PLATE[0], csk=[(x, z, 'bottom') for x, z in OUT_HOLES]),
         'thigh-inner': P([(thigh_plate(False), T)], -Y_PLATE[1]),
-        'side': P([(side_plate(), T)] * 2, Y_SIDE[0], qty=2),
-        'arch': P([(arch(), T)] * 2, X_ARCH[0], plane='yz'),
         'bulkhead': P([(bulkhead(), T)] * 2, X_BULK[0], plane='yz'),
-        'key': P([(key(), T)], 0.0, plane='xy', qty=4),
     }
 
 
@@ -345,6 +351,26 @@ def write():
     p.apply_translation(-p.bounds[0])
     p.export(os.path.join(out, 'stl', 'paw_TPU_x1.stl'))
     built['paw'] = (p, 1)
+    # the yoke: flat blank with bend lines for the shop (aluminium), one fused U for the printer
+    blank, bend_y, ba = yoke_blank(YOKE_T)
+    doc = ezdxf.new('R2000')
+    for layer in ('CUT', 'BEND_UP_90'):
+        doc.layers.add(layer)
+    msp = doc.modelspace()
+    for ring in rings(blank):
+        msp.add_lwpolyline([tuple(q) for q in ring], close=True, dxfattribs={'layer': 'CUT'})
+    for yb in bend_y:
+        msp.add_line((yb, YOKE_Z[0] - 5), (yb, YOKE_Z[1] + 5), dxfattribs={'layer': 'BEND_UP_90'})
+    minx, minz, maxx, maxz = blank.bounds
+    msp.add_text(f'5052-H32 {YOKE_T} mm, 2 bends 90 deg same side, inside R {BEND_R}, K {K_FACTOR}, BA {ba:.2f}',
+                 dxfattribs={'layer': 'BEND_UP_90', 'height': 3}).set_placement((minx, minz - 10))
+    doc.saveas(os.path.join(out, 'dxf', f'yoke-blank_{YOKE_T}mm_5052-bent_x1.dxf'))
+    y = tri(yoke_manifold(PRINT_YOKE_T))
+    y.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))   # base face down
+    y.apply_translation(-y.bounds[0])
+    y.export(os.path.join(out, 'stl', 'yoke_x1.stl'))
+    built['yoke'] = (y, 1)
+    print(f'yoke blank {maxx - minx:.0f} x {maxz - minz:.0f} mm, bends at y = {bend_y[0]:.1f} / {bend_y[1]:.1f}')
     print(f'wrote {out}/dxf + {out}/stl')
     plates(out, built)
 
@@ -353,8 +379,8 @@ def write():
 BED, MARGIN, GAP = 256.0, 6.0, 6.0
 PLATES = {
     'plate1_PETG_links': ['shin', 'thigh-outer', 'thigh-inner'],
-    'plate2_PETG_yoke': ['arch', 'side', 'bulkhead'],
-    'plate3_PETG_gears-keys': ['idler', 'pinion', 'key'],
+    'plate2_PETG_yoke': ['yoke', 'bulkhead'],
+    'plate3_PETG_gears': ['idler', 'pinion'],
     'plate4_TPU_paw': ['paw'],
 }
 
@@ -390,6 +416,7 @@ def plates(out, built):
 def mass():
     """per leg, from the solids: aluminium (2.70) and as printed (PETG 1.27 at ~55% effective fill)."""
     vol = {n: solid_manifold(s).volume() * s['qty'] / 1000 for n, s in parts().items()}
+    vol['yoke'] = yoke_manifold(YOKE_T).volume() / 1000
     for n, v in vol.items():
         print(f'  {n:12s} {v:5.1f} cm3  alu {v * 2.70:4.0f} g')
     leg = sum(v for n, v in vol.items() if n not in ('bulkhead',))
@@ -400,11 +427,11 @@ def mass():
 # ------------------------------------------------------------------ checks
 def hip_range():
     """thigh (plates + knee gear tip) swung about the hip in the leg plane against the yoke parts that
-    reach the leg plane: the arch above its notch, the ab/ad motor, the bulkhead.
+    reach the leg plane: the yoke base above its notch, the ab/ad motor, the bench plate.
     Returns (forward limit, backward limit) in degrees from straight down; None if it goes all the way round."""
     leg = unary_union([stadium([(0, 0, 60), (0, Z_IDLER1, 54), (0, Z_IDLER2, 54), (0, Z_KNEEAX, 32)]),
                        circle(0, Z_KNEEAX, M * (Z_KNEE + 2))])
-    walls = unary_union([box(X_ARCH[0], NOTCH[1], X_ARCH[1], ARCH_Z[1]),
+    walls = unary_union([box(X_YOKE, NOTCH[1], X_YOKE + YOKE_T, YOKE_Z[1]),
                          box(X_ABAD[0], ABAD_Z - RS00_D / 2, X_ABAD[1], ABAD_Z + RS00_D / 2),
                          box(X_BULK[0], ABAD_Z - 36, X_BULK[1], ABAD_Z + 36)]).buffer(2.0)   # 2 mm clearance
     blocked = [a for a in range(360) if affinity.rotate(leg, a, origin=(0, 0)).intersects(walls)]  # CCW = forward
@@ -433,12 +460,12 @@ def check():
         print(f'mesh z{za}->z{zb} C={math.dist(a_at, b_at):.2f}: worst overlap {worst:.3f} mm2  min gap {best:.3f} mm  '
               f'{"OK" if worst < 0.05 else "INTERFERES"}')
     print(f'stack (y): gear +/-{G:.1f}, plates {Y_PLATE[0]:.1f}..{Y_PLATE[1]:.1f}, motors {Y_MOTOR[0]:.1f}..{Y_MOTOR[1]:.1f}, '
-          f'side plates {Y_SIDE[0]:.1f}..{Y_SIDE[1]:.1f}  -> {2 * Y_SIDE[1]:.0f} mm wide')
-    print(f'yoke (x): arch {X_ARCH[0]:.1f}..{X_ARCH[1]:.1f}, ab/ad RS00 {X_ABAD[0]:.1f}..{X_ABAD[1]:.1f}, '
+          f'yoke flanges {Y_FLANGE:.1f}..{Y_FLANGE + YOKE_T:.1f}  -> {2 * (Y_FLANGE + YOKE_T):.0f} mm wide')
+    print(f'yoke (x): base {X_YOKE:.1f}..{X_YOKE + YOKE_T:.1f}, ab/ad RS00 {X_ABAD[0]:.1f}..{X_ABAD[1]:.1f}, '
           f'bulkhead {X_BULK[0]:.1f}..{X_BULK[1]:.1f}; ab/ad axis z={ABAD_Z:.0f}, y=0 (leg plane)')
-    c = X_ARCH[0] - RS00_D / 2
+    c = X_YOKE - RS00_D / 2
     ok &= c > 3
-    print(f'arch to hip/knee motor bodies: {c:.1f} mm')
+    print(f'yoke base to hip/knee motor bodies: {c:.1f} mm')
     idl = circle(0, Z_IDLER2 - Z_KNEEAX, M * (Z_SMALL + 2) + 1.0)
     bar = stadium([(0, 0, 24), (0, -SHIN, 24)])
     fold = min(a for a in range(0, 181) if not affinity.rotate(bar, 180 - a, origin=(0, 0)).intersects(idl))
@@ -483,18 +510,9 @@ def assembly(hip_height=255.0):
         'idler-1': place('idler', spin=p1, at=(0, Z_IDLER1), extra=thigh),
         'idler-2': place('idler', spin=p2, at=(0, Z_IDLER2), extra=thigh),
         'shin': place('shin', spin=rel, at=(0, Z_KNEEAX), extra=thigh),
-        'side-out': place('side'),
-        'side-in': place('side').apply_translation([0, -(Y_SIDE[0] + Y_SIDE[1]), 0]),
-        'arch': place('arch'),
         'bulkhead': place('bulkhead'),
     }
-    keys = []
-    for s in (1, -1):
-        for zt in TENON_Z:                       # key drives along Y through the tenon, flat on the arch face
-            k = solid('key', P['key'])           # XY profile: x = width, y = length, z = thickness
-            k.apply_translation([X_ARCH[1], -KEY_L / 2 + s * (Y_SIDE[0] + Y_SIDE[1]) / 2, zt - T / 2])
-            keys.append(k)
-    out['keys'] = trimesh.util.concatenate(keys)
+    out['yoke'] = tri(yoke_manifold(YOKE_T))
     cyl = lambda r, p0, p1, n=64: trimesh.creation.cylinder(radius=r, segment=[p0, p1], sections=n)
     out['rs00-hip'] = cyl(RS00_D / 2, [0, Y_MOTOR[0], 0], [0, Y_MOTOR[1], 0])
     out['rs00-knee'] = cyl(RS00_D / 2, [0, -Y_MOTOR[1], 0], [0, -Y_MOTOR[0], 0])
@@ -507,7 +525,7 @@ def assembly(hip_height=255.0):
     for f in os.listdir(d):
         if f.endswith('.stl'):
             os.remove(os.path.join(d, f))
-    mat = {'pinion': 'brass', 'idler': 'brass', 'rs00': 'black', 'shafts': 'steel', 'keys': 'steel', 'paw': 'rubber'}
+    mat = {'pinion': 'brass', 'idler': 'brass', 'rs00': 'black', 'shafts': 'steel', 'paw': 'rubber'}
     lines = [';; quad00 leg, standing at hip height %.0f -- generated by leg.py --assembly' % hip_height]
     for k, m in out.items():
         m.export(os.path.join(d, f'{k}.stl'))
