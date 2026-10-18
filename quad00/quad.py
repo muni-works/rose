@@ -625,7 +625,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 
-def humanoid_mini(arm_pose=(100.0, 70.0), leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=32.0):
+def humanoid_mini(arm_pose=(90.0, 12.0), leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=32.0):
     """MINI humanoid, ~70 cm: the largest an all-RS00 humanoid carries (walking knee ~94% of 0.7 x 14 N.m).
     The tiny's limb module stretched (thigh 170, shin 220; arm 150/170), plus waist yaw, hip yaw, ankle, wrist -- 19 RS00.
     Every added joint uses an idiom already in the design: the waist and hip-yaw motors are spacers
@@ -649,10 +649,14 @@ def humanoid_mini(arm_pose=(100.0, 70.0), leg=(170.0, 220.0), arm=(150.0, 170.0)
         for (y, pcd, n, ph, hole) in ports:
             w = w.difference(L.holes_on(pcd, n, L.M3, phase=ph, at=(y, 0))).difference(L.circle(y, 0, hole))
         return w
+    # shoulder bar: the arm ab/ad outputs bolt to its UNDERSIDE, so the shoulder-yaw motors sit inside the
+    # chest's top corners and the shoulder line is the bar itself -- nothing stands above it
     bar = wallp(chest, [(s * ya, L.OUT_PCD, L.OUT_N, 90, 16) for s in (1, -1)])
     extra.append(('chassis-shoulder-bar', ext(bar, 'yz', xt - T2, T2)))
     extra.append(('chassis-chest-floor', ext(wallp(chest, [(0, FRONT_PCD, FRONT_N, 0, 38)]), 'yz', xf - T2, T2)))
-    skin = L.rounded(xf - T2, -chest, xt, chest, 10).difference(L.rounded(xf + 10, -chest + 16, xt - 16, chest - 16, 8))
+    skin = L.rounded(xf - T2, -chest, xt, chest, 10)
+    for yc in (-0.5, 0.0, 0.5):                             # three round lightening holes, not a window
+        skin = skin.difference(L.circle(yc * chest, (xf + xt) / 2 - 6, 34))
     extra += [('chassis-chest-front', ext(skin, 'xy', H, L.T)), ('chassis-chest-back', ext(skin, 'xy', -H - L.T, L.T))]
     extra.append(('rs00-waist', cyl(L.RS00_D / 2, xf, xf + L.RS00_L)))
     extra.append(('rs00-waist-out', cyl(L.OUT_PCD / 2 + 4, xf - T2 - 1.0, xf)))
@@ -665,12 +669,11 @@ def humanoid_mini(arm_pose=(100.0, 70.0), leg=(170.0, 220.0), arm=(150.0, 170.0)
     top = wallp(hp, [(0, L.OUT_PCD, L.OUT_N, 90, 16)])
     extra.append(('chassis-pelvis-top', ext(top, 'yz', xp - T2, T2)))
     extra.append(('chassis-pelvis-bottom', ext(wallp(hp, [(s * yy, FRONT_PCD, FRONT_N, 0, 38) for s in (1, -1)]), 'yz', xpb - T2, T2)))
-    pskin = L.rounded(xpb - T2, -hp, xp, hp, 8).difference(L.rounded(xpb + 8, -hp + 14, xp - T2 - 8, -6, 6)) \
-        .difference(L.rounded(xpb + 8, 6, xp - T2 - 8, hp - 14, 6))
+    pskin = L.rounded(xpb - T2, -hp, xp, hp, 8).difference(L.circle((xp + xpb) / 2 - L.T, 0, 30))   # closed: hides the yaw pair
     extra += [('chassis-pelvis-front', ext(pskin, 'xy', H, L.T)), ('chassis-pelvis-back', ext(pskin, 'xy', -H - L.T, L.T))]
     xo = xpb - T2 - 1.0                                   # hip-yaw output faces
     # legs: yaw output -> hip bracket (a flange on the yaw + the roll plate, as the tiny's pelvis plate) -> module
-    leg_hh = 0.96 * sum(leg) - 40.0                       # the foot plate is 40 lower than the paw centre
+    leg_hh = 0.97 * sum(leg)                              # hip to ankle: nearly straight, as a person stands
     th, rel = stance(leg_hh, *leg)
     parts = inline_parts(th, rel, end='ankle', LT=leg[0], LS=leg[1])
     hip_x = xo - L.T - 40.0
@@ -688,9 +691,9 @@ def humanoid_mini(arm_pose=(100.0, 70.0), leg=(170.0, 220.0), arm=(150.0, 170.0)
         place = trimesh.transformations.translation_matrix([hip_x, s * y0, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
         for n, g in parts.items():
             extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
-    hip_a = xt + AB_OUT
-    legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
-    poses = {'yoke': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1])}
+    hip_a = xt - T2 - IP_OUT                              # shoulder pitch axis just under the bar
+    legs = [('al', hip_a, 1, 'none'), ('ar', hip_a, -1, 'none')]
+    poses = {'none': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1])}
     note = (f'MINI humanoid: 19 RS00 -- waist yaw, hip yaw-roll-pitch, knee, ankle; shoulder yaw-pitch, elbow, wrist; '
             f'~70 cm; shoulder-to-hip {hip_a - hip_x:.0f}, shoulders {2 * (y0a + HY_OUT[1]):.0f} wide')
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
