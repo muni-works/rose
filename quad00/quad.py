@@ -319,7 +319,7 @@ def module_dims(mot='rs00', ab=None):
     return dict(m=m, a=a, MOT=mot_y, OUT=out_y, ABAD=abad, AB=ip_ab, IPOUT=ip_ab[1] + 1.0, BASE=(ip_ab[0] - L.YOKE_T, ip_ab[0]))
 
 
-def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, mot='rs00', end_mot=None, dual=False, ab_mot=None):
+def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, mot='rs00', end_mot=None, dual=False, ab_mot=None, ank=(0.0, 0.0)):
     """THE limb module, all limbs: thigh box (hip + knee motor as spacers), inline shin, ab/ad centred
     fore-aft on the hip (stator on the yoke base behind, output face IPOUT ahead -> the body wall).
     Any RobStride in MOTORS; the RS00 build is the reference (plate widths scale with the motor body)."""
@@ -390,7 +390,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     en = end_mot or mot
     shin_T = th @ knee @ ry(-rel)
     m0, m1 = IL_SHIN[1] + 1.0, IL_SHIN[1] + 1.0 + e['L']
-    a = rel - th_t if end == 'ankle' else 0.0                # foot level, hand inline
+    a = (rel - th_t if end == 'ankle' else 0.0) + ank[0]     # foot level (+ commanded pitch), hand inline
     cx, cz = CR * math.cos(math.radians(a)), -CR * math.sin(math.radians(a))   # crank vector, shin frame
     yl = m1 + 1.0                                            # crank layer (motor output face / foot side plate)
     yr_ = yl + L.T + 0.5                                     # rod layer
@@ -399,18 +399,11 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     crank = L.stadium([(0, 0, e['out'][0] + 13), (cx, cz, 16 * ke)]).difference(L.holes_on(e['out'][0], e['out'][1], e['hole'])).difference(L.circle(cx, cz, 6.4))
     parts[f'crank-{end}'] = xz(crank, yl, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DM])).apply_transform(shin_T)
     rod = L.stadium([(cx, cz - DM, 14 * ke), (cx, cz - LS, 14 * ke)]).difference(L.circle(cx, cz - DM, 6.4)).difference(L.circle(cx, cz - LS, 6.4))
-    pins = [trimesh.creation.cylinder(radius=3, segment=[[cx, yl - 0.5, cz + zz], [cx, yr_ + 2 * L.T + 1, cz + zz]], sections=24) for zz in (-DM, -LS)]
+    pins = [trimesh.creation.cylinder(radius=3, segment=[[cx, yl - 0.5, cz + zz], [cx, yr_ + 2 * L.T + (L.T + 1.5 if end == 'wrist' and zz == -LS else 1), cz + zz]], sections=24) for zz in (-DM, -LS)]
     parts[f'link-{end}'] = trimesh.util.concatenate([xz(rod, yr_, 2 * L.T)] + pins).apply_transform(shin_T)
-    parts[f'pivot-{end}'] = trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 1, -LS], [0, yl + L.T, -LS]], sections=24).apply_transform(shin_T)
-    if dual:      # second end motor back-to-back on the shin, its crank and rod inboard: ankle roll
-        mi0, mi1 = IL_SHIN[0] - 1.0 - e['L'], IL_SHIN[0] - 1.0
-        yli = mi0 - 1.0 - L.T
-        yri = yli - 0.5 - 2 * L.T
-        parts[f'{en}-{end}-in'] = cyl(e['D'] / 2, mi0, mi1, z=-DM).apply_transform(shin_T)
-        parts[f'crank-{end}-in'] = xz(crank, yli, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DM])).apply_transform(shin_T)
-        pins_i = [trimesh.creation.cylinder(radius=3, segment=[[cx, yri - 1, cz + zz], [cx, yli + L.T + 0.5, cz + zz]], sections=24) for zz in (-DM, -LS)]
-        parts[f'link-{end}-in'] = trimesh.util.concatenate([xz(rod, yri, 2 * L.T)] + pins_i).apply_transform(shin_T)
-        parts[f'pivot-{end}'] = trimesh.creation.cylinder(radius=4 * k, segment=[[0, yli, -LS], [0, yl + L.T, -LS]], sections=24).apply_transform(shin_T)
+    parts[f'pivot-{end}'] = trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 1, -LS], [0, (yr_ + 3 * L.T + 1.0) if end == 'wrist' else yl + L.T, -LS]], sections=24).apply_transform(shin_T)
+    if dual and end == 'ankle':
+        return ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank)
     eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a)
     lobe = (CR, 0)                                           # foot / hand crank pin, in its own frame
     if end == 'ankle':
@@ -419,27 +412,156 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
         ank = L.unary_union([L.circle(0, 0, 40 * k), L.stadium([(0, 0, 30 * k), (*lobe, 16 * ke)]), L.box(-0.3 * fl_, -fz, 0.46 * fl_, -fz + 16 * k)])
         ank = pocket(ank, [(0, 0, 14 * k), (*lobe, 8 * ke)], rim=6.0, struts=[((0, 0), (-0.25 * fl_, -fz)), ((0, 0), (0.4 * fl_, -fz)), ((0, 0), (0, -fz))]) \
             .difference(L.circle(0, 0, 8.4 * k)).difference(L.circle(*lobe, 6.4))
-        y_in = IL_SHIN[0] - 1.0 - e['L'] - 1.0 - L.T if dual else IL_SHIN[0] - 8
+        y_in = IL_SHIN[0] - 8
         sw0, sw1 = y_in - 4, yl + L.T + 4
         sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10)
         sp = pocket(sp, [(0, (sw0 + sw1) / 2, 14 * k)], rim=10.0, rib=8.0,
                     struts=warren((-0.38 * fl_, (sw0 + sw1) / 2), (0.56 * fl_, (sw0 + sw1) / 2), (sw1 - sw0) / 2 - 10, 6))
         sole = L.tri(L.to_world(CrossSection(L.rings(sp), FillRule.EvenOdd).extrude(2 * L.T).translate((0, 0, -fz - 2 * L.T)), 'xy'))
         foot = [xz(ank, yl, L.T), sole]
-        if dual:
-            foot.append(xz(ank, y_in, L.T))                  # inboard side plate: the ankle is a U, rods on both sides
-            # roll: a cross-pin block under the pitch pivot (pitch about y, roll about x) -- rods in step pitch it,
-            # rods opposed roll it; lateral lever = the rod spacing, the two motors share every ankle load
-            foot.append(trimesh.creation.cylinder(radius=7 * k, segment=[[-0.15 * fl_, (yl + y_in + L.T) / 2, -fz + 8 * k + 7 * k], [0.15 * fl_, (yl + y_in + L.T) / 2, -fz + 8 * k + 7 * k]], sections=32))
         foot = trimesh.util.concatenate(foot)
     else:
         hl = 70 * k
         hand = L.unary_union([L.stadium([(0, 0, 30 * k), (0, -hl, 22 * k)]), L.stadium([(0, 0, 30 * k), (*lobe, 16 * ke)])]) \
             .difference(L.circle(0, 0, 8.4 * k)).difference(L.circle(*lobe, 6.4)).difference(L.rounded(-8 * k, -hl + 12 * k, 8 * k, -30 * k, 6))
-        foot = xz(hand, yl, L.T)
+        foot = xz(hand, yr_ + 2 * L.T + 1.0, L.T)              # its own layer, outboard of the rod: clears the crank
     parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(eT)
     return parts
 
+
+
+def ankle2_geom(LS, DM, CR, e, beta=5.0, phi=180.0, h=25.0, gap=9.0):
+    """the two-motor ankle in the shin frame (x fore, y out, z up the shin; knee at the origin): a shin BOX of
+    two plates with both ankle motors as spacers, facing opposite ways (the thigh-box idiom). Motor A (upper)
+    drives a crank + rod OUTSIDE the outer plate, motor B (lower) a crank + rod INSIDE the inner plate."""
+    m0 = IL_SHIN[1] + 1.0
+    DM1 = DM
+    DM2 = DM + e['D'] + 2.0
+    y_os = m0 + e['L'] + 1.0                                 # outer shin plate
+    yA = y_os + L.T + 1.0                                    # crank A layer (also the foot's outer side plate)
+    yRA = yA + L.T + gap                                     # rod A layer (2T); `gap` lets the rod lean as the foot rolls
+    yB = IL_SHIN[0] - 1.0 - L.T                              # crank B layer (foot's inner side plate)
+    yRB = yB - gap - 2 * L.T                                 # rod B layer
+    yc = (yB + yA + L.T) / 2                                 # roll axis, centred in the U
+    # cranks and foot lobes both sit `beta` off square at neutral, so the K1 pitch range (-50..20) is centred
+    # on the crank's best transmission instead of starting at one end of it
+    return dict(m0=m0, DM1=DM1, DM2=DM2, y_os=y_os, yA=yA, yRA=yRA, yB=yB, yRB=yRB, yc=yc,
+                rods=((DM1, yRA + L.T), (DM2, yRB + L.T)), CR=CR, LS=LS, beta=beta, phi=phi, h=h,
+                foot_pin=(CR * math.cos(math.radians(beta + phi)), -h))
+    # the foot pin sits level with the ROLL axis, under the crank pin: rolling the foot then barely moves it
+    # sideways (the rods stay clear of the shin plates) and the posts stay low (clear of the lower motor)
+    # h: the roll axis sits h below the pitch axis (a dog-bone U-joint), keeping the foot's lugs low
+    # phi = 180: cranks, rods and foot posts BEHIND the shin (a calf + Achilles), so toe-up pitch swings the
+    # posts down, away from the lower motor, instead of up into it
+
+
+def ankle2_ik(G, q, r):
+    """crank angles (deg) that put the foot at pitch q (relative to the shin, this file's R_y sense) and roll r
+    (about x). Returns [(alpha, transmission)] per rod, or None where the linkage can't reach."""
+    LS, CR, yc, b = G['LS'], G['CR'], G['yc'], math.radians(G['beta'] + G['phi'])
+    fx, fz = G['foot_pin']
+    Ry_ = trimesh.transformations.rotation_matrix(np.radians(q), [0, 1, 0])[:3, :3]
+    Rx_ = trimesh.transformations.rotation_matrix(np.radians(r), [1, 0, 0])[:3, :3]
+    cz = np.array([0, 0, -G['h']])
+    out = []
+    for DMi, yi in G['rods']:
+        v = np.array([fx, yi - yc, fz])
+        Q = np.array([0, yc, -LS]) + Ry_ @ (Rx_ @ (v - cz) + cz)
+        P0 = np.array([CR * math.cos(b), yi, -DMi - CR * math.sin(b)])
+        ell = np.linalg.norm(P0 - (np.array([0, yc, -LS]) + v))   # rod length: neutral crank to neutral foot pin
+        f = lambda al: np.linalg.norm(np.array([CR * math.cos(al), yi, -DMi - CR * math.sin(al)]) - Q) - ell
+        grid = np.radians(np.arange(G['phi'] - 170, G['phi'] + 171, 1.0))
+        vals = np.array([f(g_) for g_ in grid])
+        roots = []
+        for i in range(len(grid) - 1):
+            if vals[i] == 0 or vals[i] * vals[i + 1] < 0:
+                lo, hi = grid[i], grid[i + 1]
+                for _ in range(50):
+                    mid = (lo + hi) / 2
+                    if f(lo) * f(mid) <= 0: hi = mid
+                    else: lo = mid
+                roots.append((lo + hi) / 2)
+        if not roots:
+            out.append(None); continue
+        al = min(roots, key=lambda x: abs(x - math.radians(q) - b))
+        P = np.array([CR * math.cos(al), yi, -DMi - CR * math.sin(al)])
+        arm = P - np.array([0, yi, -DMi]); rod = Q - P
+        tm = np.linalg.norm(np.cross(arm, rod)) / (np.linalg.norm(arm) * np.linalg.norm(rod))
+        out.append((math.degrees(al), tm, P, Q))
+    return out
+
+
+def _bar(P, Q, w, t):
+    """a flat link from P to Q, its thickness along y."""
+    d = (Q - P); ln = np.linalg.norm(d); d = d / ln
+    y = np.array([0, 1.0, 0]); y = y - d * (y @ d); y /= np.linalg.norm(y)
+    x = np.cross(y, d)
+    M = np.eye(4); M[:3, 0], M[:3, 1], M[:3, 2], M[:3, 3] = x, y, d, (P + Q) / 2
+    return trimesh.creation.box(extents=[w, t, ln + w]).apply_transform(M)
+
+
+def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank):
+    CR = 0.7 * e['D']                                        # long cranks: less crank swing per degree of roll (swept: 0.7 D, beta 5)
+    G = ankle2_geom(LS, DM, CR, e)
+    ry = lambda d_: trimesh.transformations.rotation_matrix(np.radians(d_), [0, 1, 0])
+    cyl = lambda r, y0, y1, z: trimesh.creation.cylinder(radius=r, segment=[[0, y0, z], [0, y1, z]], sections=64)
+    shin_T = th @ knee @ ry(-rel)
+    ke = e['D'] / 57.0
+    DM1, DM2, m0, y_os, yA, yRA, yB, yRB, yc = (G[x_] for x_ in ('DM1', 'DM2', 'm0', 'y_os', 'yA', 'yRA', 'yB', 'yRB', 'yc'))
+    W = e['D'] + 7.0
+    bk = lambda z: L.holes_on(e['back'][0], e['back'][1], e['hole'], phase=45, at=(0, z))
+    pas = lambda z: L.circle(0, z, e['out'][0] + 11)
+    # inner shin plate: knee hub .. A's stator (back) .. B's output (pass) .. pivot
+    rh, rm, rp = hub_d / 2 + 6, e['back'][0] / 2 + 8, 15 * k
+    inner = L.stadium([(0, 0, hub_d + 4), (0, -DM1, W), (0, -DM2, W), (0, -LS, 30 * k)])
+    st = warren((0, -rh), (0, -DM1 + rm), e['D'] / 2 - 6, 2) + warren((0, -DM2 - rm), (0, -LS + rp), 8 * k, 2)
+    inner = pocket(inner, [(0, 0, rh), (0, -DM1, rm), (0, -DM2, rm), (0, -LS, rp)], rim=7.0, struts=st + [((0, -DM1), (0, -DM2))])
+    inner = inner.difference(L.holes_on(m['out'][0], m['out'][1], m['hole'])).difference(bk(-DM1)).difference(pas(-DM2)).difference(L.circle(0, -LS, 8.4 * k))
+    outer = L.stadium([(0, -DM1, W), (0, -DM2, W), (0, -LS, 30 * k)])
+    outer = pocket(outer, [(0, -DM1, rm), (0, -DM2, rm), (0, -LS, rp)], rim=7.0, struts=[((0, -DM1), (0, -DM2))] + warren((0, -DM2 - rm), (0, -LS + rp), 8 * k, 2))
+    outer = outer.difference(pas(-DM1)).difference(bk(-DM2)).difference(L.circle(0, -LS, 8.4 * k))
+    hub = L.circle(0, 0, hub_d)
+    parts['shin'] = trimesh.util.concatenate([xz(inner, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1]),
+                                              xz(outer, y_os, L.T)]).apply_transform(shin_T)
+    oring = e['out'][0] / 2 + 4
+    parts[f'{en}-ankle'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM1), cyl(oring, m0 + e['L'], yA, -DM1)]).apply_transform(shin_T)
+    parts[f'{en}-ankle-b'] = trimesh.util.concatenate([cyl(e['D'] / 2, m0, m0 + e['L'], -DM2), cyl(oring, yB + L.T, m0, -DM2)]).apply_transform(shin_T)
+    # foot pose: level (+ commanded pitch) and roll
+    a = rel - th_t + ank[0]
+    sol = ankle2_ik(G, a, ank[1])
+    if any(s_ is None for s_ in sol):
+        raise ValueError(f'ankle linkage cannot reach pitch {a:.0f} roll {ank[1]:.0f}')
+    for (al, tm, P, Qp), (DMi, yi), yl_, tag in zip(sol, G['rods'], (yA, yB), ('', '-b')):
+        cx, cz = CR * math.cos(math.radians(al)), -CR * math.sin(math.radians(al))
+        crank = L.stadium([(0, 0, e['out'][0] + 13), (cx, cz, 16 * ke)]).difference(L.holes_on(e['out'][0], e['out'][1], e['hole'])).difference(L.circle(cx, cz, 6.4))
+        parts[f'crank-ankle{tag}'] = xz(crank, yl_, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DMi])).apply_transform(shin_T)
+        y0_, y1_ = (yA, yRA + 2 * L.T) if tag == '' else (yRB, yB + L.T)      # pin: crank / foot post layer .. rod layer (ball ends)
+        pins = [trimesh.creation.cylinder(radius=3, segment=[[pt[0], y0_ - 0.5, pt[2]], [pt[0], y1_ + 0.5, pt[2]]], sections=20) for pt in (P, Qp)]
+        parts[f'link-ankle{tag}'] = trimesh.util.concatenate([_bar(P, Qp, 14 * ke, 2 * L.T)] + pins).apply_transform(shin_T)
+    # ankle: a universal joint at the shin's end -- a cross block on the pitch pin (through both shin plates)
+    # carries the roll pin (fore-aft); the foot hangs from the roll pin on two lugs, and the rods land on
+    # posts rising from the sole IN FRONT of the shin box, so the foot rolls without touching the box
+    sb = 12 * ke                                             # cross block half-size: fits between the shin plates
+    parts['pivot-ankle'] = trimesh.util.concatenate([
+        trimesh.creation.cylinder(radius=4 * k, segment=[[0, IL_SHIN[0] - 0.5, -LS], [0, y_os + L.T + 0.5, -LS]], sections=24),
+        trimesh.creation.box(extents=[2 * sb, y_os - IL_SHIN[1] - 2.0, 2 * sb]).apply_translation([0, (y_os + IL_SHIN[1]) / 2, -LS - G['h'] / 2])]).apply_transform(shin_T)
+    fz, fl_ = 46 * k, 0.6 * LS
+    lx, lz = G['foot_pin']             # rod pins on the foot, ankle frame (x fore, z up)
+    sw0, sw1 = yRB - 4, yRA + 2 * L.T + 4
+    sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10)
+    sp = pocket(sp, [(0, yc, 14 * k), (lx, yRA + L.T, 10), (lx, yRB + L.T, 10)], rim=10.0, rib=8.0,
+                struts=warren((-0.38 * fl_, yc), (0.56 * fl_, yc), (sw1 - sw0) / 2 - 10, 6))
+    sole = L.tri(L.to_world(CrossSection(L.rings(sp), FillRule.EvenOdd).extrude(2 * L.T).translate((0, 0, -fz - 2 * L.T)), 'xy'))
+    post = L.unary_union([L.stadium([(lx, lz, 14 * ke), (lx, -fz, 24 * ke)]), L.box(lx - 18 * ke, -fz, lx + 18 * ke, -fz + 10)]).difference(L.circle(lx, lz, 6.4))
+    hh = G['h']
+    lug = L.unary_union([L.circle(yc, -hh, 2 * sb), L.box(yc - sb, -fz, yc + sb, -hh)]).difference(L.circle(yc, -hh, 8.4 * k))
+    yz = lambda prof, x0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, x0)), 'yz'))
+    rollpin = trimesh.creation.cylinder(radius=4 * k, segment=[[-sb - L.T - 1.5, yc, -hh], [sb + L.T + 1.5, yc, -hh]], sections=24)
+    foot = trimesh.util.concatenate([sole, xz(post, yA, L.T), xz(post, yB, L.T),
+                                     yz(lug, sb + 1.0, L.T), yz(lug, -sb - 1.0 - L.T, L.T), rollpin])
+    Rx = trimesh.transformations.rotation_matrix(np.radians(ank[1]), [1, 0, 0], [0, yc, -hh])
+    parts['foot'] = foot.apply_transform(shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a) @ Rx)
+    return parts
 
 AB_OUT = IP_OUT                                         # ab/ad output face (body side) from the hip: 26.5
 
