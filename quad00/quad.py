@@ -275,6 +275,29 @@ IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead
 IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
 
 
+def pocket(prof, keep, rim=8.0, rib=7.0, struts=(), min_area=120.0):
+    """take weight out of a plate: keep a `rim`-wide edge, a ring round every bolt pattern or bearing
+    (`keep`: (x, y, r) discs), and `rib`-wide struts (segments) between them; everything else is cut.
+    Windows smaller than `min_area` mm^2 stay solid (not worth a cut)."""
+    from shapely.geometry import LineString
+    solid = L.unary_union([L.circle(x, y, 2 * r) for x, y, r in keep] +
+                          [LineString(s).buffer(rib / 2, cap_style=1) for s in struts])
+    win = prof.buffer(-rim, join_style=1).difference(solid).buffer(-1.5, join_style=1).buffer(1.5, join_style=1)
+    geoms = getattr(win, 'geoms', [win])
+    win = L.unary_union([g for g in geoms if g.area >= min_area])
+    return prof.difference(win) if not win.is_empty else prof
+
+
+def warren(p0, p1, half, n):
+    """struts of a Warren truss between p0 and p1 (a beam of half-width `half`): n bays of diagonals."""
+    (x0, y0), (x1, y1) = p0, p1
+    dx, dy = x1 - x0, y1 - y0
+    ln = math.hypot(dx, dy) or 1.0
+    ux, uy, nx, ny = dx / ln, dy / ln, -dy / ln, dx / ln
+    pts = [(x0 + ux * ln * i / n + nx * half * (1 if i % 2 else -1), y0 + uy * ln * i / n + ny * half * (1 if i % 2 else -1)) for i in range(n + 1)]
+    return [(pts[i], pts[i + 1]) for i in range(n)]
+
+
 # RobStride motors the limb module can take. RS00 from its drawing; RS02 from the arm's fork model; RS06:
 # body + front pattern from its manual (8 x M3 on 82), output/back patterns ASSUMED until measured.
 MOTORS = {
@@ -315,17 +338,24 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     hub_d = m['out'][0] + 9.0
     box_thigh = L.stadium([(0, 0, W), (0, -LT, W)])
     win = lambda: L.rounded(-12 * k, -LT + 45 * k, 12 * k, -45 * k, 10)
-    inner = box_thigh.difference(L.circle(0, 0, boss_d + 4)).difference(L.circle(0, -LT, hub_d + 4)).difference(win())
-    outer = box_thigh.difference(hon(m['out'])).difference(hon(m['back'], phase=45, at=(0, -LT))).difference(win())
+    r_hip, r_knee = (boss_d + 4) / 2 + 7, max(hub_d + 4, m['back'][0] + 2 * H) / 2 + 7
+    tr = warren((0, -r_hip), (0, -LT + r_knee), W / 2 - 8, max(2, int((LT - r_hip - r_knee) / (0.8 * W))))
+    thigh_keep = [(0, 0, r_hip), (0, -LT, r_knee)]
+    inner = pocket(box_thigh, thigh_keep, struts=tr).difference(L.circle(0, 0, boss_d + 4)).difference(L.circle(0, -LT, hub_d + 4))
+    outer = pocket(box_thigh, thigh_keep, struts=tr).difference(hon(m['out'])).difference(hon(m['back'], phase=45, at=(0, -LT)))
     shin = L.stadium([(0, 0, hub_d + 4), (0, -LS, 22 * k)]).difference(hon(m['out'])) \
         .difference(L.rounded(-5, -LS + 32 * k, 5, -32 * k, 5))
     knee = trimesh.transformations.translation_matrix([0, 0, -LT])
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, W - 8), L.box(BASE[0], -26 * k, 0, 26 * k)]).convex_hull
-    boss = L.circle(0, 0, boss_d).difference(hon(m['back'], phase=45))
+    fl = pocket(fl, [(0, 0, boss_d / 2 + 6)], struts=[((0, 0), (BASE[0], 20 * k)), ((0, 0), (BASE[0], -20 * k))])
+    boss = L.circle(0, 0, boss_d).difference(hon(m['back'], phase=45)).difference(L.circle(0, 0, max(10.0, m['back'][0] - 2 * H - 10)))   # a ring
     # ab/ad reversed: its stator back-mounts on the yoke base, its output bolts to the body wall, so the
     # limb module carries all three of its motors and the body is only plates with bolt patterns
-    base = L.unary_union([L.circle(ABAD, 0, 29 * ka), L.box(ABAD, -32 * ka, HY_FL[0], 32 * ka)]).difference(L.holes_on(ma_['back'][0], ma_['back'][1], ma_['hole'], phase=45, at=(ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
+    base = L.unary_union([L.circle(ABAD, 0, 29 * ka), L.box(ABAD, -32 * ka, HY_FL[0], 32 * ka)])
+    rb = ma_['back'][0] / 2 + 6
+    base = pocket(base, [(ABAD, 0, rb)], rim=7.0, struts=[((ABAD, 0), (HY_FL[0], 28 * ka)), ((ABAD, 0), (HY_FL[0], -28 * ka))]) \
+        .difference(L.holes_on(ma_['back'][0], ma_['back'][1], ma_['hole'], phase=45, at=(ABAD, 0)))   # round about the ab/ad axis: rolls in its own shadow
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, BASE[0])), 'yz'))
     hub = L.circle(0, 0, hub_d)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -LS])
@@ -333,9 +363,11 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     if end:
         DM = DM or max(80.0, (W / 2 + e['D'] / 2 + 4.0) / math.sin(math.radians(127)))   # clears the thigh to a 127 deg knee (K1's stop)
         CR = CR or 0.4 * e['D']
-        shin = L.stadium([(0, 0, hub_d + 4), (0, -DM, e['D'] + 7), (0, -LS, 30 * k)]).difference(hon(m['out'])) \
-            .difference(L.holes_on(e['back'][0], e['back'][1], e['hole'], phase=45, at=(0, -DM))).difference(L.circle(0, -LS, 8.4 * k)) \
-            .difference(L.rounded(-5, -LS + 28 * k, 5, -DM - e['D'] / 2 - 10, 5))
+        shin = L.stadium([(0, 0, hub_d + 4), (0, -DM, e['D'] + 7), (0, -LS, 30 * k)])
+        rh, rm, rp = hub_d / 2 + 6, e['back'][0] / 2 + 8, 15 * k
+        st = warren((0, -rh), (0, -DM + rm), e['D'] / 2 - 6, 2) + warren((0, -DM - rm), (0, -LS + rp), 8 * k, max(2, int((LS - DM) / 70)))
+        shin = pocket(shin, [(0, 0, rh), (0, -DM, rm), (0, -LS, rp)], rim=7.0, struts=st).difference(hon(m['out'])) \
+            .difference(L.holes_on(e['back'][0], e['back'][1], e['hole'], phase=45, at=(0, -DM))).difference(L.circle(0, -LS, 8.4 * k))
     parts = {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, OUTY[0], L.T).apply_transform(th),
@@ -384,10 +416,15 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     if end == 'ankle':
         fz = 46 * k                                          # sole below the ankle axis
         fl_ = 0.6 * LS                                       # foot length
-        ank = L.unary_union([L.circle(0, 0, 40 * k), L.stadium([(0, 0, 30 * k), (*lobe, 16 * ke)]), L.box(-0.3 * fl_, -fz, 0.46 * fl_, -fz + 16 * k)]) \
+        ank = L.unary_union([L.circle(0, 0, 40 * k), L.stadium([(0, 0, 30 * k), (*lobe, 16 * ke)]), L.box(-0.3 * fl_, -fz, 0.46 * fl_, -fz + 16 * k)])
+        ank = pocket(ank, [(0, 0, 14 * k), (*lobe, 8 * ke)], rim=6.0, struts=[((0, 0), (-0.25 * fl_, -fz)), ((0, 0), (0.4 * fl_, -fz)), ((0, 0), (0, -fz))]) \
             .difference(L.circle(0, 0, 8.4 * k)).difference(L.circle(*lobe, 6.4))
         y_in = IL_SHIN[0] - 1.0 - e['L'] - 1.0 - L.T if dual else IL_SHIN[0] - 8
-        sole = trimesh.creation.box(extents=[fl_, yl + L.T + 4 - y_in + 4, 2 * L.T]).apply_translation([0.09 * fl_, (y_in - 4 + yl + L.T + 4) / 2, -fz - L.T])
+        sw0, sw1 = y_in - 4, yl + L.T + 4
+        sp = L.rounded(-0.41 * fl_, sw0, 0.59 * fl_, sw1, 10)
+        sp = pocket(sp, [(0, (sw0 + sw1) / 2, 14 * k)], rim=10.0, rib=8.0,
+                    struts=warren((-0.38 * fl_, (sw0 + sw1) / 2), (0.56 * fl_, (sw0 + sw1) / 2), (sw1 - sw0) / 2 - 10, 6))
+        sole = L.tri(L.to_world(CrossSection(L.rings(sp), FillRule.EvenOdd).extrude(2 * L.T).translate((0, 0, -fz - 2 * L.T)), 'xy'))
         foot = [xz(ank, yl, L.T), sole]
         if dual:
             foot.append(xz(ank, y_in, L.T))                  # inboard side plate: the ankle is a U, rods on both sides
@@ -718,6 +755,10 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     extra = []
     def wallp(half, ports):
         w = L.rounded(-half, -H, half, H, 8)
+        keep = [(y, 0, pat[0] / 2 + hd + 5) for (y, pat, ph, hole, hd) in ports]
+        ys = sorted([-half + 10] + [k_[0] for k_ in keep] + [half - 10])
+        st = [s_ for a_, b_ in zip(ys, ys[1:]) for s_ in warren((a_, 0), (b_, 0), H - 8, max(1, int((b_ - a_) / (1.2 * H))))]
+        w = pocket(w, keep, rim=8.0, struts=st)
         for (y, pat, ph, hole, hd) in ports:
             w = w.difference(L.holes_on(pat[0], pat[1], hd, phase=ph, at=(y, 0))).difference(L.circle(y, 0, hole))
         return w
@@ -730,8 +771,8 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     extra.append(('chassis-shoulder-bar', ext(bar, 'yz', xt - T2, T2)))
     extra.append(('chassis-chest-floor', ext(wallp(chest, [(0, mw['front'], 0, mw['out'][0] + 11, mw['hole'])]), 'yz', xf - T2, T2)))
     skin = L.rounded(xf - T2, -chest, xt, chest, 10)
-    for yc in (-0.5, 0.0, 0.5):
-        skin = skin.difference(L.circle(yc * chest, (xf + xt) / 2 - 6, 0.6 * H + 10))
+    xm = (xf + xt) / 2
+    skin = pocket(skin, [], rim=12.0, rib=9.0, struts=warren((xm, -chest + 12), (xm, chest - 12), (xt - xf) / 2 - 14, max(2, int(chest / 45))))
     extra += [('chassis-chest-front', ext(skin, 'xy', H, L.T)), ('chassis-chest-back', ext(skin, 'xy', -H - L.T, L.T))]
     extra.append((f'{waistm}-waist', cyl(mw['D'] / 2, xf, xf + mw['L'])))
     extra.append((f'{waistm}-waist-out', cyl(mw['out'][0] / 2 + 4, xf - T2 - 1.0, xf)))
@@ -813,17 +854,13 @@ def humanoid_tiny():
 
 
 def humanoid_mini():
-    """MINI humanoid, a full Booster K1 replacement (~95 cm, K1's 22 DoF + a waist = 23): RS06 legs + waist,
+    """MINI humanoid, a full Booster K1 replacement (~95 cm, K1's 22 DoF + a waist = 23): RS04 hip pitch + knee
+    (an RS06 knee walks at ~120% of 0.7 x peak once the plates are weighed), RS06 hip roll, ankles + waist,
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
     return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
-                           legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00')
-
-
-def humanoid_mini_rs04():
-    """the mini with RS04 in the thigh box (hip pitch + knee); ab/ad, ankle, waist stay RS06."""
-    return humanoid_family('mini humanoid (RS04 hip pitch + knee)', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
                            legm='rs06', armm='rs02', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
                            legpk='rs04')
+
 
 def build(arch):
     scene = trimesh.Scene()
@@ -874,7 +911,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini), ('humanoid_mini_rs04', humanoid_mini_rs04)):          # the mini quad, the mini humanoid
+    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini)):          # the mini quad, the mini humanoid
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
