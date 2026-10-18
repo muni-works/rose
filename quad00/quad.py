@@ -872,7 +872,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
                     arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False,
-                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0):
+                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0, shoulder=(0.0, 0.0, 0.0)):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -898,9 +898,13 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         chest = ya + 20.0 * ka
         hp = chest
         T2_ = 2 * L.T
-        s2h0 = (-T2_ - da['IPOUT']) - ((-T2_ - 1.0 - mw['L'] - 1.0) - T2_ - 1.0 - T2_ - 1.0 - my['L'] - 1.0 - T2_ - 1.0 - L.T
-                                       - ((MOTORS[legpk]['D'] + 7.0) / 2 + 8.0))
-        reach = arm[0] + (ma['D'] + 7.0) / 2                   # shoulder axis to the bottom of the elbow: only the elbows
+        top = (-T2_ - 6.0 - ma['D'] / 2) if arm_chain else (-T2_ - da['IPOUT'])     # shoulder axis below the bar's top face
+        s2h0 = top - ((-T2_ - 1.0 - mw['L'] - 1.0) - T2_ - 1.0 - T2_ - 1.0 - my['L'] - 1.0 - T2_ - 1.0 - L.T
+                      - ((MOTORS[legpk]['D'] + 7.0) / 2 + 8.0))
+        if arm_chain:   # pitch axis .. roll motor .. yaw motor .. cap .. upper arm .. elbow motor's bottom
+            reach = ma['D'] / 2 + 4.0 + MOTORS[arm_yawm]['L'] + 1.0 + L.T + (ma['D'] + 7.0) + arm[0]
+        else:
+            reach = arm[0] + (ma['D'] + 7.0) / 2               # shoulder axis to the bottom of the elbow: only the elbows
                                                               # must clear the thighs; forearms work in front of them
         chest_h = max(chest_h, reach + (MOTORS[legpk]['D'] + 7.0) / 2 + 20.0 - s2h0)
     H = max(41.0, ma['D'] / 2 + 12.0, mw['D'] / 2 + 12.0, my['D'] / 2 + 12.0)
@@ -923,13 +927,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     xf = xt - T2 - 1.0 - mw['L'] - 1.0 - chest_h
     neck_port = [(0, MOTORS[head]['front'], 0, MOTORS[head]['out'][0] + 11, MOTORS[head]['hole'])] if head else []
     if arm_chain:
-        # arms = the leg chain, hung from the shoulders: a yaw motor as a spacer in a shoulder box at each end
-        # of the bar (the pelvis idiom), its flange + roll plate, then the limb module (ab/ad = shoulder roll)
-        mya = MOTORS[arm_yawm]
-        ys = chest + math.hypot(ma['D'] / 2, ma['L'] / 2) + 4.0      # yaw = roll axis, the roll motor yaws outside the chest
-        y0a = ys - da['ABAD']
-        hs = ys + mya['D'] / 2 + 6.0                                  # bar half-width: over the shoulder boxes
-        bar = wallp(hs, neck_port)
+        bar = wallp(chest, neck_port)
     else:
         bar = wallp(chest, [(s * ya, ma['out'], 90, ma['out'][0] * 0.6, ma['hole']) for s in (1, -1)] + neck_port)
     extra.append(('chassis-shoulder-bar', ext(bar, 'yz', xt - T2, T2)))
@@ -999,36 +997,70 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         extra.append(('int-camera', L.tri(Manifold.cube((22 * kp, ya_ - yb_ + L.T - 4, 20 * kp)).translate((xh + 14 * kp, yb_ - L.T + 2, 50 * kp - 20 * kp - 1)))))
     hip_a = xt - T2 - da['IPOUT']
     legs = [('al', hip_a, 1, 'none'), ('ar', hip_a, -1, 'none')]
-    poses = {'none': inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1], mot=armm, end_mot=wristm)}
+    poses = {} if arm_chain else {'none': inline_parts(*arm_pose[:2], end='wrist', LT=arm[0], LS=arm[1], mot=armm, end_mot=wristm)}
     if arm_chain:
-        xsb = xt - T2 - 1.0 - mya['L'] - 1.0                  # shoulder floor's top face (yaw motor between bar and floor)
-        xso = xsb - T2 - 1.0                                   # yaw output face
-        sh_x = xso - L.T - ((ma['D'] + 7.0) / 2 + 8.0) - arm_drop   # shoulder pitch axis; the drop buys abduction
-        zra = da['IPOUT']
-        rfa = mya['out'][0] + 33
-        rla = ma['out'][0] + 33
-        apart = inline_parts(*arm_pose, end='wrist', LT=arm[0], LS=arm[1], mot=armm, ab_mot=armm, end_mot=wristm, dual=True)
+        # shoulder, pitch-roll-yaw (as a person's): the PITCH motor sits inside the chest corner, stator on a
+        # chest side wall, output out through it; on its output an L-bracket holds the ROLL motor (axis
+        # fore-aft) beside the torso; the roll output's L-bracket hangs the upper-arm YAW motor (axis down the
+        # arm); the yaw output caps the thigh box, which is now only the upper arm + elbow motor.
+        mya, W_ = MOTORS[arm_yawm], ma['D'] + 7.0
+        P_, R_, Y_ = shoulder
+        c = chest
+        xp = xt - T2 - 6.0 - ma['D'] / 2                                 # pitch axis (lateral), just under the bar
+        yr = c + 1.0 + L.T + 22.0 + ma['D'] / 2                          # roll axis (fore-aft), beside the torso; the arm clears its side
+        xr = xp
+        xc = xr - ma['D'] / 2 - 4.0                                      # roll bracket's yaw plate, under the roll motor
+        x_cap = xc - mya['L'] - 1.0                                      # yaw output face = top of the upper arm
+        y0a = yr - da['OUT'][1] / 2                                      # upper-arm box centred on the yaw axis
+        oa = ma['out'][0] / 2 + 4
+        side = L.rounded(xf, -H, xt - T2, H, 8).difference(L.holes_on(ma['out'][0], ma['out'][1], ma['hole'], at=(xp, 0))).difference(L.circle(xp, 0, ma['out'][0] + 11))
+        side = pocket(side, [(xp, 0, ma['out'][0] / 2 + 12)], rim=10.0, struts=warren((xp - 40, 0), (xf, 0), H - 10, 3))
+        extra += [('chassis-chest-side.l', ext(side, 'xz', c - T2, T2)), ('chassis-chest-side.r', ext(side, 'xz', -c, T2))]
+        apart = inline_parts(0.0, arm_pose[1], end='wrist', LT=arm[0], LS=arm[1], mot=armm, ab_mot=armm, end_mot=wristm, dual=True, ank=tuple(arm_pose[2:4]) if len(arm_pose) > 2 else (0.0, 0.0))
+        for n_ in [n_ for n_ in apart if n_ == 'yoke' or n_.endswith(('-abad', '-hip'))]:
+            del apart[n_]
+        rot = lambda deg, axis, pt: trimesh.transformations.rotation_matrix(np.radians(deg), axis, pt)
+        cylx = lambda r, x0, x1, y, z=0.0: trimesh.creation.cylinder(radius=r, segment=[[x0, y, z], [x1, y, z]], sections=64)
+        cyly = lambda r, y0_, y1_, x, z=0.0: trimesh.creation.cylinder(radius=r, segment=[[x, y0_, z], [x, y1_, z]], sections=64)
+        cylz = lambda r, z0, z1, x, y: trimesh.creation.cylinder(radius=r, segment=[[x, y, z0], [x, y, z1]], sections=64)
+        zb = -ma['L'] / 2 - 1.0                                         # roll stator back face (behind)
+        zf = ma['L'] / 2 + 1.0                                          # roll output face (front)
         for tag, s in (('al', 1), ('ar', -1)):
-            # shoulder box: the bar above, a floor below (front flange of the yaw motor), skins fore and aft
-            fl0 = L.unary_union([L.circle(ys, 0, mya['front'][0] + 16), L.rounded(chest - 20.0, -0.6 * H, ys, 0.6 * H, 8)]).difference(L.holes_on(mya['front'][0], mya['front'][1], mya['hole'], at=(ys, 0))).difference(L.circle(ys, 0, mya['out'][0] + 11))
-            if s < 0:
-                fl0 = shapely_mirror(fl0)
-            extra.append((f'chassis-shoulder-floor.{tag}', ext(fl0, 'yz', xsb - T2, T2)))
-            sk = L.rounded(xsb - T2, chest + 0.5, xt, hs, 6)
-            if s < 0:
-                sk = shapely_mirror(sk)
-            extra += [(f'chassis-shoulder-front.{tag}', ext(sk, 'xy', H, L.T)), (f'chassis-shoulder-back.{tag}', ext(sk, 'xy', -H - L.T, L.T))]
-            extra.append((f'{arm_yawm}-shoulderyaw.{tag}', cyl(mya['D'] / 2, xsb + 1.0, xsb + 1.0 + mya['L'], s * ys)))
-            extra.append((f'{arm_yawm}-shoulderyaw-out.{tag}', cyl(mya['out'][0] / 2 + 4, xso, xsb + 1.0, s * ys)))
-            fla = L.unary_union([L.circle(s * ys, 0, rfa), L.rounded(s * ys - 12, -10, s * ys + 12, zra + T2, 6)]).difference(L.holes_on(mya['out'][0], mya['out'][1], mya['hole'], at=(s * ys, 0)))
-            extra.append((f'chassis-shoulderflange.{tag}', ext(fla, 'yz', xso - L.T, L.T)))
-            rpa = L.unary_union([L.circle(sh_x, s * ys, rla), L.rounded(sh_x, s * ys - 12, xso - L.T, s * ys + 12, 6)])
-            rpa = rpa.difference(L.holes_on(ma['out'][0], ma['out'][1], ma['hole'], phase=90, at=(sh_x, s * ys))).difference(L.circle(sh_x, s * ys, ma['out'][0] * 0.6))
-            extra.append((f'chassis-shoulderplate.{tag}', ext(rpa, 'xy', zra, T2)))
-            place = trimesh.transformations.translation_matrix([sh_x, s * y0a, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
-            for n, g in apart.items():
-                extra.append((f'{n}.{tag}', g.copy().apply_transform(place)))
-        hip_a, legs, poses = sh_x, [], {}
+            Mp = rot(P_, [0, 1, 0], [xp, 0, 0])
+            Mr = Mp @ rot(s * R_, [0, 0, 1], [xr, s * yr, 0])
+            My = Mr @ rot(s * Y_, [1, 0, 0], [0, s * yr, 0])
+            add = lambda n_, m_, M_: extra.append((f'{n_}.{tag}', m_.apply_transform(M_)))
+            # pitch motor, inside the chest
+            y_in, y_out = c - T2 - 1.0 - ma['L'], c - T2 - 1.0
+            extra.append((f'{armm}-shoulderpitch.{tag}', cyly(ma['D'] / 2, s * y_in, s * y_out, xp)))
+            add(f'{armm}-shoulderpitch-out', cyly(oa, s * y_out, s * (c + 1.0), xp), Mp)
+            # pitch bracket: B1 on the pitch output (xz), B2 holding the roll stator's back (xy, behind)
+            b1 = L.unary_union([L.circle(xp, 0, ma['out'][0] + 33), L.rounded(xp - ma['D'] / 2 - 2, zb, xp + 18, 18, 6)]) \
+                .difference(L.holes_on(ma['out'][0], ma['out'][1], ma['hole'], at=(xp, 0)))
+            add('chassis-shoulder-pitchplate', ext(b1, 'xz', (c + 1.0) if s > 0 else -(c + 1.0) - L.T, L.T), Mp)
+            b2 = L.unary_union([L.circle(xr, s * yr, ma['back'][0] + 16), L.rounded(xr - ma['D'] / 2 - 2, min(s * (c + 1.0 + L.T), s * yr), xr + 18, max(s * (c + 1.0 + L.T), s * yr), 6)]) \
+                .difference(L.holes_on(ma['back'][0], ma['back'][1], ma['hole'], phase=45, at=(xr, s * yr)))
+            add('chassis-shoulder-rollmount', ext(b2, 'xy', zb - L.T, L.T), Mp)
+            add(f'{armm}-shoulderroll', cylz(ma['D'] / 2, -ma['L'] / 2, ma['L'] / 2, xr, s * yr), Mp)
+            add(f'{armm}-shoulderroll-out', cylz(oa, ma['L'] / 2, zf, xr, s * yr), Mr)
+            # roll bracket: C1 on the roll output (xy, front), C2 under the roll motor holding the yaw stator (yz)
+            c1 = L.unary_union([L.circle(xr, s * yr, ma['out'][0] + 33), L.rounded(xc + L.T, s * yr - 26, xr, s * yr + 26, 6)]) \
+                .difference(L.holes_on(ma['out'][0], ma['out'][1], ma['hole'], at=(xr, s * yr)))
+            add('chassis-shoulder-rollplate', ext(c1, 'xy', zf, L.T), Mr)
+            c2 = L.unary_union([L.circle(s * yr, 0, mya['back'][0] + 16), L.rounded(s * yr - 26, -10, s * yr + 26, zf, 6)]) \
+                .difference(L.holes_on(mya['back'][0], mya['back'][1], mya['hole'], phase=45, at=(s * yr, 0)))
+            add('chassis-shoulder-yawmount', ext(c2, 'yz', xc, L.T), Mr)
+            add(f'{arm_yawm}-armyaw', cylx(mya['D'] / 2, xc - mya['L'], xc, s * yr), Mr)
+            add(f'{arm_yawm}-armyaw-out', cylx(mya['out'][0] / 2 + 4, x_cap, xc - mya['L'], s * yr), My)
+            # upper arm: the yaw output caps the thigh box
+            ylo, yhi = sorted((s * (y0a + HY_IN[0]), s * (y0a + da['OUT'][1])))
+            cap = L.rounded(ylo, -0.8 * W_ / 2, yhi, 0.8 * W_ / 2, 8).difference(L.holes_on(mya['out'][0], mya['out'][1], mya['hole'], at=(s * yr, 0)))
+            add('chassis-arm-cap', ext(cap, 'yz', x_cap - L.T, L.T), My)
+            place = My @ trimesh.transformations.translation_matrix([x_cap - L.T - W_ / 2, s * y0a, 0]) @ np.diag([1, s, 1, 1.0]) @ Tl
+            for n_, g_ in apart.items():
+                extra.append((f'{n_}.{tag}', g_.copy().apply_transform(place)))
+        hip_a, legs, poses = xp, [], {}
+        y0a = y0a  # for the width note
     count = {}
     arms_ = ([armm] * 6 + [wristm] * 4 + [arm_yawm] * 2) if arm_chain else ([armm] * 6 + [wristm or armm] * 2)
     for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + arms_ + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
@@ -1053,9 +1085,9 @@ def humanoid_mini():
     """MINI humanoid, a full Booster K1 replacement (~95 cm, K1's 22 DoF + a waist = 23): RS04 hip pitch + knee
     (an RS06 knee walks at ~120% of 0.7 x peak once the plates are weighed), RS06 hip roll, ankles + waist,
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
-    return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(205.0, 230.0), chest_h=120.0,
+    return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(120.0, 230.0), chest_h=120.0,
                            legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
-                           legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(10.0, 60.0))
+                           legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(0.0, 60.0))
 
 
 def build(arch):
