@@ -17,11 +17,12 @@ bulkhead (torso) ── ab/ad RS00 ── arch ══ keyed tenons ══ side p
 The upper assembly is plates and keys only, with no rods or standoffs:
 
 - **The arch is the only bridge** between the two side plates. It sits ahead of the hip, in the
-  forward-up sector where a quadruped thigh never goes, so the thigh swings 81° forward (under the
-  arch's leg-plane notch) and 184° back, over the top: 265° of travel. That is about Go2's thigh range.
+  forward-up sector where a quadruped thigh never goes, so the thigh swings 60° forward (under the
+  arch's leg-plane notch) and 184° back, over the top: 244° of travel. `ABAD_Z` trades that forward swing
+  against metal: at 60 mm it was 81° forward but 100 g more aluminium in the arch and side plates.
 - **The side plates key into the arch** with tapered keys through tusk tenons: the classic flat-pack
   joint. It is 2D-cuttable, self-tightening, and needs no edge-drilled holes or threads in plastic.
-- **The ab/ad axis lies in the leg plane** (y = 0), 60 mm above the hip. The arch bolts straight to
+- **The ab/ad axis lies in the leg plane** (y = 0), 40 mm above the hip. The arch bolts straight to
   the ab/ad output, so standing load puts almost no torque on ab/ad.
 - **The paw is a TPU ball** that slots over the shin tip and is held by two cross bolts, so it can't spin.
 
@@ -31,8 +32,8 @@ The upper assembly is plates and keys only, with no rods or standoffs:
 | knee | 2:1, module 2.5, 20°, 3 × 3.2 mm face; 0.2 mm backlash per mesh (`BACKLASH`) |
 | stock | 3.2 mm everywhere; gears and shin are 3-layer laminates, side plates, arch and bulkhead are 2-layer |
 | width | 134 mm over the side plates; the leg itself is 17 mm thick |
-| ranges | knee folds to 35° interior (shin meets idler 2); hip 81° forward to 184° back from straight down |
-| mass, per leg | 900 g aluminium / ~230 g printed (bulkhead excluded), + 3 × RS00 (930 g) |
+| ranges | knee folds to 35° interior (shin meets idler 2); hip 60° forward to 184° back from straight down |
+| mass, per leg | 800 g aluminium / ~210 g printed (bulkhead excluded), + 3 × RS00 (930 g) |
 
 ## Files
 
@@ -41,7 +42,7 @@ pip install shapely trimesh manifold3d ezdxf mapbox_earcut numpy networkx lxml
 python3 leg.py              # checks + out/dxf (router) + out/stl + out/3mf (P1S plates)
 python3 leg.py --check      # gear mesh sweep, stack, ranges only
 python3 leg.py --assembly   # posed parts + out/assembly/leg.loon
-python3 assembly_steps.py   # step renders + out/assembly-guide.html
+python3 assembly_steps.py   # step renders + out/assembly-guide.html + out/viewer.html (3D)
 ```
 
 DXF names are `part-Lk_3.2mm_xN`, where N is how many to cut for one leg. `_csk-1` means one of
@@ -81,6 +82,6 @@ Tests:
 - The aluminium build needs a real bushing or bearing for the inner plate on the hub.
 - RS00 stall torque is an estimate, scaled from the RS06 manual.
 - The torso isn't designed yet; the bulkhead stands in for it on the bench.
-- 900 g of aluminium per leg (yoke included) is heavy. The candidates to lighten are the arch (225 g), the side plates (214 g) and
+- 800 g of aluminium per leg (yoke included) is still heavy. The candidates to lighten are the side plates (178 g), the arch (159 g) and
   the shin laminate (202 g). Re-run the RS00 sizing sweep with the real masses.
 - The paw's flat sits on the shin axis, so it only touches the ground with the shin vertical; it is there for printing.

@@ -4,7 +4,9 @@ Each step shows the parts already fitted in grey and the parts going on in this 
 orange, pulled out along the hip axis (Y) by the distance they travel when you fit them.
 Writes out/assembly/step-N.loon and render/step-N.png.
 """
+import base64
 import os
+import re
 import subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,11 +56,29 @@ def main():
                         '--auto-aspect', '--raytrace', '-o', png], check=True)
         print(f'step {i}: {title} -> {png}')
     # a self-contained copy of the guide (images inlined) for viewers that can't follow relative paths
-    import base64, re
     page = open(os.path.join(HERE, 'assembly.html')).read()
     page = re.sub(r'src="(render/step-\d+\.png)"', lambda m: 'src="data:image/png;base64,' +
                   base64.b64encode(open(os.path.join(HERE, m.group(1)), 'rb').read()).decode() + '"', page)
     open(os.path.join(HERE, 'out', 'assembly-guide.html'), 'w').write(page)
+    viewer()
+
+
+def viewer():
+    """out/assembly/leg.glb (every posed part, named) and out/viewer.html (the three.js page, GLB inlined)."""
+    import glob
+    import trimesh
+    scene = trimesh.Scene()
+    for f in sorted(glob.glob(os.path.join(A, '*.stl'))):
+        n = os.path.basename(f)[:-4]
+        m = trimesh.load(f)
+        m.merge_vertices()
+        scene.add_geometry(m, node_name=n, geom_name=n)
+    glb = os.path.join(A, 'leg.glb')
+    scene.export(glb)
+    page = open(os.path.join(HERE, 'viewer.template.html')).read()
+    page = page.replace('__GLB_BASE64__', base64.b64encode(open(glb, 'rb').read()).decode())
+    open(os.path.join(HERE, 'out', 'viewer.html'), 'w').write(page)
+    print(f'viewer: {glb} + out/viewer.html')
 
 
 if __name__ == '__main__':

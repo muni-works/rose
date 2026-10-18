@@ -66,13 +66,15 @@ Y_MOTOR = (Y_PLATE[1] + 1.0, Y_PLATE[1] + 1.0 + RS00_L)   # stator body (1 mm no
 Y_SIDE = (Y_MOTOR[1], Y_MOTOR[1] + 2 * T)            # side plates: 2 layers, motor back-mounted
 
 # the yoke: arch (YZ plane, 2 layers) ahead of the hip, ab/ad RS00 ahead of that, bulkhead = torso
-ABAD_Z = 60.0                       # ab/ad axis height above the hip axis, in the leg plane (y=0)
+ABAD_Z = 40.0                       # ab/ad axis height above the hip, in the leg plane (y=0). Lower = less
+                                    # metal, less forward hip swing: 60 -> 81 deg fwd, 40 -> ~60, 25 -> 35
 X_ARCH = (35.0, 35.0 + 2 * T)       # clears the hip/knee motors (r28.5) by 6.5
 X_ABAD = (X_ARCH[1] + 1.0, X_ARCH[1] + 1.0 + RS00_L)    # ab/ad stator; output face bears on the arch
 X_BULK = (X_ABAD[1], X_ABAD[1] + 2 * T)
-ARCH_W, ARCH_Z = 74.0, (-18.0, 92.0)                     # arch half-width, z extent
-NOTCH = (15.0, 40.0)                # leg-plane notch in the arch: half-width, height -- thigh passes under
-TENON_Z = (0.0, 66.0)               # side-plate tenons through the arch
+ARCH_W = 74.0                       # arch half-width: mortises sit at the side plates, y 60..67
+ARCH_Z = (min(-18.0, ABAD_Z - 50), ABAD_Z + 30)          # arch z extent
+NOTCH = (18.0, ABAD_Z - 20)         # leg-plane notch under the bridge that carries the ab/ad output pattern
+TENON_Z = (ARCH_Z[0] + 16, ABAD_Z + 6)                   # side-plate tenons through the arch
 TENON_H, TENON_OUT = 12.0, 11.0     # tenon height, how far it stands proud of the arch front
 KEY_HOLE = (5.0, 3.6)               # through the tenon, starts 0.4 inside the arch front face
 KEY_L, KEY_W = (34.0, (2.8, 4.8))   # tapered key from 3.2 stock: length, width tip -> head
@@ -180,7 +182,7 @@ def side_plate():
         body = body.difference(box(front - 0.4, zt - KEY_HOLE[1] / 2, front - 0.4 + KEY_HOLE[0], zt + KEY_HOLE[1] / 2))
     body = body.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45))
     body = body.difference(circle(0, 0, 16))                                   # cable exit
-    body = body.difference(circle(16, 44, 16))                                 # lightening
+    body = body.difference(circle(17, ABAD_Z * 0.55 + 14, 18))                 # lightening
     return body
 
 
@@ -192,18 +194,20 @@ def arch():
         for zt in TENON_Z:                                                     # mortises, +0.2 fit
             y0, y1 = sorted((s * (Y_SIDE[0] - 0.2), s * (Y_SIDE[1] + 0.2)))
             a = a.difference(box(y0, zt - TENON_H / 2 - 0.2, y1, zt + TENON_H / 2 + 0.2))
-        a = a.difference(circle(s * 36, 33, 26))                               # lightening / cable pass
+        a = a.difference(rounded(s * 26, (TENON_Z[0] + TENON_Z[1]) / 2 - 20, s * 52,
+                                 (TENON_Z[0] + TENON_Z[1]) / 2 + 20, 8) if s > 0 else
+                         rounded(-52, (TENON_Z[0] + TENON_Z[1]) / 2 - 20, -26, (TENON_Z[0] + TENON_Z[1]) / 2 + 20, 8))  # lightening / cable pass
     return a.difference(holes_on(OUT_PCD, OUT_N, M3, at=(0, ABAD_Z)))
 
 
 def bulkhead():
     """YZ. Stand-in for the torso: holds the ab/ad RS00 by its back face, bolts to the bench."""
-    b = rounded(-45, ABAD_Z - 45, 45, ABAD_Z + 45, 8)
+    b = rounded(-36, ABAD_Z - 36, 36, ABAD_Z + 36, 8)
     b = b.difference(holes_on(BACK_PCD, BACK_N, M3, phase=45, at=(0, ABAD_Z)))
     b = b.difference(circle(0, ABAD_Z, 16))
     for sy in (1, -1):
         for sz in (1, -1):
-            b = b.difference(circle(sy * 35, ABAD_Z + sz * 35, 6.4))
+            b = b.difference(circle(sy * 27, ABAD_Z + sz * 27, 6.4))
     return b
 
 
@@ -402,7 +406,7 @@ def hip_range():
                        circle(0, Z_KNEEAX, M * (Z_KNEE + 2))])
     walls = unary_union([box(X_ARCH[0], NOTCH[1], X_ARCH[1], ARCH_Z[1]),
                          box(X_ABAD[0], ABAD_Z - RS00_D / 2, X_ABAD[1], ABAD_Z + RS00_D / 2),
-                         box(X_BULK[0], ABAD_Z - 45, X_BULK[1], ABAD_Z + 45)]).buffer(2.0)   # 2 mm clearance
+                         box(X_BULK[0], ABAD_Z - 36, X_BULK[1], ABAD_Z + 36)]).buffer(2.0)   # 2 mm clearance
     blocked = [a for a in range(360) if affinity.rotate(leg, a, origin=(0, 0)).intersects(walls)]  # CCW = forward
     if not blocked:
         return None

@@ -48,7 +48,7 @@ canvas:active { cursor: grabbing; }
   <div class="spec">
     <span><b>3 × RS00</b> hip · knee · ab/ad</span>
     <span>knee <b>2:1</b> m2.5 sheet gears</span>
-    <span>hip <b>81° fwd / 184° back</b></span>
+    <span>hip <b>60° fwd / 184° back</b></span>
     <span>stock <b>3.2 mm</b></span>
   </div>
 </header>
@@ -83,11 +83,12 @@ const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.35;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xf2f4f7, 0x3a3f46, 1.1));
 const camera = new THREE.PerspectiveCamera(32, 1, 5, 5000);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -118,7 +119,7 @@ const brushed = canvasTex((g, s) => {
     g.beginPath(); g.moveTo(0, y); g.lineTo(s, y + (Math.random() - 0.5) * 2); g.stroke();
   }
 });
-brushed.repeat.set(0.012, 0.012);
+brushed.repeat.set(0.006, 0.03);
 const speckle = canvasTex((g, s) => {
   g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, s, s);
   for (let i = 0; i < 9000; i++) { const v = 90 + Math.random() * 80; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
@@ -127,13 +128,13 @@ speckle.repeat.set(0.05, 0.05);
 
 const MATS = {
   aluminium: { label: 'aluminium plates (3.2 mm)', swatch: '#c3c8ce',
-    m: new THREE.MeshPhysicalMaterial({ color: 0xc9ced4, metalness: 1, roughness: 0.42, roughnessMap: brushed, bumpMap: brushed, bumpScale: 0.15 }) },
+    m: new THREE.MeshPhysicalMaterial({ color: 0xd3d7dc, metalness: 0.8, roughness: 0.38, roughnessMap: brushed, envMapIntensity: 1.4 }) },
   gear: { label: 'gear train, z17 / z17 / z17 / z34', swatch: '#b8722e',
-    m: new THREE.MeshPhysicalMaterial({ color: 0xc28a52, metalness: 1, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.3 }) },
+    m: new THREE.MeshPhysicalMaterial({ color: 0xd09a5e, metalness: 0.9, roughness: 0.3, envMapIntensity: 1.4 }) },
   motor: { label: 'RS00 actuators', swatch: '#2b2f36',
-    m: new THREE.MeshPhysicalMaterial({ color: 0x2a2e35, metalness: 0.55, roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.25 }) },
+    m: new THREE.MeshPhysicalMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
   steel: { label: 'shafts and tenon keys', swatch: '#9aa1a8',
-    m: new THREE.MeshPhysicalMaterial({ color: 0xa6adb4, metalness: 1, roughness: 0.22 }) },
+    m: new THREE.MeshPhysicalMaterial({ color: 0xb4bac1, metalness: 0.9, roughness: 0.22, envMapIntensity: 1.4 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
@@ -167,6 +168,7 @@ new GLTFLoader().parse(bytes.buffer, '', gltf => {
   gltf.scene.traverse(o => {
     if (!o.isMesh) return;
     const name = (o.name || o.parent?.name || '').replace(/_\d+$/, '');
+    o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
     o.geometry.computeVertexNormals();
     planarUV(o.geometry);
     const g = GROUP(name);
@@ -202,7 +204,6 @@ function buildKey() {
     key.append(b);
   }
 }
-for (const m of Object.values(MATS)) m.m.transparent = true;
 
 const bExplode = document.getElementById('explode'), bSpin = document.getElementById('spin');
 bExplode.onclick = () => { explodeTarget = explodeTarget ? 0 : 1; bExplode.setAttribute('aria-pressed', !!explodeTarget); };
@@ -223,8 +224,10 @@ renderer.setAnimationLoop(() => {
     o.position.copy(u.home).addScaledVector(u.off, exploded);
   }
   for (const [g, { m }] of Object.entries(MATS)) {
-    m.opacity = focus && focus !== g ? 0.18 : 1;
-    m.depthWrite = !(focus && focus !== g);
+    const dim = !!focus && focus !== g;
+    if (m.transparent !== dim) { m.transparent = dim; m.needsUpdate = true; }
+    m.opacity = dim ? 0.18 : 1;
+    m.depthWrite = !dim;
   }
   controls.update();
   renderer.render(scene, camera);
