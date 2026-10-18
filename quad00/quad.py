@@ -275,7 +275,7 @@ IP_OUT = IP_AB[1] + 1.0                                # output face: 26.5 ahead
 IP_BASE = (IP_AB[0] - L.YOKE_T, IP_AB[0])              # yoke base, behind the axis
 
 
-def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L):
+def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=80.0, CR=22.0):
     """THE limb module, all 8 limbs: thigh box (hip + knee RS00 as spacers), inline shin, ab/ad centred
     fore-aft on the hip (stator on the yoke base behind, output face IP_OUT ahead -> the body wall)."""
     xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
@@ -298,8 +298,10 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L):
     base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, IP_BASE[0])), 'yz'))
     hub = L.circle(0, 0, 36)
     paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -LS])
-    if end:
-        shin = shin.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -LS)))
+    if end:      # end motor high in the shin (DM below the knee), a pivot at the end
+        shin = L.stadium([(0, 0, 40), (0, -DM, 64), (0, -LS, 30)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+            .difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -DM))).difference(L.circle(0, -LS, 8.4)) \
+            .difference(L.rounded(-5, -LS + 28, 5, -DM - 38, 5))
     parts = {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
@@ -315,20 +317,33 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L):
     }
     if not end:
         return parts
-    # mini: an RS00 at the shin's end, in the thigh box's band (stator on the shin, output outboard), and a
-    # foot (ankle) or hand (wrist) on its output -- the knee idiom again, one joint further down
+    # mini: the end joint (ankle / wrist) is driven, not carried: its RS00 sits high in the shin, DM below the
+    # knee (clear of the thigh box at any knee angle), and a pushrod parallel to the shin turns the foot / hand
+    # crank -- a parallelogram, 1:1. Light extremities, the knee idiom kept: motor inline in the limb's band.
     del parts['paw']
     shin_T = th @ knee @ ry(-rel)
     m0, m1 = IL_SHIN[1] + 1.0, IL_SHIN[1] + 1.0 + L.RS00_L
-    eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ (ry(rel - th_t) if end == 'ankle' else np.eye(4))   # foot level, hand inline
-    parts[f'rs00-{end}'] = cyl(L.RS00_D / 2, m0, m1, z=-LS).apply_transform(shin_T)
+    a = rel - th_t if end == 'ankle' else 0.0                # foot level, hand inline
+    cx, cz = CR * math.cos(math.radians(a)), -CR * math.sin(math.radians(a))   # crank vector, shin frame
+    yl = m1 + 1.0                                            # crank layer (motor output face / foot side plate)
+    yr_ = yl + L.T + 0.5                                     # rod layer
+    parts[f'rs00-{end}'] = cyl(L.RS00_D / 2, m0, m1, z=-DM).apply_transform(shin_T)
+    crank = L.stadium([(0, 0, 40), (cx, cz, 16)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.circle(cx, cz, 6.4))
+    parts[f'crank-{end}'] = xz(crank, yl, L.T).apply_transform(trimesh.transformations.translation_matrix([0, 0, -DM])).apply_transform(shin_T)
+    rod = L.stadium([(cx, cz - DM, 14), (cx, cz - LS, 14)]).difference(L.circle(cx, cz - DM, 6.4)).difference(L.circle(cx, cz - LS, 6.4))
+    pins = [trimesh.creation.cylinder(radius=3, segment=[[cx, yl - 0.5, cz + zz], [cx, yr_ + 2 * L.T + 1, cz + zz]], sections=24) for zz in (-DM, -LS)]
+    parts[f'link-{end}'] = trimesh.util.concatenate([xz(rod, yr_, 2 * L.T)] + pins).apply_transform(shin_T)
+    parts[f'pivot-{end}'] = trimesh.creation.cylinder(radius=4, segment=[[0, IL_SHIN[0] - 1, -LS], [0, yl + L.T, -LS]], sections=24).apply_transform(shin_T)
+    eT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a)
+    lobe = (CR, 0)                                           # foot / hand crank pin, in its own frame
     if end == 'ankle':
-        ank = L.unary_union([L.circle(0, 0, 60), L.box(-40, -46, 60, -30)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3))
-        sole = trimesh.creation.box(extents=[130, m1 + 4 - IL_SHIN[0] + 8, 2 * L.T]).apply_translation([12, (IL_SHIN[0] - 8 + m1 + 4) / 2, -46 - L.T])
-        foot = trimesh.util.concatenate([xz(ank, m1 + 1, L.T), sole])
+        ank = L.unary_union([L.circle(0, 0, 40), L.stadium([(0, 0, 30), (*lobe, 16)]), L.box(-40, -46, 60, -30)]).difference(L.circle(0, 0, 8.4)).difference(L.circle(*lobe, 6.4))
+        sole = trimesh.creation.box(extents=[130, yl + L.T + 4 - IL_SHIN[0] + 8, 2 * L.T]).apply_translation([12, (IL_SHIN[0] - 8 + yl + L.T + 4) / 2, -46 - L.T])
+        foot = trimesh.util.concatenate([xz(ank, yl, L.T), sole])
     else:
-        hand = L.stadium([(0, 0, 32), (0, -70, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.rounded(-8, -58, 8, -30, 6))
-        foot = xz(hand, m1 + 1, L.T)
+        hand = L.unary_union([L.stadium([(0, 0, 30), (0, -70, 22)]), L.stadium([(0, 0, 30), (*lobe, 16)])]) \
+            .difference(L.circle(0, 0, 8.4)).difference(L.circle(*lobe, 6.4)).difference(L.rounded(-8, -58, 8, -30, 6))
+        foot = xz(hand, yl, L.T)
     parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(eT)
     return parts
 
@@ -633,7 +648,7 @@ def humanoid_mini(arm_pose=(90.0, 12.0), leg=(170.0, 220.0), arm=(150.0, 170.0),
     yy = 42.0                                             # hip-yaw axes = roll axes: a roll motor yaws in its own
                                                           # circle (r 38), so the pair sits 84 apart, not 63
     y0 = yy - IL_ABAD                                     # leg plane 86 (tiny: 75.6)
-    y0a = y0 + HY_OUT[1] - IL_SHIN[0] + L.PAW_D / 2       # arms outboard of the legs
+    y0a = y0 + HY_OUT[1] - IL_SHIN[0] + 8.0                 # arms just outboard of the legs: paddle hands, no paw ball
     ya = y0a + IL_ABAD
     chest = ya + 20.0
     H, T2 = 41.0, 2 * L.T                                 # skins' inner faces at z = +/-H, as the quad decks
@@ -661,7 +676,7 @@ def humanoid_mini(arm_pose=(90.0, 12.0), leg=(170.0, 220.0), arm=(150.0, 170.0),
     extra.append(('rs00-waist', cyl(L.RS00_D / 2, xf, xf + L.RS00_L)))
     extra.append(('rs00-waist-out', cyl(L.OUT_PCD / 2 + 4, xf - T2 - 1.0, xf)))
     for s in (1, -1):
-        extra.append((f'int-battery.{"l" if s > 0 else "r"}', L.tri(Manifold.cube((44, 50, 70)).translate((xf + 4, s * 70 - 25, -35)))))
+        extra.append((f'int-battery.{"l" if s > 0 else "r"}', L.tri(Manifold.cube((44, 50, 70)).translate((xf + 4, s * 60 - 25, -35)))))
     # pelvis: top wall takes the waist output; the two hip-yaw RS00 stand between its walls, outputs down
     xp = xf - T2 - 1.0                                    # pelvis top wall's top face
     xpb = xp - T2 - 1.0 - L.RS00_L - 1.0                  # bottom wall's top face
