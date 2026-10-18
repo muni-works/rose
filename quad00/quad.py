@@ -430,7 +430,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
 
 
 
-def ankle2_geom(LS, DM, CR, e, beta=5.0, phi=180.0, h=25.0, gap=9.0):
+def ankle2_geom(LS, DM, CR, e, beta=-12.0, phi=180.0, h=25.0, gap=9.0, cgap=7.0):
     """the two-motor ankle in the shin frame (x fore, y out, z up the shin; knee at the origin): a shin BOX of
     two plates with both ankle motors as spacers, facing opposite ways (the thigh-box idiom). Motor A (upper)
     drives a crank + rod OUTSIDE the outer plate, motor B (lower) a crank + rod INSIDE the inner plate."""
@@ -438,9 +438,9 @@ def ankle2_geom(LS, DM, CR, e, beta=5.0, phi=180.0, h=25.0, gap=9.0):
     DM1 = DM
     DM2 = DM + e['D'] + 2.0
     y_os = m0 + e['L'] + 1.0                                 # outer shin plate
-    yA = y_os + L.T + 1.0                                    # crank A layer (also the foot's outer side plate)
+    yA = y_os + L.T + cgap                                   # crank A layer (also the foot's post), on a spacer: posts roll clear of the box
     yRA = yA + L.T + gap                                     # rod A layer (2T); `gap` lets the rod lean as the foot rolls
-    yB = IL_SHIN[0] - 1.0 - L.T                              # crank B layer (foot's inner side plate)
+    yB = IL_SHIN[0] - cgap - L.T                             # crank B layer (foot's inner post)
     yRB = yB - gap - 2 * L.T                                 # rod B layer
     yc = (yB + yA + L.T) / 2                                 # roll axis, centred in the U
     # cranks and foot lobes both sit `beta` off square at neutral, so the K1 pitch range (-50..20) is centred
@@ -501,7 +501,7 @@ def _bar(P, Q, w, t):
 
 
 def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank):
-    CR = 0.7 * e['D']                                        # long cranks: less crank swing per degree of roll (swept: 0.7 D, beta 5)
+    CR = 0.8 * e['D']                                        # long cranks: less crank swing per degree of roll (swept: 0.8 D, beta -12)
     G = ankle2_geom(LS, DM, CR, e)
     ry = lambda d_: trimesh.transformations.rotation_matrix(np.radians(d_), [0, 1, 0])
     cyl = lambda r, y0, y1, z: trimesh.creation.cylinder(radius=r, segment=[[0, y0, z], [0, y1, z]], sections=64)
@@ -856,7 +856,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
-                    arm_pose=(90.0, 12.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False):
+                    arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -884,7 +884,8 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         T2_ = 2 * L.T
         s2h0 = (-T2_ - da['IPOUT']) - ((-T2_ - 1.0 - mw['L'] - 1.0) - T2_ - 1.0 - T2_ - 1.0 - my['L'] - 1.0 - T2_ - 1.0 - L.T
                                        - ((MOTORS[legpk]['D'] + 7.0) / 2 + 8.0))
-        reach = arm[0] + arm[1] + 70.0 * ka + 11.0 * ka        # shoulder axis to the hanging hand's tip
+        reach = arm[0] + (ma['D'] + 7.0) / 2                   # shoulder axis to the bottom of the elbow: only the elbows
+                                                              # must clear the thighs; forearms work in front of them
         chest_h = max(chest_h, reach + (MOTORS[legpk]['D'] + 7.0) / 2 + 20.0 - s2h0)
     H = max(41.0, ma['D'] / 2 + 12.0, mw['D'] / 2 + 12.0, my['D'] / 2 + 12.0)
     T2 = 2 * L.T
@@ -927,6 +928,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     extra += [('chassis-pelvis-front', ext(pskin, 'xy', H, L.T)), ('chassis-pelvis-back', ext(pskin, 'xy', -H - L.T, L.T))]
     xo = xpb - T2 - 1.0
     th, rel = stance(stand * sum(leg), *leg)
+    th, rel = -th, -rel                                   # knees bend FORWARD: toward the toes and the face
     parts = inline_parts(th, rel, end='ankle', LT=leg[0], LS=leg[1], mot=legpk, ab_mot=legm, end_mot=legm, dual=ankle_roll)
     hip_x = xo - L.T - ((mpk['D'] + 7.0) / 2 + 8.0)
     zr, yr = dl['IPOUT'], y0 + dl['ABAD']
