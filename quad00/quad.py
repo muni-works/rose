@@ -543,7 +543,7 @@ def humanoid4(leg_pose=(84.0, -12.0), arm_pose=(100.0, 70.0), hip_x=140.0):
                 posed=poses, only=True, world=R, ground=True)
 
 
-def humanoid5(hip_a=190.0, arm_pose=(100.0, 70.0)):
+def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
     """the mini quad's chassis, upright, with hip roll. Built in the quad's body frame (x = spine), then
     stood up. Arms: the quad's front pair, exactly as on the quad (ab/ad output on the top wall -> shoulder
     yaw). Legs: a hip-yaw RS00 hangs from the pelvis wall (the quad's rear wall); an L-bracket on its output
