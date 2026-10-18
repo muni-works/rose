@@ -584,7 +584,7 @@ def humanoid5(hip_a=140.0, arm_pose=(100.0, 70.0)):
     # legs, in body coordinates: leg frame (x_l fore-aft, y_l out, z_l down) -> body (z, y, -x)
     leg_hh = 0.96 * (HY_L + HY_SHIN_L)
     th, rel = stance(leg_hh)
-    parts = inline_parts(th, rel)
+    parts = inplane_parts(th, rel)                        # roll motor centred on the hip: no seat
     yaw0 = -wall - 2 * L.T                                # yaw stator back on the pelvis wall's underside
     yaw_out = yaw0 - L.RS00_L - 1.0
     hip_x = yaw_out - L.T - 34.0                          # hip axis 34 below the bracket (thigh box r32)
@@ -598,12 +598,13 @@ def humanoid5(hip_a=140.0, arm_pose=(100.0, 70.0)):
         ys = s * foot_y
         extra.append((f'rs00-yaw.{tag}', trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[yaw0, ys, 0], [yaw0 - L.RS00_L, ys, 0]], sections=64)))
         # L-bracket: a plate on the yaw output (YZ) + a roll wall (XY) taking the module's ab/ad (roll) output
-        zr = AB_OUT                                       # roll output face, body z (the module's fore-aft)
+        zr = IP_OUT                                       # roll output face, body z: 26.5 off the hip axis
         yr = s * (y0 + IL_ABAD)
         y_lo, y_hi = sorted((ys + s * 36, yr - s * 36))
         top = L.rounded(y_lo, -36, y_hi, zr + 2 * L.T, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, at=(ys, 0)))
         extra.append((f'chassis-bracket.{tag}', ext(top, 'yz', yaw_out - L.T, L.T)))
         rw = L.rounded(hip_x - 36, y_lo, yaw_out, y_hi, 8).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(hip_x, yr)))
+        rw = rw.difference(L.circle(hip_x, yr, 16))
         extra.append((f'chassis-rollwall.{tag}', ext(rw, 'xy', zr, 2 * L.T)))
     legs = [('al', hip_a, 1, 'yoke'), ('ar', hip_a, -1, 'yoke')]
     poses = {'yoke': inline_parts(*arm_pose)}
