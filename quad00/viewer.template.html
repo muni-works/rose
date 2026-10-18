@@ -62,6 +62,7 @@ canvas:active { cursor: grabbing; }
     <button id="v-quad" aria-pressed="false">Tiny quad</button>
     <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
     <button id="v-mini" aria-pressed="false">Mini humanoid</button>
+    <button id="v-k1" aria-pressed="false">Booster K1</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -82,7 +83,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__' };
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', k1: '__K1_GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -133,6 +134,7 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
+  k1: 'Booster K1 for reference: 95 cm, 19.5 kg, 22 DoF -- its own URDF + meshes (BSD-3, BoosterRobotics/booster_assets), arms lowered',
   all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, one style, RobStride only, zero gears',
   quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
   humanoid: 'tiny humanoid: 19 RS00, ~56 cm, ~10 kg est. -- the most RS00 carries (walking knee 94%); waist, hip yaw, pushrod ankle + wrist',
@@ -151,11 +153,13 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
   body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
     m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
+  k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xeceef1, metalness: 0.05, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
 const GROUP = name =>
-  /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
@@ -213,8 +217,8 @@ function load(which, done) {
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
 }
 
-const ORDER = ['quad', 'humanoid', 'mini'];
-const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid' };
+const ORDER = ['quad', 'humanoid', 'mini', 'k1'];
+const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid', k1: 'Booster K1' };
 function settle(g) {                     // stand the model on the floor (world y = 0)
   g.position.z = 0; g.position.y = 0; root.updateMatrixWorld(true);
   const b = new THREE.Box3().setFromObject(g);
@@ -293,17 +297,6 @@ function decorate(list) {
     const h = b.max.y - b.min.y;
     refs.add(tag(`${NAMES[k]} · ${(h / 10).toFixed(0)} cm`, new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 40, (b.min.z + b.max.z) / 2)));
     x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z1 = Math.max(z1, b.max.z);
-  }
-  // Booster K1 for comparison: a ghost of its height (95 cm) and stance width (~ 35 cm), behind the mini
-  const mini = list.find(([k]) => k === 'mini');
-  if (mini) {
-    const b = mini[1], g = new THREE.Mesh(new THREE.BoxGeometry(220, 950, 350),
-      new THREE.MeshBasicMaterial({ color: 0x6fa8ff, transparent: true, opacity: 0.08, depthWrite: false }));
-    const e = new THREE.LineSegments(new THREE.EdgesGeometry(g.geometry), new THREE.LineBasicMaterial({ color: 0x6fa8ff, transparent: true, opacity: 0.6 }));
-    const cx = b.max.x + 170;
-    g.position.set(cx, 475, 0); e.position.copy(g.position);
-    refs.add(g, e, tag('Booster K1 · 95 cm · 19.5 kg', new THREE.Vector3(cx, 1000, 0), 26));
-    x1 = Math.max(x1, cx + 110);
   }
   // 1 m pole, 100 mm bands, left of the row
   const pole = new THREE.Group();

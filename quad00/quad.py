@@ -297,6 +297,7 @@ def pocket(prof, keep, rim=8.0, rib=7.0, struts=(), min_area=120.0):
 
 POCKETED = []                                           # every pocketed profile, for dfm.py
 SHIN_PROFILES = []                                      # last two-motor shin's plates (profile, y0, t), for shin_check.py
+LIMB_PROFILES = {}                                      # last limb module's plates by segment, for limb_check.py
 
 
 def shapely_mirror(p):
@@ -362,6 +363,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
     outer = pocket(box_thigh, thigh_keep, struts=tr).difference(hon(m['out'])).difference(hon(m['back'], phase=45, at=(0, -LT)))
     shin = L.stadium([(0, 0, hub_d + 4), (0, -LS, 22 * k)]).difference(hon(m['out'])) \
         .difference(L.rounded(-5, -LS + 32 * k, 5, -32 * k, 5))
+    LIMB_PROFILES['thigh'] = [(inner, HY_IN[0], L.T), (outer, OUTY[0], L.T)]
     knee = trimesh.transformations.translation_matrix([0, 0, -LT])
     th = ry(th_t)
     fl = L.unary_union([L.circle(0, 0, W - 8), L.box(BASE[0], -26 * k, 0, 26 * k)]).convex_hull
@@ -385,6 +387,7 @@ def inline_parts(th_t, rel, end=None, LT=HY_L, LS=HY_SHIN_L, DM=None, CR=None, m
         st = warren((0, -rh), (0, -DM + rm), e['D'] / 2 - 6, 2) + warren((0, -DM - rm), (0, -LS + rp), 8 * k, max(2, int((LS - DM) / 70)))
         shin = pocket(shin, [(0, 0, rh), (0, -DM, rm), (0, -LS, rp)], rim=7.0, struts=st).difference(hon(m['out'])) \
             .difference(L.holes_on(e['back'][0], e['back'][1], e['hole'], phase=45, at=(0, -DM))).difference(L.circle(0, -LS, 8.4 * k))
+    LIMB_PROFILES['shin'] = [(shin, IL_SHIN[0], 2 * L.T)]
     parts = {
         'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
         'thigh-outer': xz(outer, OUTY[0], L.T).apply_transform(th),
@@ -557,6 +560,7 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, 
         outer = outer.difference(L.holes_on(e['front'][0], e['front'][1], e['hole'], at=(0, -DM1)))
     hub = L.circle(0, 0, hub_d)
     SHIN_PROFILES[:] = [(inner, IL_SHIN[0], 2 * L.T), (outer, y_os, L.T)]     # for shin_check.py
+    LIMB_PROFILES['shin'] = list(SHIN_PROFILES)
     parts['shin'] = trimesh.util.concatenate([xz(inner, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1]),
                                               xz(outer, y_os, L.T)]).apply_transform(shin_T)
     oring = e['out'][0] / 2 + 4
