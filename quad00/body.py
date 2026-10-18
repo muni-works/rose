@@ -32,7 +32,7 @@ import leg as L
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-HIP_X, PLANE = 210.0, 102.0                          # hips at +/-210, leg planes at +/-102
+HIP_X, PLANE = 210.0, 87.0                           # hips at +/-210, leg planes at +/-87: 301 overall (Go2 ~310)
 YA = PLANE + L.ABAD_Y                                # ab/ad axes at +/-60
 CLIP = PLANE - L.Y_FASTEN                            # thigh's innermost point (E-clip): 92.1
 WIDE = CLIP - 4.0                                    # chest / belly half-width: 4 mm from the swinging thigh
