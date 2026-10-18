@@ -640,7 +640,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 
 
-def humanoid_mini(arm_pose=(90.0, 12.0), leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=32.0):
+def humanoid_mini(arm_pose=(90.0, 12.0), leg=(170.0, 220.0), arm=(150.0, 170.0), chest_h=86.0):
     """MINI humanoid, ~70 cm: the largest an all-RS00 humanoid carries (walking knee ~94% of 0.7 x 14 N.m).
     The tiny's limb module stretched (thigh 170, shin 220; arm 150/170), plus waist yaw, hip yaw, ankle, wrist -- 19 RS00.
     Every added joint uses an idiom already in the design: the waist and hip-yaw motors are spacers
