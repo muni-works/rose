@@ -285,7 +285,17 @@ def pocket(prof, keep, rim=8.0, rib=7.0, struts=(), min_area=120.0):
     win = prof.buffer(-rim, join_style=1).difference(solid).buffer(-1.5, join_style=1).buffer(1.5, join_style=1)
     geoms = getattr(win, 'geoms', [win])
     win = L.unary_union([g for g in geoms if g.area >= min_area])
-    return prof.difference(win) if not win.is_empty else prof
+    out = prof.difference(win) if not win.is_empty else prof
+    # DFM: no web thinner than 1.5 x stock -- thicken any (they appear where a strut meets a ring at a shallow angle)
+    w = 1.5 * L.T
+    thin = out.difference(out.buffer(-w / 2, join_style=1).buffer(w / 2, join_style=1))
+    if thin.area > 0.5:
+        out = out.union(thin.buffer(w / 2, join_style=1).intersection(prof))
+    POCKETED.append(out)
+    return out
+
+
+POCKETED = []                                           # every pocketed profile, for dfm.py
 
 
 def shapely_mirror(p):
@@ -568,14 +578,37 @@ def ankle2(parts, th, knee, rel, th_t, LS, DM, CR, e, en, hub_d, m, k, xz, ank, 
     yz = lambda prof, x0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, x0)), 'yz'))
     rollpin = trimesh.creation.cylinder(radius=4 * k, segment=[[-sb - L.T - 1.5, yc, -hh], [sb + L.T + 1.5, yc, -hh]], sections=24)
     body_ = [sole, xz(post, yA, L.T), xz(post, yB, L.T), yz(lug, sb + 1.0, L.T), yz(lug, -sb - 1.0 - L.T, L.T), rollpin]
+    grip = None
     if end != 'ankle':
-        # hand: the same U-joint and posts on a short palm, with a paddle (tool plate) carrying on along the forearm
-        hl = 70 * k
-        paddle = L.unary_union([L.rounded(-0.2 * fl_, -fz - hl, 0.45 * fl_, -fz, 10)]).difference(L.rounded(0, -fz - hl + 14, 0.3 * fl_, -fz - 14, 6))
-        body_.append(xz(paddle, yc - L.T, 2 * L.T))
+        # hand: a gripper in the house idiom -- under the U-joint's palm, an RS00 is a spacer in a palm BOX
+        # (two plates), axis across the hand; the box plates run on into a fixed two-tine finger, and the RS00's
+        # output carries the moving finger; TPU pads on both tips meet on the hand's centre plane
+        g_ = MOTORS['rs00']
+        zg = -fz - 2 * L.T - 8.0 - g_['D'] / 2                  # gripper axis, below the palm
+        yg0, yg1 = yc - g_['L'] / 2, yc + g_['L'] / 2            # motor
+        ya_, yb_ = yg0 - 1.0 - L.T, yg1 + 1.0                    # palm box plates (back on ya_, output through yb_)
+        fl_len = 95.0 * k / 1.54
+        box_p = L.unary_union([L.stadium([(0, zg, g_['D'] + 10), (0.25 * fl_, -fz - 2 * L.T, 20)]),
+                               L.stadium([(-6, zg, 26), (-0.28 * fl_len, zg - fl_len, 14)])])     # fixed finger: the box runs on
+        box_p = box_p.difference(L.circle(0, zg, g_['out'][0] + 11))
+        box_b = box_p.difference(L.holes_on(g_['back'][0], g_['back'][1], g_['hole'], phase=45, at=(0, zg)))
+        box_p = pocket(box_p, [(0, zg, g_['D'] / 2 + 4)], rim=6.0, struts=[((0, zg), (-0.2 * fl_len, zg - fl_len + 10))])
+        body_ += [xz(box_b, ya_, L.T), xz(box_p, yb_, L.T)]
+        gmot = trimesh.creation.cylinder(radius=g_['D'] / 2, segment=[[0, yg0, zg], [0, yg1, zg]], sections=48)
+        mov = L.unary_union([L.circle(0, zg, g_['out'][0] + 13), L.stadium([(6, zg, 22), (0.3 * fl_len, zg - fl_len, 14)])]) \
+            .difference(L.holes_on(g_['out'][0], g_['out'][1], g_['hole'], at=(0, zg)))
+        mov = pocket(mov, [(0, zg, g_['out'][0] / 2 + 6)], rim=5.0, struts=[((0, zg), (0.25 * fl_len, zg - fl_len + 10))])
+        grip = trimesh.util.concatenate([xz(mov, yb_ + L.T + 1.0, L.T)])
+        pad = lambda x_: trimesh.creation.box(extents=[10, yb_ + 2 * L.T + 1 - ya_, 22]).apply_translation([x_, (ya_ + yb_ + 2 * L.T + 1) / 2, zg - fl_len + 4])
+        body_.append(pad(-0.28 * fl_len + 7))
+        grip = trimesh.util.concatenate([grip, pad(0.3 * fl_len - 7)])
     foot = trimesh.util.concatenate(body_)
     Rx = trimesh.transformations.rotation_matrix(np.radians(ank[1]), [1, 0, 0], [0, yc, -hh])
-    parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a) @ Rx)
+    hT = shin_T @ trimesh.transformations.translation_matrix([0, 0, -LS]) @ ry(a) @ Rx
+    parts['foot' if end == 'ankle' else 'hand'] = foot.apply_transform(hT)
+    if grip is not None:
+        parts['finger'] = grip.apply_transform(hT)
+        parts['rs00-grip'] = gmot.apply_transform(hT)
     return parts
 
 AB_OUT = IP_OUT                                         # ab/ad output face (body side) from the hip: 26.5
@@ -1062,7 +1095,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
         hip_a, legs, poses = xp, [], {}
         y0a = y0a  # for the width note
     count = {}
-    arms_ = ([armm] * 6 + [wristm] * 4 + [arm_yawm] * 2) if arm_chain else ([armm] * 6 + [wristm or armm] * 2)
+    arms_ = ([armm] * 6 + [wristm] * 4 + ['rs00'] * 2 + [arm_yawm] * 2) if arm_chain else ([armm] * 6 + [wristm or armm] * 2)
     for mm in [legpk] * 4 + [legm] * (6 if ankle_roll else 4) + arms_ + [yawm] * 2 + [waistm] + ([head] * 2 if head else []):
         count[mm] = count.get(mm, 0) + 1
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
@@ -1085,7 +1118,7 @@ def humanoid_mini():
     """MINI humanoid, a full Booster K1 replacement (~95 cm, K1's 22 DoF + a waist = 23): RS04 hip pitch + knee
     (an RS06 knee walks at ~120% of 0.7 x peak once the plates are weighed), RS06 hip roll, ankles + waist,
     RS02 arms + hip yaw, RS00 wrists + head; ankle pitch AND roll from two shin motors and two pushrods. Lengths scaled 1.36x from the tiny; knee sized like the tiny (walking ~0.7 x RS06 peak)."""
-    return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(120.0, 230.0), chest_h=120.0,
+    return humanoid_family('mini humanoid', leg=(230.0, 300.0), arm=(120.0, 220.0), chest_h=120.0,
                            legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00', ankle_roll=True, head='rs00',
                            legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02', arm_pose=(0.0, 60.0))
 

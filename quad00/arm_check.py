@@ -5,7 +5,7 @@ import quad as Q
 from manifold3d import Manifold, Mesh
 
 toM = lambda m: Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
-KW = dict(leg=(230., 300.), arm=(120., 230.), chest_h=120., legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00',
+KW = dict(leg=(230., 300.), arm=(120., 220.), chest_h=120., legm='rs06', armm='rs06', yawm='rs02', waistm='rs06', wristm='rs00',
           ankle_roll=True, head='rs00', legpk='rs04', rect=True, arm_chain=True, arm_yawm='rs02')
 JOINT = ({'pivot-ankle', 'foot'}, {'pivot-wrist', 'hand'})
 STATIC_ARM = ('rs06-shoulderpitch',)          # inside the chest, does not move with the arm
