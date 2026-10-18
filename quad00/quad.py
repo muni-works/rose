@@ -22,12 +22,12 @@ import leg as L
 HERE = os.path.dirname(os.path.abspath(__file__))
 A = os.path.join(HERE, 'out', 'assembly')
 YOKE_SIDE = ('yoke', 'rs00-abad')          # the parts that flip fore-aft on a corner-pod front leg
-BODY_Z = (-40.0, 70.0)
+BODY_Z = (-36.0, 46.0)                     # low: just clears the ab/ad motors (r 28.5) with a 3 mm skin
 
 
 def wall(ys, t=2 * L.T):
     """YZ end/cross wall carrying ab/ad RS00s (back pattern + cable hole) at each y in ys."""
-    half = max(abs(y) for y in ys) + 36
+    half = max(abs(y) for y in ys) + 30            # just past the motor body (r 28.5)
     b = L.rounded(-half, BODY_Z[0], half, BODY_Z[1], 8)
     for y in ys:
         b = b.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(y, 0))).difference(L.circle(y, 0, 16))
@@ -38,33 +38,46 @@ def box(x0, x1, y0, y1, z0, z1):
     return Manifold.cube((x1 - x0, y1 - y0, z1 - z0)).translate((x0, y0, z0))
 
 
+def softbox(x0, x1, y0, y1, z0, z1, r_plan=18.0, r_side=14.0):
+    """a box rounded in plan (corners) and in elevation (top and bottom edges): plan profile
+    extruded in z, intersected with the side profile extruded in y."""
+    plan = CrossSection(L.rings(L.rounded(x0, y0, x1, y1, r_plan)), FillRule.EvenOdd).extrude(z1 - z0).translate((0, 0, z0))
+    side = L.to_world(CrossSection(L.rings(L.rounded(x0 - 1, z0, x1 + 1, z1, r_side)), FillRule.EvenOdd)
+                      .extrude(y1 - y0 + 2).translate((0, 0, y0 - 1)), 'xz')
+    return plan ^ side
+
+
 def corner():
+    """a low slab as wide as the legs; it runs out to the ab/ad output faces, so each leg plugs
+    straight into a corner of it."""
     hip_x, plane = 260.0, 74.0
     ya = plane + L.ABAD_Y                                  # ab/ad axis y: 32
-    wall_x = hip_x - L.X_BULK[0]                           # end wall inner... the motor back face: 170
+    wall_x = hip_x - L.X_BULK[0]                           # ab/ad back faces: 169.8
+    end = hip_x - L.X_ABAD[0] - 1.0                        # slab ends 1 mm short of the ab/ad output face
+    half = plane + L.Y_FLANGE + L.YOKE_T                   # as wide as the outer yoke flanges
     legs = [(t, x, s, x > 0) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
-    shell = box(-wall_x + 2 * L.T, wall_x - 2 * L.T, -137.6, 137.6, *BODY_Z)
-    walls = [(wall([ya, -ya]), [wall_x - 2 * L.T, 0, 0]),                        # front wall, motors on its face
-             (wall([ya, -ya]), [-wall_x, 0, 0])]
+    shell = softbox(-end, end, -half, half, *BODY_Z, r_plan=24, r_side=16)
+    walls = [(wall([ya, -ya]), [wall_x - 2 * L.T, 0, 0]), (wall([ya, -ya]), [-wall_x, 0, 0])]
     return dict(hip_x=hip_x, plane=plane, legs=legs, body=L.tri(shell), walls=walls,
-                note='body 327 x 275 x 110, overall ~600 x 275')
+                note=f'slab {2 * end:.0f} x {2 * half:.0f} x {BODY_Z[1] - BODY_Z[0]:.0f}, overall ~{2 * (hip_x + 40):.0f} x {2 * half:.0f}')
 
 
 def side():
+    """dog-shaped: a full-width chest ahead of the front hips and a full-width belly between the hip
+    pairs (it houses the rear ab/ad pair); the body necks in only where the legs tuck against it."""
     hip_x, plane = 210.0, 102.0
     ya = plane + L.ABAD_Y                                  # 60
-    half = ya + 32                                         # body half-width: holds the ab/ad motors
+    half = ya + 32                                         # shoulder half-width: holds the ab/ad motors
+    waist = plane - (L.Y_FLANGE + L.YOKE_T) - 3            # waist half-width: clears the yoke flanges by 3
     legs = [(t, x, s, False) for t, x, s in (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
-    front = hip_x + L.X_BULK[1]
-    shell = box(-hip_x - 60, front, -half, half, *BODY_Z)
-    inner = plane - (L.Y_FLANGE + L.YOKE_T) - 3            # pocket for each hip cluster, open to the side
-    for x in (hip_x, -hip_x):
-        for s in (1, -1):
-            y0, y1 = sorted((s * inner, s * (half + 1)))
-            shell = shell - box(x - 42, x + L.X_YOKE + L.YOKE_T + 2, y0, y1, BODY_Z[0] - 1, BODY_Z[1] + 1)
+    sh0, sh1 = L.X_YOKE + L.YOKE_T + 1.0, L.X_BULK[1]      # shoulder spans, relative to its hip
+    shell = softbox(-hip_x - 70, hip_x + sh1, -waist, waist, *BODY_Z, r_plan=14, r_side=14)    # spine, tail to chest
+    shell = shell + softbox(hip_x + sh0, hip_x + sh1, -half, half, *BODY_Z, r_plan=16, r_side=14)  # chest
+    shell = shell + softbox(-hip_x + sh0, hip_x - 44, -half, half, *BODY_Z, r_plan=22, r_side=14)  # belly
     walls = [(wall([ya, -ya]), [x + L.X_BULK[0], 0, 0]) for x in (hip_x, -hip_x)]
     return dict(hip_x=hip_x, plane=plane, legs=legs, body=L.tri(shell), walls=walls,
-                note=f'body {front + hip_x + 60:.0f} x {2 * half:.0f} x 110 with hip pockets, overall ~{2 * (plane + L.Y_FLANGE + L.YOKE_T):.0f} wide')
+                note=f'chest + belly {2 * half:.0f} wide, necked to {2 * waist:.0f} at the hips, length {2 * hip_x + 70 + sh1:.0f}, '
+                     f'overall ~{2 * (plane + L.Y_FLANGE + L.YOKE_T):.0f} wide')
 
 
 def build(arch):
