@@ -520,6 +520,39 @@ def humanoid3():
     return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
 
 
+def humanoid4(leg_pose=(84.0, -12.0), arm_pose=(100.0, 70.0), hip_x=140.0):
+    """the mini quad reared up: its own body (two walls taking the ab/ad outputs + decks) and its own four
+    limbs, mounted exactly as on the quad; every hip pitches ~90 deg so the limbs hang along the spine, and
+    the whole robot stands on its rear legs. ab/ad axes now run along the spine: hip/shoulder yaw."""
+    import importlib
+    import body as B
+    importlib.reload(B)
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD
+    B.configure(80.0, hip_x=hip_x, ends=False)
+    B.PLANE, B.YA = y0, y0 + IL_ABAD
+    B.WIDE = y0 + IL_SHIN[0] - 4.0
+    B.WALL_TAKES_OUTPUT = True
+    wall = hip_x - AB_OUT
+    B.X_END = wall
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
+    B.INTERNALS = [('battery', (70, 105, 44), (0, 0, -18), 0.85), ('compute', (60, 63, 28), (0, 0, 22), 0.12)]
+    # rear pair (legs): yoke as drawn, ab/ad ahead into the body; front pair (arms): yoke flipped, ab/ad behind
+    legs = [('ll', -hip_x, 1, 'none'), ('lr', -hip_x, -1, 'none'), ('al', hip_x, 1, 'yoke'), ('ar', hip_x, -1, 'yoke')]
+    poses = {'none': inline_parts(*leg_pose), 'yoke': inline_parts(*arm_pose)}
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    head = Manifold.cube((60, 80, 60)).translate((hip_x + 40, -40, -30))         # above the shoulders
+    neck = Manifold.cylinder(hip_x + 40 - wall, 14, 14, 32).rotate((0, 90, 0)).translate((wall + 2 * L.T, 0, 0))
+    extra.append(('head', L.tri(head + neck)))
+    note = (f'mini quad reared up: same body ({2 * wall:.0f} long between its walls) and limbs; '
+            f'shoulder-to-hip {2 * hip_x:.0f}; ab/ad become yaw')
+    B.configure(87.0)
+    # stand it up: body x -> world z (nose up), body z -> world -x
+    R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
+    return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+                posed=poses, only=True, world=R, ground=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -561,11 +594,15 @@ def build(arch):
     for i, (w, at) in enumerate(arch['walls']):
         scene.add_geometry(w, geom_name=f'chassis-wall-{i}', node_name=f'chassis-wall-{i}',
                            transform=trimesh.transformations.translation_matrix(at))
+    if 'world' in arch:
+        scene.apply_transform(arch['world'])
+    if arch.get('ground'):
+        scene.apply_translation([0, 0, -scene.bounds[0][2]])
     return scene
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid), ('humanoid2', humanoid2), ('humanoid3', humanoid3), ('humanoid4', humanoid4)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
