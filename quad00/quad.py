@@ -253,6 +253,77 @@ def hybrid():
                 replace=hybrid_parts(th_t, 2 * th_t), only=True)
 
 
+# --- inline: the hybrid with the knee motor flipped (back on the outer plate, output through the inner
+#     plate) so the shin runs down the INSIDE of the thigh box, nearly under the ab/ad axis. Knees point
+#     inward ("><": front back, rear forward) so a folding foot rises on the far side of the hip from the
+#     ab/ad and yoke base.
+IL_SHIN = (-(1.0 + L.T + 1.0 + 2 * L.T + 1.0), -(1.0 + L.T + 2.0))   # inboard of the yoke flange layer
+IL_ABAD = IL_SHIN[0] - 3.0 - L.RS00_D / 2                            # ab/ad body clears the shin layer by 3
+
+
+def inline_parts(th_t, rel):
+    xz = lambda prof, y0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, y0)), 'xz'))
+    ry = lambda d: trimesh.transformations.rotation_matrix(np.radians(d), [0, 1, 0])
+    cyl = lambda r, y0, y1, x=0, z=0: trimesh.creation.cylinder(radius=r, segment=[[x, y0, z], [x, y1, z]], sections=64)
+    box_thigh = L.stadium([(0, 0, 64), (0, -HY_L, 64)])
+    inner = box_thigh.difference(L.circle(0, 0, 50)).difference(L.circle(0, -HY_L, 40))
+    inner = inner.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
+    outer = box_thigh.difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(0, -HY_L)))
+    outer = outer.difference(L.rounded(-12, -HY_L + 45, 12, -45, 10))
+    shin = L.stadium([(0, 0, 40), (0, -HY_L, 22)]).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3)) \
+        .difference(L.rounded(-5, -HY_L + 32, 5, -32, 5))
+    knee = trimesh.transformations.translation_matrix([0, 0, -HY_L])
+    th = ry(th_t)
+    fl = L.unary_union([L.circle(0, 0, 56), L.box(0, -22, L.X_YOKE + L.YOKE_T, 28)]).convex_hull
+    boss = L.circle(0, 0, 46).difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45))
+    base = L.box(IL_ABAD - 22, -22, HY_FL[0], 28).difference(L.holes_on(L.OUT_PCD, L.OUT_N, L.M3, phase=90, at=(IL_ABAD, 0)))
+    base_m = L.tri(L.to_world(CrossSection(L.rings(base), FillRule.EvenOdd).extrude(L.YOKE_T).translate((0, 0, L.X_YOKE)), 'yz'))
+    hub = L.circle(0, 0, 36)
+    paw = trimesh.creation.icosphere(subdivisions=3, radius=L.PAW_D / 2).apply_translation([0, sum(IL_SHIN) / 2, -HY_L])
+    return {
+        'thigh-inner': xz(inner, HY_IN[0], L.T).apply_transform(th),
+        'thigh-outer': xz(outer, HY_OUT[0], L.T).apply_transform(th),
+        'shin': trimesh.util.concatenate([xz(shin, IL_SHIN[0], 2 * L.T), xz(hub, IL_SHIN[1], HY_MOT[0] - IL_SHIN[1])])
+                .apply_transform(ry(-rel)).apply_transform(knee).apply_transform(th),
+        'paw': paw.apply_transform(ry(-rel)).apply_transform(knee).apply_transform(th),
+        'rs00-hip': cyl(L.RS00_D / 2, *HY_MOT),
+        'rs00-knee': cyl(L.RS00_D / 2, *HY_MOT).apply_transform(knee).apply_transform(th),
+        'yoke': trimesh.util.concatenate([xz(fl, HY_FL[0], L.T), xz(boss, HY_FL[1], HY_MOT[0] - HY_FL[1]), base_m]),
+        'rs00-abad': trimesh.creation.cylinder(radius=L.RS00_D / 2, segment=[[L.X_ABAD[0], IL_ABAD, 0], [L.X_ABAD[1], IL_ABAD, 0]], sections=64),
+    }
+
+
+def inline():
+    import importlib
+    import body as B
+    importlib.reload(B)
+    hip_x = 190.0
+    y0 = L.RS00_D / 2 + 3.0 - IL_ABAD                   # ab/ad pair 6 mm apart at the centre line
+    ya = y0 + IL_ABAD
+    B.configure(80.0, hip_x=hip_x, ends=False)
+    B.PLANE, B.YA = y0, ya
+    B.WIDE = y0 + IL_SHIN[0] - 4.0                       # 4 mm inside the shin layer
+    wall = hip_x - L.X_BULK[0]
+    B.RIBS = {'nose': (wall - 2 * L.T, 2 * L.T, B.WIDE), 'mid': (-wall, 2 * L.T, B.WIDE)}
+    B.INTERNALS = [('battery', (140, 105, 44), (20, 0, -18), 1.70), ('compute', (95, 63, 28), (-40, 0, 22), 0.12),
+                   ('power', (60, 45, 22), (-60, 0, -26), 0.10)]
+    hh = 255.0 * HY_L / 150.0
+    th_t = np.degrees(np.arccos((hh / 2) / HY_L))
+    # front: yoke + ab/ad mirrored fore-aft (ab/ad behind the hip, into the body), knee back as drawn.
+    # rear: yoke as drawn (ab/ad ahead, into the body), the rest of the leg mirrored -> knee forward.
+    legs = [(t, x, s, 'yoke' if x > 0 else 'leg') for t, x, s in
+            (('fl', hip_x, 1), ('fr', hip_x, -1), ('rl', -hip_x, 1), ('rr', -hip_x, -1))]
+    extra = [(f'chassis-{n}', L.tri(m)) for n, m, _, _ in B.plates()]
+    extra += [(f'int-{n}', L.tri(m)) for n, m, _ in B.internals()]
+    foot = y0 + sum(IL_SHIN) / 2
+    lever = foot - ya
+    note = (f'inline: {2 * (y0 + HY_OUT[1]):.0f} wide overall, feet at +/-{foot:.0f}, ab/ad lever {lever:.0f} mm '
+            f'(hybrid 99); body {2 * B.X_END:.0f} x {2 * B.WIDE:.0f}; knees point inward')
+    B.configure(87.0)
+    return dict(hip_x=hip_x, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note,
+                replace=inline_parts(th_t, 2 * th_t), only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -269,7 +340,11 @@ def build(arch):
     for tag, x, s, flip in arch['legs']:
         place = trimesh.transformations.translation_matrix([x, s * arch['plane'], 0]) @ np.diag([1, s, 1, 1.0])
         for n in geoms:
-            m = place @ np.diag([-1, 1, 1, 1.0]) if (flip and n in YOKE_SIDE) else place
+            if flip == 'leg':
+                mirrored = n not in YOKE_SIDE
+            else:
+                mirrored = bool(flip) and n in YOKE_SIDE
+            m = place @ np.diag([-1, 1, 1, 1.0]) if mirrored else place
             scene.graph.update(frame_to=f'{n}.{tag}', frame_from=scene.graph.base_frame, matrix=m, geometry=n)
     if arch.get('body') is not None:
         scene.add_geometry(arch['body'], geom_name='chassis-body', node_name='chassis-body')
@@ -282,7 +357,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
