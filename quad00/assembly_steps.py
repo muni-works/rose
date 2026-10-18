@@ -76,7 +76,7 @@ def viewer():
     import quad
     quad.main()
     page = page.replace('__GLB_BASE64__', base64.b64encode(open(glb, 'rb').read()).decode())
-    for k in ('corner', 'side', 'inboard', 'direct', 'hybrid', 'inline', 'dog'):
+    for k in ('corner', 'side', 'inboard', 'direct', 'hybrid', 'inline', 'dog', 'humanoid'):
         page = page.replace(f'__{k.upper()}_GLB_BASE64__',
                             base64.b64encode(open(os.path.join(A, f'quad-{k}.glb'), 'rb').read()).decode())
     open(os.path.join(HERE, 'out', 'viewer.html'), 'w').write(page)

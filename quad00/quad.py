@@ -363,6 +363,43 @@ def dog():
                 replace=inline_parts(th_t, 2 * th_t), only=True)
 
 
+def humanoid():
+    """the hybrid limb module on a biped, mounted exactly as on the quad: every limb hangs from a
+    fore-aft ab/ad RS00 whose back face bolts to the torso's back plate. Legs: whole module mirrored
+    fore-aft (knee bends forward). Arms: only the yoke flipped (elbow points back)."""
+    y0 = 70.0                                             # inner thigh plate at |y| = 70, as on the quad
+    ya = y0 + HY_ABAD                                     # ab/ad axes at +/-35
+    torso_h = 200.0                                       # hip axis -> shoulder axis
+    leg_bend, arm_up, arm_bend = 12.0, 10.0, 80.0         # pose (deg)
+    x_back = -L.X_BULK[0]                                 # ab/ad back faces, behind the limb axes
+    hip_z = 2 * HY_L * np.cos(np.radians(leg_bend)) + L.PAW_D / 2
+    legs = [('ll', 0.0, 1, 'all', hip_z), ('lr', 0.0, -1, 'all', hip_z),
+            ('al', 0.0, 1, 'yoke', hip_z + torso_h), ('ar', 0.0, -1, 'yoke', hip_z + torso_h)]
+    poses = {'all': hybrid_parts(leg_bend, 2 * leg_bend), 'yoke': hybrid_parts(arm_up, arm_bend)}
+    ext = lambda prof, plane, w0, t: L.tri(L.to_world(CrossSection(L.rings(prof), FillRule.EvenOdd).extrude(t).translate((0, 0, w0)), plane))
+    half = ya + L.RS00_D / 2 + 4                          # back plate holds both ab/ad of a pair
+    back = L.rounded(-half, hip_z - 40, half, hip_z + torso_h + 40, 10)
+    for z in (hip_z, hip_z + torso_h):
+        for s in (1, -1):
+            back = back.difference(L.holes_on(L.BACK_PCD, L.BACK_N, L.M3, phase=45, at=(s * ya, z))).difference(L.circle(s * ya, z, 16))
+    wide = y0 - 8.0                                        # torso sides 8 mm inside the limbs
+    x_front = 40.0
+    side = L.rounded(x_back, hip_z - 30, x_front, hip_z + torso_h + 30, 10)
+    cap = L.rounded(x_back, -wide, x_front, wide, 10)
+    extra = [('chassis-back', ext(back, 'yz', x_back - 2 * L.T, 2 * L.T)),
+             ('chassis-front', ext(L.rounded(-wide, hip_z + 50, wide, hip_z + torso_h + 30, 10), 'yz', x_front, L.T)),
+             ('chassis-side-l', ext(side, 'xz', wide - L.T, L.T)), ('chassis-side-r', ext(side, 'xz', -wide, L.T)),
+             ('chassis-cap', ext(cap, 'xy', hip_z + torso_h + 30, L.T))]
+    extra.append(('int-battery', L.tri(Manifold.cube((70, 2 * wide - 20, 126)).translate((x_back + 6, -wide + 10, hip_z + 50)))))
+    extra.append(('int-compute', L.tri(Manifold.cube((28, 63, 95)).translate((x_back + 84, -31.5, hip_z + 70)))))
+    head = Manifold.cube((70, 80, 60)).translate((-35 - 20, -40, hip_z + torso_h + 30 + L.T + 25))
+    neck = Manifold.cylinder(25, 14, 14, 32).translate((-20, 0, hip_z + torso_h + 30 + L.T))
+    extra.append(('head', L.tri(head + neck)))
+    note = (f'humanoid: hybrid limbs x4, hips {hip_z:.0f} high, overall ~{hip_z + torso_h + 30 + 90:.0f} tall, '
+            f'{2 * (y0 + HY_SHIN[1]):.0f} wide; legs and arms hang from fore-aft ab/ad on one back plate')
+    return dict(hip_x=0.0, plane=y0, legs=legs, body=None, walls=[], extra=extra, note=note, posed=poses, only=True)
+
+
 def build(arch):
     scene = trimesh.Scene()
     files = sorted(f for f in glob.glob(os.path.join(A, '*.stl'))
@@ -376,8 +413,20 @@ def build(arch):
     for n, g in geoms.items():
         g.merge_vertices()
         scene.add_geometry(g, geom_name=n, node_name=f'{n}.proto', transform=np.diag([1e-6, 1e-6, 1e-6, 1.0]))
-    for tag, x, s, flip in arch['legs']:
-        place = trimesh.transformations.translation_matrix([x, s * arch['plane'], 0]) @ np.diag([1, s, 1, 1.0])
+    for n_pose, gset in arch.get('posed', {}).items():
+        for n, g in gset.items():
+            scene.add_geometry(g, geom_name=f'{n}~{n_pose}', node_name=f'{n}~{n_pose}.proto',
+                               transform=np.diag([1e-6, 1e-6, 1e-6, 1.0]))
+    for leg in arch['legs']:
+        tag, x, s, flip = leg[:4]
+        z = leg[4] if len(leg) > 4 else 0.0
+        place = trimesh.transformations.translation_matrix([x, s * arch['plane'], z]) @ np.diag([1, s, 1, 1.0])
+        if 'posed' in arch:
+            for n in arch['posed'][flip]:
+                mirrored = flip == 'all' or (flip == 'yoke' and n in YOKE_SIDE)
+                m = place @ np.diag([-1, 1, 1, 1.0]) if mirrored else place
+                scene.graph.update(frame_to=f'{n}.{tag}', frame_from=scene.graph.base_frame, matrix=m, geometry=f'{n}~{flip}')
+            continue
         for n in geoms:
             if flip == 'leg':
                 mirrored = n not in YOKE_SIDE
@@ -396,7 +445,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog)):
+    for name, fn in (('corner', corner), ('side', side), ('inboard', inboard), ('direct', direct), ('hybrid', hybrid), ('inline', inline), ('dog', dog), ('humanoid', humanoid)):
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)
