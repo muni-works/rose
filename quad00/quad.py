@@ -320,7 +320,7 @@ def inline():
     import importlib
     import body as B
     importlib.reload(B)
-    hip_x = 99.8 + AB_OUT                                # walls stay at +/-99.8: the 200 body
+    hip_x = 190.0
     y0 = L.RS00_D / 2 + 3.0 - IL_ABAD                   # ab/ad pair 6 mm apart at the centre line
     ya = y0 + IL_ABAD
     B.configure(80.0, hip_x=hip_x, ends=False)
