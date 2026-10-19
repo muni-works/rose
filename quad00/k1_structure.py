@@ -109,7 +109,7 @@ def leg(J, side):
     y_pf = hp[1] - s * (m06['L'] / 2 + G)                 # pitch back face (inboard)
     y_pi = face(y_pf, -s)                                  # inner hip plate w0
     y0, y1 = span(rc[1] - s * 20, y_pf - s * T)        # butts against the inner hip plate
-    R1 = L.unary_union([L.circle(rc[1], rc[2], m06['out'][0] + 30), L.rounded(y0, hp[2] - 10, y1, rc[2], 8)])
+    R1 = L.unary_union([L.circle(rc[1], rc[2], m06['out'][0] + 30), L.rounded(y0, hp[2] + (4 if V['name'] == 'mini' else -10), y1, rc[2], 8)])   # mini: stops above the pitch axis, the rest would show inboard of the hip drum
     R1 = R1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(rc[1], rc[2])))
     out.append((f'chassis-hipR.{tag}l', plate(R1, 'yz', x_ro)))
     # -- hip inner: xz plate on the pitch stator back, forward to hip R; stays below the roll can and above the yaw

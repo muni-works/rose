@@ -230,8 +230,14 @@ def design():
         t = side[0].lower(); lay = KS.layout(J, side)
         collar = M_(got[f'trim-hipneck.{t}l']) + M_(got[f'trim-hipyaw.{t}l'])
         pel = pel - sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04)          # the thigh swings under the pelvis
-        hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']; hc_ = hr_m.bounds.mean(0)
-        hipr = M_(hr_m).translate(list(-hc_)).scale([2.2, 1.0, 1.0]).translate(list(hc_)) + M_(got[f'cover-hip.{t}l'])   # slot with running clearance
+        hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
+        # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
+        upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] - 20.0]))
+        gv = np.concatenate([upper.vertices + np.array([dx, 0, 0]) for dx in (-2.0, 2.0)])
+        guard = tm(Manifold.hull_points(gv.astype(np.float32)))
+        add(f'trim-hipguard.{t}l', guard)
+        gc_ = guard.bounds.mean(0)
+        hipr = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m) + M_(got[f'cover-hip.{t}l'])   # slot with running clearance
         pel = pel - sweep_union(hipr, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)             # and rolls out from it
     add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band

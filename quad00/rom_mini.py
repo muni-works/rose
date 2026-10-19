@@ -11,7 +11,7 @@ THRESH = 200.0                                  # mm^3 of new overlap = a collis
 # body -> name prefixes ({t} = side tag); the order of CHAIN is parent -> child
 BODIES = {
     'torso': ['cover-chest', 'accent-waist', 'cover-pelvis', 'trim-neckbase', 'rs06-roll.', 'chassis-rollmount.', 'torso-', 'rs00-sp.', 'rs00-headyaw'],
-    'roll.{t}': ['chassis-hipR.{t}l', 'chassis-hipinner.{t}l', 'rs06-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
+    'roll.{t}': ['chassis-hipR.{t}l', 'trim-hipguard.{t}l', 'chassis-hipinner.{t}l', 'rs06-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
     'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'rs02-yaw.{t}l', 'trim-hipyaw.{t}l', 'trim-hipneck.{t}l'],
     'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'rs06-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
     'knee.{t}': ['shin-', 'rs00-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],
