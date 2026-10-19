@@ -4,8 +4,9 @@ than the joints, a swell for thigh / calf / forearm), the hip pitch-roll-yaw clu
 our own chest + pelvis blocks with the accent waist, an egg helmet with a visor band, shoes, mittens.
 K1 frame: x fore, y left, z up (mm). Joint positions + axes from the K1 URDF (arms lowered)."""
 import math
-import numpy as np, trimesh
-from manifold3d import Manifold
+import numpy as np
+import k1_structure as KS, trimesh
+from manifold3d import Manifold, Mesh, OpType, JoinType
 import k1 as K, k1_teardown as KT, quad as Q
 from design import ring, tm, M_, cyl
 
@@ -71,22 +72,27 @@ def design():
         jp = lambda n: J[n]['p']; ja = lambda n: J[n]['axis']
         # ---- leg: hip lobe (pitch + roll + yaw), thigh, knee, calf (holds the 2 ankle motors), ankle, shoe
         hp, hr, hy, kn, an = (f'{side}_Hip_Pitch', f'{side}_Hip_Roll', f'{side}_Hip_Yaw', f'{side}_Knee_Pitch', f'{side}_Ankle_Pitch')
-        Hp, cp, rp, Lp = housing(jp(hp), ja(hp), 'rs06')
-        Hr, cr, rr, Lr = housing(jp(hr), ja(hr), 'rs06')
-        Hy, cy_, ry_, Ly = housing(jp(hy), ja(hy), 'rs02', pad=3.0)
+        lay = KS.layout(J, side)                       # drums sit on the plate structure's motors, not the K1's frames
+        Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), 'rs06')
+        Hr, cr, rr, Lr = housing(lay['roll'][0], ja(hr), 'rs06')
+        Hy, cy_, ry_, Ly = housing(lay['yaw'][0], ja(hy), 'rs02', pad=3.0)
         # hip pod: the pitch and roll drums as one smooth form; the yaw drum below it is a gunmetal collar
-        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, Hr.vertices]).astype(np.float32)))
+        # the pod wraps the drums and the hip brackets (2.5 mm wall over the plates)
+        brk = np.concatenate([m.vertices for n, m in KS.leg(J, side) if n.split('-')[0] == 'chassis' and 'pelvis' not in n])
+        ctr = (lay['pitch'][0] + lay['roll'][0]) / 2
+        brk = brk + 2.5 * (brk - ctr) / np.linalg.norm(brk - ctr, axis=1, keepdims=True)
+        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, Hr.vertices, brk]).astype(np.float32)))
         add(f'cover-hippod.{tag}l', pod)
         add(f'puck-hipcaps.{tag}l', trimesh.util.concatenate([cp, cr]))
         add(f'trim-hipyaw.{tag}l', Hy)
-        yaw_bot = jp(hy) - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
-        Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06')
+        yaw_bot = lay['yaw'][0] - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
+        Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=24.0)    # long enough to enclose the thigh plate pair + output flange
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        add(f'cover-thigh.{tag}l', bone(yaw_bot - np.array([0, 0, 2.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=0.92, half_w=Lk / 2 - 5))
+        add(f'cover-thigh.{tag}l', bone(yaw_bot - np.array([0, 0, 2.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=1.3, n=3.0, half_w=Lk / 2))
         ank = jp(an)
-        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 22.0]), 24.0, swell=1.12, flat=0.9, half_w=Lk / 2 - 5))
-        Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0)     # the ankle U-joint: a small drum, no motor in it
+        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 4.0]), 34.0, swell=1.12, flat=1.3, n=3.0, half_w=Lk / 2))
+        Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
         add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
         lo, hi = F.bounds
@@ -154,8 +160,33 @@ def design():
     return out
 
 
+PERM = {0: np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]), 1: np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]), 2: np.eye(3)}
+
+
+def clip(plate, shell, wall=2.0):
+    """router-cut profile = plate profile inside the shell's section, inset by the wall (plates are planar)."""
+    P = Manifold(Mesh(vert_properties=np.asarray(plate.vertices, np.float32), tri_verts=np.asarray(plate.faces, np.uint32)))
+    lo, hi = plate.bounds
+    ax = int(np.argmin(hi - lo))
+    R = PERM[ax]
+    Rt = lambda R_: np.hstack([R_, np.zeros((3, 1))])
+    Sr = shell.transform(Rt(R))
+    sec = (Sr.slice(lo[ax] + 0.1) ^ Sr.slice(hi[ax] - 0.1)).offset(-wall, JoinType.Round)
+    cut = Manifold.extrude(sec, hi[ax] - lo[ax] + 2).translate([0, 0, lo[ax] - 1]).transform(Rt(R.T))
+    return tm(P ^ cut)
+
+
+def structure(out=None):
+    """the plate frame clipped inside its shells; motors pass through untouched."""
+    out = out or design()
+    S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
+                                for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim')], OpType.Add)
+    return [(n, m if n.startswith('rs') else clip(m, S)) for n, m in KS.structure()]
+
+
 def model():
     out = design()
+    out = out + structure(out)
     return dict(hip_x=0.0, plane=0.0, legs=[], body=None, walls=[], extra=out,
                 note='mini humanoid: our coaxial housings + bone links on the K1 joint layout, RobStride inside every drum',
                 posed={}, only=True, ground=True)
