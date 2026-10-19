@@ -159,6 +159,24 @@ def cuts_src(src, cuts, o):
     return src
 
 
+def band_src(spec, o):
+    """a parting-line band in loon (mirrors k1_design.band_manifold)."""
+    import k1_design as KD
+    if spec[0] == 'slab':
+        _, a, at = spec
+        lo = np.full(3, -1e3) - o; sz = np.full(3, 2e3); lo[a] = at - o[a] - KD.GROOVE_W / 2; sz[a] = KD.GROOVE_W
+        return f'[translate {f(lo[0])} {f(lo[1])} {f(lo[2])} [cube {f(sz[0])} {f(sz[1])} {f(sz[2])}]]'
+    _, a, c, hu, hv, rc = spec
+    ax, u, v = KD._axes(a)
+    def prism(hu_, hv_, rc_):
+        pts = KD.rrect(np.zeros(3), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), hu_, hv_, rc_)[:, :2].tolist()
+        p0 = np.asarray(c, float) - o - ax * 300.0; e = ax * 600.0
+        segs = ' '.join(f'[line {f(p[0])} {f(p[1])} {f(q[0])} {f(q[1])}]' for p, q in zip(pts, pts[1:] + pts[:1]))
+        return (f'[extrude {f(e[0])} {f(e[1])} {f(e[2])} [sketch {f(p0[0])} {f(p0[1])} {f(p0[2])} '
+                f'{f(u[0])} {f(u[1])} {f(u[2])} {f(v[0])} {f(v[1])} {f(v[2])} #[{segs}]]]')
+    return f'[difference {prism(hu - KD.GROOVE_W, hv - KD.GROOVE_W, max(rc - KD.GROOVE_W, 1.0))} {prism(hu, hv, rc)}]'
+
+
 def shell_src(m, o):
     """native source for a ring-built shell (loft, optional cuts) or the visor; None -> import the mesh."""
     md = m.metadata
@@ -169,7 +187,14 @@ def shell_src(m, o):
         oval = f'[translate {f(oc[0])} {f(oc[1])} {f(oc[2])} [scale {f(sx)} {f(sy)} {f(sz)} [rotate 0 90 0 [translate 0 0 -0.5 [cylinder-n 1 1 96]]]]]'
         return f'[intersection {oval} {big}]'
     if 'loft' in md:
-        return cuts_src(loft_src(md['loft'], o), md.get('cut', []), o)
+        src = loft_src(md['loft'], o)
+        if md.get('grooves'):                 # parting lines: shell minus (bands ^ skin), skin = shell minus its inset copy
+            import k1_design as KD
+            inset = loft_src(KD.inset_rings(md['loft'], KD.GROOVE_D), o)
+            bands = [band_src(sp, o) for sp in md['grooves']]
+            band = bands[0] if len(bands) == 1 else '[union ' + ' '.join(bands) + ']'
+            src = f'[difference [intersection {band} [difference {inset} {src}]] {src}]'
+        return cuts_src(src, md.get('cut', []), o)
     return None
 
 

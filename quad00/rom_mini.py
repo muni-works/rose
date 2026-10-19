@@ -20,7 +20,7 @@ BODIES = {
     'sr.{t}': ['arm-upperU', 'rs00-ep.{t}a', 'cover-upperarm.{t}a', 'trim-upperarm.{t}a'],
     'ep.{t}': ['arm-elbowE', 'rs00-ey.{t}a', 'cover-elbowfork.{t}a', 'cover-elbow.{t}a', 'puck-elbow.{t}a'],
     'ey.{t}': ['arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
-    'hyaw': ['neck-N', 'rs00-headpitch', 'trim-neck', 'trim-headhub'],
+    'hyaw': ['neck-N', 'rs00-headpitch', 'cover-neck', 'trim-headhub'],
     'hpitch': ['head-H1', 'cover-helmet', 'visor-face', 'puck-ear'],
 }
 LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']

@@ -45,6 +45,57 @@ def hull_rings(rings, **meta):
     return m
 
 
+GROOVE_D, GROOVE_W = 1.2, 1.6          # parting lines: depth into the skin, width
+
+
+def inset_rings(rings, d):
+    """each section ring pulled in by d on both of its half-axes (an inset copy of a ring-built shell)."""
+    out = []
+    for r in rings:
+        r = np.asarray(r, float); c = r.mean(0)
+        _, _, vt = np.linalg.svd(r - c)
+        u, v = vt[0], vt[1]
+        x, y = (r - c) @ u, (r - c) @ v
+        hx, hy = max(np.abs(x).max(), d + 0.5), max(np.abs(y).max(), d + 0.5)
+        out.append(c + np.outer(x * (hx - d) / hx, u) + np.outer(y * (hy - d) / hy, v))
+    return out
+
+
+def _axes(a):
+    """(axis, u, v) world unit vectors for a band along axis index a."""
+    E = np.eye(3)
+    return E[a], E[(a + 1) % 3], E[(a + 2) % 3]
+
+
+def band_manifold(spec):
+    """the region a parting line runs through: ('frame', axis, centre, half_u, half_v, rc) = a rounded-rect outline
+    GROOVE_W wide, as a prism right through the part along axis; ('slab', axis, at) = a GROOVE_W slab across it."""
+    if spec[0] == 'slab':
+        _, a, at = spec
+        lo = np.full(3, -1e3); sz = np.full(3, 2e3); lo[a] = at - GROOVE_W / 2; sz[a] = GROOVE_W
+        return Manifold.cube(list(sz)).translate(list(lo))
+    _, a, c, hu, hv, rc = spec
+    ax, u, v = _axes(a)
+    def prism(hu_, hv_, rc_):
+        pts = rrect(np.zeros(3), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), hu_, hv_, rc_)[:, :2]
+        cs = __import__('manifold3d').CrossSection([pts.tolist()])
+        m = Manifold.extrude(cs, 600.0).translate([0, 0, -300.0])
+        R = np.column_stack([u, v, ax])                    # local (u, v, axis) -> world
+        return m.transform(np.hstack([R, np.asarray(c, float).reshape(3, 1)]))
+    return prism(hu, hv, rc) - prism(hu - GROOVE_W, hv - GROOVE_W, max(rc - GROOVE_W, 1.0))
+
+
+def grooved(m, specs):
+    """cut parting lines into a ring-built shell: shell minus (bands ^ skin), skin = shell minus its inset copy."""
+    rings = m.metadata['loft']
+    L = M_(m)
+    skin = L - Manifold.hull_points(np.concatenate(inset_rings(rings, GROOVE_D)).astype(np.float32))
+    bands = Manifold.batch_boolean([band_manifold(s) for s in specs], OpType.Add)
+    out = tm(L - (bands ^ skin))
+    out.metadata = dict(m.metadata, grooves=list(specs))
+    return out
+
+
 def rrect(c, v, w, a, b, rc, k=10):
     """a rounded rectangle section: flat sides, corner radius rc."""
     rc = min(rc, a * 0.98, b * 0.98)
@@ -146,7 +197,8 @@ def design():
         yo = np.array([0, s * cyo, 0])
         ck0 = 0.84 if KS.V['name'] == 'mini' else 0.98       # tiny: the first ankle can sits right under the knee
         calf = bone(jp(kn) + yo, rk * ck0, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=KS.V['flat'], n=3.0, half_w=chw)
-        add(f'cover-calf.{tag}l', calf)
+        cmid = (jp(kn) + ank) / 2 + yo
+        add(f'cover-calf.{tag}l', grooved(calf, [('frame', 0, cmid + np.array([0, 0, 18.0]), chw - 9.0, 0.30 * np.linalg.norm(jp(kn) - ank), 10.0)]))   # a shin panel, front and back
         calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=KS.V['flat'], n=3.0, half_w=chw + 3.0))
         if KS.V['name'] == 'mini':
             add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
@@ -208,7 +260,9 @@ def design():
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     Hl0 = KS.head_layout(J); z_d1 = Hl0['yaw'][0][2] - 25.5 - KS.G - KS.T
     zc1 = max(zs + 28 * KS.R(), z_d1 + KS.T + 3.0)                # the chest closes over the neck-yaw deck
-    add('cover-chest', block(lo[0] + 4, hi[0] - 6, KS.CHEST(), 40.0 * KS.R(), zc1, taper=(1.0, 1.0), dome=14.0 * KS.R()))
+    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), 40.0 * KS.R(), zc1, taper=(1.0, 1.0), dome=14.0 * KS.R())
+    zc_mid = 40.0 * KS.R() + (zc1 - 40.0 * KS.R()) * 0.56
+    add('cover-chest', grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.62, (zc1 - 40.0 * KS.R()) * 0.36, 14.0 * KS.R())]))   # chest panel, front + back
     add('accent-waist', block(lo[0] + 8, hi[0] - 10, KS.CHEST() - 3.0, 14.0 * KS.R(), 40.0 * KS.R(), RC=18.0 * KS.R()))
     # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
     # then a narrow keel dropping between the hip drums
@@ -247,8 +301,8 @@ def design():
     else:                                                       # yaw motor up in the neck: a wider neck from just above the chest dome
         nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (33.0, 36.0)
     nz1 = Hl['pitch'][0][2] - 10.0
-    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 14.0) for z_ in (nz0, nz1)]
-    add('trim-neck', hull_rings(neck))
+    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 0.8 * min(nw)) for z_ in (nz0, nz1)]
+    add('cover-neck', hull_rings(neck))                       # satin like the shells: a quiet neck, not a pale block
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], 31.5, nz0 + 4 - yz0))
