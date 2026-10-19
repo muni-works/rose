@@ -161,6 +161,8 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x0b0d10, metalness: 0.1, roughness: 0.08, clearcoat: 1.0, clearcoatRoughness: 0.03 }) },
   sole: { label: 'rubber soles', swatch: '#1c1d20',
     m: new THREE.MeshPhysicalMaterial({ color: 0x1d1e21, metalness: 0, roughness: 0.9 }) },
+  accent: { label: 'accent (signal orange)', swatch: '#ff6a2b',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xff5e1f, metalness: 0.1, roughness: 0.35, clearcoat: 0.6 }) },
   cover: { label: 'covers (printed shells)', swatch: '#f1efe9',
     m: new THREE.MeshPhysicalMaterial({ color: 0xf2f0ea, metalness: 0.0, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.4 }) },
   k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
@@ -168,9 +170,9 @@ const MATS = {
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
-const SKIN = new Set(['cover', 'puck', 'visor', 'sole']);
+const SKIN = new Set(['cover', 'puck', 'visor', 'sole', 'accent']);
 const GROUP = name =>
-  /^cover-/.test(name) ? 'cover' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.

@@ -147,8 +147,15 @@ def skin(extra):
     out.append(('cover-chest', loft(chest, up=[1, 0, 0], n=3.4, slices=8, margin=3.0, design=chest_flare, dome_k=0.12)))
     out.append(('cover-pelvis', loft(pelvis, up=[1, 0, 0], n=3.0, slices=5, margin=3.0, dome_k=0.12)))
     y0_, y1_, z0_, z1_ = T[:, 1].min(), T[:, 1].max(), T[:, 2].min(), T[:, 2].max()
-    band = np.array([[x, y, z] for x in (xw - 10, xw + 10) for y in (y0_, y1_) for z in (z0_, z1_)])   # the plates are sparse: span them
-    out.append(('puck-waist', loft(band, up=[1, 0, 0], n=3.4, slices=1, margin=1.0, dome=False)))
+    band = np.array([[x, y, z] for x in (xw - 24, xw + 24) for y in (y0_, y1_) for z in (z0_, z1_)])   # the plates are sparse: span them
+    out.append(('accent-waist', loft(band, up=[1, 0, 0], n=3.4, slices=1, margin=2.0, dome=False)))
+    for nm in ('cover-chest', 'cover-pelvis'):
+        sh = dict(out)[nm]
+        out.append((f'puck-seam-{nm[6:]}', seam(sh, [0, 0, 1.0])))
+    ch = dict(out)['cover-chest']
+    xl = ch.vertices[:, 0].min() + 14.0                         # an accent line under the chest
+    out.append(('accent-chestline', _tm(Manifold(_mm(ch.copy().apply_translation(-ch.vertices.mean(0)).apply_scale(1.012).apply_translation(ch.vertices.mean(0))))
+                                         ^ Manifold(_mm(trimesh.creation.box(extents=[2.0, 600, 600]).apply_translation([xl, 0, 0]))))))
     # hip + shoulder pitch: a puck on the torso flank over each pitch motor's output
     ymax = T[:, 1].max()
     for base, tag, m in flank:
@@ -161,6 +168,7 @@ def skin(extra):
     H = np.concatenate([H, hc + (H - hc) * np.array([1.0, 1.12, 1.0])])     # a little wider than the mechanism
     hs = loft(H, up=[1, 0, 0], n=2.0, slices=8, margin=6.0, dome_k=0.6)    # oval section, deep domes: an egg, not a can
     out.append(('cover-head', hs))
+    out.append(('puck-seam-head', seam(hs, [0, 0, 1.0])))
     # visor: a rounded patch on the face, a hair proud, dark gloss
     c = hs.vertices.mean(0)
     ext = hs.extents
@@ -186,30 +194,82 @@ def skin(extra):
             if seg == 'foot':                                    # a low shoe: the sole + 28 mm, not the U-joint above it
                 A = np.concatenate(P)
                 P = [A[A[:, 0] <= A[:, 0].min() + 28.0]]
-            sh = loft(np.concatenate(P), up=axis, n=n_, slices=10, margin=MARGIN if seg != 'foot' else 4.0)
+            if seg == 'foot':      # a sculpted shoe on a dark rubber sole
+                upper, sole = shoe(np.concatenate(P))
+                out += [(f'cover-{seg}.{tag}', upper), (f'sole.{tag}', sole)]
+                continue
+            sh = loft(np.concatenate(P), up=axis, n=n_, slices=10, margin=MARGIN)
             out.append((f'cover-{seg}.{tag}', sh))
-            if seg == 'foot':      # dark rubber sole under the foot shell
-                lo = sh.vertices[:, 0].min()
-                sm = Manifold(_mm(sh)).trim_by_plane((-1.0, 0.0, 0.0), -(lo + 9.0)).to_mesh()   # keep x <= lo + 9
-                sole = trimesh.Trimesh(np.asarray(sm.vert_properties)[:, :3], np.asarray(sm.tri_verts))
-                out.append((f'sole.{tag}', sole.apply_translation([-0.6, 0, 0])))
-        # hands: mittens -- a loft from the forearm end along the forearm, flattened
+            if seg in ('thigh', 'shin', 'upperarm', 'forearm'):    # parting line: front / back halves
+                out.append((f'puck-seam-{seg}.{tag}', seam(sh, [0, 0, 1.0])))
+        # hands: mittens with a thumb, along the forearm
         paw = [m for base, m in items if base == 'paw']
         fore = [m.vertices for base, m in items if base == 'shin']
         if paw and fore:
             pc = paw[0].centroid
-            F = np.concatenate(fore)
-            c_, u_, v_, w_ = _frame(F)
+            c_, u_, v_, w_ = _frame(np.concatenate(fore))
             if (pc - c_) @ u_ < 0:
                 u_ = -u_
-            pts = [pc + u_ * t + v_ * s * 12 + w_ * r * 22 for t in np.linspace(-20, 55, 6) for s in (-1, 1) for r in (-1, 1)]
-            out.append((f'cover-hand.{tag}', loft(np.array(pts), n=2.2, slices=5, margin=4.0)))
+            if w_[2] < 0:
+                w_ = -w_                                     # thumb to the front
+            out.append((f'cover-hand.{tag}', mitten(pc, u_, v_, w_, 1 if tag.endswith('l') else -1)))
         # pucks: joint motors whose axis crosses the shells
         shells = [m for n_, m in out if n_.endswith(f'.{tag}') and n_.startswith('cover-')]
         for base, m in items:
             if re.match(PUCK_MOTORS, base):
                 out.append((f'puck-{base}.{tag}', puck(m, shells)))
     return out
+
+
+def _tm(M):
+    g = M.to_mesh()
+    return trimesh.Trimesh(np.asarray(g.vert_properties)[:, :3], np.asarray(g.tri_verts), process=False)
+
+
+def seam(shell, normal, width=1.4, proud=0.6):
+    """a parting line: the shell's section through its centre on the plane with this normal, as a thin band
+    standing `proud` mm off the surface -- reads as the groove between two moulded halves."""
+    c = shell.vertices.mean(0)
+    nrm = np.asarray(normal, float); nrm /= np.linalg.norm(nrm)
+    ext = float(np.linalg.norm(shell.extents))
+    big = Manifold(_mm(shell.copy().apply_translation(-c).apply_scale(1.0 + proud / max(shell.extents.min() / 2, 1)).apply_translation(c)))
+    slab = trimesh.creation.box(extents=[width, 3 * ext, 3 * ext])
+    x = np.array([1.0, 0, 0])
+    R = trimesh.geometry.align_vectors(x, nrm)
+    slab.apply_transform(R).apply_translation(c)
+    return _tm(big ^ Manifold(_mm(slab)))
+
+
+def mitten(paw_c, u, v, w, side):
+    """a mitten hand: a flattened palm along the forearm (u), and a thumb on the front, angled in."""
+    pts = [paw_c + u * t + v * s * 13 + w * r * 24 for t in np.linspace(-10, 62, 8) for s in (-1, 1) for r in (-1, 1)]
+    palm = loft(np.array(pts), up=u, n=2.4, slices=6, margin=3.0, dome_k=0.7)
+    root = paw_c + u * 8 + w * 20
+    tdir = (u * 0.85 + w * 0.45); tdir /= np.linalg.norm(tdir)
+    tp = [root + tdir * t + v * s * 7 + np.cross(tdir, v) * r * 8 for t in np.linspace(0, 22, 4) for s in (-1, 1) for r in (-1, 1)]
+    thumb = loft(np.array(tp), up=tdir, n=2.2, slices=4, margin=2.0, dome_k=0.6)
+    return _tm(Manifold(_mm(palm)) + Manifold(_mm(thumb)))
+
+
+def shoe(P):
+    """a sculpted foot over the foot's sole footprint P (body frame: x up, z fore): sections along the foot,
+    round heel, raised instep, a low tapered toe; returns (upper, sole)."""
+    x0 = P[:, 0].min()
+    z0, z1 = P[:, 2].min(), P[:, 2].max()
+    yc, hw = (P[:, 1].min() + P[:, 1].max()) / 2, (P[:, 1].max() - P[:, 1].min()) / 2 + 3.0
+    rings = []
+    for t in np.linspace(0, 1, 14):
+        z = z0 - 4 + t * (z1 - z0 + 10)
+        h = 22 + 22 * math.exp(-((t - 0.32) / 0.22) ** 2) - 6 * t ** 2           # instep high, toe low
+        a = hw * (0.82 + 0.18 * math.sin(math.pi * min(1.0, t / 0.8)))           # heel and toe narrower than the ball
+        if t in (0.0, 1.0):
+            a *= 0.7; h *= 0.8
+        ring = _ring(np.array([x0 + 6 + h / 2, yc, z]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a, h / 2, n=3.0)
+        rings.append(ring)
+    up = Manifold.hull_points(np.concatenate(rings).astype(np.float32))
+    sole_box = trimesh.creation.box(extents=[7.0, 2 * hw + 2, z1 - z0 + 16]).apply_translation([x0 + 3.0, yc, (z0 + z1) / 2 + 1])
+    sole = Manifold(_mm(sole_box)) ^ Manifold.hull_points(np.concatenate(rings).astype(np.float32)).scale((1.0, 1.04, 1.03)) if False else Manifold(_mm(sole_box))
+    return _tm(up), _tm(sole)
 
 
 def _mm(t):
