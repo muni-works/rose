@@ -50,7 +50,7 @@ canvas:active { cursor: grabbing; }
     <span><b>RobStride</b>, one per joint, <b>zero gears</b></span>
     <span>tiny quad: <b>12</b> RS00</span>
     <span>tiny humanoid: <b>19</b> RS00, ~<b>56 cm</b></span>
-    <span>mini humanoid: <b>29</b> DoF, RS04 / RS06 / RS02 / RS00, ~<b>113 cm</b>, rectangular torso (vs Booster K1)</span>
+    <span>mini humanoid: <b>22</b> DoF, the K1 on our stack, ~<b>99 cm</b></span>
     <span>stock <b>3.2 mm</b></span>
   </div>
 </header>
@@ -138,7 +138,7 @@ const NOTES = {
   all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, one style, RobStride only, zero gears',
   quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
   humanoid: 'tiny humanoid: 19 RS00, ~65 cm with its fixed head, ~10.7 kg est., walking knee 99%; rectangular torso, head shell; no grippers (no torque left)',
-  mini: 'mini humanoid, a full Booster K1 replacement: 29 DoF (K1 22 + waist + 4 arm + 2 grippers), arms: shoulder pitch-roll-yaw (full abduction), elbow, 2-rod wrist, ~24 kg est. -- 4 RS04 + 7 RS06 + 8 RS02 + 4 RS00; walking knee ~45% of 0.7 x peak; 2-motor pushrod ankle (pitch + roll), 2-DoF head',
+  mini: 'mini humanoid = the Booster K1 on our stack: 22 DoF, every limb pitch-roll-yaw; legs RS06 + RS02 yaw + 2 x RS00 2-rod ankle, arms + head RS00; ~99 cm, ~16 kg est., walking knee 84%',
 };
 const MATS = {
   aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',
