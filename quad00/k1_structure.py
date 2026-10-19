@@ -44,13 +44,11 @@ def layout(J, side):
     hy = J[f'{side}_Hip_Yaw']['p'].copy()
     kn = J[f'{side}_Knee_Pitch']['p'].copy()
     an = J[f'{side}_Ankle_Pitch']['p'].copy()
-    # roll: forward along x until its rear face clears the pitch can (+ gap for the output plate)
-    # roll can hugs the inside of bracket A (on the pitch output) and sits forward of the pitch can
-    y_out = hp[1] + s * (m06['L'] / 2 + G)
-    dx = m06['D'] / 2 + G + T + G + m06['L'] / 2           # pitch-to-roll spacing; centre the pair fore/aft over the yaw
-    hp = hp + np.array([dx / 2, 0, 0])
-    roll_c = np.array([hp[0] - dx, y_out - s * (G + m06['D'] / 2), hp[2]])   # aft of the pitch
-    hy = np.array([0.0, hy[1], hy[2]])                        # yaw straight under the pitch, clear of the roll can
+    # roll: inside the pelvis, axis fore/aft, inboard of the hip line (hidden); pitch: one drum under the pelvis flank;
+    # yaw: straight under the pitch, then the thigh.  (the K1 hides its roll in the trunk the same way)
+    roll_c = np.array([5.0, s * 48.0, -30.0])                # centred in the pelvis block
+    hp = np.array([0.0, hp[1], roll_c[2] - m06['D'] / 2 - G - m06['D'] / 2])
+    hy = np.array([0.0, hp[1], hp[2] - m06['D'] / 2 - G - T - G - m02['L'] / 2])
     return dict(s=s,
                 pitch=(hp, np.array([0, s * 1.0, 0]), 'rs06'),     # output outboard (+s y)
                 roll=(roll_c, np.array([1.0, 0, 0]), 'rs06'),      # output forward (+x)
@@ -63,9 +61,6 @@ def leg(J, side):
     """the leg's plates and motors."""
     P = layout(J, side)
     s = P['s']
-    # the hip brackets are drawn with the roll forward, then mirrored in x (pitch + yaw sit on x = 0)
-    mx = np.array([-1, 1, 1])
-    P = dict(P, roll=(P['roll'][0] * mx, np.array([-1.0, 0, 0]), 'rs06'), pitch=(P['pitch'][0] * mx,) + P['pitch'][1:])
     m06, m02, m00 = Q.MOTORS['rs06'], Q.MOTORS['rs02'], Q.MOTORS['rs00']
     out = []
     hp, _, _ = P['pitch']; rc, _, _ = P['roll']; yc, _, _ = P['yaw']; kc, _, _ = P['knee']; ac = P['ankle']
@@ -73,40 +68,40 @@ def leg(J, side):
     for k_ in ('pitch', 'roll', 'yaw', 'knee'):
         c, a, mo = P[k_]
         out.append((f'{mo}-{k_}.{side[0].lower()}l', motor(c, a, mo)))
-    yo = lambda y: y if s > 0 else -y - T          # plate y position for this side (plates extrude +y)
-    # -- pelvis side plate: the hip-pitch stator's back, inboard of the can
-    y_in = hp[1] - s * (m06['L'] / 2 + G)          # pitch back face
-    pel = L.unary_union([L.circle(hp[0], hp[2], m06['back'][0] + 22), L.rounded(hp[0] - 50, hp[2] - 10, hp[0] + 50, hp[2] + 110, 10)])
-    x_cut = rc[0] - m06['L'] / 2 - G - T - 2.0                # stop short of the roll bracket + can
-    pel = pel.intersection(L.box(-1e3, -1e3, x_cut, 1e3))
-    pel = pel.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(hp[0], hp[2])))
-    out.append((f'chassis-pelvisside.{side[0].lower()}l', plate(pel, 'xz', (y_in - T) if s > 0 else (y_in))))
-    # -- bracket A: on the pitch output (outboard, xz), forward to a yz plate behind the roll can's back
-    y_out = hp[1] + s * (m06['L'] / 2 + G)         # pitch output face
-    x_back = rc[0] + m06['L'] / 2 + G               # roll back face (forward end)
-    z_ytop = yc[2] + m02['L'] / 2
-    A1 = L.unary_union([L.circle(hp[0], hp[2], m06['out'][0] + 30), L.rounded(hp[0], max(rc[2] - 30, z_ytop + 2), x_back, hp[2] + 18, 10)])
-    A1 = A1.intersection(L.box(-1e3, z_ytop + 2, 1e3, 1e3))
-    A1 = A1.difference(L.rounded(rc[0] - m06['L'] / 2 - G - T - 1, -1e3, rc[0] + m06['L'] / 2, rc[2] - 30 + 1e-3, 0.5)) if False else A1
+    tag = side[0].lower()
+    span = lambda a_, b_: (min(a_, b_), max(a_, b_))
+    face = lambda c_, d_: c_ if d_ > 0 else c_ - T              # plate w0 for a plate on the +/- side of a face at c_
+    # -- roll mount (pelvis frame): yz plate on the roll stator back (aft)
+    x_rb = rc[0] - m06['L'] / 2 - G
+    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], rc[2] + 30, 8)])
+    rm = rm.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(rc[1], rc[2])))
+    out.append((f'chassis-rollmount.{tag}l', plate(rm, 'yz', x_rb - T)))
+    # -- hip R: yz plate on the roll output (fore), down + outboard to the pitch's inner plate
+    x_ro = rc[0] + m06['L'] / 2 + G
+    y_pf = hp[1] - s * (m06['L'] / 2 + G)                 # pitch back face (inboard)
+    y_pi = face(y_pf, -s)                                  # inner hip plate w0
+    y0, y1 = span(rc[1] - s * 20, y_pf - s * T)        # butts against the inner hip plate
+    R1 = L.unary_union([L.circle(rc[1], rc[2], m06['out'][0] + 30), L.rounded(y0, hp[2] - 10, y1, rc[2], 8)])
+    R1 = R1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(rc[1], rc[2])))
+    out.append((f'chassis-hipR.{tag}l', plate(R1, 'yz', x_ro)))
+    # -- hip inner: xz plate on the pitch stator back, forward to hip R; stays below the roll can and above the yaw
+    z_top = yc[2] + m02['L'] / 2 + G                       # yaw stator top
+    z_rb = rc[2] - m06['D'] / 2 - G                        # roll can bottom
+    HI = L.unary_union([L.circle(hp[0], hp[2], m06['back'][0] + 22), L.rounded(hp[0] - 30, hp[2] - 20, x_ro, z_rb, 8)])
+    HI = HI.intersection(L.box(-1e3, z_top + T + 2, 1e3, z_rb))
+    HI = HI.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(hp[0], hp[2])))
+    out.append((f'chassis-hipinner.{tag}l', plate(HI, 'xz', y_pi)))
+    # -- hip A: xz plate on the pitch output (outboard), down to the yaw-top plate
+    y_out = hp[1] + s * (m06['L'] / 2 + G)
+    A1 = L.unary_union([L.circle(hp[0], hp[2], m06['out'][0] + 30), L.rounded(hp[0] - 40, z_top, hp[0] + 40, hp[2], 10)])
+    A1 = A1.intersection(L.box(-1e3, z_top + T, 1e3, 1e3))
     A1 = A1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(hp[0], hp[2])))
-    out.append((f'chassis-hipA.{side[0].lower()}l', plate(A1, 'xz', y_out if s > 0 else y_out - T)))
-    ylo, yhi = sorted((y_out + s * T, rc[1] - s * (m06['D'] / 2 - 4)))
-    A2 = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(ylo, rc[2] - 30, yhi, rc[2] + 30, 8)])
-    A2 = A2.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(rc[1], rc[2])))
-    out.append((f'chassis-hipA2.{side[0].lower()}l', plate(A2, 'yz', x_back)))
-    # -- bracket B: on the roll output (aft face, yz), down to a horizontal plate on the yaw stator
-    x_out = rc[0] - m06['L'] / 2 - G                # roll output face (aft)
-    z_top = yc[2] + m02['L'] / 2 + G                # yaw stator top (back)
-    B1 = L.unary_union([L.circle(rc[1], rc[2], m06['out'][0] + 30), L.rounded(rc[1] - 30, z_top + T, rc[1] + 30, rc[2], 8)])
-    B1 = B1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(rc[1], rc[2])))
-    out.append((f'chassis-hipB.{side[0].lower()}l', plate(B1, 'yz', x_out - T)))
-    yb0, yb1 = sorted((yc[1] - s * 34, y_out - s * (G + 1)))
-    B2 = L.unary_union([L.circle(yc[0], yc[1], m02['back'][0] + 22), L.rounded(yc[0], yb0, x_out - T, yb1, 8)])
-    B2 = B2.intersection(L.box(-1e3, -1e3 if s > 0 else y_out + G, 1e3, y_out - G if s > 0 else 1e3))
+    out.append((f'chassis-hipA.{tag}l', plate(A1, 'xz', face(y_out, s))))
+    # -- hip B2: xy plate on the yaw stator top, out to hip A
+    yb0, yb1 = span(yc[1] - s * 40, y_out)
+    B2 = L.unary_union([L.circle(yc[0], yc[1], m02['back'][0] + 22), L.rounded(yc[0] - 40, yb0, yc[0] + 40, yb1, 8)])
     B2 = B2.difference(L.holes_on(m02['back'][0], m02['back'][1], m02['hole'], phase=45, at=(yc[0], yc[1])))
-    out.append((f'chassis-hipB2.{side[0].lower()}l', plate(B2, 'xy', z_top)))
-    flip = lambda m: (lambda mm: (mm.invert(), mm)[1])(m.copy().apply_transform(np.diag([-1.0, 1, 1, 1])))
-    out = [(n, flip(m) if (n.startswith('chassis-') or 'roll' in n or 'pitch' in n) else m) for n, m in out]
+    out.append((f'chassis-hipB2.{tag}l', plate(B2, 'xy', z_top)))
     # -- thigh: a top plate on the yaw output, an inner plate (knee stator) + outer plate down to the knee
     z_yo = yc[2] - m02['L'] / 2 - G                 # yaw output face (down)
     yk_in = kc[1] - s * (m06['L'] / 2 + G)          # knee back face (inboard)

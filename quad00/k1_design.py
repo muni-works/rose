@@ -74,14 +74,11 @@ def design():
         hp, hr, hy, kn, an = (f'{side}_Hip_Pitch', f'{side}_Hip_Roll', f'{side}_Hip_Yaw', f'{side}_Knee_Pitch', f'{side}_Ankle_Pitch')
         lay = KS.layout(J, side)                       # drums sit on the plate structure's motors, not the K1's frames
         Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), 'rs06', extra_len=26.0)
-        Hr, cr, rr, Lr = housing(lay['roll'][0], ja(hr), 'rs06')
         Hy, cy_, ry_, Ly = housing(lay['yaw'][0], ja(hy), 'rs02', pad=3.0)
-        # hip pod: the pitch and roll drums as one smooth form; the yaw drum below it is a gunmetal collar
-        # a capsule: the pitch drum swept aft to the roll -- full width on the outer flank for the bracket plates
-        aft = Hp.vertices + np.array([lay['roll'][0][0] - lay['pitch'][0][0], 0, 0])
-        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, aft, Hr.vertices]).astype(np.float32)))
-        add(f'cover-hippod.{tag}l', pod)
-        add(f'puck-hipcaps.{tag}l', trimesh.util.concatenate([cp, cr]))
+        # the hip: one drum under the pelvis flank, the same language as the knee; the roll motor hides inside the pelvis
+        pod = Hp
+        add(f'cover-hip.{tag}l', pod)
+        add(f'puck-hip.{tag}l', cp)
         add(f'trim-hipyaw.{tag}l', Hy)
         z_pb, z_yt = pod.bounds[0][2], lay['yaw'][0][2] + Ly / 2
         add(f'trim-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
@@ -133,7 +130,7 @@ def design():
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     add('cover-chest', block(lo[0] + 4, hi[0] - 6, 96.0, 40.0, zs + 28, n=2.9, taper=(0.86, 1.0), dome=18.0))
     add('accent-waist', block(lo[0] + 12, hi[0] - 14, 80.0, 14.0, 40.0, n=2.9))
-    add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 84.0, lo[2] + 22, 14.0, n=2.6, taper=(0.62, 1.0)))   # narrows downward: the pods read as hips
+    add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hn, cn, rn, Ln = housing(J['AAHead_yaw']['p'] + np.array([0, 0, 8.0]), J['AAHead_yaw']['axis'], 'rs00', pad=-9.0)   # a slim neck
     add('trim-neck', Hn)
@@ -181,7 +178,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim')], OpType.Add)
-    return [(n, m if n.startswith('rs') else clip(m, S)) for n, m in KS.structure()]
+    return [(n, m if (n.startswith('rs') or 'hipR' in n) else clip(m, S)) for n, m in KS.structure()]   # hip R spans the roll gap
 
 
 def model():
