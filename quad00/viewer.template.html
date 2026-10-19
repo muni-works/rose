@@ -83,6 +83,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
 const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', k1: '__K1_GLB_BASE64__' };
 
@@ -154,6 +155,12 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
   body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
     m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
+  puck: { label: 'joint caps (graphite)', swatch: '#2a2d32',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x2b2e33, metalness: 0.35, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2 }) },
+  visor: { label: 'visor (smoked gloss)', swatch: '#0d0f12',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x0b0d10, metalness: 0.1, roughness: 0.08, clearcoat: 1.0, clearcoatRoughness: 0.03 }) },
+  sole: { label: 'rubber soles', swatch: '#1c1d20',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x1d1e21, metalness: 0, roughness: 0.9 }) },
   cover: { label: 'covers (printed shells)', swatch: '#f1efe9',
     m: new THREE.MeshPhysicalMaterial({ color: 0xf2f0ea, metalness: 0.0, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.4 }) },
   k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
@@ -161,8 +168,9 @@ const MATS = {
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
+const SKIN = new Set(['cover', 'puck', 'visor', 'sole']);
 const GROUP = name =>
-  /^cover-/.test(name) ? 'cover' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^cover-/.test(name) ? 'cover' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
@@ -201,8 +209,13 @@ function load(which, done) {
       if (!o.isMesh) return;
       const [raw, tag = ''] = (o.name || o.parent?.name || '').split('.');
       const name = raw.replace(/_\d+$/, '');
-      o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
-      o.geometry.computeVertexNormals();
+      if (SKIN.has(GROUP(name)) && GROUP(name) !== 'puck') {   // shells: smooth shaded (caps keep crisp edges)
+        o.geometry = BufferGeometryUtils.mergeVertices(o.geometry.deleteAttribute('normal') || o.geometry, 0.01);
+        o.geometry.computeVertexNormals();
+      } else {
+        o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
+        o.geometry.computeVertexNormals();
+      }
       planarUV(o.geometry);
       const g = GROUP(name);
       o.material = MATS[g].m;
@@ -215,7 +228,7 @@ function load(which, done) {
     gltf.scene.userData.parts = list;
     root.add(gltf.scene);
     loaded[which] = gltf.scene;
-    gltf.scene.traverse(o => { if (o.isMesh && o.userData.group === 'cover') o.visible = coversOn; });
+    gltf.scene.traverse(o => { if (o.isMesh && SKIN.has(o.userData.group)) o.visible = coversOn; });
     document.getElementById('status').hidden = true;
     done(gltf.scene);
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
@@ -318,6 +331,16 @@ function decorate(list) {
   refs.add(step, tag('stair 175', new THREE.Vector3(x1 + 400, 215, 0), 26));
 }
 
+// review hook: frame one loaded model from a direction (x right, y up, z toward the viewer), refs hidden
+window.__view = (which, dir = [0.35, 0.25, 1], fill = 1.0, covers = true) => {
+  const g = loaded[which]; if (!g) return 'not loaded';
+  for (const [k, o] of Object.entries(loaded)) o.visible = k === which;
+  refs.visible = false; coversOn = covers; applyCovers?.();
+  controls.autoRotate = false;
+  const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
+  controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(...dir).normalize().multiplyScalar(r * 0.95 / fill));
+  return 'ok';
+};
 function frame(obj) {
   const box = new THREE.Box3().setFromObject(obj);
   ground.position.y = box.min.y;
@@ -350,7 +373,7 @@ function buildKey() {
 const bExplode = document.getElementById('explode'), bSpin = document.getElementById('spin');
 let coversOn = true;
 const bCovers = document.getElementById('covers');
-function applyCovers() { for (const g of Object.values(loaded)) g.traverse(o => { if (o.isMesh && o.userData.group === 'cover') o.visible = coversOn; }); }
+function applyCovers() { for (const g of Object.values(loaded)) g.traverse(o => { if (o.isMesh && SKIN.has(o.userData.group)) o.visible = coversOn; }); }
 bCovers.onclick = () => { coversOn = !coversOn; bCovers.setAttribute('aria-pressed', coversOn); applyCovers(); };
 bExplode.onclick = () => { explodeTarget = explodeTarget ? 0 : 1; bExplode.setAttribute('aria-pressed', !!explodeTarget); };
 bSpin.onclick = () => { controls.autoRotate = !controls.autoRotate; bSpin.setAttribute('aria-pressed', controls.autoRotate); };

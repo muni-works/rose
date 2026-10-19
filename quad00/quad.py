@@ -1175,7 +1175,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
 
 
 def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=150.0, head_h=125.0, hip_y=None,
-                knee_bend=12.0, elbow=60.0, ankle=(0.0, 0.0), leg_pose=None, arm_pose=None):
+                knee_bend=12.0, elbow=12.0, ankle=(0.0, 0.0), leg_pose=None, arm_pose=None):
     """MINI humanoid = the Booster K1 reverse-engineered on our stack: its 22 DoF and its dimensions.
     Every limb is the same pitch-roll-yaw chain (pitch motor inside a torso corner, roll L-bracket, yaw
     motor down the limb) ending in our limb box: legs RS06 pitch/roll/knee + RS02 yaw + a shin box with two
@@ -1295,7 +1295,9 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=
     count = {'rs06': 6 + 2, 'rs02': 2, 'rs00': 4 + 8 + 2}       # legs: pitch, roll, knee x2 + ... see note
     count = {'rs06': 6, 'rs02': 2, 'rs00': 4 + 8 + 2}
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
-    add_covers(extra)
+    import skin as SK
+    extra += SK.skin(extra)
+    extra[:] = [(n, m) for n, m in extra if not n.startswith('paw.')]     # the mitten replaces the ball paw
     note = (f'mini humanoid (K1 on our stack): 22 DoF ({count["rs06"]} RS06 + {count["rs02"]} RS02 + {count["rs00"]} RS00, motors {kg:.1f} kg); '
             f'hip-knee {hip_knee:.0f} / shin {shin:.0f}; shoulder-to-hip {s2h:.0f}; torso {2 * c:.0f} wide')
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
