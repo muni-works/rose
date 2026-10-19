@@ -73,7 +73,7 @@ def leg(J, side):
     face = lambda c_, d_: c_ if d_ > 0 else c_ - T              # plate w0 for a plate on the +/- side of a face at c_
     # -- roll mount (pelvis frame): yz plate on the roll stator back (aft)
     x_rb = rc[0] - m06['L'] / 2 - G
-    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], rc[2] + 30, 8)])
+    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], 16.0, 8)])   # up to the torso deck
     rm = rm.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(rc[1], rc[2])))
     out.append((f'chassis-rollmount.{tag}l', plate(rm, 'yz', x_rb - T)))
     # -- hip R: yz plate on the roll output (fore), down + outboard to the pitch's inner plate
@@ -139,6 +139,109 @@ def leg(J, side):
     return out
 
 
+def Rr(a0, b0, a1, b1, r=6.0):
+    return L.rounded(min(a0, a1), min(b0, b1), max(a0, a1), max(b0, b1), r)
+
+
+def holes(m, which, at, phase=0.0):
+    pcd, n = m[which]
+    return L.holes_on(pcd, n, m['hole'], phase=phase, at=at)
+
+
+def upper_layout(J, side):
+    """our arm + head motor placements on the K1 layout (all RS00). Axes squared up to x/y/z."""
+    s = 1 if side == 'Left' else -1
+    m = Q.MOTORS['rs00']
+    sr = J[f'{side}_Shoulder_Roll']['p'].copy()
+    ey = J[f'{side}_Elbow_Yaw']['p'].copy()
+    sp = J[f'A{side}_Shoulder_Pitch']['p'].copy()
+    sp = np.array([sp[0], s * (96.0 - G - m['L'] / 2), sp[2]])            # output face just outside the chest wall
+    ep = np.array([0.0, J[f'{side}_Elbow_Pitch']['p'][1], sr[2] - m['D'] / 2 - G - T - G - m['L'] / 2])   # slid down its own axis
+    return dict(s=s, sp=(sp, np.array([0, s * 1.0, 0])), sr=(sr, np.array([1.0, 0, 0])),
+                ep=(ep, np.array([0, 0, -1.0])), ey=(np.array([ey[0], ey[1], ey[2]]), np.array([0, s * 1.0, 0])))
+
+
+def head_layout(J):
+    m = Q.MOTORS['rs00']
+    hy = np.array([J['AAHead_yaw']['p'][0], 0.0, 205.0])                  # yaw down in the chest top
+    hpz = hy[2] + m['L'] / 2 + G + T + G + m['D'] / 2
+    return dict(yaw=(hy, np.array([0, 0, 1.0])), pitch=(np.array([hy[0], 0.0, hpz]), np.array([0, 1.0, 0])))
+
+
+def arm(J, side, M):
+    P = upper_layout(J, side)
+    s, m = P['s'], Q.MOTORS['rs00']
+    tag = side[0].lower()
+    out = [(f'rs00-{k}.{tag}a', motor(P[k][0], P[k][1], 'rs00')) for k in ('sp', 'sr', 'ep', 'ey')]
+    sp, sr, ep, ey = (P[k][0] for k in ('sp', 'sr', 'ep', 'ey'))
+    yw = lambda y0: min(s * y0, s * (y0 + T))                            # w0 of an xz plate starting at |y| = y0, growing outboard
+    # shoulder yoke: P1 on the pitch output (xz), P2 on the roll stator back (yz)
+    y_p1 = abs(sp[1]) + m['L'] / 2 + G
+    x_p2 = sr[0] - m['L'] / 2 - G - T
+    P1 = L.unary_union([L.circle(sp[0], sp[2], m['out'][0] + 30), Rr(x_p2, sr[2] - 16, sp[0] + 12, sp[2] + 18)])
+    out.append((f'arm-yokeP1.{tag}a', plate(P1.difference(holes(m, 'out', (sp[0], sp[2]))), 'xz', yw(y_p1))))
+    P2 = L.unary_union([L.circle(sr[1], sr[2], m['back'][0] + 22), Rr(s * (y_p1 + T), sr[2] - 12, sr[1], sr[2] + 24)])
+    out.append((f'arm-yokeP2.{tag}a', plate(P2.difference(holes(m, 'back', (sr[1], sr[2]), 45)), 'yz', x_p2)))
+    # upper arm: U1 on the roll output (yz, fore), U2 on the rotation motor's stator top (xy)
+    x_u1 = sr[0] + m['L'] / 2 + G
+    z_u2 = ep[2] + m['L'] / 2 + G
+    U1 = L.unary_union([L.circle(sr[1], sr[2], m['out'][0] + 30), Rr(ep[1] - s * 22, z_u2 + T, ep[1] + s * 22, sr[2])])
+    out.append((f'arm-upperU1.{tag}a', plate(U1.difference(holes(m, 'out', (sr[1], sr[2]))), 'yz', x_u1)))
+    U2 = L.unary_union([L.circle(ep[0], ep[1], m['back'][0] + 22), Rr(ep[0], ep[1] - s * 22, x_u1 + T, ep[1] + s * 22)])
+    U2 = U2.intersection(L.box(x_p2 + T + 2 * G + 1, -1e3, 1e3, 1e3))       # running clearance to the yoke (P2 is on the other side of the roll)
+    out.append((f'arm-upperU2.{tag}a', plate(U2.difference(holes(m, 'back', (ep[0], ep[1]), 45)), 'xy', z_u2)))
+    # elbow fork: E1 on the rotation output (xy, below), E2 on the elbow stator back (xz, inboard)
+    z_e1 = ep[2] - m['L'] / 2 - G - T
+    y_e2 = abs(ey[1]) - m['L'] / 2 - G - T
+    E1 = L.unary_union([L.circle(ep[0], ep[1], m['out'][0] + 30), Rr(ey[0] - 20, s * y_e2, ey[0] + 20, ep[1])])
+    out.append((f'arm-elbowE1.{tag}a', plate(E1.difference(holes(m, 'out', (ep[0], ep[1]))), 'xy', z_e1)))
+    E2 = L.unary_union([L.circle(ey[0], ey[2], m['back'][0] + 22), Rr(ey[0] - 20, ey[2], ey[0] + 20, z_e1)])
+    out.append((f'arm-elbowE2.{tag}a', plate(E2.difference(holes(m, 'back', (ey[0], ey[2]), 45)), 'xz', yw(y_e2))))
+    # forearm: F1 on the elbow output (xz, outboard), down to the wrist
+    y_f1 = abs(ey[1]) + m['L'] / 2 + G
+    Hd = M[f'{side.lower()}_hand_link']
+    tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
+    wr = ey + (tip - ey) * 0.62
+    F1 = L.stadium([(ey[0], ey[2], m['out'][0] + 30), (wr[0], wr[2], 30)]).difference(holes(m, 'out', (ey[0], ey[2])))
+    out.append((f'arm-forearmF1.{tag}a', plate(F1, 'xz', yw(y_f1))))
+    return out
+
+
+def torso(J):
+    """the spine: two side plates carrying the shoulder-pitch stators, a bottom deck on the roll mounts, a top deck under the neck yaw."""
+    m, m06 = Q.MOTORS['rs00'], Q.MOTORS['rs06']
+    out = []
+    U = upper_layout(J, 'Left'); H = head_layout(J)
+    sp = U['sp'][0]
+    y_s = abs(sp[1]) - m['L'] / 2 - G - T                                # side plate inner face
+    hy = H['yaw'][0]
+    z_d1 = hy[2] - m['L'] / 2 - G - T
+    z_d0 = 16.0
+    for s, tag in ((1, 'l'), (-1, 'r')):
+        S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(-55, z_d0, 65, sp[2])])
+        out.append((f'torso-side.{tag}', plate(S.difference(holes(m, 'back', (sp[0], sp[2]), 45)), 'xz', y_s if s > 0 else -y_s - T)))
+    out.append(('torso-deck0', plate(Rr(-55, -y_s, 65, y_s), 'xy', z_d0)))
+    D1 = Rr(hy[0] - 40, -y_s, hy[0] + 45, y_s).difference(holes(m, 'back', (hy[0], hy[1]), 45))
+    out.append(('torso-deck1', plate(D1, 'xy', z_d1)))
+    return out
+
+
+def head(J):
+    m = Q.MOTORS['rs00']
+    H = head_layout(J)
+    hy, hp = H['yaw'][0], H['pitch'][0]
+    out = [('rs00-headyaw', motor(hy, H['yaw'][1], 'rs00')), ('rs00-headpitch', motor(hp, H['pitch'][1], 'rs00'))]
+    z_n0 = hy[2] + m['L'] / 2 + G
+    y_n1 = -(m['L'] / 2 + G + T)                                         # pitch stator back (-y)
+    N0 = L.unary_union([L.circle(hy[0], hy[1], m['out'][0] + 30), Rr(hy[0] - 20, y_n1 + T, hy[0] + 20, 18)]).difference(holes(m, 'out', (hy[0], hy[1])))
+    out.append(('neck-N0', plate(N0, 'xy', z_n0)))
+    N1 = L.unary_union([L.circle(hp[0], hp[2], m['back'][0] + 22), Rr(hp[0] - 20, z_n0 + T, hp[0] + 20, hp[2])]).difference(holes(m, 'back', (hp[0], hp[2]), 45))
+    out.append(('neck-N1', plate(N1.intersection(L.box(-1e3, z_n0 + T, 1e3, 1e3)), 'xz', y_n1)))
+    Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 45, hp[2] - 10, hp[0] + 50, hp[2] + 70, 10)]).difference(holes(m, 'out', (hp[0], hp[2])))
+    out.append(('head-H1', plate(Hh, 'xz', m['L'] / 2 + G)))
+    return out
+
+
 SCALE = 100.0 / 94.0          # the K1 layout grown to a 100 cm robot (motors and plate stock don't scale)
 
 
@@ -154,5 +257,5 @@ def structure():
     J, M = world()
     out = []
     for side in ('Left', 'Right'):
-        out += leg(J, side)
-    return out
+        out += leg(J, side) + arm(J, side, M)
+    return out + torso(J) + head(J)

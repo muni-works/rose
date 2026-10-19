@@ -119,13 +119,14 @@ def design():
         add(f'sole.{tag}l', tm(Manifold.hull_points(np.concatenate(sole).astype(np.float32))))
         # ---- arm: shoulder roll drum, upper arm (through the upper-arm rotation drum), elbow, forearm, mitten
         sp, sr, ep, ey = (f'A{side}_Shoulder_Pitch', f'{side}_Shoulder_Roll', f'{side}_Elbow_Pitch', f'{side}_Elbow_Yaw')
-        Hsr, csr, rsr, Lsr = housing(jp(sr), ja(sr), 'rs00')
+        U = KS.upper_layout(J, side)                   # arm drums on the structure's motors
+        Hsr, csr, rsr, Lsr = housing(U['sr'][0] + np.array([3.0, 0, 0]), U['sr'][1], 'rs00', extra_len=22.0)   # long enough to hold the yoke + upper-arm plates
         add(f'cover-shoulder.{tag}a', Hsr); add(f'puck-shoulder.{tag}a', csr)
-        Hue, cue, rue, Lue = housing(jp(ep), ja(ep), 'rs00', pad=2.0)
-        Hel, cel, rel, Lel = housing(jp(ey), ja(ey), 'rs00')
+        Hue, cue, rue, Lue = housing(U['ep'][0] + np.array([2.0, 0, 3.0]), U['ep'][1], 'rs00', pad=6.0, extra_len=14.0)
+        Hel, cel, rel, Lel = housing(U['ey'][0], U['ey'][1], 'rs00', extra_len=14.0)   # room for the elbow + forearm plates
+        add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
         add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.0, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
-        add(f'trim-upperarmring.{tag}a', cyl(jp(ep) - unit(ja(ep)) * 6, ja(ep), rue - 1.0, 4.0))
         Hd = M[f'{side.lower()}_hand_link']
         tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
         wrist = jp(ey) + (tip - jp(ey)) * 0.62
@@ -135,8 +136,10 @@ def design():
         add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
         add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
-        y0_, y1_ = s * 90.0, jp(sr)[1]
-        add(f'trim-shoulderyoke.{tag}a', cyl(np.array([jp(sp)[0], (y0_ + y1_) / 2, jp(sp)[2]]), [0, 1.0, 0], 25.0, abs(y1_ - y0_)))
+        spc, src = U['sp'][0], U['sr'][0]
+        yc_ = np.array([(spc[0] + src[0]) / 2, 0, (spc[2] + src[2]) / 2])
+        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (88.0, abs(src[1]))]
+        add(f'cover-shoulderyoke.{tag}a', tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32))))
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
@@ -144,8 +147,10 @@ def design():
     add('accent-waist', block(lo[0] + 8, hi[0] - 10, 98.0, 14.0, 40.0, RC=18.0))
     add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
-    Hn, cn, rn, Ln = housing(J['AAHead_yaw']['p'] + np.array([0, 0, 8.0]), J['AAHead_yaw']['axis'], 'rs00', pad=-9.0)   # a slim neck
-    add('trim-neck', Hn)
+    Hl = KS.head_layout(J)
+    nz0, nz1 = Hl['yaw'][0][2] + 20.0, Hl['pitch'][0][2] - 10.0
+    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 30.0, 34.0, 14.0) for z_ in (nz0, nz1)]
+    add('trim-neck', tm(Manifold.hull_points(np.concatenate(neck).astype(np.float32))))
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
     hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
@@ -183,14 +188,15 @@ def clip(plate, shell, wall=2.0):
     Sr = shell.transform(Rt(R))
     sec = (Sr.slice(lo[ax] + 0.1) ^ Sr.slice(hi[ax] - 0.1)).offset(-wall, JoinType.Round)
     cut = Manifold.extrude(sec, hi[ax] - lo[ax] + 2).translate([0, 0, lo[ax] - 1]).transform(Rt(R.T))
-    return tm(P ^ cut)
+    parts = sorted((P ^ cut).decompose(), key=lambda q: -q.volume())
+    return tm(parts[0])                                        # router-cut part = the main body (drops slivers)
 
 
 def structure(out=None):
     """the plate frame clipped inside its shells; motors pass through untouched."""
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
-                                for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim')], OpType.Add)
+                                for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
     return [(n, m if (n.startswith('rs') or 'hipR' in n) else clip(m, S)) for n, m in KS.structure()]   # hip R spans the roll gap
 
 
