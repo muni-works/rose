@@ -103,32 +103,52 @@ def design():
         # ---- leg: hip lobe (pitch + roll + yaw), thigh, knee, calf (holds the 2 ankle motors), ankle, shoe
         hp, hr, hy, kn, an = (f'{side}_Hip_Pitch', f'{side}_Hip_Roll', f'{side}_Hip_Yaw', f'{side}_Knee_Pitch', f'{side}_Ankle_Pitch')
         lay = KS.layout(J, side)                       # drums sit on the plate structure's motors, not the K1's frames
-        Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), 'rs06', extra_len=26.0)
-        Hy, cy_, ry_, Ly = housing(lay['yaw'][0], ja(hy), 'rs02', pad=3.0)
+        Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), KS.V['big'], extra_len=26.0)
+        Hy, cy_, ry_, Ly = housing(lay['yaw'][0], ja(hy), KS.V['yaw'], pad=3.0)
         # the hip: one drum under the pelvis flank, the same language as the knee; the roll motor hides inside the pelvis
         pod = Hp
+        if KS.V['name'] != 'mini':                             # tiny: the pitch drum sits right under the roll can -- clear its swing
+            rc_ = lay['roll'][0]; Lr_ = KS.BIG()['L'] + 12.0
+            pod = tm(M_(pod) - Manifold.cylinder(Lr_, KS.BIG()['D'] / 2 + 1.5, KS.BIG()['D'] / 2 + 1.5, 96).rotate([0, 90, 0]).translate([rc_[0] - Lr_ / 2, rc_[1], rc_[2]]))
         add(f'cover-hip.{tag}l', pod)
         add(f'puck-hip.{tag}l', cp)
         add(f'trim-hipyaw.{tag}l', Hy)
         z_pb, z_yt = pod.bounds[0][2], lay['yaw'][0][2] + Ly / 2
         add(f'trim-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
         yaw_bot = lay['yaw'][0] - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
-        Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=34.0)    # encloses the thigh plate pair (the clevis cheeks)
+        Lg = dict(KS.leg(J, side)); kcy = jp(kn)[1]
+        reach = lambda names: max(abs(v - kcy) for n_ in names for v in Lg[f'{n_}.{tag}l'].bounds[:, 1])
+        xl = 34.0 if KS.V['name'] == 'mini' else 2 * (reach(('thigh-inner', 'thigh-outer')) + 2.5 + FIL) - KS.BIG()['L']
+        kshift = np.zeros(3)
+        if KS.V['name'] != 'mini':                             # tiny: the plates reach further outboard -- shift the drum out, thin inboard
+            r_in = max(abs(v - kcy) for n_ in ('thigh-inner', 'shin-inner') for v in Lg[f'{n_}.{tag}l'].bounds[:, 1] if (v - kcy) * s < 0)
+            r_out = reach(('thigh-outer',))
+            kshift = np.array([0, s * (r_out - r_in) / 2, 0]); xl = (r_in + r_out) + 2 * (2.5 + FIL) - KS.BIG()['L']
+        Hk, ck, rk, Lk = housing(jp(kn) + kshift, ja(kn), KS.V['big'], extra_len=xl)    # encloses the thigh plate pair (the clevis cheeks)
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2)
+        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)
         ank = jp(an)
         # the calf nests between the thigh plates (a clevis knee): narrower, centred on the shin plates
-        yo = np.array([0, s * 4.5, 0])
-        calf = bone(jp(kn) + yo, rk * 0.84, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=1.3, n=3.0, half_w=34.5)
+        if KS.V['name'] == 'mini':
+            cyo, chw = 4.5, 34.5
+        else:                                                  # centred on the shin plates, 3 mm over them
+            ys_ = [v - kcy for n_ in ('shin-inner', 'shin-outer') for v in Lg[f'{n_}.{tag}l'].bounds[:, 1]]
+            cyo, chw = s * (max(ys_) + min(ys_)) / 2, (max(ys_) - min(ys_)) / 2 + 3.0
+        yo = np.array([0, s * cyo, 0])
+        ck0 = 0.84 if KS.V['name'] == 'mini' else 0.98       # tiny: the first ankle can sits right under the knee
+        calf = bone(jp(kn) + yo, rk * ck0, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=KS.V['flat'], n=3.0, half_w=chw)
         add(f'cover-calf.{tag}l', calf)
-        calf_fat = M_(bone(jp(kn) + yo, rk * 0.84 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=1.3, n=3.0, half_w=37.5))
-        add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
+        calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=KS.V['flat'], n=3.0, half_w=chw + 3.0))
+        if KS.V['name'] == 'mini':
+            add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
+        else:                                                  # tiny: a 35 mm thigh, relieved for the fold (no clevis room)
+            add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(M_(calf), jp(kn), [(ja(kn), -2, 102)], scale=1.02, step=4.0)))
         Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
         add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
         lo, hi = F.bounds
-        z0 = lo[2]
+        z0 = lo[2] - KS.V['foot_drop']
         rings, sole = [], []
         for t in np.linspace(0, 1, 16):
             x = lo[0] - 2 + t * (hi[0] - lo[0] + 4)
@@ -171,28 +191,31 @@ def design():
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         spc, src = U['sp'][0], U['sr'][0]
         yc_ = np.array([(spc[0] + src[0]) / 2, 0, (spc[2] + src[2]) / 2])
-        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (88.0, abs(src[1]) - Lsr / 2 + 8.0)]   # stops at the shoulder drum's inner face: the upper arm swings clear
+        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (KS.CHEST() - 13.0, abs(src[1]) - Lsr / 2 + 8.0)]   # stops at the shoulder drum's inner face: the upper arm swings clear
         yoke = tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32)))
         ua = M_(dict(out)[f'cover-upperarm.{tag}a'])
         add(f'cover-shoulderyoke.{tag}a', relief(yoke, sweep_union(ua, U['sr'][0], [(U['sr'][1], -25, 25)], scale=1.03, step=3.0)))   # upper arm swings in clear
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
-    add('cover-chest', block(lo[0] + 4, hi[0] - 6, 101.0, 40.0, zs + 28, taper=(1.0, 1.0), dome=14.0))
-    add('accent-waist', block(lo[0] + 8, hi[0] - 10, 98.0, 14.0, 40.0, RC=18.0))
+    Hl0 = KS.head_layout(J); z_d1 = Hl0['yaw'][0][2] - 25.5 - KS.G - KS.T
+    zc1 = max(zs + 28 * KS.R(), z_d1 + KS.T + 3.0)                # the chest closes over the neck-yaw deck
+    add('cover-chest', block(lo[0] + 4, hi[0] - 6, KS.CHEST(), 40.0 * KS.R(), zc1, taper=(1.0, 1.0), dome=14.0 * KS.R()))
+    add('accent-waist', block(lo[0] + 8, hi[0] - 10, KS.CHEST() - 3.0, 14.0 * KS.R(), 40.0 * KS.R(), RC=18.0 * KS.R()))
     # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
     # then a narrow keel dropping between the hip drums
-    rl = KS.layout(J, 'Left')['roll'][0]; m06 = Q.MOTORS['rs06']
+    rl = KS.layout(J, 'Left')['roll'][0]; m06 = KS.BIG(); Rk = KS.R()
     x0, x1 = lo[0] + 10, hi[0] - 12; xm, xh = (x0 + x1) / 2, (x1 - x0) / 2
-    secs = [rrect(np.array([xm, 0, 14.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), 101.0, xh, 22.0)]
+    xh = max(xh, (max(abs(rl[0] - m06['L'] / 2 - xm), abs(rl[0] + m06['L'] / 2 - xm)) + 5.0) / 0.88)   # deep enough for the roll cans
+    secs = [rrect(np.array([xm, 0, 14.0 * Rk]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST(), xh, 22.0 * Rk)]
     for th in np.linspace(0, np.pi / 2, 7):                     # the cans' lower quadrant, 5 mm proud
         r_ = m06['D'] / 2 + 5.0
         y_, z_ = rl[1] + r_ * np.cos(th), rl[2] - r_ * np.sin(th)
-        secs.append(rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), max(y_, 30.0), xh * (1 - 0.12 * np.sin(th)), 22.0))
+        secs.append(rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), max(y_, 30.0 * Rk), xh * (1 - 0.12 * np.sin(th)), 22.0 * Rk))
     upper = Manifold.hull_points(np.concatenate(secs).astype(np.float32))
     zk = rl[2] - m06['D'] / 2 - 5.0
-    keel = [rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), w_, xh * f_, 16.0)
-            for z_, w_, f_ in ((zk + 20, 46.0, 0.86), (zk - 26, 38.0, 0.7), (zk - 34, 30.0, 0.55))]
+    keel = [rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), w_ * Rk, xh * f_, 16.0 * Rk)
+            for z_, w_, f_ in ((zk + 20 * Rk, 46.0, 0.86), (zk - 26 * Rk, 38.0, 0.7), (zk - 34 * Rk, 30.0, 0.55))]
     pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
@@ -205,13 +228,24 @@ def design():
     add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
-    nz0, nz1 = Hl['yaw'][0][2] + 20.0, Hl['pitch'][0][2] - 10.0
-    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 30.0, 34.0, 14.0) for z_ in (nz0, nz1)]
+    if KS.V['name'] == 'mini':
+        nz0, nw = Hl['yaw'][0][2] + 20.0, (30.0, 34.0)
+    else:                                                       # yaw motor up in the neck: a wider neck from just above the chest dome
+        nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (33.0, 36.0)
+    nz1 = Hl['pitch'][0][2] - 10.0
+    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 14.0) for z_ in (nz0, nz1)]
     add('trim-neck', tm(Manifold.hull_points(np.concatenate(neck).astype(np.float32))))
+    if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
+        yz0 = zc1 + 2.0
+        add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], 31.5, nz0 + 4 - yz0))
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
     hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
     hc = hc + np.array([0, 0, -6.0])
+    hpz = KS.head_layout(J)['pitch'][0][2]
+    if KS.V['name'] != 'mini' and hpz > hc[2] + 0.05 * hh:       # head motors stacked above the shoulders: lift the helmet onto them
+        dz = hpz - (hc[2] + 0.05 * hh)
+        hc = hc + np.array([0, 0, dz]); hlo = hlo + np.array([0, 0, dz]); hhi = hhi + np.array([0, 0, dz])
     hr_ = []
     for t in np.linspace(-1, 1, 25):                           # hybrid: flat side panels, domed crown + jaw
         k = math.sqrt(max(0.0, 1 - t * t)) * (0.94 if t < -0.4 else 1.0)
@@ -219,8 +253,9 @@ def design():
         hr_.append(rrect(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 0.6 * min(a_, b_), k=14))
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
     hpc = KS.head_layout(J)['pitch'][0]
-    pocket = Manifold.cylinder(80, 40, 40, 72).rotate([-90, 0, 0]).translate([hpc[0], -40, hpc[2]]) + \
-        Manifold.cube([92, 80, hpc[2] - hlo[2] + 20]).translate([hpc[0] - 46, -40, hlo[2] - 20])
+    pr, px = KS.V['pocket']
+    pocket = Manifold.cylinder(2 * pr, pr, pr, 72).rotate([-90, 0, 0]).translate([hpc[0], -pr, hpc[2]]) + \
+        Manifold.cube([2 * px, 2 * pr, hpc[2] - hlo[2] + 20]).translate([hpc[0] - px, -pr, hlo[2] - 20])
     helmet = helmet - pocket
     add('trim-headhub', cyl(hpc, [0, 1.0, 0], 33.0, 56.0))           # the head-pitch hub, coaxial: lives in the helmet's opening
     add('cover-helmet', tm(helmet))

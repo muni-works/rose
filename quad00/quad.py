@@ -1363,7 +1363,8 @@ def k1_on_stack():
 
 
 def humanoid_mini():
-    import k1_design as KD
+    import k1_design as KD, k1_structure as KS
+    KS.use('mini')
     return KD.model()
 
 
@@ -1434,9 +1435,20 @@ def mp_name(m):
 
 
 def humanoid_tiny():
-    """TINY humanoid, ~56 cm: the largest all-RS00 humanoid once its plates are weighed (10.2 kg est.; walking
-    knee 94% of 0.7 x 14 N.m). The 70 cm version was 134% -- shrinking barely lightens it (the motors and
-    their rings are fixed), so the size came down to x0.72."""
+    """TINY humanoid: the mini's design (K1 layout, housings + flat bones, plate frame, hidden hip rolls)
+    at 0.75 x K1 (~72 cm) on 22 RS00. 10.0 kg weighed; knee 3.8 N.m in a 60 deg squat (39% of 0.7 x peak)."""
+    import k1_design as KD, k1_structure as KS
+    KS.use('tiny')
+    try:
+        m = KD.model()
+    finally:
+        KS.use('mini')
+    m['note'] = 'tiny humanoid: the mini design on 22 RS00, 0.75 x K1'
+    return m
+
+
+def humanoid_tiny_v1():
+    """the earlier ~56 cm all-RS00 tiny (rect torso, flat plates), kept for reference."""
     return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0, rect=True, head='fixed', head_h=75.0, covers=True)
 
 

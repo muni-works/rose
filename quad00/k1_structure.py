@@ -21,6 +21,34 @@ import k1 as K, k1_teardown as KT
 T = L.T
 G = 1.0                      # assembly gap
 
+# one design, two sizes. R = layout scale relative to the mini (absolute mm that track the body scale by R;
+# motor- and plate-driven dims are computed from the motors and don't scale)
+VARIANTS = {
+    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0)),
+    'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
+    # tiny: upper arm 20 mm longer (forearm shorter) so the elbow folds past the RS00 rotation drum; foot 14 mm deeper so the
+    # low ankle drum clears the sole in roll
+    # tiny: the RS00 knee is as long as the ankle RS00s, so the inner shin plate stands off 6.4 mm inboard of the thigh's
+}
+V = dict(VARIANTS['mini'], name='mini')
+
+
+def use(name):
+    """switch every builder (structure + design + rom) to a variant."""
+    V.clear(); V.update(VARIANTS[name], name=name)
+
+
+def R():
+    return V['scale'] / VARIANTS['mini']['scale']
+
+
+def BIG():
+    return Q.MOTORS[V['big']]
+
+
+def YAW():
+    return Q.MOTORS[V['yaw']]
+
 
 def plate(profile, plane, w0, t=T):
     """extrude a shapely profile into a plate: plane 'xz' (normal y), 'yz' (normal x), 'xy' (normal z)."""
@@ -38,7 +66,7 @@ def motor(c, ax, mot):
 def layout(J, side):
     """our joint placements (motor centre, axis, model) for one leg, on the K1's axes."""
     s = 1 if side == 'Left' else -1
-    m06, m02, m00 = Q.MOTORS['rs06'], Q.MOTORS['rs02'], Q.MOTORS['rs00']
+    m06, m02, m00 = BIG(), YAW(), Q.MOTORS['rs00']
     hp = J[f'{side}_Hip_Pitch']['p'].copy()
     hr = J[f'{side}_Hip_Roll']['p'].copy()
     hy = J[f'{side}_Hip_Yaw']['p'].copy()
@@ -46,14 +74,14 @@ def layout(J, side):
     an = J[f'{side}_Ankle_Pitch']['p'].copy()
     # roll: inside the pelvis, axis fore/aft, inboard of the hip line (hidden); pitch: one drum under the pelvis flank;
     # yaw: straight under the pitch, then the thigh.  (the K1 hides its roll in the trunk the same way)
-    roll_c = np.array([5.0, s * 48.0, -30.0])                # centred in the pelvis block
+    roll_c = np.array([5.0 * R(), s * (m06['D'] / 2 + 4.0), -30.0 * R()])   # centred in the pelvis block
     hp = np.array([0.0, hp[1], roll_c[2] - m06['D'] / 2 - G - m06['D'] / 2])
     hy = np.array([0.0, hp[1], hp[2] - m06['D'] / 2 - G - T - G - m02['L'] / 2])
     return dict(s=s,
-                pitch=(hp, np.array([0, s * 1.0, 0]), 'rs06'),     # output outboard (+s y)
-                roll=(roll_c, np.array([1.0, 0, 0]), 'rs06'),      # output forward (+x)
-                yaw=(hy, np.array([0, 0, -1.0]), 'rs02'),          # output down
-                knee=(kn, np.array([0, s * 1.0, 0]), 'rs06'),      # output outboard
+                pitch=(hp, np.array([0, s * 1.0, 0]), V['big']),     # output outboard (+s y)
+                roll=(roll_c, np.array([1.0, 0, 0]), V['big']),      # output forward (+x)
+                yaw=(hy, np.array([0, 0, -1.0]), V['yaw']),          # output down
+                knee=(kn, np.array([0, s * 1.0, 0]), V['big']),      # output outboard
                 ankle=an)
 
 
@@ -61,7 +89,7 @@ def leg(J, side):
     """the leg's plates and motors."""
     P = layout(J, side)
     s = P['s']
-    m06, m02, m00 = Q.MOTORS['rs06'], Q.MOTORS['rs02'], Q.MOTORS['rs00']
+    m06, m02, m00 = BIG(), YAW(), Q.MOTORS['rs00']
     out = []
     hp, _, _ = P['pitch']; rc, _, _ = P['roll']; yc, _, _ = P['yaw']; kc, _, _ = P['knee']; ac = P['ankle']
     # -- motors
@@ -73,7 +101,7 @@ def leg(J, side):
     face = lambda c_, d_: c_ if d_ > 0 else c_ - T              # plate w0 for a plate on the +/- side of a face at c_
     # -- roll mount (pelvis frame): yz plate on the roll stator back (aft)
     x_rb = rc[0] - m06['L'] / 2 - G
-    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], 16.0, 8)])   # up to the torso deck
+    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], Z_D0(), 8)])   # up to the torso deck
     rm = rm.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(rc[1], rc[2])))
     out.append((f'chassis-rollmount.{tag}l', plate(rm, 'yz', x_rb - T)))
     # -- hip R: yz plate on the roll output (fore), down + outboard to the pitch's inner plate
@@ -116,19 +144,25 @@ def leg(J, side):
     W = m06['D'] + 8
     side_p = L.stadium([(yc[0], z_yo - T - 40, 80), (kc[0], kc[2], W)])   # top edge meets the top plate's underside
     th_in = side_p.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(kc[0], kc[2])))
-    th_out = side_p.difference(L.circle(kc[0], kc[2], m06['out'][0] + 30))      # bearing seat around the shin hub
+    th_out = side_p.difference(L.circle(kc[0], kc[2], V['hub_bore'] or m06['out'][0] + 30))      # bearing seat around the shin hub (tiny: a 608)
     out.append((f'thigh-inner.{side[0].lower()}l', plate(th_in, 'xz', y_ti)))
     out.append((f'thigh-outer.{side[0].lower()}l', plate(th_out, 'xz', y_to)))
     # -- shin: outer plate on the knee output (between the knee and the outer thigh plate), a shin box below
     y_so = yk_out if s > 0 else yk_out - T
     # ankle motors: two RS00 down the shin, lateral, between the outer shin plate and an inner shin plate
-    y_si = (yk_out - G - m00['L'] - G - T) if s > 0 else (yk_out + G + m00['L'] + G)
+    y_si = (yk_out - G - m00['L'] - G - T - V['shin_gap']) if s > 0 else (yk_out + G + m00['L'] + G + V['shin_gap'])
     a_mot = []
-    for f in (0.42, 0.66):
+    if V['ankle_f']:
+        fs = V['ankle_f']
+    else:                                                  # stacked from the knee down: knee can, gap, two RS00 cans
+        Lsh = np.linalg.norm(ac - kc)
+        f0 = (m06['D'] / 2 + m00['D'] / 2 + 6.0) / Lsh
+        fs = (f0, f0 + (m00['D'] + 4.0) / Lsh)
+    for f in fs:
         c = kc + (ac - kc) * f
         cm = np.array([c[0], (y_so - G - m00['L'] / 2) if s > 0 else (y_so + T + G + m00['L'] / 2), c[2]])
         a_mot.append(cm)
-        out.append((f'rs00-ankle{int(f * 100)}.{side[0].lower()}l', motor(cm, [0, s * 1.0, 0], 'rs00')))
+        out.append((f'rs00-ankle{(42, 66)[len(a_mot) - 1]}.{side[0].lower()}l', motor(cm, [0, s * 1.0, 0], 'rs00')))
     shin_o = L.stadium([(kc[0], kc[2], W - 4), (a_mot[0][0], a_mot[0][2], m00['D'] + 10), (a_mot[1][0], a_mot[1][2], m00['D'] + 10), (ac[0], ac[2], 40)])
     shin_o = shin_o.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(kc[0], kc[2])))
     out.append((f'shin-outer.{side[0].lower()}l', plate(shin_o, 'xz', y_so)))
@@ -136,8 +170,14 @@ def leg(J, side):
     shin_i = L.stadium([(a_mot[0][0], z_box - 34, m00['D'] + 22), (a_mot[1][0], a_mot[1][2], m00['D'] + 22), (ac[0], ac[2], 48)])
     out.append((f'shin-inner.{side[0].lower()}l', plate(shin_i, 'xz', y_si)))
     # bridge from the outer shin plate to the inner one under the knee can (a yz web), keeps the box closed
-    web = L.rounded(min(y_si, y_so) + T, z_box - 16, max(y_si, y_so), z_box, 4)
-    out.append((f'shin-web.{side[0].lower()}l', plate(web, 'yz', kc[0] - 20)))
+    if V['web_x'] is not None:
+        web = L.rounded(min(y_si, y_so) + T, z_box - 16, max(y_si, y_so), z_box, 4)
+        x_web = kc[0] + V['web_x']
+    else:                                                  # ankle cans crowd the knee: close the box below them instead
+        zb0, zb1 = ac[2] + 22.0, a_mot[1][2] - m00['D'] / 2 - 2.0
+        web = L.rounded(min(y_si, y_so) + T, zb0, max(y_si, y_so), zb1, 3)
+        x_web = ac[0] - T / 2
+    out.append((f'shin-web.{side[0].lower()}l', plate(web, 'yz', x_web)))
     return out
 
 
@@ -154,7 +194,7 @@ def hang(J, M, side):
     """elbow -> fingertip, straight down (the K1's length, our plumb arm)."""
     Hd = M[f'{side.lower()}_hand_link']
     tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
-    return np.array([0, 0, -np.linalg.norm(tip - J[f'{side}_Elbow_Yaw']['p'])])
+    return np.array([0, 0, -np.linalg.norm(tip - J[f'{side}_Elbow_Yaw']['p']) - V['elbow_dz']])
 
 
 def upper_layout(J, side):
@@ -162,19 +202,24 @@ def upper_layout(J, side):
     s = 1 if side == 'Left' else -1
     m = Q.MOTORS['rs00']
     sr = J[f'{side}_Shoulder_Roll']['p'].copy()
-    sr = sr + np.array([0, s * 16.0, 0])                                  # plumb arms need the hands clear of the hip drums
+    sr = sr + np.array([0, s * V['arm_out'], 0])                          # plumb arms need the hands clear of the hip drums
     ey = J[f'{side}_Elbow_Yaw']['p'].copy()
     sp = J[f'A{side}_Shoulder_Pitch']['p'].copy()
-    sp = np.array([sp[0], s * (96.0 - G - m['L'] / 2), sp[2]])            # output face just outside the chest wall
+    sp = np.array([sp[0], s * (CHEST() - 5.0 - G - m['L'] / 2), sp[2]])   # output face just outside the chest wall
     ep = np.array([0.0, sr[1], sr[2] - m['D'] / 2 - G - T - G - m['L'] / 2])   # straight under the shoulder drum: the arm hangs plumb
-    ey = np.array([ey[0], sr[1], ey[2]])
+    ey = np.array([ey[0], sr[1], ey[2] + V['elbow_dz']])
     return dict(s=s, sp=(sp, np.array([0, s * 1.0, 0])), sr=(sr, np.array([1.0, 0, 0])),
                 ep=(ep, np.array([0, 0, -1.0])), ey=(np.array([ey[0], ey[1], ey[2]]), np.array([0, s * 1.0, 0])))
 
 
 def head_layout(J):
     m = Q.MOTORS['rs00']
-    hy = np.array([J['AAHead_yaw']['p'][0], 0.0, 205.0])                  # yaw down in the chest top
+    if V['head_z']:
+        z = V['head_z']                                                    # yaw down in the chest top, between the shoulder cans
+    else:                                                                  # no room between them: up above the shoulder cans
+        sp = upper_layout(J, 'Left')['sp'][0]
+        z = sp[2] + m['D'] / 2 + G + T + G + m['L'] / 2
+    hy = np.array([J['AAHead_yaw']['p'][0], 0.0, z])
     hpz = hy[2] + m['L'] / 2 + G + T + G + m['D'] / 2
     return dict(yaw=(hy, np.array([0, 0, 1.0])), pitch=(np.array([hy[0], 0.0, hpz]), np.array([0, 1.0, 0])))
 
@@ -218,19 +263,21 @@ def arm(J, side, M):
 
 def torso(J):
     """the spine: two side plates carrying the shoulder-pitch stators, a bottom deck on the roll mounts, a top deck under the neck yaw."""
-    m, m06 = Q.MOTORS['rs00'], Q.MOTORS['rs06']
+    m = Q.MOTORS['rs00']
     out = []
     U = upper_layout(J, 'Left'); H = head_layout(J)
     sp = U['sp'][0]
     y_s = abs(sp[1]) - m['L'] / 2 - G - T                                # side plate inner face
     hy = H['yaw'][0]
     z_d1 = hy[2] - m['L'] / 2 - G - T
-    z_d0 = 16.0
+    z_d0 = Z_D0()
+    x0, x1 = -55.0 * R(), 65.0 * R()
     for s, tag in ((1, 'l'), (-1, 'r')):
-        S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(-55, z_d0, 65, sp[2])])
+        S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(x0, z_d0, x1, max(sp[2], z_d1))]).intersection(L.box(-1e3, -1e3, 1e3, z_d1 if z_d1 > sp[2] else 1e3))
         out.append((f'torso-side.{tag}', plate(S.difference(holes(m, 'back', (sp[0], sp[2]), 45)), 'xz', y_s if s > 0 else -y_s - T)))
-    out.append(('torso-deck0', plate(Rr(-55, -y_s, 65, y_s), 'xy', z_d0)))
-    D1 = Rr(hy[0] - 40, -y_s, hy[0] + 45, y_s).difference(holes(m, 'back', (hy[0], hy[1]), 45))
+    out.append(('torso-deck0', plate(Rr(x0, -y_s, x1, y_s), 'xy', z_d0)))
+    yd = max(y_s, m['back'][0] / 2 + 8.0)                                  # rests on the side plates' tops when the gap is narrow
+    D1 = Rr(hy[0] - 40, -yd, hy[0] + 45, yd).difference(holes(m, 'back', (hy[0], hy[1]), 45))
     out.append(('torso-deck1', plate(D1, 'xy', z_d1)))
     return out
 
@@ -246,19 +293,24 @@ def head(J):
     out.append(('neck-N0', plate(N0, 'xy', z_n0)))
     N1 = L.unary_union([L.circle(hp[0], hp[2], m['back'][0] + 22), Rr(hp[0] - 20, z_n0 + T, hp[0] + 20, hp[2])]).difference(holes(m, 'back', (hp[0], hp[2]), 45))
     out.append(('neck-N1', plate(N1.intersection(L.box(-1e3, z_n0 + T, 1e3, 1e3)), 'xz', y_n1)))
-    Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 45, hp[2] - 10, hp[0] + 50, hp[2] + 70, 10)]).difference(holes(m, 'out', (hp[0], hp[2])))
+    Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 45 * R(), hp[2] - 10, hp[0] + 50 * R(), hp[2] + 70 * R(), 10)]).difference(holes(m, 'out', (hp[0], hp[2])))
     out.append(('head-H1', plate(Hh, 'xz', m['L'] / 2 + G)))
     return out
 
 
-SCALE = 100.0 / 94.0          # the K1 layout grown to a 100 cm robot (motors and plate stock don't scale)
+def CHEST():
+    return 101.0 * R()                 # chest half-width (mini 101)
+
+
+def Z_D0():
+    return 16.0 * R()                  # torso bottom deck
 
 
 def world():
     """the K1 joint layout (arms down), scaled to our height; link meshes scaled with it."""
     J, M = KT.world(K.arms_down())
-    J = {n: dict(j, p=np.asarray(j['p']) * SCALE) for n, j in J.items()}
-    M = {n: m.copy().apply_scale(SCALE) for n, m in M.items()}
+    J = {n: dict(j, p=np.asarray(j['p']) * V['scale']) for n, j in J.items()}
+    M = {n: m.copy().apply_scale(V['scale']) for n, m in M.items()}
     return J, M
 
 
