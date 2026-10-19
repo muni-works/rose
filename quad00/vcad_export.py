@@ -1,6 +1,7 @@
 """export the mini (or tiny) humanoid to vcad as a loon assembly: one rigid body per link, revolute joints at the
 K1 limits. Plates are native sketch + extrude (outlines taken from the clipped, router-cut plates), motors and drums
-are native cylinders; the lofted / hull / relief-cut shells come in as meshes (import-mesh) in each body's frame.
+are native cylinders, the bones / blocks / helmet / hands native lofts of their section rings; only the shells carved
+by swept clearance cuts (relief) come in as meshes (import-mesh) in each body's frame.
 
     python vcad_export.py [mini|tiny]   ->  vcad/<variant>/<variant>.loon + vcad/<variant>/stl/*.stl
 """
@@ -113,6 +114,47 @@ def plate_src(m, origin):
     return s
 
 
+def loft_src(rings, o):
+    """section rings (3D point loops) -> [loft #[sketch ...]]: each ring sketched in its own plane, points kept."""
+    sks = []
+    for r in rings:
+        r = np.asarray(r, float) - o
+        c = r.mean(0)
+        _, _, vt = np.linalg.svd(r - c)
+        u, n = vt[0], vt[2]
+        v = np.cross(n, u)
+        p = np.c_[(r - c) @ u, (r - c) @ v]
+        segs = ' '.join(f'[line {f(p[i][0])} {f(p[i][1])} {f(p[(i + 1) % len(p)][0])} {f(p[(i + 1) % len(p)][1])}]' for i in range(len(p)))
+        sks.append(f'[sketch {f(c[0])} {f(c[1])} {f(c[2])} {f(u[0])} {f(u[1])} {f(u[2])} {f(v[0])} {f(v[1])} {f(v[2])} #[{segs}]]')
+    return '[loft #[' + ' '.join(sks) + ']]'
+
+
+def cuts_src(src, cuts, o):
+    for kind, *a in cuts:
+        if kind == 'ycyl':
+            c, r = np.asarray(a[0], float) - o, a[1]
+            tool = f'[translate {f(c[0])} {f(-r)} {f(c[2])} [rotate -90 0 0 [cylinder-n {f(r)} {f(2 * r)} 72]]]'
+        else:
+            p, sz = np.asarray(a[0], float) - o, a[1]
+            tool = f'[translate {f(p[0])} {f(p[1])} {f(p[2])} [cube {f(sz[0])} {f(sz[1])} {f(sz[2])}]]'
+        src = f'[difference {tool} {src}]'
+    return src
+
+
+def shell_src(m, o):
+    """native source for a ring-built shell (loft, optional cuts) or the visor; None -> import the mesh."""
+    md = m.metadata
+    if 'visor' in md:
+        V = md['visor']; hc = np.asarray(V['hc'], float) - o; oc = np.asarray(V['oval_c'], float) - o; sx, sy, sz = V['oval_s']
+        helmet = cuts_src(loft_src(V['helmet']['loft'], o), V['helmet'].get('cut', []), o)
+        big = f'[translate {f(hc[0])} {f(hc[1])} {f(hc[2])} [scale {V["s"]} {V["s"]} {V["s"]} [translate {f(-hc[0])} {f(-hc[1])} {f(-hc[2])} {helmet}]]]'
+        oval = f'[translate {f(oc[0])} {f(oc[1])} {f(oc[2])} [scale {f(sx)} {f(sy)} {f(sz)} [rotate 0 90 0 [translate 0 0 -0.5 [cylinder-n 1 1 96]]]]]'
+        return f'[intersection {oval} {big}]'
+    if 'loft' in md:
+        return cuts_src(loft_src(md['loft'], o), md.get('cut', []), o)
+    return None
+
+
 def pivots(J):
     P = {'torso': np.zeros(3)}
     H = KS.head_layout(J)
@@ -185,7 +227,7 @@ def main(variant='mini'):
         elif mat_of(n) == 'plate':
             src = plate_src(m, o)
         else:
-            src = None
+            src = shell_src(m, o)
         if src is None:                       # lofted / hull / relief-cut shell: mesh in the body frame
             mm = K.simplify(m, grid=0.8) if len(m.faces) > 20000 else m
             fn = n.replace('.', '_') + '.stl'

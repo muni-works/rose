@@ -37,6 +37,14 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
     return tm(body), trimesh.util.concatenate(caps), r, L
 
 
+def hull_rings(rings, **meta):
+    """the shell = hull of its section rings; the rings ride along (metadata) so exporters can loft them natively."""
+    m = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
+    m.metadata['loft'] = [np.asarray(r, float) for r in rings]
+    m.metadata.update(meta)
+    return m
+
+
 def rrect(c, v, w, a, b, rc, k=10):
     """a rounded rectangle section: flat sides, corner radius rc."""
     rc = min(rc, a * 0.98, b * 0.98)
@@ -58,7 +66,7 @@ def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w
         r = r0 + (r1 - r0) * t
         a = r * k * flat if half_w is None else min(r * k * flat, half_w)   # never wider than the joint drums' faces
         rings.append(rrect(p0 + u * t * np.linalg.norm(p1 - p0), v, w, a, r * k, 0.4 * min(a, r * k)))
-    return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
+    return hull_rings(rings)
 
 
 def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0):
@@ -71,7 +79,7 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0):
     if dome:
         for f, d in ((0.9, 0.4), (0.7, 0.75), (0.4, 1.0)):
             rings.append(rrect(np.array([(x0 + x1) / 2, 0, z1 + dome * d]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * taper[1] * f, (x1 - x0) / 2 * f, RC * f))
-    return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
+    return hull_rings(rings)
 
 
 def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
@@ -162,7 +170,7 @@ def design():
         shoe = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
         lower = (M_(calf) + M_(Ha)) ^ Manifold.cube([400, 400, 200]).translate([ank[0] - 200, ank[1] - 200, ank[2] - 40])
         add(f'cover-shoe.{tag}l', relief(shoe, sweep_union(lower, ank, [(ja(an), -52, 52), ([1.0, 0, 0], -22, 22)], scale=1.07, step=6.0)))   # instep pocket for the ankle
-        add(f'sole.{tag}l', tm(Manifold.hull_points(np.concatenate(sole).astype(np.float32))))
+        add(f'sole.{tag}l', hull_rings(sole))
         # ---- arm: shoulder roll drum, upper arm (through the upper-arm rotation drum), elbow, forearm, mitten
         sp, sr, ep, ey = (f'A{side}_Shoulder_Pitch', f'{side}_Shoulder_Roll', f'{side}_Elbow_Pitch', f'{side}_Elbow_Yaw')
         U = KS.upper_layout(J, side)                   # arm drums on the structure's motors
@@ -186,7 +194,7 @@ def design():
         add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
-        add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
+        add(f'cover-hand.{tag}a', hull_rings(palm))
         add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         spc, src = U['sp'][0], U['sr'][0]
@@ -234,7 +242,7 @@ def design():
         nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (33.0, 36.0)
     nz1 = Hl['pitch'][0][2] - 10.0
     neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 14.0) for z_ in (nz0, nz1)]
-    add('trim-neck', tm(Manifold.hull_points(np.concatenate(neck).astype(np.float32))))
+    add('trim-neck', hull_rings(neck))
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], 31.5, nz0 + 4 - yz0))
@@ -258,13 +266,18 @@ def design():
         Manifold.cube([2 * px, 2 * pr, hpc[2] - hlo[2] + 20]).translate([hpc[0] - px, -pr, hlo[2] - 20])
     helmet = helmet - pocket
     add('trim-headhub', cyl(hpc, [0, 1.0, 0], 33.0, 56.0))           # the head-pitch hub, coaxial: lives in the helmet's opening
-    add('cover-helmet', tm(helmet))
+    hm = tm(helmet)
+    hm.metadata.update(loft=[np.asarray(r, float) for r in hr_],      # native: loft minus (y-cylinder r pr about the pitch axis + box)
+                       cut=[('ycyl', hpc, pr), ('box', [hpc[0] - px, -pr, hlo[2] - 20], [2 * px, 2 * pr, hpc[2] - hlo[2] + 20])])
+    add('cover-helmet', hm)
     # the face: an oval of gloss black glass, the front of the helmet a hair proud
     oval = trimesh.creation.cylinder(radius=1.0, height=1.0, sections=96).apply_transform(
         trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_scale([hd * 1.2, hw * 0.74, hh * 0.3]).apply_translation(
         [hc[0] + hd * 0.6, hc[1], hc[2] + hh * 0.04])
     big = M_(tm(helmet).copy().apply_translation(-hc).apply_scale(1.01).apply_translation(hc))
-    add('visor-face', tm(big ^ M_(oval)))
+    vm = tm(big ^ M_(oval))
+    vm.metadata.update(visor=dict(helmet=hm.metadata, hc=hc, s=1.01, oval_c=[hc[0] + hd * 0.6, hc[1], hc[2] + hh * 0.04], oval_s=[hd * 1.2, hw * 0.74, hh * 0.3]))
+    add('visor-face', vm)
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
