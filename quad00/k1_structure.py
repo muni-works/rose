@@ -131,7 +131,7 @@ def leg(J, side):
     shin_o = shin_o.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(kc[0], kc[2])))
     out.append((f'shin-outer.{side[0].lower()}l', plate(shin_o, 'xz', y_so)))
     z_box = kc[2] - m06['D'] / 2 - 6               # the inner shin plate starts below the knee can
-    shin_i = L.stadium([(a_mot[0][0], z_box - 34, m00['D'] + 10), (a_mot[1][0], a_mot[1][2], m00['D'] + 10), (ac[0], ac[2], 40)])
+    shin_i = L.stadium([(a_mot[0][0], z_box - 34, m00['D'] + 22), (a_mot[1][0], a_mot[1][2], m00['D'] + 22), (ac[0], ac[2], 48)])
     out.append((f'shin-inner.{side[0].lower()}l', plate(shin_i, 'xz', y_si)))
     # bridge from the outer shin plate to the inner one under the knee can (a yz web), keeps the box closed
     web = L.rounded(min(y_si, y_so) + T, z_box - 16, max(y_si, y_so), z_box, 4)
@@ -139,8 +139,19 @@ def leg(J, side):
     return out
 
 
-def structure():
+SCALE = 100.0 / 94.0          # the K1 layout grown to a 100 cm robot (motors and plate stock don't scale)
+
+
+def world():
+    """the K1 joint layout (arms down), scaled to our height; link meshes scaled with it."""
     J, M = KT.world(K.arms_down())
+    J = {n: dict(j, p=np.asarray(j['p']) * SCALE) for n, j in J.items()}
+    M = {n: m.copy().apply_scale(SCALE) for n, m in M.items()}
+    return J, M
+
+
+def structure():
+    J, M = world()
     out = []
     for side in ('Left', 'Right'):
         out += leg(J, side)

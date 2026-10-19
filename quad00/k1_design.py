@@ -37,6 +37,17 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
     return tm(body), trimesh.util.concatenate(caps), r, L
 
 
+def rrect(c, v, w, a, b, rc, k=10):
+    """a rounded rectangle section: flat sides, corner radius rc."""
+    rc = min(rc, a * 0.98, b * 0.98)
+    pts = []
+    for sx, sy, t0 in ((1, 1, 0.0), (-1, 1, 0.5 * np.pi), (-1, -1, np.pi), (1, -1, 1.5 * np.pi)):
+        t = np.linspace(t0, t0 + 0.5 * np.pi, k)
+        x = sx * (a - rc) + rc * np.cos(t); y = sy * (b - rc) + rc * np.sin(t)
+        pts.append(c[None, :] + x[:, None] * v[None, :] + y[:, None] * w[None, :])
+    return np.concatenate(pts)
+
+
 def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w=None):
     """a link lofted from a section at p0 to one at p1 (radii r0, r1), with a swell at 40 %."""
     p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
@@ -46,25 +57,25 @@ def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w
     for t, k in ((0.0, 1.0), (0.18, 1.0 + 0.6 * (swell - 1)), (0.42, swell), (0.7, 1.0 + 0.5 * (swell - 1)), (1.0, 1.0)):
         r = r0 + (r1 - r0) * t
         a = r * k * flat if half_w is None else min(r * k * flat, half_w)   # never wider than the joint drums' faces
-        rings.append(ring(p0 + u * t * np.linalg.norm(p1 - p0), v, w, a, r * k, n=n))
+        rings.append(rrect(p0 + u * t * np.linalg.norm(p1 - p0), v, w, a, r * k, 0.4 * min(a, r * k)))
     return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
 
 
-def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0):
+def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0):
     """a rounded torso block: superellipse sections (x fore, y side) stacked up z, tapered."""
     rings = []
     for t in np.linspace(0, 1, 9):
         z = z0 + (z1 - z0) * t
         k = taper[0] + (taper[1] - taper[0]) * t
-        rings.append(ring(np.array([(x0 + x1) / 2, 0, z]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * k, (x1 - x0) / 2 * (0.94 + 0.06 * k), n=n))
+        rings.append(rrect(np.array([(x0 + x1) / 2, 0, z]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * k, (x1 - x0) / 2 * (0.94 + 0.06 * k), RC))
     if dome:
         for f, d in ((0.9, 0.4), (0.7, 0.75), (0.4, 1.0)):
-            rings.append(ring(np.array([(x0 + x1) / 2, 0, z1 + dome * d]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * taper[1] * f, (x1 - x0) / 2 * f, n=n))
+            rings.append(rrect(np.array([(x0 + x1) / 2, 0, z1 + dome * d]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * taper[1] * f, (x1 - x0) / 2 * f, RC * f))
     return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
 
 
 def design():
-    J, M = KT.world(K.arms_down())
+    J, M = KS.world()
     out = []
     add = lambda n, m: out.append((n, m))
     for side, s in (('Left', 1), ('Right', -1)):
@@ -86,9 +97,9 @@ def design():
         Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=24.0)    # long enough to enclose the thigh plate pair + output flange
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        add(f'cover-thigh.{tag}l', bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=1.3, n=3.0, half_w=Lk / 2))
+        add(f'cover-thigh.{tag}l', bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2))
         ank = jp(an)
-        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 4.0]), 34.0, swell=1.12, flat=1.3, n=3.0, half_w=Lk / 2))
+        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 4.0]), 34.0, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2))
         Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
         add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
@@ -113,23 +124,24 @@ def design():
         Hue, cue, rue, Lue = housing(jp(ep), ja(ep), 'rs00', pad=2.0)
         Hel, cel, rel, Lel = housing(jp(ey), ja(ey), 'rs00')
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
-        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.06, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
+        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.0, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
         add(f'trim-upperarmring.{tag}a', cyl(jp(ep) - unit(ja(ep)) * 6, ja(ep), rue - 1.0, 4.0))
         Hd = M[f'{side.lower()}_hand_link']
         tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
         wrist = jp(ey) + (tip - jp(ey)) * 0.62
-        add(f'cover-forearm.{tag}a', bone(jp(ey), rel * 0.8, wrist, 18.0, swell=1.1, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
+        add(f'cover-forearm.{tag}a', bone(jp(ey), rel * 0.8, wrist, 18.0, swell=1.0, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
         add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
         add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
-        # torso flank caps: hip pitch + shoulder pitch show on the body
-        add(f'puck-shoulderpitch.{tag}a', cyl(jp(sp) + np.array([0, s * 26.0, 0]), [0, 1.0, 0], 24.0, 4.0))
+                # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
+        y0_, y1_ = s * 90.0, jp(sr)[1]
+        add(f'trim-shoulderyoke.{tag}a', cyl(np.array([jp(sp)[0], (y0_ + y1_) / 2, jp(sp)[2]]), [0, 1.0, 0], 25.0, abs(y1_ - y0_)))
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
-    add('cover-chest', block(lo[0] + 4, hi[0] - 6, 96.0, 40.0, zs + 28, n=2.9, taper=(0.86, 1.0), dome=18.0))
-    add('accent-waist', block(lo[0] + 12, hi[0] - 14, 80.0, 14.0, 40.0, n=2.9))
+    add('cover-chest', block(lo[0] + 4, hi[0] - 6, 101.0, 40.0, zs + 28, taper=(1.0, 1.0), dome=14.0))
+    add('accent-waist', block(lo[0] + 8, hi[0] - 10, 98.0, 14.0, 40.0, RC=18.0))
     add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hn, cn, rn, Ln = housing(J['AAHead_yaw']['p'] + np.array([0, 0, 8.0]), J['AAHead_yaw']['axis'], 'rs00', pad=-9.0)   # a slim neck
