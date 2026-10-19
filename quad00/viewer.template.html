@@ -212,8 +212,7 @@ function load(which, done) {
       const [raw, tag = ''] = (o.name || o.parent?.name || '').split('.');
       const name = raw.replace(/_\d+$/, '');
       if (SKIN.has(GROUP(name)) && GROUP(name) !== 'puck') {   // shells: smooth shaded (caps keep crisp edges)
-        o.geometry = BufferGeometryUtils.mergeVertices(o.geometry.deleteAttribute('normal') || o.geometry, 0.01);
-        o.geometry.computeVertexNormals();
+        o.geometry = BufferGeometryUtils.toCreasedNormals(o.geometry.toNonIndexed(), 0.6);   // smooth faces, crisp cut edges
       } else {
         o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
         o.geometry.computeVertexNormals();

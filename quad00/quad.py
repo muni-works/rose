@@ -1295,8 +1295,8 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=
     count = {'rs06': 6 + 2, 'rs02': 2, 'rs00': 4 + 8 + 2}       # legs: pitch, roll, knee x2 + ... see note
     count = {'rs06': 6, 'rs02': 2, 'rs00': 4 + 8 + 2}
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
-    import skin as SK
-    extra += SK.skin(extra)
+    import design as ID
+    extra += ID.design(extra)
     extra[:] = [(n, m) for n, m in extra if not n.startswith('paw.')]     # the mitten replaces the ball paw
     note = (f'mini humanoid (K1 on our stack): 22 DoF ({count["rs06"]} RS06 + {count["rs02"]} RS02 + {count["rs00"]} RS00, motors {kg:.1f} kg); '
             f'hip-knee {hip_knee:.0f} / shin {shin:.0f}; shoulder-to-hip {s2h:.0f}; torso {2 * c:.0f} wide')
