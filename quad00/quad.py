@@ -1363,7 +1363,8 @@ def k1_on_stack():
 
 
 def humanoid_mini():
-    return humanoid_k1()
+    import k1_design as KD
+    return KD.model()
 
 
 def pry_limb(tag, s, xp, c, mp, mr, my, apart, W_, out1, pose=(0.0, 0.0, 0.0), ext=None, Tl=None, H=41.0, gap=2.0, roll_below=None):
