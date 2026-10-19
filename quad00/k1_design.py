@@ -151,9 +151,10 @@ def design():
     hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
     hc = hc + np.array([0, 0, -6.0])
     hr_ = []
-    for t in np.linspace(-1, 1, 21):                           # an ellipsoid, slightly flattened at the jaw
+    for t in np.linspace(-1, 1, 25):                           # hybrid: flat side panels, domed crown + jaw
         k = math.sqrt(max(0.0, 1 - t * t)) * (0.94 if t < -0.4 else 1.0)
-        hr_.append(ring(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw * max(k, 0.06), hd * max(k, 0.06), n=2.05, k=72))
+        a_, b_ = hw * max(k, 0.06) ** 0.6, hd * max(k, 0.06)       # sides stay flat further up (k**0.6): flat cheeks, domed crown
+        hr_.append(rrect(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 0.6 * min(a_, b_), k=14))
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
     add('cover-helmet', tm(helmet))
     # the face: an oval of gloss black glass, the front of the helmet a hair proud
