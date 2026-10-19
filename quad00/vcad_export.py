@@ -61,20 +61,38 @@ def f(v):
     return f'{v:.3f}'
 
 
-def rot_to(a):
-    """rx ry rz (deg, applied x then y then z) taking +z onto unit axis a."""
+def _basis(a):
     a = np.asarray(a, float) / np.linalg.norm(a)
-    ry = np.degrees(np.arctan2(np.hypot(a[0], a[1]), a[2]))
-    rz = np.degrees(np.arctan2(a[1], a[0]))
-    return 0.0, ry, rz
+    u = np.cross(a, [1.0, 0, 0] if abs(a[0]) < 0.9 else [0, 1.0, 0]); u /= np.linalg.norm(u)
+    return a, u, np.cross(a, u)
+
+
+def _circle(c, u, v, r, n=48):
+    t = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    return c[None, :] + r * (np.cos(t)[:, None] * u[None, :] + np.sin(t)[:, None] * v[None, :])
 
 
 def cyl_src(c, ax, r, h, fil=0.0):
-    rx, ry, rz = rot_to(ax)
-    s = f'[translate 0 0 {f(-h / 2)} [cylinder-n {f(r)} {f(h)} 96]]'
-    if fil:
-        s = f'[fillet {f(fil * 0.55)} {s}]'
-    return f'[translate {f(c[0])} {f(c[1])} {f(c[2])} [rotate {f(rx)} {f(ry)} {f(rz)} {s}]]'
+    """a cylinder (or a drum with rounded ends) from explicit axis vectors -- no Euler angles, no fillet op:
+    plain = an extruded circle; filleted = a loft through rings tracing the end radii."""
+    a, u, v = _basis(ax)
+    c = np.asarray(c, float)
+    if not fil:
+        p0 = c - a * h / 2
+        pts = [(r * np.cos(t), r * np.sin(t)) for t in np.linspace(0, 2 * np.pi, 48, endpoint=False)]
+        segs = ' '.join(f'[line {f(p[0])} {f(p[1])} {f(q[0])} {f(q[1])}]' for p, q in zip(pts, pts[1:] + pts[:1]))
+        e = a * h
+        return (f'[extrude {f(e[0])} {f(e[1])} {f(e[2])} [sketch {f(p0[0])} {f(p0[1])} {f(p0[2])} '
+                f'{f(u[0])} {f(u[1])} {f(u[2])} {f(v[0])} {f(v[1])} {f(v[2])} #[{segs}]]]')
+    rings = []
+    for end in (-1, 1):
+        ts = np.linspace(0, np.pi / 2, 6)
+        ts = ts if end < 0 else ts[::-1]
+        for t in ts:                              # the end round: radius r - fil + fil*sin(t), axial h/2 - fil + fil*cos(t)
+            rr = r - fil + fil * np.sin(t)
+            z = end * (h / 2 - fil + fil * np.cos(t))
+            rings.append(_circle(c + a * z, u, v, max(rr, 0.5)))
+    return loft_src(rings, np.zeros(3))
 
 
 def plate_src(m, origin):
