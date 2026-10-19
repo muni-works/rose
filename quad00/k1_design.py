@@ -73,23 +73,23 @@ def design():
         # ---- leg: hip lobe (pitch + roll + yaw), thigh, knee, calf (holds the 2 ankle motors), ankle, shoe
         hp, hr, hy, kn, an = (f'{side}_Hip_Pitch', f'{side}_Hip_Roll', f'{side}_Hip_Yaw', f'{side}_Knee_Pitch', f'{side}_Ankle_Pitch')
         lay = KS.layout(J, side)                       # drums sit on the plate structure's motors, not the K1's frames
-        Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), 'rs06')
+        Hp, cp, rp, Lp = housing(lay['pitch'][0], ja(hp), 'rs06', extra_len=26.0)
         Hr, cr, rr, Lr = housing(lay['roll'][0], ja(hr), 'rs06')
         Hy, cy_, ry_, Ly = housing(lay['yaw'][0], ja(hy), 'rs02', pad=3.0)
         # hip pod: the pitch and roll drums as one smooth form; the yaw drum below it is a gunmetal collar
-        # the pod wraps the drums and the hip brackets (2.5 mm wall over the plates)
-        brk = np.concatenate([m.vertices for n, m in KS.leg(J, side) if n.split('-')[0] == 'chassis' and 'pelvis' not in n])
-        ctr = (lay['pitch'][0] + lay['roll'][0]) / 2
-        brk = brk + 2.5 * (brk - ctr) / np.linalg.norm(brk - ctr, axis=1, keepdims=True)
-        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, Hr.vertices, brk]).astype(np.float32)))
+        # a capsule: the pitch drum swept aft to the roll -- full width on the outer flank for the bracket plates
+        aft = Hp.vertices + np.array([lay['roll'][0][0] - lay['pitch'][0][0], 0, 0])
+        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, aft, Hr.vertices]).astype(np.float32)))
         add(f'cover-hippod.{tag}l', pod)
         add(f'puck-hipcaps.{tag}l', trimesh.util.concatenate([cp, cr]))
         add(f'trim-hipyaw.{tag}l', Hy)
+        z_pb, z_yt = pod.bounds[0][2], lay['yaw'][0][2] + Ly / 2
+        add(f'trim-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
         yaw_bot = lay['yaw'][0] - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
         Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=24.0)    # long enough to enclose the thigh plate pair + output flange
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        add(f'cover-thigh.{tag}l', bone(yaw_bot - np.array([0, 0, 2.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=1.3, n=3.0, half_w=Lk / 2))
+        add(f'cover-thigh.{tag}l', bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=1.3, n=3.0, half_w=Lk / 2))
         ank = jp(an)
         add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 4.0]), 34.0, swell=1.12, flat=1.3, n=3.0, half_w=Lk / 2))
         Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it

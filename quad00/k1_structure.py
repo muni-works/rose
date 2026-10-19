@@ -47,11 +47,13 @@ def layout(J, side):
     # roll: forward along x until its rear face clears the pitch can (+ gap for the output plate)
     # roll can hugs the inside of bracket A (on the pitch output) and sits forward of the pitch can
     y_out = hp[1] + s * (m06['L'] / 2 + G)
-    roll_c = np.array([m06['D'] / 2 + G + T + G + m06['L'] / 2, y_out - s * (G + m06['D'] / 2), hr[2]])
+    dx = m06['D'] / 2 + G + T + G + m06['L'] / 2           # pitch-to-roll spacing; centre the pair fore/aft over the yaw
+    hp = hp + np.array([dx / 2, 0, 0])
+    roll_c = np.array([hp[0] - dx, y_out - s * (G + m06['D'] / 2), hp[2]])   # aft of the pitch
     hy = np.array([0.0, hy[1], hy[2]])                        # yaw straight under the pitch, clear of the roll can
     return dict(s=s,
                 pitch=(hp, np.array([0, s * 1.0, 0]), 'rs06'),     # output outboard (+s y)
-                roll=(roll_c, np.array([-1.0, 0, 0]), 'rs06'),     # output aft (-x)
+                roll=(roll_c, np.array([1.0, 0, 0]), 'rs06'),      # output forward (+x)
                 yaw=(hy, np.array([0, 0, -1.0]), 'rs02'),          # output down
                 knee=(kn, np.array([0, s * 1.0, 0]), 'rs06'),      # output outboard
                 ankle=an)
@@ -61,6 +63,9 @@ def leg(J, side):
     """the leg's plates and motors."""
     P = layout(J, side)
     s = P['s']
+    # the hip brackets are drawn with the roll forward, then mirrored in x (pitch + yaw sit on x = 0)
+    mx = np.array([-1, 1, 1])
+    P = dict(P, roll=(P['roll'][0] * mx, np.array([-1.0, 0, 0]), 'rs06'), pitch=(P['pitch'][0] * mx,) + P['pitch'][1:])
     m06, m02, m00 = Q.MOTORS['rs06'], Q.MOTORS['rs02'], Q.MOTORS['rs00']
     out = []
     hp, _, _ = P['pitch']; rc, _, _ = P['roll']; yc, _, _ = P['yaw']; kc, _, _ = P['knee']; ac = P['ankle']
@@ -100,6 +105,8 @@ def leg(J, side):
     B2 = B2.intersection(L.box(-1e3, -1e3 if s > 0 else y_out + G, 1e3, y_out - G if s > 0 else 1e3))
     B2 = B2.difference(L.holes_on(m02['back'][0], m02['back'][1], m02['hole'], phase=45, at=(yc[0], yc[1])))
     out.append((f'chassis-hipB2.{side[0].lower()}l', plate(B2, 'xy', z_top)))
+    flip = lambda m: (lambda mm: (mm.invert(), mm)[1])(m.copy().apply_transform(np.diag([-1.0, 1, 1, 1])))
+    out = [(n, flip(m) if (n.startswith('chassis-') or 'roll' in n or 'pitch' in n) else m) for n, m in out]
     # -- thigh: a top plate on the yaw output, an inner plate (knee stator) + outer plate down to the knee
     z_yo = yc[2] - m02['L'] / 2 - G                 # yaw output face (down)
     yk_in = kc[1] - s * (m06['L'] / 2 + G)          # knee back face (inboard)
