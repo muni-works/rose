@@ -63,6 +63,7 @@ canvas:active { cursor: grabbing; }
     <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
     <button id="v-mini" aria-pressed="false">Mini humanoid</button>
     <button id="v-k1" aria-pressed="false">Booster K1</button>
+    <button id="covers" aria-pressed="true">Covers</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
     <button id="reset">Reset view</button>
@@ -153,13 +154,15 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
   body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
     m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
+  cover: { label: 'covers (printed shells)', swatch: '#f1efe9',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xf2f0ea, metalness: 0.0, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.4 }) },
   k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
     m: new THREE.MeshPhysicalMaterial({ color: 0xeceef1, metalness: 0.05, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
 const GROUP = name =>
-  /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^cover-/.test(name) ? 'cover' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
@@ -212,6 +215,7 @@ function load(which, done) {
     gltf.scene.userData.parts = list;
     root.add(gltf.scene);
     loaded[which] = gltf.scene;
+    gltf.scene.traverse(o => { if (o.isMesh && o.userData.group === 'cover') o.visible = coversOn; });
     document.getElementById('status').hidden = true;
     done(gltf.scene);
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
@@ -344,6 +348,10 @@ function buildKey() {
 }
 
 const bExplode = document.getElementById('explode'), bSpin = document.getElementById('spin');
+let coversOn = true;
+const bCovers = document.getElementById('covers');
+function applyCovers() { for (const g of Object.values(loaded)) g.traverse(o => { if (o.isMesh && o.userData.group === 'cover') o.visible = coversOn; }); }
+bCovers.onclick = () => { coversOn = !coversOn; bCovers.setAttribute('aria-pressed', coversOn); applyCovers(); };
 bExplode.onclick = () => { explodeTarget = explodeTarget ? 0 : 1; bExplode.setAttribute('aria-pressed', !!explodeTarget); };
 bSpin.onclick = () => { controls.autoRotate = !controls.autoRotate; bSpin.setAttribute('aria-pressed', controls.autoRotate); };
 document.getElementById('reset').onclick = () => { if (home) { controls.target.copy(home.target); camera.position.copy(home.pos); } };

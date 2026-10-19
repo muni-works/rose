@@ -928,7 +928,7 @@ def humanoid5(hip_a=85.0, arm_pose=(100.0, 70.0)):
 
 def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs00', waistm='rs00', wristm=None,
                     arm_pose=(90.0, -60.0), stand=0.97, ankle_roll=False, head=None, legpk=None, rect=False,
-                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0, shoulder=(0.0, 0.0, 0.0), head_h=None):
+                    arm_chain=False, arm_yawm='rs02', arm_drop=30.0, shoulder=(0.0, 0.0, 0.0), head_h=None, covers=False):
     """the humanoid style, for any RobStride set: flush shoulder bar, a chest with the waist motor inside,
     a pelvis box with the two hip-yaw motors as spacers, hip flange + roll plate, then the limb module
     (thigh box, inline shin, ab/ad centred on the hip) with the end joint driven by a pushrod."""
@@ -1167,9 +1167,11 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
     mix = ' + '.join(f'{n_} {k_.upper()}' for k_, n_ in count.items())
     note = (f'{name}: {sum(count.values())} joints ({mix}, motors {kg:.1f} kg); thigh {leg[0]:.0f} / shin {leg[1]:.0f}; '
             f'shoulder-to-hip {hip_a - hip_x:.0f}, shoulders {2 * (y0a + da["OUT"][1]):.0f} wide')
+    if covers:
+        add_covers(extra)
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
     return dict(hip_x=hip_a, plane=y0a, legs=legs, body=None, walls=[], extra=extra, note=note,
-                posed=poses, only=True, world=R, ground=True)
+                posed=poses, only=True, world=R, ground=True, cover_posed=covers)
 
 
 def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=150.0, head_h=125.0, hip_y=None,
@@ -1293,10 +1295,62 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=
     count = {'rs06': 6 + 2, 'rs02': 2, 'rs00': 4 + 8 + 2}       # legs: pitch, roll, knee x2 + ... see note
     count = {'rs06': 6, 'rs02': 2, 'rs00': 4 + 8 + 2}
     kg = sum(MOTORS[k_]['kg'] * n_ for k_, n_ in count.items())
+    add_covers(extra)
     note = (f'mini humanoid (K1 on our stack): 22 DoF ({count["rs06"]} RS06 + {count["rs02"]} RS02 + {count["rs00"]} RS00, motors {kg:.1f} kg); '
             f'hip-knee {hip_knee:.0f} / shin {shin:.0f}; shoulder-to-hip {s2h:.0f}; torso {2 * c:.0f} wide')
     R = trimesh.transformations.rotation_matrix(np.radians(-90), [0, 1, 0])
     return dict(hip_x=0.0, plane=0.0, legs=[], body=None, walls=[], extra=extra, note=note, posed={}, only=True, world=R, ground=True)
+
+
+COVER_SEGMENTS = (
+    # segment, name patterns (regex on the part's base name); first match wins
+    ('foot', r'^(foot|pivot-ankle)$'),
+    ('shin', r'^(shin|rs0\d-(ankle|wrist)(-b)?|crank-(ankle|wrist)(-b)?|link-(ankle|wrist)(-b)?|pivot-wrist)$'),
+    ('thigh', r'^(thigh-(inner|outer)|rs0\d-(knee|hip)|chassis-(cap|arm-cap)|yoke|rs0\d-abad)$'),
+    ('head', r'^(head-(face|back|crown|cheek|side)|rs00-neckpitch|chassis-neck-plate)$'),
+    ('_joint', r'^(chassis-(pitchplate|rollmount|rollplate|yawmount|hipflange|rollplate|shoulderflange|shoulderplate|shoulder-(pitchplate|rollmount|rollplate|yawmount))|rs0\d-(.pitch-out|.roll|.roll-out|.yaw|.yaw-out|hipyaw|hipyaw-out|shoulderyaw|shoulderyaw-out|armyaw|armyaw-out|shoulderroll|shoulderroll-out|shoulderpitch-out))$'),
+)
+TORSO = r'^(chassis-(side|bar|floor|front|back|chest-.*|pelvis-.*|shoulder-bar|shoulder-floor|shoulder-front|shoulder-back|neck-post)|int-battery|rs0\d-(waist|waist-out|.pitch|shoulderpitch))$'
+
+
+def add_covers(extra, margin=4.0):
+    """cover shells for a finished look: one smooth hull per limb segment (and the torso), a few mm proud of the
+    structure. Real covers would be printed/thermoformed shells clipped to the plates; here they are hulls."""
+    import re
+    from manifold3d import Manifold
+    groups = {}
+    for n, m in extra:
+        base, _, tag = n.partition('.')
+        if base.startswith(('cover', 'paw', 'hand', 'finger')):
+            continue
+        seg = None
+        if re.match(TORSO, base) and not tag:
+            seg = 'torso'
+        elif re.match(TORSO, base) and tag and base.endswith(('pitch', 'shoulderpitch')):
+            seg = 'torso'
+        else:
+            for s_, pat in COVER_SEGMENTS:
+                if re.match(pat, base):
+                    seg = s_
+                    break
+        if seg is None or seg.startswith('_'):                  # joints stay bare: dark motors as accents
+            continue
+        key = f'cover-{seg}' + (f'.{tag}' if tag and seg not in ('torso', 'head') else '')
+        groups.setdefault(key, []).append(np.asarray(m.vertices))
+    offs = np.array([[0, 0, 0]] + [[sx * margin, sy * margin, sz * margin] for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)], float)
+    out = []
+    for key, vs in groups.items():
+        P = np.concatenate(vs)
+        P = (P[:, None, :] + offs[None, :, :]).reshape(-1, 3)
+        h = Manifold.hull_points(P.astype(np.float32).tolist() if False else P.astype(np.float32))
+        try:
+            h = h.smooth_out(60.0).refine(3)
+        except Exception:
+            pass
+        g = h.to_mesh()
+        out.append((key, trimesh.Trimesh(np.asarray(g.vert_properties)[:, :3], np.asarray(g.tri_verts), process=False)))
+    extra += out
+    return extra
 
 
 def humanoid_mini():
@@ -1373,7 +1427,7 @@ def humanoid_tiny():
     """TINY humanoid, ~56 cm: the largest all-RS00 humanoid once its plates are weighed (10.2 kg est.; walking
     knee 94% of 0.7 x 14 N.m). The 70 cm version was 134% -- shrinking barely lightens it (the motors and
     their rings are fixed), so the size came down to x0.72."""
-    return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0, rect=True, head='fixed', head_h=75.0)
+    return humanoid_family('tiny humanoid', leg=(122.0, 158.0), arm=(108.0, 122.0), chest_h=62.0, rect=True, head='fixed', head_h=75.0, covers=True)
 
 
 def humanoid_mini_v1():
@@ -1419,6 +1473,17 @@ def build(arch):
                 mirrored = bool(flip) and n in YOKE_SIDE
             m = place @ np.diag([-1, 1, 1, 1.0]) if mirrored else place
             scene.graph.update(frame_to=f'{n}.{tag}', frame_from=scene.graph.base_frame, matrix=m, geometry=n)
+    if arch.get('cover_posed') and 'posed' in arch:          # covers for posed (instanced) limbs, in the body frame
+        placed = []
+        for node in list(scene.graph.nodes_geometry):
+            if '.' not in node or node.endswith('.proto'):
+                continue
+            T_, g_ = scene.graph[node]
+            placed.append((node.replace('~', '.').split('.')[0] + '.' + node.split('.')[-1], scene.geometry[g_].copy().apply_transform(T_)))
+        n0 = len(placed)
+        for n, m in add_covers(placed)[n0:]:
+            if n.endswith(('.al', '.ar')):                     # the instanced arms only; the rest come with `extra`
+                scene.add_geometry(m, geom_name=n, node_name=n)
     if arch.get('body') is not None:
         scene.add_geometry(arch['body'], geom_name='chassis-body', node_name='chassis-body')
     for n, m in arch.get('extra', []):
