@@ -153,15 +153,17 @@ def design():
         add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
         epc = U['ep'][0]
-        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))
-        ey_ = U['ey'][0]; y_e2 = abs(ey_[1]) - 25.5 - KS.G - KS.T          # inboard face of the elbow plate E2
-        cheek = [rrect(np.array([ey_[0], s * (y_e2 - 1.5), z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 30.0, 5.5, 5.0) for z_ in (epc[2] - 30, ey_[2])]
-        add(f'cover-elbowfork.{tag}a', tm(Manifold.hull_points(np.concatenate(cheek).astype(np.float32))))
-        Hd = M[f'{side.lower()}_hand_link']
-        tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
-        wrist = jp(ey) + (tip - jp(ey)) * 0.62
-        fo = np.array([0, s * 3.5, 0])                      # outboard of the fork cheek
-        add(f'cover-forearm.{tag}a', bone(jp(ey) + fo, rel * 0.8, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.3))
+        add(f'cover-upperarm.{tag}a', bone(U['sr'][0] + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))
+        ey_ = U['ey'][0]
+        tip = ey_ + KS.hang(J, M, side)
+        wrist = ey_ + (tip - ey_) * 0.62
+        fo = np.array([0, s * 5.0, 0])                      # forearm rides outboard of the inner elbow plate
+        fore = bone(ey_ + fo, rel * 0.8, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.0)
+        add(f'cover-forearm.{tag}a', fore)
+        # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
+        low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=33.0)
+        fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=29.5))
+        add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
         add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
@@ -170,7 +172,9 @@ def design():
         spc, src = U['sp'][0], U['sr'][0]
         yc_ = np.array([(spc[0] + src[0]) / 2, 0, (spc[2] + src[2]) / 2])
         secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (88.0, abs(src[1]) - Lsr / 2 + 8.0)]   # stops at the shoulder drum's inner face: the upper arm swings clear
-        add(f'cover-shoulderyoke.{tag}a', tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32))))
+        yoke = tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32)))
+        ua = M_(dict(out)[f'cover-upperarm.{tag}a'])
+        add(f'cover-shoulderyoke.{tag}a', relief(yoke, sweep_union(ua, U['sr'][0], [(U['sr'][1], -25, 25)], scale=1.03, step=3.0)))   # upper arm swings in clear
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
@@ -241,7 +245,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith('rs') or 'hipR' in n) else clip(m, S)) for n, m in KS.structure()]   # hip R spans the roll gap
+    return [(n, m if (n.startswith('rs') or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

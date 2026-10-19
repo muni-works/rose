@@ -150,15 +150,24 @@ def holes(m, which, at, phase=0.0):
     return L.holes_on(pcd, n, m['hole'], phase=phase, at=at)
 
 
+def hang(J, M, side):
+    """elbow -> fingertip, straight down (the K1's length, our plumb arm)."""
+    Hd = M[f'{side.lower()}_hand_link']
+    tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
+    return np.array([0, 0, -np.linalg.norm(tip - J[f'{side}_Elbow_Yaw']['p'])])
+
+
 def upper_layout(J, side):
     """our arm + head motor placements on the K1 layout (all RS00). Axes squared up to x/y/z."""
     s = 1 if side == 'Left' else -1
     m = Q.MOTORS['rs00']
     sr = J[f'{side}_Shoulder_Roll']['p'].copy()
+    sr = sr + np.array([0, s * 16.0, 0])                                  # plumb arms need the hands clear of the hip drums
     ey = J[f'{side}_Elbow_Yaw']['p'].copy()
     sp = J[f'A{side}_Shoulder_Pitch']['p'].copy()
     sp = np.array([sp[0], s * (96.0 - G - m['L'] / 2), sp[2]])            # output face just outside the chest wall
-    ep = np.array([0.0, J[f'{side}_Elbow_Pitch']['p'][1], sr[2] - m['D'] / 2 - G - T - G - m['L'] / 2])   # slid down its own axis
+    ep = np.array([0.0, sr[1], sr[2] - m['D'] / 2 - G - T - G - m['L'] / 2])   # straight under the shoulder drum: the arm hangs plumb
+    ey = np.array([ey[0], sr[1], ey[2]])
     return dict(s=s, sp=(sp, np.array([0, s * 1.0, 0])), sr=(sr, np.array([1.0, 0, 0])),
                 ep=(ep, np.array([0, 0, -1.0])), ey=(np.array([ey[0], ey[1], ey[2]]), np.array([0, s * 1.0, 0])))
 
@@ -197,13 +206,11 @@ def arm(J, side, M):
     y_e2 = abs(ey[1]) - m['L'] / 2 - G - T
     E1 = L.unary_union([L.circle(ep[0], ep[1], m['out'][0] + 30), Rr(ey[0] - 20, s * y_e2, ey[0] + 20, ep[1])])
     out.append((f'arm-elbowE1.{tag}a', plate(E1.difference(holes(m, 'out', (ep[0], ep[1]))), 'xy', z_e1)))
-    E2 = L.unary_union([L.circle(ey[0], ey[2], m['back'][0] + 22), Rr(ey[0] - 20, ey[2], ey[0] + 20, z_e1)])
+    E2 = L.unary_union([L.circle(ey[0], ey[2], m['back'][0] + 22), Rr(ey[0] - 12, ey[2], ey[0] + 12, z_e1)])   # neck stays inside the rotation drum
     out.append((f'arm-elbowE2.{tag}a', plate(E2.difference(holes(m, 'back', (ey[0], ey[2]), 45)), 'xz', yw(y_e2))))
     # forearm: F1 on the elbow output (xz, outboard), down to the wrist
     y_f1 = abs(ey[1]) + m['L'] / 2 + G
-    Hd = M[f'{side.lower()}_hand_link']
-    tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
-    wr = ey + (tip - ey) * 0.62
+    wr = ey + hang(J, M, side) * 0.62
     F1 = L.stadium([(ey[0], ey[2], m['out'][0] + 30), (wr[0], wr[2], 30)]).difference(holes(m, 'out', (ey[0], ey[2])))
     out.append((f'arm-forearmF1.{tag}a', plate(F1, 'xz', yw(y_f1))))
     return out
