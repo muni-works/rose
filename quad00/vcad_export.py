@@ -226,6 +226,7 @@ def main(variant='mini'):
     outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vcad', variant)
     os.makedirs(os.path.join(outdir, 'stl'), exist_ok=True)
     parts, inst, fixed = [], [], []
+    z_floor = -min(m.bounds[0][2] for _, m in D)            # the torso sits this high, so the soles stand on z = 0
     anchor = {}
     used_mats = set()
     n_native = n_mesh = 0
@@ -257,7 +258,7 @@ def main(variant='mini'):
         mk = mat_of(n); used_mats.add(mk)
         pn = n.replace('.', '_')
         parts.append(f'[part "{pn}" {src} "{MATS[mk][0]}"]')
-        inst.append(f'[instance "{pn}_i" "{pn}" 0.0 0.0 0.0]')
+        inst.append(f'[instance "{pn}_i" "{pn}" 0.0 0.0 {f(z_floor) if b == "torso" and b not in anchor else "0.0"}]')
         if b in anchor:
             fixed.append(f'[fixed-joint "fix_{pn}" "{anchor[b]}" 0.0 0.0 0.0 "{pn}_i" 0.0 0.0 0.0]')
         else:
