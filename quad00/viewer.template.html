@@ -228,7 +228,9 @@ function load(which, done) {
     gltf.scene.userData.parts = list;
     root.add(gltf.scene);
     loaded[which] = gltf.scene;
+    gltf.scene.userData.skinned = list.some(o => o.userData.group === 'cover');
     gltf.scene.traverse(o => { if (o.isMesh && SKIN.has(o.userData.group)) o.visible = coversOn; });
+    applyCovers();
     document.getElementById('status').hidden = true;
     done(gltf.scene);
   }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
@@ -373,7 +375,15 @@ function buildKey() {
 const bExplode = document.getElementById('explode'), bSpin = document.getElementById('spin');
 let coversOn = true;
 const bCovers = document.getElementById('covers');
-function applyCovers() { for (const g of Object.values(loaded)) g.traverse(o => { if (o.isMesh && SKIN.has(o.userData.group)) o.visible = coversOn; }); }
+const ANODIZED = new THREE.MeshPhysicalMaterial({ color: 0x34373d, metalness: 0.6, roughness: 0.42, clearcoat: 0.3 });
+function applyCovers() {
+  for (const g of Object.values(loaded)) g.traverse(o => {
+    if (!o.isMesh) return;
+    if (SKIN.has(o.userData.group)) o.visible = coversOn;
+    // with the skin on, whatever structure still shows is dark anodized: part of the graphite joint language
+    if (o.userData.group === 'aluminium' && g.userData.skinned) o.material = coversOn ? ANODIZED : MATS.aluminium.m;
+  });
+}
 bCovers.onclick = () => { coversOn = !coversOn; bCovers.setAttribute('aria-pressed', coversOn); applyCovers(); };
 bExplode.onclick = () => { explodeTarget = explodeTarget ? 0 : 1; bExplode.setAttribute('aria-pressed', !!explodeTarget); };
 bSpin.onclick = () => { controls.autoRotate = !controls.autoRotate; bSpin.setAttribute('aria-pressed', controls.autoRotate); };
