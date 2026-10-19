@@ -1355,6 +1355,13 @@ def add_covers(extra, margin=4.0):
     return extra
 
 
+def k1_on_stack():
+    import k1_teardown as KT
+    extra = KT.on_stack()
+    return dict(hip_x=0.0, plane=0.0, legs=[], body=None, walls=[], extra=extra,
+                note='K1 teardown: its skin as a ghost, our RobStrides coaxial on its joint frames', posed={}, only=True, ground=True)
+
+
 def humanoid_mini():
     return humanoid_k1()
 
@@ -1501,7 +1508,7 @@ def build(arch):
 
 
 def main():
-    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini)):          # the mini quad, the mini humanoid
+    for name, fn in (('inline', inline), ('humanoid_tiny', humanoid_tiny), ('humanoid_mini', humanoid_mini), ('k1_on_stack', k1_on_stack)):          # the mini quad, the mini humanoid
         arch = fn()
         out = os.path.join(A, f'quad-{name}.glb')
         build(arch).export(out)

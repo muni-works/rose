@@ -78,7 +78,7 @@ def viewer():
     import k1
     k1.POSE.update(k1.arms_down())
     k1.build().export(os.path.join(A, 'quad-k1.glb'))
-    for key, build in (('QUAD', 'inline'), ('HUMANOID', 'humanoid_tiny'), ('MINI', 'humanoid_mini'), ('K1', 'k1')):
+    for key, build in (('QUAD', 'inline'), ('HUMANOID', 'humanoid_tiny'), ('MINI', 'humanoid_mini'), ('K1', 'k1'), ('K1STACK', 'k1_on_stack')):
         page = page.replace(f'__{key}_GLB_BASE64__',
                             base64.b64encode(open(os.path.join(A, f'quad-{build}.glb'), 'rb').read()).decode())
     open(os.path.join(HERE, 'out', 'viewer.html'), 'w').write(page)

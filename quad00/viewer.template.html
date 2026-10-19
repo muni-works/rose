@@ -63,6 +63,7 @@ canvas:active { cursor: grabbing; }
     <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
     <button id="v-mini" aria-pressed="false">Mini humanoid</button>
     <button id="v-k1" aria-pressed="false">Booster K1</button>
+    <button id="v-k1stack" aria-pressed="false">K1 on our stack</button>
     <button id="covers" aria-pressed="true">Covers</button>
     <button id="explode" aria-pressed="false">Explode</button>
     <button id="spin" aria-pressed="true">Turntable</button>
@@ -85,7 +86,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
-const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', k1: '__K1_GLB_BASE64__' };
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', k1: '__K1_GLB_BASE64__', k1stack: '__K1STACK_GLB_BASE64__' };
 
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
@@ -136,6 +137,7 @@ const speckle = canvasTex((g, s) => {
 speckle.repeat.set(0.05, 0.05);
 
 const NOTES = {
+  k1stack: 'K1 teardown: the K1 skin as a ghost, our RobStrides coaxial on its joint frames -- RS06 hip pitch/roll/knee, RS02 hip yaw, 2 x RS00 ankle drive in the shank, RS00 arms + head',
   k1: 'Booster K1 for reference: 95 cm, 19.5 kg, 22 DoF -- its own URDF + meshes (BSD-3, BoosterRobotics/booster_assets), arms lowered',
   all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, one style, RobStride only, zero gears',
   quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
@@ -165,6 +167,8 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0xff5e1f, metalness: 0.1, roughness: 0.35, clearcoat: 0.6 }) },
   cover: { label: 'covers (printed shells)', swatch: '#f1efe9',
     m: new THREE.MeshPhysicalMaterial({ color: 0xf2f0ea, metalness: 0.0, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.4 }) },
+  ghost: { label: 'K1 skin (ghost)', swatch: '#cfd6e0',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xdfe6ef, metalness: 0, roughness: 0.3, transparent: true, opacity: 0.22, depthWrite: false }) },
   k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
     m: new THREE.MeshPhysicalMaterial({ color: 0xeceef1, metalness: 0.05, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 }) },
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
@@ -172,7 +176,7 @@ const MATS = {
 };
 const SKIN = new Set(['cover', 'puck', 'visor', 'sole', 'accent']);
 const GROUP = name =>
-  /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^k1ghost-/.test(name) ? 'ghost' : /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
@@ -238,7 +242,7 @@ function load(which, done) {
 }
 
 const ORDER = ['quad', 'humanoid', 'mini', 'k1'];
-const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid', k1: 'Booster K1' };
+const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid', k1: 'Booster K1', k1stack: 'K1 + our motors' };
 function settle(g) {                     // stand the model on the floor (world y = 0)
   g.position.z = 0; g.position.y = 0; root.updateMatrixWorld(true);
   const b = new THREE.Box3().setFromObject(g);
@@ -405,9 +409,11 @@ renderer.setAnimationLoop(() => {
   }
   for (const [g, { m }] of Object.entries(MATS)) {
     const dim = !!focus && focus !== g;
-    if (m.transparent !== dim) { m.transparent = dim; m.needsUpdate = true; }
-    m.opacity = dim ? 0.18 : 1;
-    m.depthWrite = !dim;
+    const base = m.userData.base ?? (m.userData.base = m.transparent ? m.opacity : 1);   // ghosts keep their own opacity
+    const tr = dim || base < 1;
+    if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; }
+    m.opacity = dim ? Math.min(0.18, base) : base;
+    m.depthWrite = !tr;
   }
   controls.update();
   renderer.render(scene, camera);

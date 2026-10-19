@@ -19,7 +19,17 @@ def origin(el):
     return trimesh.transformations.translation_matrix(xyz) @ rpy(*ang)
 
 
-def simplify(m, tol=0.6):
+def simplify(m, tol=0.6, grid=1.5):
+    """vertex clustering on a `grid` mm lattice: invisible at viewing scale, a fraction of the triangles."""
+    v = np.round(m.vertices / grid) * grid
+    out = trimesh.Trimesh(v, m.faces, process=False)
+    out.merge_vertices()
+    out.update_faces(out.nondegenerate_faces())
+    out.remove_unreferenced_vertices()
+    return out if len(out.faces) else m
+
+
+def _simplify_manifold(m, tol=0.6):
     try:
         M = Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32))).simplify(tol)
         g = M.to_mesh()
@@ -73,7 +83,8 @@ def arms_down():
     best = None
     for s in (1, -1):
         p = {n: (s if 'Left' in n else -s) * 1.35 for n in names}
-        w = build(p).extents[1]
+        e = build(p).extents
+        w = e[1] + e[2]                                     # narrow AND not taller: arms down, not up
         best = min(best or (w, p), (w, p), key=lambda t: t[0])
     return best[1]
 
