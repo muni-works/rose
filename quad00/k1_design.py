@@ -180,15 +180,29 @@ def design():
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     add('cover-chest', block(lo[0] + 4, hi[0] - 6, 101.0, 40.0, zs + 28, taper=(1.0, 1.0), dome=14.0))
     add('accent-waist', block(lo[0] + 8, hi[0] - 10, 98.0, 14.0, 40.0, RC=18.0))
-    pel = M_(block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
+    # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
+    # then a narrow keel dropping between the hip drums
+    rl = KS.layout(J, 'Left')['roll'][0]; m06 = Q.MOTORS['rs06']
+    x0, x1 = lo[0] + 10, hi[0] - 12; xm, xh = (x0 + x1) / 2, (x1 - x0) / 2
+    secs = [rrect(np.array([xm, 0, 14.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), 101.0, xh, 22.0)]
+    for th in np.linspace(0, np.pi / 2, 7):                     # the cans' lower quadrant, 5 mm proud
+        r_ = m06['D'] / 2 + 5.0
+        y_, z_ = rl[1] + r_ * np.cos(th), rl[2] - r_ * np.sin(th)
+        secs.append(rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), max(y_, 30.0), xh * (1 - 0.12 * np.sin(th)), 22.0))
+    upper = Manifold.hull_points(np.concatenate(secs).astype(np.float32))
+    zk = rl[2] - m06['D'] / 2 - 5.0
+    keel = [rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), w_, xh * f_, 16.0)
+            for z_, w_, f_ in ((zk + 20, 46.0, 0.86), (zk - 26, 38.0, 0.7), (zk - 34, 30.0, 0.55))]
+    pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
         collar = M_(got[f'trim-hipneck.{t}l']) + M_(got[f'trim-hipyaw.{t}l'])
         pel = pel - sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04)          # the thigh swings under the pelvis
-        hipr = M_(dict(KS.leg(J, side))[f'chassis-hipR.{t}l']) + M_(got[f'cover-hip.{t}l'])
-        pel = pel - sweep_union(hipr, lay['roll'][0], [((1.0, 0, 0), -22, 47)], scale=1.03)             # and rolls out from it
-    add('cover-pelvis', tm(pel.simplify(0.4)))
+        hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']; hc_ = hr_m.bounds.mean(0)
+        hipr = M_(hr_m).translate(list(-hc_)).scale([2.2, 1.0, 1.0]).translate(list(hc_)) + M_(got[f'cover-hip.{t}l'])   # slot with running clearance
+        pel = pel - sweep_union(hipr, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)             # and rolls out from it
+    add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
     nz0, nz1 = Hl['yaw'][0][2] + 20.0, Hl['pitch'][0][2] - 10.0
