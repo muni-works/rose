@@ -89,6 +89,8 @@ def leg(J, side):
     z_rb = rc[2] - m06['D'] / 2 - G                        # roll can bottom
     HI = L.unary_union([L.circle(hp[0], hp[2], m06['back'][0] + 22), L.rounded(hp[0] - 30, hp[2] - 20, x_ro, z_rb, 8)])
     HI = HI.intersection(L.box(-1e3, z_top + T + 2, 1e3, z_rb))
+    r_sw = hp[2] - (yc[2] + m02['L'] / 2) - 3.0                         # the yaw can swings round the pitch axis at this radius
+    HI = HI.intersection(L.unary_union([L.circle(hp[0], hp[2], 2 * r_sw), L.box(-1e3, hp[2], 1e3, 1e3)]))
     HI = HI.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(hp[0], hp[2])))
     out.append((f'chassis-hipinner.{tag}l', plate(HI, 'xz', y_pi)))
     # -- hip A: xz plate on the pitch output (outboard), down to the yaw-top plate
@@ -106,7 +108,7 @@ def leg(J, side):
     z_yo = yc[2] - m02['L'] / 2 - G                 # yaw output face (down)
     yk_in = kc[1] - s * (m06['L'] / 2 + G)          # knee back face (inboard)
     yk_out = kc[1] + s * (m06['L'] / 2 + G)         # knee output face (outboard)
-    y_ti, y_to = (yk_in - T if s > 0 else yk_in), (yk_out + G + T + G if s > 0 else yk_out - G - T - G - T)   # outer thigh plate rides outside the shin plate
+    y_ti, y_to = (yk_in - T if s > 0 else yk_in), (yk_out + G + T + 5.0 if s > 0 else yk_out - G - T - 5.0 - T)   # outer thigh plate: outside the shin plate + the calf shell wall (clevis)
     top = L.rounded(min(y_ti, y_to) - 2, -40 + yc[0], max(y_ti, y_to) + T + 2, 40 + yc[0], 10)
     top = L.unary_union([L.rounded(yc[0] - 40, min(y_ti, y_to), yc[0] + 40, max(y_ti, y_to) + T, 10)])
     top = top.difference(L.holes_on(m02['out'][0], m02['out'][1], m02['hole'], at=(yc[0], yc[1])))

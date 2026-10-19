@@ -74,6 +74,25 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0):
     return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
 
 
+def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
+    """union of `parts` (Manifold) rotated about `center` over a grid of (axis, lo, hi) ranges, dilated by `scale` about the centre."""
+    import itertools
+    P = parts.translate(list(-np.asarray(center))).scale([scale] * 3).translate(list(center)) if scale != 1.0 else parts
+    grids = [[(np.asarray(a, float), d) for d in np.arange(lo, hi + 1e-6, step)] for a, lo, hi in axes_ranges]
+    out = []
+    for combo in itertools.product(*grids):
+        Tm = np.eye(4)
+        for a, d_ in combo:
+            Tm = trimesh.transformations.rotation_matrix(np.radians(d_), a, center) @ Tm
+        out.append(P.transform(Tm[:3]))
+    return Manifold.batch_boolean(out, OpType.Add)
+
+
+def relief(shell, mover):
+    """shell minus a neighbour's swept path: the clearance cut a moving joint needs."""
+    return tm((M_(shell) - mover).simplify(0.4))                # sweeps leave thousands of facets; 0.4 mm is invisible
+
+
 def design():
     J, M = KS.world()
     out = []
@@ -94,12 +113,17 @@ def design():
         z_pb, z_yt = pod.bounds[0][2], lay['yaw'][0][2] + Ly / 2
         add(f'trim-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
         yaw_bot = lay['yaw'][0] - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
-        Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=24.0)    # long enough to enclose the thigh plate pair + output flange
+        Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06', extra_len=34.0)    # encloses the thigh plate pair (the clevis cheeks)
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        add(f'cover-thigh.{tag}l', bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2))
+        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2)
         ank = jp(an)
-        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 4.0]), 34.0, swell=1.0, flat=1.3, n=3.0, half_w=Lk / 2))
+        # the calf nests between the thigh plates (a clevis knee): narrower, centred on the shin plates
+        yo = np.array([0, s * 4.5, 0])
+        calf = bone(jp(kn) + yo, rk * 0.84, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=1.3, n=3.0, half_w=34.5)
+        add(f'cover-calf.{tag}l', calf)
+        calf_fat = M_(bone(jp(kn) + yo, rk * 0.84 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=1.3, n=3.0, half_w=37.5))
+        add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
         Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
         add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
@@ -115,22 +139,29 @@ def design():
             yc = (lo[1] + hi[1]) / 2
             rings.append(ring(np.array([x, yc, z0 + 7 + h / 2]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a, h / 2, n=3.0))
             sole.append(ring(np.array([x, yc, z0 + 3.5]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a + 1.5, 3.5, n=5.0))
-        add(f'cover-shoe.{tag}l', tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32))))
+        shoe = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
+        lower = (M_(calf) + M_(Ha)) ^ Manifold.cube([400, 400, 200]).translate([ank[0] - 200, ank[1] - 200, ank[2] - 40])
+        add(f'cover-shoe.{tag}l', relief(shoe, sweep_union(lower, ank, [(ja(an), -52, 52), ([1.0, 0, 0], -22, 22)], scale=1.07, step=6.0)))   # instep pocket for the ankle
         add(f'sole.{tag}l', tm(Manifold.hull_points(np.concatenate(sole).astype(np.float32))))
         # ---- arm: shoulder roll drum, upper arm (through the upper-arm rotation drum), elbow, forearm, mitten
         sp, sr, ep, ey = (f'A{side}_Shoulder_Pitch', f'{side}_Shoulder_Roll', f'{side}_Elbow_Pitch', f'{side}_Elbow_Yaw')
         U = KS.upper_layout(J, side)                   # arm drums on the structure's motors
         Hsr, csr, rsr, Lsr = housing(U['sr'][0] + np.array([3.0, 0, 0]), U['sr'][1], 'rs00', extra_len=22.0)   # long enough to hold the yoke + upper-arm plates
         add(f'cover-shoulder.{tag}a', Hsr); add(f'puck-shoulder.{tag}a', csr)
-        Hue, cue, rue, Lue = housing(U['ep'][0] + np.array([2.0, 0, 3.0]), U['ep'][1], 'rs00', pad=6.0, extra_len=14.0)
+        Hue, cue, rue, Lue = housing(U['ep'][0] + np.array([2.0, 0, -6.0]), U['ep'][1], 'rs00', pad=6.0, extra_len=20.0)
         Hel, cel, rel, Lel = housing(U['ey'][0], U['ey'][1], 'rs00', extra_len=14.0)   # room for the elbow + forearm plates
         add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
-        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.0, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
+        epc = U['ep'][0]
+        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))
+        ey_ = U['ey'][0]; y_e2 = abs(ey_[1]) - 25.5 - KS.G - KS.T          # inboard face of the elbow plate E2
+        cheek = [rrect(np.array([ey_[0], s * (y_e2 - 1.5), z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 30.0, 5.5, 5.0) for z_ in (epc[2] - 30, ey_[2])]
+        add(f'cover-elbowfork.{tag}a', tm(Manifold.hull_points(np.concatenate(cheek).astype(np.float32))))
         Hd = M[f'{side.lower()}_hand_link']
         tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
         wrist = jp(ey) + (tip - jp(ey)) * 0.62
-        add(f'cover-forearm.{tag}a', bone(jp(ey), rel * 0.8, wrist, 18.0, swell=1.0, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
+        fo = np.array([0, s * 3.5, 0])                      # outboard of the fork cheek
+        add(f'cover-forearm.{tag}a', bone(jp(ey) + fo, rel * 0.8, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.3))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
         add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
@@ -138,14 +169,22 @@ def design():
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         spc, src = U['sp'][0], U['sr'][0]
         yc_ = np.array([(spc[0] + src[0]) / 2, 0, (spc[2] + src[2]) / 2])
-        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (88.0, abs(src[1]))]
+        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (88.0, abs(src[1]) - Lsr / 2 + 8.0)]   # stops at the shoulder drum's inner face: the upper arm swings clear
         add(f'cover-shoulderyoke.{tag}a', tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32))))
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     add('cover-chest', block(lo[0] + 4, hi[0] - 6, 101.0, 40.0, zs + 28, taper=(1.0, 1.0), dome=14.0))
     add('accent-waist', block(lo[0] + 8, hi[0] - 10, 98.0, 14.0, 40.0, RC=18.0))
-    add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
+    pel = M_(block(lo[0] + 10, hi[0] - 12, 101.0, lo[2] + 22, 14.0, n=2.8, taper=(0.92, 1.0)))   # holds both hip-roll motors
+    got = dict(out)
+    for side in ('Left', 'Right'):
+        t = side[0].lower(); lay = KS.layout(J, side)
+        collar = M_(got[f'trim-hipneck.{t}l']) + M_(got[f'trim-hipyaw.{t}l'])
+        pel = pel - sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04)          # the thigh swings under the pelvis
+        hipr = M_(dict(KS.leg(J, side))[f'chassis-hipR.{t}l']) + M_(got[f'cover-hip.{t}l'])
+        pel = pel - sweep_union(hipr, lay['roll'][0], [((1.0, 0, 0), -22, 47)], scale=1.03)             # and rolls out from it
+    add('cover-pelvis', tm(pel.simplify(0.4)))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
     nz0, nz1 = Hl['yaw'][0][2] + 20.0, Hl['pitch'][0][2] - 10.0
@@ -161,6 +200,11 @@ def design():
         a_, b_ = hw * max(k, 0.06) ** 0.6, hd * max(k, 0.06)       # sides stay flat further up (k**0.6): flat cheeks, domed crown
         hr_.append(rrect(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 0.6 * min(a_, b_), k=14))
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
+    hpc = KS.head_layout(J)['pitch'][0]
+    pocket = Manifold.cylinder(80, 40, 40, 72).rotate([-90, 0, 0]).translate([hpc[0], -40, hpc[2]]) + \
+        Manifold.cube([92, 80, hpc[2] - hlo[2] + 20]).translate([hpc[0] - 46, -40, hlo[2] - 20])
+    helmet = helmet - pocket
+    add('trim-headhub', cyl(hpc, [0, 1.0, 0], 33.0, 56.0))           # the head-pitch hub, coaxial: lives in the helmet's opening
     add('cover-helmet', tm(helmet))
     # the face: an oval of gloss black glass, the front of the helmet a hair proud
     oval = trimesh.creation.cylinder(radius=1.0, height=1.0, sections=96).apply_transform(
@@ -203,6 +247,7 @@ def structure(out=None):
 def model():
     out = design()
     out = out + structure(out)
+    out = [(n, K.simplify(m, grid=1.0) if len(m.faces) > 20000 else m) for n, m in out]   # swept relief cuts: decimate for the viewer only
     return dict(hip_x=0.0, plane=0.0, legs=[], body=None, walls=[], extra=out,
                 note='mini humanoid: our coaxial housings + bone links on the K1 joint layout, RobStride inside every drum',
                 posed={}, only=True, ground=True)
