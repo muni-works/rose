@@ -21,7 +21,7 @@ def ankle():
     bad = {}
     for rel in (0, 60, 127):
         for p, r in itertools.product((-20, 0, 25, 50), (-20, 0, 20)):
-            parts = Q.inline_parts(0, rel, 'ankle', 51, 245, mot='rs06', end_mot='rs00', dual=True, ank=(p - rel, r))
+            parts = Q.inline_parts(0, rel, 'ankle', 5, 245, mot='rs06', end_mot='rs00', dual=True, ank=(p - rel, r))
             for n in [n for n in parts if n == 'yoke' or n.endswith(('-abad', '-hip'))]: del parts[n]
             P = {n: toM(g) for n, g in parts.items()}
             h = [(a, b) for a, b in itertools.combinations(P, 2) if (P[a] ^ P[b]).volume() > 5 and not (

@@ -1172,7 +1172,7 @@ def humanoid_family(name, leg, arm, chest_h, legm='rs00', armm='rs00', yawm='rs0
                 posed=poses, only=True, world=R, ground=True)
 
 
-def humanoid_k1(s2h=261.0, c=76.0, leg_lt=51.0, shin=245.0, arm_lt=57.0, forearm=150.0, head_h=125.0,
+def humanoid_k1(s2h=261.0, c=76.0, leg_lt=5.0, shin=245.0, arm_lt=57.0, forearm=150.0, head_h=125.0, hip_y=None,
                 knee_bend=12.0, elbow=60.0, ankle=(0.0, 0.0), leg_pose=None, arm_pose=None):
     """MINI humanoid = the Booster K1 reverse-engineered on our stack: its 22 DoF and its dimensions.
     Every limb is the same pitch-roll-yaw chain (pitch motor inside a torso corner, roll L-bracket, yaw
@@ -1189,25 +1189,35 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=51.0, shin=245.0, arm_lt=57.0, forearm
     xbot = xh - m06['D'] / 2 - 2.0 - T2                      # floor's bottom face, under the hip pitch motors
     xtop = xs + m00['D'] / 2 + 6.0 + T2                        # bar's top face
     # torso: side walls carry all four pitch motors' outputs; bar, floor, skins
-    side = L.rounded(xbot + T2, -H, xtop - T2, H, 8)
+    # pelvis carved around each hip: the roll motor (under the pitch) sweeps a circle about the pitch axis, so
+    # the side walls end in an arc round the pitch port and the floor + skins narrow between the hips
+    d06_ = module_dims('rs06')
+    hip_y_ = hip_y or (d06_['OUT'][1] / 2 - IL_SHIN[0] + 7.0 + L.T + 9.0 + 2 * L.T + 4.0)
+    xr_ = xh - m06['D'] / 2 - 2.0 - T2 - 3.0 - m06['D'] / 2
+    r_cut = abs(xr_ - xh) - m06['D'] / 2 - 4.0                 # nearest the roll motor comes to the pitch axis, less 4
+    y_cut = hip_y_ - m06['D'] / 2 - 4.0                        # inboard edge of the roll motor's sweep
+    side = L.rounded(xh, -H, xtop - T2, H, 8).union(L.circle(xh, 0, 2 * r_cut))
     side = pocket(side, [(xh, 0, m06['out'][0] / 2 + 12), (xs, 0, m00['out'][0] / 2 + 12)], rim=10.0, struts=warren((xh + 30, 0), (xs - 30, 0), H - 10, 3))
     for x_, m_ in ((xh, m06), (xs, m00)):
         side = side.difference(L.holes_on(m_['out'][0], m_['out'][1], m_['hole'], at=(x_, 0))).difference(L.circle(x_, 0, m_['out'][0] + 11))
     extra += [('chassis-side.l', ext(side, 'xz', c - T2, T2)), ('chassis-side.r', ext(side, 'xz', -c, T2))]
     for nm, x_ in (('chassis-bar', xtop - T2), ('chassis-floor', xbot)):
-        w = L.rounded(-c, -H, c, H, 8)
-        w = pocket(w, [(0, 0, 30)] if nm == 'chassis-bar' else [], rim=9.0, struts=warren((-c + 10, 0), (c - 10, 0), H - 9, 2))
+        w = L.rounded(-c, -H, c, H, 8) if nm == 'chassis-bar' else L.rounded(-y_cut, -H, y_cut, H, 8)
+        w = pocket(w, [(0, 0, 30)] if nm == 'chassis-bar' else [], rim=9.0, struts=warren((-w.bounds[2] + 10, 0), (w.bounds[2] - 10, 0), H - 9, 2))
         if nm == 'chassis-bar':
             w = w.difference(L.holes_on(m00['back'][0], m00['back'][1], m00['hole'], phase=45))
         extra.append((nm, ext(w, 'yz', x_, T2)))
-    skin = L.rounded(xbot, -c, xtop, c, 10)
+    skin = L.unary_union([L.rounded(xh, -c, xtop, c, 10), L.rounded(xbot, -y_cut, xh + 20, y_cut, 10)])
     skin = pocket(skin, [], rim=12.0, rib=9.0, struts=warren(((xbot + xtop) / 2, -c + 12), ((xbot + xtop) / 2, c - 12), (xtop - xbot) / 2 - 14, 2))
     extra += [('chassis-front', ext(skin, 'xy', H, L.T)), ('chassis-back', ext(skin, 'xy', -H - L.T, L.T))]
     extra.append(('int-battery', L.tri(Manifold.cube((xs - xh - m06['D'] / 2 - m00['D'] / 2 - 16, 2 * c - 24, 2 * H - 24))
                                       .translate((xh + m06['D'] / 2 + 8, -c + 12, -H + 12)))))
     # legs: stance solved with the chain's own hip-to-knee length; pitch at the torso, knee in the box
     d06 = module_dims('rs06')
-    hip_knee = m06['D'] / 2 + 4.0 + m02['L'] + 1.0 + L.T + (m06['D'] + 7.0) / 2 + leg_lt
+    # hips K1-style: the roll motor under the pitch, the legs as close as their inboard ankle rods allow
+    hip_y = hip_y or (d06['OUT'][1] / 2 - IL_SHIN[0] + 7.0 + L.T + 9.0 + 2 * L.T + 4.0)
+    drop = m06['D'] / 2 + 2.0 + T2 + 3.0 + m06['D'] / 2         # pitch axis -> roll axis
+    hip_knee = drop + m06['D'] / 2 + 4.0 + m02['L'] + 1.0 + L.T + (m06['D'] + 7.0) / 2 + leg_lt
     th, rel = stance((hip_knee + shin) * math.cos(math.radians(knee_bend / 2)), hip_knee, shin)
     lp = leg_pose or (th, rel)
     for tag, s in (('ll', 1), ('lr', -1)):
@@ -1228,7 +1238,8 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=51.0, shin=245.0, arm_lt=57.0, forearm
                             continue
                 for n_ in [n_ for n_ in apart if n_ == 'yoke' or n_.endswith(('-abad', '-hip'))]:
                     del apart[n_]
-                parts_, info = pry_limb(tag, s, xh, c, m06, m06, m02, apart, m06['D'] + 7.0, d06['OUT'][1], pose=(-sg * lp[0], 0.0, 0.0), ext=ext, Tl=Tl, H=H)
+                parts_, info = pry_limb(tag, s, xh, c, m06, m06, m02, apart, m06['D'] + 7.0, d06['OUT'][1], pose=(-sg * lp[0], 0.0, 0.0), ext=ext, Tl=Tl, H=H,
+                                        roll_below=hip_y)
                 pm = dict(parts_)
                 knee_z = pm[f'rs06-knee.{tag}'].centroid[2]
                 foot = pm[f'foot.{tag}']
@@ -1248,7 +1259,8 @@ def humanoid_k1(s2h=261.0, c=76.0, leg_lt=51.0, shin=245.0, arm_lt=57.0, forearm
             for n_ in [n_ for n_ in apart if n_ == 'yoke' or n_.endswith(('-abad', '-hip'))]:
                 del apart[n_]
             parts_, info = pry_limb(tag, s, xs, c, m00, m00, m00, apart, m00['D'] + 7.0, d00['OUT'][1], pose=arm_pose or (0.0, 0.0, 0.0), ext=ext, Tl=Tl, H=H,
-                                    gap=(d00['OUT'][1] / 2 - IL_SHIN[0] + 6.0) - 1.0 - L.T - m00['D'] / 2)   # forearm hangs 6 mm off the torso side
+                                    gap=max((d00['OUT'][1] / 2 - IL_SHIN[0] + 6.0) - 1.0 - L.T - m00['D'] / 2,
+                                            (hip_y + d06['OUT'][1] / 2 + 6.0 - c) + (d00['OUT'][1] / 2 - IL_SHIN[0]) - 1.0 - L.T - m00['D'] / 2))   # hang outside the legs
             pz = dict(parts_)[f'paw.{tag}'].centroid[2]
             if best is None or pz > best[0]:
                 best = (pz, parts_)
@@ -1291,7 +1303,7 @@ def humanoid_mini():
     return humanoid_k1()
 
 
-def pry_limb(tag, s, xp, c, mp, mr, my, apart, W_, out1, pose=(0.0, 0.0, 0.0), ext=None, Tl=None, H=41.0, gap=2.0):
+def pry_limb(tag, s, xp, c, mp, mr, my, apart, W_, out1, pose=(0.0, 0.0, 0.0), ext=None, Tl=None, H=41.0, gap=2.0, roll_below=None):
     """one limb, pitch-roll-yaw (the shoulder chain, used for hips too): the PITCH motor inside the torso
     corner (stator toward the centre, output out through the side wall at y = c), an L-bracket holding the
     ROLL motor (axis fore-aft) beside the torso, an L-bracket under it hanging the YAW motor (axis down the
@@ -1300,6 +1312,9 @@ def pry_limb(tag, s, xp, c, mp, mr, my, apart, W_, out1, pose=(0.0, 0.0, 0.0), e
     P_, R_, Y_ = pose
     xr = xp
     yr = c + 1.0 + L.T + gap + mr['D'] / 2                     # roll axis; `gap` sets how far the limb hangs off the torso side
+    if roll_below is not None:                                  # K1-style hip: roll motor UNDER the pitch, at y = roll_below
+        xr = xp - mp['D'] / 2 - 2.0 - T2 - 3.0 - mr['D'] / 2    # just under the torso floor
+        yr = roll_below
     xc = xr - mr['D'] / 2 - 4.0                                 # yaw-mount plate, under the roll motor
     x_cap = xc - my['L'] - 1.0                                  # yaw output face = top of the limb box
     y0 = yr - out1 / 2                                          # limb box centred on the yaw axis
@@ -1316,11 +1331,20 @@ def pry_limb(tag, s, xp, c, mp, mr, my, apart, W_, out1, pose=(0.0, 0.0, 0.0), e
     y_in, y_out = c - T2 - 1.0 - mp['L'], c - T2 - 1.0
     out.append((f'{mp_name(mp)}-{tag[0]}pitch.{tag}', cyly(mp['D'] / 2, s * y_in, s * y_out, xp)))
     add(f'{mp_name(mp)}-{tag[0]}pitch-out', cyly(mp['out'][0] / 2 + 4, s * y_out, s * (c + 1.0), xp), Mp)
-    b1 = L.unary_union([L.circle(xp, 0, mp['out'][0] + 33), L.rounded(xp - mr['D'] / 2 - 2, zb, xp + 18, 18, 6)]) \
+    b1_lo = (xr + mr['D'] / 2 + 2.0) if roll_below is not None else (xp - mr['D'] / 2 - 2)   # stop above a roll motor underneath
+    b1 = L.unary_union([L.circle(xp, 0, mp['out'][0] + 33), L.rounded(b1_lo, zb, xp + 18, 18, 6)]) \
         .difference(L.holes_on(mp['out'][0], mp['out'][1], mp['hole'], at=(xp, 0)))
     add('chassis-pitchplate', ext(b1, 'xz', (c + 1.0) if s > 0 else -(c + 1.0) - L.T, L.T), Mp)
-    b2 = L.unary_union([L.circle(xr, s * yr, mr['back'][0] + 16), L.rounded(xr - mr['D'] / 2 - 2, min(s * (c + 1.0 + L.T), s * yr), xr + 18, max(s * (c + 1.0 + L.T), s * yr), 6)]) \
-        .difference(L.holes_on(mr['back'][0], mr['back'][1], mr['hole'], phase=45, at=(xr, s * yr)))
+    if roll_below is not None:     # back plate: from the pitch plate's lower edge down and in to the roll stator
+        y_side = c + 1.0 + L.T                                   # outside the torso's side wall
+        x_floor = xr + mr['D'] / 2 + 2.0                          # just under the torso floor
+        vs = L.rounded(x_floor - 20, min(s * y_side, s * (y_side + 26)), xp + 18, max(s * y_side, s * (y_side + 26)), 6)   # up beside the torso
+        hs = L.rounded(xr - 12, min(s * yr, s * (y_side + 26)), x_floor, max(s * yr, s * (y_side + 26)), 6)              # under it, over the roll motor
+        b2 = L.unary_union([L.circle(xr, s * yr, mr['back'][0] + 16), vs, hs]).intersection(
+            L.box(-1e4, -1e4, x_floor, 1e4).union(L.box(-1e4, s * y_side if s > 0 else -1e4, 1e4, 1e4 if s > 0 else s * y_side)))
+    else:
+        b2 = L.unary_union([L.circle(xr, s * yr, mr['back'][0] + 16), L.rounded(xr - mr['D'] / 2 - 2, min(s * (c + 1.0 + L.T), s * yr), xr + 18, max(s * (c + 1.0 + L.T), s * yr), 6)])
+    b2 = b2.difference(L.holes_on(mr['back'][0], mr['back'][1], mr['hole'], phase=45, at=(xr, s * yr)))
     add('chassis-rollmount', ext(b2, 'xy', zb - L.T, L.T), Mp)
     add(f'{mp_name(mr)}-{tag[0]}roll', cylz(mr['D'] / 2, -mr['L'] / 2, mr['L'] / 2, xr, s * yr), Mp)
     add(f'{mp_name(mr)}-{tag[0]}roll-out', cylz(mr['out'][0] / 2 + 4, mr['L'] / 2, zf, xr, s * yr), Mr)
