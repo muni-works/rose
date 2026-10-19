@@ -157,16 +157,18 @@ const MATS = {
     m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
   body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
     m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
-  puck: { label: 'joint caps (graphite)', swatch: '#2a2d32',
-    m: new THREE.MeshPhysicalMaterial({ color: 0x2b2e33, metalness: 0.35, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2 }) },
-  visor: { label: 'visor (smoked gloss)', swatch: '#0d0f12',
-    m: new THREE.MeshPhysicalMaterial({ color: 0x0b0d10, metalness: 0.1, roughness: 0.08, clearcoat: 1.0, clearcoatRoughness: 0.03 }) },
+  puck: { label: 'joint caps (municipal orange)', swatch: '#ff6a13',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xff5a0a, metalness: 0.05, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
+  trim: { label: 'collars + trim (gunmetal)', swatch: '#55595f',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x4d5157, metalness: 0.85, roughness: 0.35, clearcoat: 0.2 }) },
+  visor: { label: 'visor (gloss black glass)', swatch: '#050608',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x040506, metalness: 0.2, roughness: 0.04, clearcoat: 1.0, clearcoatRoughness: 0.02, envMapIntensity: 1.6 }) },
   sole: { label: 'rubber soles', swatch: '#1c1d20',
-    m: new THREE.MeshPhysicalMaterial({ color: 0x1d1e21, metalness: 0, roughness: 0.9 }) },
-  accent: { label: 'accent (signal orange)', swatch: '#ff6a2b',
-    m: new THREE.MeshPhysicalMaterial({ color: 0xff5e1f, metalness: 0.1, roughness: 0.35, clearcoat: 0.6 }) },
-  cover: { label: 'covers (printed shells)', swatch: '#f1efe9',
-    m: new THREE.MeshPhysicalMaterial({ color: 0xf2f0ea, metalness: 0.0, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.4 }) },
+    m: new THREE.MeshPhysicalMaterial({ color: 0x2c2d30, metalness: 0, roughness: 0.92 }) },
+  accent: { label: 'accent (municipal orange)', swatch: '#ff6a13',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xff5a0a, metalness: 0.05, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
+  cover: { label: 'shells (satin black)', swatch: '#1c1d20',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x17181b, metalness: 0.15, roughness: 0.48, clearcoat: 0.25, clearcoatRoughness: 0.5, sheen: 0.3, sheenColor: 0x3a3d44 }) },
   ghost: { label: 'K1 skin (ghost)', swatch: '#cfd6e0',
     m: new THREE.MeshPhysicalMaterial({ color: 0xdfe6ef, metalness: 0, roughness: 0.3, transparent: true, opacity: 0.22, depthWrite: false }) },
   k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
@@ -174,9 +176,9 @@ const MATS = {
   tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
     m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
 };
-const SKIN = new Set(['cover', 'puck', 'visor', 'sole', 'accent']);
+const SKIN = new Set(['cover', 'puck', 'visor', 'sole', 'accent', 'trim']);
 const GROUP = name =>
-  /^k1ghost-/.test(name) ? 'ghost' : /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^k1ghost-/.test(name) ? 'ghost' : /^trim-/.test(name) ? 'trim' : /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
   /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
 
 // leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
@@ -215,7 +217,7 @@ function load(which, done) {
       if (!o.isMesh) return;
       const [raw, tag = ''] = (o.name || o.parent?.name || '').split('.');
       const name = raw.replace(/_\d+$/, '');
-      if (SKIN.has(GROUP(name)) && GROUP(name) !== 'puck') {   // shells: smooth shaded (caps keep crisp edges)
+      if (SKIN.has(GROUP(name)) && !['puck', 'trim'].includes(GROUP(name))) {   // shells: smooth shaded (caps keep crisp edges)
         o.geometry = BufferGeometryUtils.toCreasedNormals(o.geometry.toNonIndexed(), 0.6);   // smooth faces, crisp cut edges
       } else {
         o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges

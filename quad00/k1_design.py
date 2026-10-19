@@ -36,7 +36,7 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
     return tm(body), trimesh.util.concatenate(caps), r, L
 
 
-def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2):
+def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w=None):
     """a link lofted from a section at p0 to one at p1 (radii r0, r1), with a swell at 40 %."""
     p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
     u = unit(p1 - p0)
@@ -44,7 +44,8 @@ def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2):
     rings = []
     for t, k in ((0.0, 1.0), (0.18, 1.0 + 0.6 * (swell - 1)), (0.42, swell), (0.7, 1.0 + 0.5 * (swell - 1)), (1.0, 1.0)):
         r = r0 + (r1 - r0) * t
-        rings.append(ring(p0 + u * t * np.linalg.norm(p1 - p0), v, w, r * k * flat, r * k, n=n))
+        a = r * k * flat if half_w is None else min(r * k * flat, half_w)   # never wider than the joint drums' faces
+        rings.append(ring(p0 + u * t * np.linalg.norm(p1 - p0), v, w, a, r * k, n=n))
     return tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
 
 
@@ -73,18 +74,20 @@ def design():
         Hp, cp, rp, Lp = housing(jp(hp), ja(hp), 'rs06')
         Hr, cr, rr, Lr = housing(jp(hr), ja(hr), 'rs06')
         Hy, cy_, ry_, Ly = housing(jp(hy), ja(hy), 'rs02', pad=3.0)
-        lobe = tm(Manifold.hull_points(np.concatenate([Hp.vertices, Hr.vertices, Hy.vertices]).astype(np.float32)))
-        add(f'cover-hiplobe.{tag}l', lobe)
+        # hip pod: the pitch and roll drums as one smooth form; the yaw drum below it is a gunmetal collar
+        pod = tm(Manifold.hull_points(np.concatenate([Hp.vertices, Hr.vertices]).astype(np.float32)))
+        add(f'cover-hippod.{tag}l', pod)
         add(f'puck-hipcaps.{tag}l', trimesh.util.concatenate([cp, cr]))
+        add(f'trim-hipyaw.{tag}l', Hy)
         yaw_bot = jp(hy) - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
         Hk, ck, rk, Lk = housing(jp(kn), ja(kn), 'rs06')
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
-        add(f'puck-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        add(f'cover-thigh.{tag}l', bone(yaw_bot - np.array([0, 0, 2.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=0.92))
+        add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
+        add(f'cover-thigh.{tag}l', bone(yaw_bot - np.array([0, 0, 2.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08, flat=0.92, half_w=Lk / 2 - 5))
         ank = jp(an)
-        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 22.0]), 24.0, swell=1.12, flat=0.9))
+        add(f'cover-calf.{tag}l', bone(jp(kn), rk * 0.84, ank + np.array([0, 0, 22.0]), 24.0, swell=1.12, flat=0.9, half_w=Lk / 2 - 5))
         Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0)     # the ankle U-joint: a small drum, no motor in it
-        add(f'puck-ankle.{tag}l', Ha)
+        add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
         lo, hi = F.bounds
         z0 = lo[2]
@@ -107,16 +110,16 @@ def design():
         Hue, cue, rue, Lue = housing(jp(ep), ja(ep), 'rs00', pad=2.0)
         Hel, cel, rel, Lel = housing(jp(ey), ja(ey), 'rs00')
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
-        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.06, lateral=(1.0, 0, 0)))
-        add(f'puck-upperarmring.{tag}a', cyl(jp(ep) - unit(ja(ep)) * 6, ja(ep), rue - 1.0, 4.0))
+        add(f'cover-upperarm.{tag}a', bone(jp(sr) + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, jp(ey), rel * 0.8, swell=1.06, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
+        add(f'trim-upperarmring.{tag}a', cyl(jp(ep) - unit(ja(ep)) * 6, ja(ep), rue - 1.0, 4.0))
         Hd = M[f'{side.lower()}_hand_link']
         tip = Hd.vertices[np.argmin(Hd.vertices[:, 2])]
         wrist = jp(ey) + (tip - jp(ey)) * 0.62
-        add(f'cover-forearm.{tag}a', bone(jp(ey), rel * 0.8, wrist, 18.0, swell=1.1, lateral=(1.0, 0, 0)))
+        add(f'cover-forearm.{tag}a', bone(jp(ey), rel * 0.8, wrist, 18.0, swell=1.1, lateral=(0, 1.0, 0), half_w=Lel / 2 - 4))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
         add(f'cover-hand.{tag}a', tm(Manifold.hull_points(np.concatenate(palm).astype(np.float32))))
-        add(f'puck-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
+        add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
         # torso flank caps: hip pitch + shoulder pitch show on the body
         add(f'puck-shoulderpitch.{tag}a', cyl(jp(sp) + np.array([0, s * 26.0, 0]), [0, 1.0, 0], 24.0, 4.0))
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
@@ -124,22 +127,30 @@ def design():
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     add('cover-chest', block(lo[0] + 4, hi[0] - 6, 96.0, 40.0, zs + 28, n=2.9, taper=(0.86, 1.0), dome=18.0))
     add('accent-waist', block(lo[0] + 12, hi[0] - 14, 80.0, 14.0, 40.0, n=2.9))
-    add('cover-pelvis', block(lo[0] + 8, hi[0] - 10, 86.0, lo[2] + 10, 14.0, n=2.8, taper=(0.9, 0.95)))
+    add('cover-pelvis', block(lo[0] + 10, hi[0] - 12, 84.0, lo[2] + 22, 14.0, n=2.6, taper=(0.62, 1.0)))   # narrows downward: the pods read as hips
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
-    Hn, cn, rn, Ln = housing(J['AAHead_yaw']['p'] + np.array([0, 0, 6.0]), J['AAHead_yaw']['axis'], 'rs00', pad=-6.0)
-    add('puck-neck', Hn)
+    Hn, cn, rn, Ln = housing(J['AAHead_yaw']['p'] + np.array([0, 0, 8.0]), J['AAHead_yaw']['axis'], 'rs00', pad=-9.0)   # a slim neck
+    add('trim-neck', Hn)
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
-    hh, hw, hd = (hhi[2] - hlo[2]) * 0.92, (hhi[1] - hlo[1]) / 2 * 0.86, (hhi[0] - hlo[0]) / 2 * 0.95
+    hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
+    hc = hc + np.array([0, 0, -6.0])
     hr_ = []
-    for t in np.linspace(-1, 1, 17):
-        k = math.sqrt(max(0.0, 1 - abs(t) ** 2.4))
-        hr_.append(ring(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw * max(k, 0.1), hd * max(k, 0.1), n=2.2))
+    for t in np.linspace(-1, 1, 21):                           # an ellipsoid, slightly flattened at the jaw
+        k = math.sqrt(max(0.0, 1 - t * t)) * (0.94 if t < -0.4 else 1.0)
+        hr_.append(ring(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw * max(k, 0.06), hd * max(k, 0.06), n=2.05, k=72))
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
     add('cover-helmet', tm(helmet))
-    vis = trimesh.creation.box(extents=[hd * 1.2, hw * 2.2, hh * 0.24]).apply_translation([hc[0] + hd * 0.75, hc[1], hc[2] + hh * 0.06])
-    big = M_(tm(helmet).copy().apply_translation(-hc).apply_scale(1.012).apply_translation(hc))
-    add('visor-face', tm(big ^ M_(vis)))
+    # the face: an oval of gloss black glass, the front of the helmet a hair proud
+    oval = trimesh.creation.cylinder(radius=1.0, height=1.0, sections=96).apply_transform(
+        trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_scale([hd * 1.2, hw * 0.74, hh * 0.3]).apply_translation(
+        [hc[0] + hd * 0.6, hc[1], hc[2] + hh * 0.04])
+    big = M_(tm(helmet).copy().apply_translation(-hc).apply_scale(1.01).apply_translation(hc))
+    add('visor-face', tm(big ^ M_(oval)))
+    # ear caps: the head-pitch axis, orange, both sides
+    hp_ = J['Head_pitch']['p']
+    for s in (1, -1):
+        add(f'puck-ear.{"l" if s > 0 else "r"}', cyl(np.array([hp_[0], s * (hw - 1.0), hc[2] - hh * 0.02]), [0, 1.0, 0], 17.0, 4.0))
     return out
 
 
