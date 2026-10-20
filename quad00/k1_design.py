@@ -406,6 +406,21 @@ def design():
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
+        # the back panel (Booster-style): one gunmetal plate lying on the leaning back over the exhaust grille,
+        # a power button and a status LED on the left, the charge port on the right
+        zp0, zp1 = E['vent_out']['z'][0] - 1.0, E['vent_out']['z'][1] + 6.0
+        xw0, xw1 = Mc.slice(zp0).bounds()[0], Mc.slice(zp1).bounds()[0]
+        k_ = (xw1 - xw0) / (zp1 - zp0)
+        onwall = lambda q: np.asarray(q, float) + np.outer(k_ * (np.asarray(q, float)[:, 2] - zp0), [1.0, 0, 0])   # x follows the lean
+        zm, pw = (zp0 + zp1) / 2, 44.0 * KS.R()
+        prings = [onwall(rrect(np.array([xw0 + dx, 0, zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), (zp1 - zp0) / 2 - d_, pw - d_, 6.0, k=10))
+                  for dx, d_ in ((1.0, 0.0), (-0.6, 0.0), (-1.2, 0.6))]
+        add('trim-backpanel', cut_shell(hull_rings(prings), cuts))
+        xo = lambda z_: xw0 + k_ * (z_ - zp0) - 1.2                # the panel's outer face at height z
+        add('cover-backbutton', cyl(np.array([xo(zm - 3.0) - 1.0, 30.0 * KS.R(), zm - 3.0]), [1.0, 0, 0], 5.5, 2.4))      # power
+        add('visor-led', cyl(np.array([xo(zm + 9.0) - 0.4, 30.0 * KS.R(), zm + 9.0]), [1.0, 0, 0], 1.8, 1.2))             # status
+        port = [rrect(np.array([xo(zm) + dx, -30.0 * KS.R(), zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]
+        add('visor-port', hull_rings(port))                       # USB-C charge port
     if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
         Wp_ = KS.waist_layout()['pitch'][0]
         chest_m = relief(chest_m, sweep_union(M_(dict(KS.waist())['waist-W3']), Wp_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0))
