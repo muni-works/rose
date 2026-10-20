@@ -1,7 +1,9 @@
 ; cortex -- the rose head, as its own product.
 ;
 ; The brain module: Jetson compute, its own battery, a face screen, stereo eyes and ears; the carrier's own I/O edge shows through a cutout in the back. It sits on any
-; rose body's neck dock and runs detached on a desk too. ONE USB-C link through the dock carries power (USB-PD 20 V /
+; rose body's neck dock and runs detached on a desk too. The dock is sealed and tool-free: drop the head on, two
+; tapered cones seat it, magnets pull it down, a hidden spring latch locks it; one button on the back of the neck
+; releases it. 8 flush gold pads carry power (20 V / 5 A) and data (1000BASE-T1 Ethernet + USB 2). (Was: USB-C /
 ; 5 A) and data (USB 3). The limbic board stays in the torso, shared by every body.
 ;
 ; A loon module: every top-level `let` is an export; `[use cortex [...]]` from a body. Its own `root`s render it
@@ -15,7 +17,8 @@
 ;   ears      2x Visaton K 28 WPC BL 28 x 5.4 + 2x MAX98357A (Adafruit 3006) + 2x SPH0645 mic (Adafruit 3421)
 ;   battery   3S1P 21700 (Molicel P45B class), 11.1 V 50 Wh + 3S BMS (the A603 wants 9-20 V)
 ;   power     USB-PD sink (TPS25750 class) + 3S charger / power path (BQ25713 class), 30 x 40 x 6 ASSUMED
-;   dock      vertical USB-C receptacle (GCT USB4105 class) on a 14 x 20 board, opening down; 2 pin holes (4 mm pins)
+;   dock      8 flush gold pads (2 x 4, 4 mm pitch) on a 12 x 20 pad board in the floor, pogo pins on the neck (Mill-Max
+;             0906 class, 3 A each); 2 cone seats; 2 steel strike discs over the neck magnets; a latch keeper slot
 
 [material "satin_black" 0.09 0.094 0.106 0.1 0.55]
 [material "visor_glass" 0.02 0.02 0.025 0.2 0.05]
@@ -25,6 +28,8 @@
 [material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
 [material "motor_dark" 0.08 0.085 0.09 0.6 0.4]
 [material "aluminium" 0.75 0.76 0.78 0.9 0.3]
+[material "gold" 1.0 0.78 0.34 1.0 0.25]
+[material "steel" 0.6 0.6 0.62 0.9 0.35]
 [material "cable_orange" 1.0 0.42 0.05 0.0 0.45]
 
 ; ------------------------------------------------------------------ size (mini) ----
@@ -132,12 +137,19 @@
 [let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
 [let exhaust-holes [grid-holes x-rows xdot-hole]]
 [let vents [union ear-holes exhaust-holes]]
-[let zmic [- zg [* 6.0 dot-h]]]                  ; the mic port's dot (row -6, centre column)
+[let zmic [- zg [* 8.0 dot-h]]]                  ; the mic port's dot (row -8, centre column)
 [let zm [+ zg 8.5]]                             ; speaker centre (left)
+; the dock, head side. Pads x +-3 (2 columns) by y -6..6 (4 rows): VBUS x2, GND x2, T1 P/N, USB D+/D-.
+[let pad-xy #[#[-3.0 -6.0] #[-3.0 -2.0] #[-3.0 2.0] #[-3.0 6.0] #[3.0 -6.0] #[3.0 -2.0] #[3.0 2.0] #[3.0 6.0]]]
+[let cone-y 18.0]
+[let latch-x 20.0]                              ; the keeper slot, ahead of the pads (clear of the power board)
 [let dock-cuts
-  [pipe [translate -1.95 -4.8 -1.0 [cube 3.9 9.6 6.0]]                          ; the USB-C receptacle slot (plug tongue along y)
-        [union [translate -2.2 15.8 -1.0 [cube 4.4 4.4 6.0]]]                   ; alignment pin holes
-        [union [translate -2.2 -20.2 -1.0 [cube 4.4 4.4 6.0]]]]]
+  [pipe [bx -6.2 -10.2 -1.0 6.2 10.2 1.3]                                        ; pad-board pocket, flush with the bottom
+        [union [bx -3.0 -5.0 1.0 3.0 5.0 [+ tf 1.0]]]                            ; board-to-board slot up to the dock board
+        [union [bx [- latch-x 2.0] -6.0 -1.0 [+ latch-x 3.0] 6.0 [+ tf 1.0]]]    ; latch slot
+        [union [translate 0.0 cone-y -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 cone-y 5.9 [cylinder 1.6 4.0]]]
+        [union [translate 0.0 [- 0.0 cone-y] -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 [- 0.0 cone-y] 5.9 [cylinder 1.6 4.0]]]
+        [union [translate 0.0 30.0 -0.01 [cylinder 4.05 1.01]]] [union [translate 0.0 -30.0 -0.01 [cylinder 4.05 1.01]]]]]   ; strike pockets
 ; ------------------------------------------------------------------------ face ----
 [let xfz [- x-face [* rake zf]]]               ; the face plane at the face centre
 [let tilt [fn [s] [translate xfz 0.0 zf [rotate 0.0 -8.0 0.0 [translate [- 0.0 xfz] 0.0 [- 0.0 zf] s]]]]]
@@ -154,7 +166,13 @@
 [let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
-[let cortex-floor [difference dock-cuts [intersection below-floor shell-solid]]]
+[let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
+[let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
+[let cortex-padboard [bx -6.0 -10.0 0.3 6.0 10.0 1.3]]
+[let cortex-pads [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] 0.0 [cylinder 1.25 0.3]]]] pad-xy]]
+[let cortex-strikes [union [translate 0.0 30.0 0.0 [cylinder 4.0 1.0]] [translate 0.0 -30.0 0.0 [cylinder 4.0 1.0]]]]   ; steel discs
+[let cortex-keeper [difference [bx [- latch-x 2.0] -6.0 tf [+ latch-x 3.0] 6.0 [+ tf 2.0]]
+                               [bx [- latch-x 6.0] -9.0 tf [+ latch-x 7.0] 9.0 [+ tf 1.0]]]]           ; hardened steel wear plate the hook bears on
 
 [let disc-x [fn [x y z r t] [translate x y z [rotate 0.0 90.0 0.0 [cylinder r t]]]]]       ; axis +x, from x
 [let disc-y [fn [x y z r t] [translate x y z [rotate -90.0 0.0 0.0 [cylinder r t]]]]]      ; axis +y, from y
@@ -171,7 +189,7 @@
 ; Heaviest part lowest and over the neck: the pack lies flat right above the dock, the Jetson rides over it on two
 ; side brackets, fan up into the open crown. The heatsink's fins exhaust aft: a short duct carries it to the dot
 ; grid on the back sweep. Intake: the ear grids (the speakers fill only their tops) and the crown.
-[let cortex-usbc [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 10.0]]]                        ; dock receptacle board, opening down
+[let cortex-dockboard [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 6.0]]]                   ; dock interface board (PD sink ctrl, T1 PHY), B2B to the pad board
 [let cortex-power [bx -45.0 -20.0 [+ tf 1.0] -15.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
@@ -208,26 +226,38 @@
 [let cortex-cables
   [pipe [csi 1.0] [union [csi -1.0]] [union [audio 1.0]] [union [audio -1.0]]
     [union [bx jxb -7.0 55.0 19.0 7.0 56.0]] [union [bx 18.0 -7.0 55.0 19.0 7.0 72.0]] [union [bx 18.0 -7.0 71.0 21.5 7.0 72.0]]  ; HDMI FPC
-    [union [run-x -7.0 -15.0 0.0 8.0 1.75]]                                                      ; dock VBUS/CC -> PD sink
+    [union [run-x -7.0 -15.0 0.0 8.0 1.75]]                                                      ; dock VBUS -> PD sink
     [union [run-z 10.0 zj0 -45.0 0.0 1.75]]                 ; charger -> A603 DC
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
-    [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock USB 3 -> A603
+    [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock T1 Ethernet + USB 2 -> A603
 
 ; ------------------------------------------------------------------ the dock: body side ----
-; What a BODY carries (its neck's dock face at the origin): a floating USB-C plug (+-0.8 mm float mount, tongue 6.5
-; proud), two 4 mm alignment pins (they take the side loads, not the connector). A body places these with its dock.
-[let dock-plug-body [bx -8.0 -13.0 -15.0 8.0 13.0 -3.0]]                          ; under a 3 mm dock face
-[let dock-plug-tongue [bx -1.3 -4.15 0.0 1.3 4.15 6.5]]
-[let dock-pins [union [translate 0.0 18.0 0.0 [cylinder 2.0 6.0]] [translate 0.0 -18.0 0.0 [cylinder 2.0 6.0]]]]
+; What a BODY carries, its neck's dock face at the origin (z up into the head). A desk dock is the same parts in a
+; weighted puck. Lower the head: the cones seat it (+-0.1 mm), the magnets pull it flat, the pogo pins compress onto
+; the pads, and the pawl's ramp rides through the keeper slot and snaps over the keeper. The cones take shear and
+; torsion, the pawl takes pull-off (rated, not the magnets). Push the button on the back of the neck to retract it.
+[let dock-face [difference [pipe [bx -6.2 -10.2 -1.0 6.2 10.2 1.0] [union [bx [- latch-x 2.5] -6.5 -1.0 [+ latch-x 3.5] 6.5 1.0]]]
+                           [bx -32.0 -46.0 -3.0 32.0 46.0 0.0]]]
+[let dock-pogo [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] -6.0 [cylinder 0.75 6.0]]]] pad-xy]]
+[let dock-pogo-block [bx -6.0 -10.0 -9.0 6.0 10.0 -3.0]]
+[let dock-cones [union [translate 0.0 cone-y 0.0 [cone 4.0 1.5 6.0]] [translate 0.0 [- 0.0 cone-y] 0.0 [cone 4.0 1.5 6.0]]]]
+[let dock-magnets [union [translate 0.0 30.0 -3.0 [cylinder 4.0 3.0]] [translate 0.0 -30.0 -3.0 [cylinder 4.0 3.0]]]]   ; N52 8 x 3
+[let dock-pawl [union [bx [+ latch-x 0.5] -5.0 -8.0 [+ latch-x 2.8] 5.0 [+ tf 2.5]]                ; spring-loaded blade (rests at the slot's fore edge)
+                      [bx [+ latch-x 2.8] -5.0 [+ tf 1.1] [+ latch-x 5.0] 5.0 [+ tf 2.5]]]]          ; hook lip over the keeper (deflects 2.3 aft to pass)
+[let dock-release [union [bx -36.0 -2.0 -7.0 [+ latch-x 0.5] 2.0 -5.0]                             ; push rod to the pawl
+                         [translate -36.0 0.0 -6.0 [rotate 0.0 -90.0 0.0 [cylinder 4.0 3.0]]]]]     ; button, back of the neck
 
-; ----------------------------------------------------------------- standalone (desk) ----
 [assembly
  #[[part "cortex-tub" cortex-tub "satin_black"]
    [part "cortex-floor" cortex-floor "aluminium"]
+   [part "cortex-keeper" cortex-keeper "steel"]
+   [part "cortex-strikes" cortex-strikes "steel"]
+   [part "cortex-pads" cortex-pads "gold"]
+   [part "cortex-padboard" cortex-padboard "pcb_green"]
    [part "cortex-glass" cortex-glass "visor_glass"]
    [part "cortex-display" cortex-display "heatsink"]
    [part "cortex-cams" cortex-cams "pcb_green"]
-   [part "cortex-usbc" cortex-usbc "pcb_green"]
+   [part "cortex-dockboard" cortex-dockboard "pcb_green"]
    [part "cortex-power" cortex-power "pcb_green"]
    [part "cortex-battery" cortex-battery "cell_pack"]
    [part "cortex-sled" cortex-sled "aluminium"]
@@ -239,10 +269,14 @@
    [part "cortex-cables" cortex-cables "cable_orange"]]
  #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
    [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
+   [instance "cortex-keeper_i" "cortex-keeper" 0.0 0.0 0.0]
+   [instance "cortex-strikes_i" "cortex-strikes" 0.0 0.0 0.0]
+   [instance "cortex-pads_i" "cortex-pads" 0.0 0.0 0.0]
+   [instance "cortex-padboard_i" "cortex-padboard" 0.0 0.0 0.0]
    [instance "cortex-glass_i" "cortex-glass" 0.0 0.0 0.0]
    [instance "cortex-display_i" "cortex-display" 0.0 0.0 0.0]
    [instance "cortex-cams_i" "cortex-cams" 0.0 0.0 0.0]
-   [instance "cortex-usbc_i" "cortex-usbc" 0.0 0.0 0.0]
+   [instance "cortex-dockboard_i" "cortex-dockboard" 0.0 0.0 0.0]
    [instance "cortex-power_i" "cortex-power" 0.0 0.0 0.0]
    [instance "cortex-battery_i" "cortex-battery" 0.0 0.0 0.0]
    [instance "cortex-sled_i" "cortex-sled" 0.0 0.0 0.0]
@@ -252,11 +286,15 @@
    [instance "cortex-mics_i" "cortex-mics" 0.0 0.0 0.0]
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
- #[[fixed-joint "fix_cortex-tub" "cortex-floor_i" 0.0 0.0 0.0 "cortex-tub_i" 0.0 0.0 0.0]
+ #[[fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-strikes" "cortex-floor_i" 0.0 0.0 0.0 "cortex-strikes_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-pads" "cortex-floor_i" 0.0 0.0 0.0 "cortex-pads_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-padboard" "cortex-floor_i" 0.0 0.0 0.0 "cortex-padboard_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-tub" "cortex-floor_i" 0.0 0.0 0.0 "cortex-tub_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-glass" "cortex-floor_i" 0.0 0.0 0.0 "cortex-glass_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-display" "cortex-floor_i" 0.0 0.0 0.0 "cortex-display_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-cams" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cams_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-usbc" "cortex-floor_i" 0.0 0.0 0.0 "cortex-usbc_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-dockboard" "cortex-floor_i" 0.0 0.0 0.0 "cortex-dockboard_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-power" "cortex-floor_i" 0.0 0.0 0.0 "cortex-power_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-battery" "cortex-floor_i" 0.0 0.0 0.0 "cortex-battery_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-sled" "cortex-floor_i" 0.0 0.0 0.0 "cortex-sled_i" 0.0 0.0 0.0]

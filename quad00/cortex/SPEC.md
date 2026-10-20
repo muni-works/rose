@@ -18,8 +18,9 @@ The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here ma
 | Speakers | 2 × Visaton K 28 WPC BL (Ø28, 8 Ω, 1 W) with 2 × MAX98357A | Stereo, one behind the top of each ear grid. |
 | Mics | 2 × SPH0645 (I2S MEMS) | Both ports sit on the same dot row, so the pair is level. |
 | Battery | 3S1P 21700 (Molicel P45B class), 11.1 V, about 50 Wh, with 3S BMS | Lies flat directly over the dock. |
-| Dock (head side) | Vertical USB-C receptacle in the floor, plus 2 × Ø4 alignment-pin holes at y ±18 | USB-PD 20 V / 5 A (100 W) plus USB 3.2 Gen1 data. Any PD charger works on a desk. |
-| Dock (body side) | Floating USB-C plug, 2 × Ø4 pins, 2 × Ø8 × 3 magnets at y ±30 | `dock-plug-body`, `dock-pins`. |
+| Dock (head side) | sealed floor: 8 flush gold pads (2 × 4, 4 mm pitch), 2 cone seats at y ±18, 2 steel strike discs at y ±30, latch keeper slot at x +20 | Pads: VBUS ×2, GND ×2, 1000BASE-T1 P/N, USB 2 D+/D−. Power 20 V / 5 A (2.5 A per VBUS pad, pogo pins rated 3 A). |
+| Dock (body side) | 8 pogo pins, 2 tapered cones (Ø8 → Ø3, 6 tall), 2 × Ø8 × 3 magnets, spring pawl + push-button release on the back of the neck | `dock-*` lets in cortex.loon. A desk dock is the same parts in a weighted puck (charges through the pads). |
+| Desk power | The desk dock puck (same pads), or the carrier's DC jack through the back cutout | No USB-C on the shell. |
 | Ports | The carrier's own (USB, Ethernet, DC, power button) through the back cutout | No panel of the head's own. |
 | Size | about 164 W × 104 D × 121 H mm; the face leans back 8° | |
 | Total mass | **TBD** | Battery about 0.21 kg; everything else is unweighed. |
@@ -88,7 +89,9 @@ Order of assembly: build the sled on the floor plate, connect the two tub harnes
 | Carrier (A603) to brackets | Top flanges of the brackets | 4 × M2.5 standoffs. *Hole pattern TBD from the A603 drawing.* |
 | Heatsink to module | Its own spring screws | Supplied with the heatsink |
 | Battery | Formed Al strap over the pack, onto the brackets | 2 × M2.5. Foam pad under it. |
-| Dock receptacle board | Floor plate standoffs, receptacle centred in the floor slot | 2 × M2. The floor takes the plug's mating force. |
+| Pad board | Pocketed flush in the floor bottom, bonded; B2B up through the floor to the dock board | Adhesive + 2 × M1.6 |
+| Dock board | Floor plate standoffs over the pad board | 2 × M2 |
+| Keeper, strikes | Keeper: hardened steel plate over the latch slot. Strikes: steel discs pressed into floor pockets | Keeper 2 × M2; strikes press-fit |
 | Power board | Nylon standoffs on the floor | 4 × M2.5 |
 | Glass | 0.5 mm VHB in the stepped face opening | None |
 | Display and cameras | Printed face frame bonded behind the glass; frame screwed to bosses in the tub face | Display 4 × M2.5, cameras 2 × M2 each, frame 4 × M2 |
@@ -96,7 +99,7 @@ Order of assembly: build the sled on the floor plate, connect the two tub harnes
 | Amps and mics | VHB on the wall. Each mic has a gasket ring around its port dot. | None |
 | Heatsink-to-grid gasket | 3 mm foam frame | None |
 | Tub-side wiring (face, ears) to sled | 2 × JST-GH harness connectors, 60 mm service loop | None |
-| Head to body | Dock pins (shear) and magnets (retention). USB-C carries no load. | None |
+| Head to body | Cones take shear and twist; magnets pull it flat; spring pawl locks it (pull-off rated by the pawl, TBD N); button on the back of the neck releases | None (tool-free) |
 
 ## Exterior: frozen
 
