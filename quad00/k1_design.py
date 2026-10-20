@@ -448,11 +448,22 @@ def design():
     if KS.V['name'] != 'mini' and hpz > hc[2] + 0.05 * hh:       # head motors stacked above the shoulders: lift the helmet onto them
         dz = hpz - (hc[2] + 0.05 * hh)
         hc = hc + np.array([0, 0, dz]); hlo = hlo + np.array([0, 0, dz]); hhi = hhi + np.array([0, 0, dz])
+    # a rounded box (H2/T2): flat sides + a flat face for the screen, filleted crown and chin, corners rounded in plan
+    hd = hd * 0.95
+    rc_p = 0.32 * min(hw, hd)                                   # plan corner radius
+    rf = 0.30 * min(hw, hd)                                     # crown fillet
+    rb = 0.75 * min(hw, hd)                                     # chin: a deep round-off so the head pitches clear of the chest
+    zb = hc[2] - hh / 2 + 0.06 * hh                             # the chin, a little up from the egg's
     hr_ = []
-    for t in np.linspace(-1, 1, 25):                           # hybrid: flat side panels, domed crown + jaw
-        k = math.sqrt(max(0.0, 1 - t * t)) * (0.94 if t < -0.4 else 1.0)
-        a_, b_ = hw * max(k, 0.06) ** 0.6, hd * max(k, 0.06)       # sides stay flat further up (k**0.6): flat cheeks, domed crown
-        hr_.append(rrect(np.array([hc[0], hc[1], hc[2] + t * hh / 2]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 0.6 * min(a_, b_), k=14))
+    for th in np.linspace(0, np.pi / 2, 9):                     # chin round-off (bottom), then crown fillet (top)
+        hr_.append((zb + rb * (1 - math.sin(th)), rb * (1 - math.cos(th))))
+    for th in np.linspace(np.pi / 2, 0, 7):
+        hr_.append((hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))))
+    z_j = hc[2] - 0.12 * hh                                     # the jaw: below here the face slopes back (chin clears the chest)
+    jaw = lambda z_: 0.38 * hd * min(1.0, max(0.0, (z_j - z_) / (z_j - zb)))
+    hr_ = sorted(hr_ + [(z_j, 0.0)])                           # loft order: bottom to top
+    hr_ = [rrect(np.array([hc[0] - jaw(z_) / 2, hc[1], z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - jaw(z_) / 2, max(rc_p - d_, 2.0), k=14)
+           for z_, d_ in hr_]
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
     hpc = KS.head_layout(J)['pitch'][0]
     pr, px = KS.V['pocket']
@@ -464,14 +475,15 @@ def design():
     hm.metadata.update(loft=[np.asarray(r, float) for r in hr_],      # native: loft minus (y-cylinder r pr about the pitch axis + box)
                        cut=[('ycyl', hpc, pr), ('box', [hpc[0] - px, -pr, hlo[2] - 20], [2 * px, 2 * pr, hpc[2] - hlo[2] + 20])])
     add('cover-helmet', hm)
-    # the face: an oval of gloss black glass, the front of the helmet a hair proud
-    oval = trimesh.creation.cylinder(radius=1.0, height=1.0, sections=96).apply_transform(
-        trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_scale([hd * 1.2, hw * 0.74, hh * 0.3]).apply_translation(
-        [hc[0] + hd * 0.6, hc[1], hc[2] + hh * 0.04])
-    big = M_(tm(helmet).copy().apply_translation(-hc).apply_scale(1.01).apply_translation(hc))
-    vm = tm(big ^ M_(oval))
-    vm.metadata.update(visor=dict(helmet=hm.metadata, hc=hc, s=1.01, oval_c=[hc[0] + hd * 0.6, hc[1], hc[2] + hh * 0.04], oval_s=[hd * 1.2, hw * 0.74, hh * 0.3]))
-    add('visor-face', vm)
+    # the face: a flat screen, gloss black glass, set into the front face a hair proud
+    x_f = hc[0] + hd                                            # the flat front face
+    sw, sh = hw - rc_p - 4.0, 0.21 * hh                         # landscape, inside the flat region
+    scr = [rrect(np.array([x_, hc[1], hc[2] + 0.10 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.35 * min(sw, sh), k=12)
+           for x_, d_ in ((x_f - 3.0, 0.0), (x_f + 0.4, 0.0), (x_f + 0.8, 0.4))]
+    vf = hull_rings(scr)
+    if (M_(vf) ^ pocket).volume() > 1.0:                        # small heads: the neck pocket reaches the face -- trim the screen with it
+        vf = tm(M_(vf) - pocket)
+    add('visor-face', vf)
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
