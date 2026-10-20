@@ -54,6 +54,7 @@ The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here ma
 
 **Change made:**
 - Every grille now uses Ø1.4 holes on a 2.2 mm hex pitch, about 37% open (was Ø1.1 on 2.4, about 19%).
+- The grilles are now separate perforated inserts that sit flush in plain windows in the tub. The tub moulds without side actions and evaluates in about 1 s (it was about 5 min with the holes drilled in). Each grille insert is cached on its own (about 75 s).
 - The exhaust slot grew from 36 × 12 to 90 × 22 mm and moved up to z 76, right behind the heatsink.
 - The ear grids are nearly blanked by the speaker and mic, so almost all intake comes through the I/O cutout.
 

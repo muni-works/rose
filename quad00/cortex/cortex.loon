@@ -122,10 +122,14 @@
 [let in-pill [fn [u v a b]
   [let uu [max #[0.0 [- [abs u] [- a b]]]]]
   [< [+ [* uu uu] [* v v]] [* [- b 0.8] [- b 0.8]]]]]
-; union a grid row by row (keeps each boolean small)
-[let grid-holes [fn [rows hole]
-  [let solids [map [fn [r] [fold [hole [nth r 0]] [fn [acc q] [union acc [hole q]]] r]] [filter [fn [r] [> [len r] 0]] rows]]]
-  [fold [nth solids 0] [fn [acc x] [union acc x]] solids]]]
+; union a list of solids as a balanced tree (a running fold is quadratic in the hole count)
+[let tree-union [fn [xs]
+  [let n [len xs]]
+  [let h [/ n 2]]
+  [if [< n 2] [nth xs 0]
+    [union [tree-union [map [fn [i] [nth xs i]] [range 0 h]]]
+           [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
+[let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
 [let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
 [let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]]]
 [let ear-holes [grid-holes ear-rows dot-hole]]
@@ -136,7 +140,13 @@
 [let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 21 3]]]
 [let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
 [let exhaust-holes [grid-holes x-rows xdot-hole]]
-[let vents [union ear-holes exhaust-holes]]
+; The tub only gets plain rounded windows; the perforated grilles are separate thin inserts that fill them flush
+; (moulds without side actions, and the tub evaluates in seconds -- the holes live in their own parts).
+[let ear-win-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg gw gh [- gw 0.01]]]]]
+[let ear-windows [loft #[[ear-win-sec [- -6.0 hw]] [ear-win-sec [+ hw 6.0]]]]]
+[let x-win-sec [fn [x] [sketch x 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 zx xa xr [- xr 0.01]]]]]
+[let exhaust-window [loft #[[x-win-sec [- x-back 6.0]] [x-win-sec [+ x-back 24.0]]]]]
+[let vents [union ear-windows exhaust-window]]
 [let zmic [- zg [* 8.0 dot-h]]]                  ; the mic port's dot (row -8, centre column)
 [let zm [+ zg 8.5]]                             ; speaker centre (left)
 ; the dock, head side. Pads x +-3 (2 columns) by y -6..6 (4 rows): VBUS x2, GND x2, T1 P/N, USB D+/D-.
@@ -165,6 +175,9 @@
 ; can clip in if wanted)
 [let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
+[let wall-band [difference shell-inner shell-solid]]
+[let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
+[let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
 [let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 [let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
@@ -250,6 +263,8 @@
 [assembly
  #[[part "cortex-tub" cortex-tub "satin_black"]
    [part "cortex-floor" cortex-floor "aluminium"]
+   [part "cortex-exhaust-grille" cortex-exhaust-grille "satin_black"]
+   [part "cortex-ear-grilles" cortex-ear-grilles "satin_black"]
    [part "cortex-keeper" cortex-keeper "steel"]
    [part "cortex-strikes" cortex-strikes "steel"]
    [part "cortex-pads" cortex-pads "gold"]
@@ -269,6 +284,8 @@
    [part "cortex-cables" cortex-cables "cable_orange"]]
  #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
    [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
+   [instance "cortex-exhaust-grille_i" "cortex-exhaust-grille" 0.0 0.0 0.0]
+   [instance "cortex-ear-grilles_i" "cortex-ear-grilles" 0.0 0.0 0.0]
    [instance "cortex-keeper_i" "cortex-keeper" 0.0 0.0 0.0]
    [instance "cortex-strikes_i" "cortex-strikes" 0.0 0.0 0.0]
    [instance "cortex-pads_i" "cortex-pads" 0.0 0.0 0.0]
@@ -286,7 +303,9 @@
    [instance "cortex-mics_i" "cortex-mics" 0.0 0.0 0.0]
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
- #[[fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
+ #[[fixed-joint "fix_cortex-exhaust-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-exhaust-grille_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-ear-grilles" "cortex-floor_i" 0.0 0.0 0.0 "cortex-ear-grilles_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-strikes" "cortex-floor_i" 0.0 0.0 0.0 "cortex-strikes_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-pads" "cortex-floor_i" 0.0 0.0 0.0 "cortex-pads_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-padboard" "cortex-floor_i" 0.0 0.0 0.0 "cortex-padboard_i" 0.0 0.0 0.0]
