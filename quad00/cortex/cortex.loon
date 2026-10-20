@@ -60,8 +60,11 @@
     #[[line ub [- cv b] ua [- cv b]]] [q ua vb 1.0 -1.0 false]]]]]
 
 ; a horizontal section of the head at height z, inset d all round
+[let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
 [let head-sec [fn [z d]
-  [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs xc 0.0 [- hd d] [- hw d] [max #[[- rc d] 2.0]]]]]]
+  [let xf [- x-face [* rake z]]]
+  [let hdz [/ [- xf x-back] 2.0]]
+  [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [- xf hdz] 0.0 [- hdz d] [- hw d] [max #[[- rc d] 2.0]]]]]]
 
 ; the quarter-round stations (rise, inset) of a round of radius r: (r(1-cos t), r(1-sin t)), t = 0..90
 [let round-st [fn [r] #[
@@ -87,26 +90,21 @@
 [let cortex-shell [difference shell-cuts shell-solid]]
 
 ; ------------------------------------------------------------------------ face ----
+[let xfz [- x-face [* rake zf]]]               ; the face plane at the face centre
+[let tilt [fn [s] [translate xfz 0.0 zf [rotate 0.0 -8.0 0.0 [translate [- 0.0 xfz] 0.0 [- 0.0 zf] s]]]]]
 [let sw [- [- hw rc] 3.0]]
 [let sh [* 0.33 hh]]
 [let glass-sec [fn [x d] [sketch x 0.0 zf 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [- sw d] [- sh d] [* 0.55 [min #[sw sh]]]]]]]
-[let cortex-glass [loft #[[glass-sec [- x-face 3.0] 0.0] [glass-sec [+ x-face 0.4] 0.0] [glass-sec [+ x-face 0.8] 0.4]]]]
+; dead-front: the back of the glass is printed black except an IR/visible window over each camera and the active
+; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
+[let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
 
 [let disc-x [fn [x y z r t] [translate x y z [rotate 0.0 90.0 0.0 [cylinder r t]]]]]       ; axis +x, from x
 [let disc-y [fn [x y z r t] [translate x y z [rotate -90.0 0.0 0.0 [cylinder r t]]]]]      ; axis +y, from y
-[let cortex-eye-rings [union [disc-x [+ x-face 0.3] [/ baseline 2.0] ze 5.2 1.0] [disc-x [+ x-face 0.3] [- 0.0 [/ baseline 2.0]] ze 5.2 1.0]]]
-[let cortex-eyes [union [disc-x [+ x-face 0.9] [/ baseline 2.0] ze 3.6 0.8] [disc-x [+ x-face 0.9] [- 0.0 [/ baseline 2.0]] ze 3.6 0.8]]]
 
-; ears: a gunmetal grille each side (a hex of mic/speaker holes), forward of the vents
-[let ear-x [- x-face [* 0.27 [- x-face x-back]]]]
-[let ear [fn [y0]
-  [let holes [pipe [disc-y ear-x [- y0 1.0] zf 1.1 4.0]
-                   [union [disc-y [+ ear-x 5.5] [- y0 1.0] zf 1.1 4.0]] [union [disc-y [- ear-x 5.5] [- y0 1.0] zf 1.1 4.0]]
-                   [union [disc-y [+ ear-x 2.75] [- y0 1.0] [+ zf 4.763] 1.1 4.0]] [union [disc-y [- ear-x 2.75] [- y0 1.0] [+ zf 4.763] 1.1 4.0]]
-                   [union [disc-y [+ ear-x 2.75] [- y0 1.0] [- zf 4.763] 1.1 4.0]] [union [disc-y [- ear-x 2.75] [- y0 1.0] [- zf 4.763] 1.1 4.0]]]]
-  [difference holes [disc-y ear-x y0 zf 11.0 1.4]]]]
-[let cortex-ears [union [ear [- hw 0.3]] [ear [- 0.0 [+ hw 1.1]]]]]
-
+; ears: none of their own. The side vents are the grilles: speaker behind the left/right slots, the mic taped
+; inside beside them (fewer parts, one tool for the slots)
+[let ear-x [+ [+ x-back rc] 18.0]]             ; the vent field's centre
 ; the back panel: power button + status LED (left), USB-C + Ethernet (right)
 [let zp [* 0.38 hh]]
 [let pw [* 0.62 hw]]
@@ -120,20 +118,20 @@
 
 ; ---------------------------------------------------------------------- insides ----
 [let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
-[let cortex-display [bx [- x-face 12.5] -38.3 [- zf 31.8] [- x-face 1.5] 38.3 [+ zf 31.8]]]
-[let cortex-cams [union [bx [- x-face 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- x-face 1.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
-                        [bx [- x-face 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- x-face 1.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]
+[let cortex-display [tilt [bx [- xfz 12.5] -38.3 [- zf 31.8] [- xfz 1.5] 38.3 [+ zf 31.8]]]]
+[let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
+                              [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 [let cortex-usbc [bx -7.0 -10.0 1.5 7.0 10.0 11.5]]                              ; the dock receptacle, at the origin
-[let jx1 [- x-face 16.5]]                                                       ; Jetson: behind the display (4 mm FPC gap)
+[let jx1 24.0]                                                       ; Jetson: behind the display (4 mm FPC gap)
 [let cortex-compute [bx [- jx1 52.0] -43.5 13.0 jx1 43.5 49.0]]                ; ... up over the receptacle
 [let cortex-battery [bx [+ x-back 4.5] 0.0 4.0 [+ x-back 26.5] 66.0 78.0]]
 [let cortex-power [bx [+ x-back 3.0] -6.0 80.0 [+ x-back 33.0] 34.0 86.0]]
-[let spk [fn [y0 sy] [disc-y [- ear-x 0.0] [if [> sy 0.0] [- y0 5.4] y0] zf 14.0 5.4]]]
+[let spk [fn [y0 sy] [disc-y ear-x [if [> sy 0.0] [- y0 5.4] y0] zm 14.0 5.4]]]
 [let cortex-speakers [union [spk [- hw 2.5] 1.0] [spk [- 0.0 [- hw 2.5]] -1.0]]]
-[let cortex-mics [union [bx [- ear-x 8.35] [- hw 4.3] [+ zf 16.0] [+ ear-x 8.35] [- hw 2.5] [+ zf 28.7]]
-                        [bx [- ear-x 8.35] [- 2.5 hw] [+ zf 16.0] [+ ear-x 8.35] [- 4.3 hw] [+ zf 28.7]]]]
-[let cortex-amps [union [bx [- ear-x 9.7] [- hw 5.5] [- zf 33.8] [+ ear-x 9.7] [- hw 2.5] [- zf 16.0]]
-                        [bx [- ear-x 9.7] [- 2.5 hw] [- zf 33.8] [+ ear-x 9.7] [- 5.5 hw] [- zf 16.0]]]]
+[let cortex-mics [union [bx [- ear-x 8.35] [- hw 4.3] [+ zm 16.0] [+ ear-x 8.35] [- hw 2.5] [+ zm 28.7]]
+                        [bx [- ear-x 8.35] [- 2.5 hw] [+ zm 16.0] [+ ear-x 8.35] [- 4.3 hw] [+ zm 28.7]]]]
+[let cortex-amps [union [bx [- ear-x 9.7] [- hw 5.5] [- zm 33.8] [+ ear-x 9.7] [- hw 2.5] [- zm 16.0]]
+                        [bx [- ear-x 9.7] [- 2.5 hw] [- zm 33.8] [+ ear-x 9.7] [- 5.5 hw] [- zm 16.0]]]]
 
 ; ----------------------------------------------------------------------- wiring ----
 ; Routed orthogonally (harness practice: runs along x, y, z, clipped at the turns). Round cables are square-section
@@ -141,22 +139,22 @@
 [let run-x [fn [x0 x1 y z r] [bx [min #[x0 x1]] [- y r] [- z r] [max #[x0 x1]] [+ y r] [+ z r]]]]
 [let run-y [fn [y0 y1 x z r] [bx [- x r] [min #[y0 y1]] [- z r] [+ x r] [max #[y0 y1]] [+ z r]]]]
 [let run-z [fn [z0 z1 x y r] [bx [- x r] [- y r] [min #[z0 z1]] [+ x r] [+ y r] [max #[z0 z1]]]]]
-[let xg -27.0]                                                                  ; the gap between the pack and the Jetson
-[let csi [fn [sy] [pipe [bx [- x-face 15.5] [- [* sy 53.0] 8.0] 50.0 [- x-face 14.5] [+ [* sy 53.0] 8.0] ze]      ; down behind the eye
-                        [union [bx [- jx1 18.0] [min #[[* sy 53.0] [* sy 20.0]]] 49.5 [- x-face 14.5] [max #[[* sy 53.0] [* sy 20.0]]] 50.5]]]]]   ; over the Jetson
+[let xg -29.75]                                                                  ; the gap between the pack and the Jetson
+[let csi [fn [sy] [pipe [bx [- jx1 5.5] [- [* sy 53.0] 8.0] 50.0 [- jx1 4.5] [+ [* sy 53.0] 8.0] [- ze 6.0]]      ; down behind the eye
+                        [union [bx [- jx1 18.0] [min #[[* sy 53.0] [* sy 20.0]]] 49.5 [- jx1 4.5] [max #[[* sy 53.0] [* sy 20.0]]] 50.5]]]]]   ; over the Jetson
 [let cortex-cables
   [pipe [csi 1.0] [union [csi -1.0]]
-    [union [bx [- x-face 13.5] -7.0 31.0 [- x-face 12.5] 7.0 [- zf 10.0]]]                    ; HDMI FPC down the 4 mm gap ...
-    [union [bx jx1 -7.0 30.0 [- x-face 12.5] 7.0 31.0]]                                          ; ... into the A603
-    [union [run-x [+ x-back 33.0] xg 14.0 80.0 2.5]] [union [run-z 80.0 30.0 xg 14.0 2.5]] [union [run-x xg [- jx1 52.0] 14.0 30.0 2.5]]   ; charger -> A603 DC
-    [union [run-x -7.0 xg 6.0 6.0 2.5]] [union [run-z 6.0 80.0 xg 6.0 2.5]]                                                        ; USB-C VBUS/CC -> PD sink
-    [union [run-x -7.0 xg -6.0 6.0 2.5]] [union [run-z 6.0 25.0 xg -6.0 2.5]] [union [run-x xg [- jx1 52.0] -6.0 25.0 2.5]]         ; USB-C data -> A603
+    [union [bx [+ jx1 0.5] -7.0 31.0 [+ jx1 1.5] 7.0 [- zf 10.0]]]                    ; HDMI FPC down the 4 mm gap ...
+    [union [bx [- jx1 3.0] -7.0 30.0 [+ jx1 1.5] 7.0 31.0]]                                          ; ... into the A603
+    [union [run-x [+ x-back 33.0] xg 14.0 80.0 2.5]] [union [run-z 80.0 30.0 xg 14.0 1.75]] [union [run-x xg [- jx1 52.0] 14.0 30.0 1.75]]   ; charger -> A603 DC
+    [union [run-x -7.0 xg 6.0 6.0 1.75]] [union [run-z 6.0 80.0 xg 6.0 1.75]]                                                        ; USB-C VBUS/CC -> PD sink
+    [union [run-x -7.0 xg -6.0 6.0 1.75]] [union [run-z 6.0 25.0 xg -6.0 1.75]] [union [run-x xg [- jx1 52.0] -6.0 25.0 1.75]]         ; USB-C data -> A603
     [union [run-x [- x-back -2.0] [- jx1 52.0] -29.4 zp 3.0]]                                                                      ; panel RJ45 -> A603
     [union [run-x [- x-back -2.0] [- jx1 52.0] -5.0 zp 2.5]]                                                                       ; panel USB-C -> A603
-    [union [run-y 76.0 60.0 ear-x [- zf 25.0] 1.5]] [union [run-z [- zf 25.0] 51.0 ear-x 60.0 1.5]] [union [run-y 60.0 36.0 ear-x 51.0 1.5]]       ; amp L
-    [union [run-y -76.0 -60.0 ear-x [- zf 25.0] 1.5]] [union [run-z [- zf 25.0] 51.0 ear-x -60.0 1.5]] [union [run-y -60.0 -36.0 ear-x 51.0 1.5]]  ; amp R
-    [union [run-y 77.0 63.0 ear-x [+ zf 22.0] 1.5]] [union [run-z [+ zf 22.0] 53.0 ear-x 63.0 1.5]] [union [run-y 63.0 38.0 ear-x 53.0 1.5]]       ; mic L
-    [union [run-y -77.0 -63.0 ear-x [+ zf 22.0] 1.5]] [union [run-z [+ zf 22.0] 53.0 ear-x -63.0 1.5]] [union [run-y -63.0 -38.0 ear-x 53.0 1.5]]]]  ; mic R
+    [union [run-y 76.0 60.0 ear-x [- zm 25.0] 1.5]] [union [run-z [- zm 25.0] 51.0 ear-x 60.0 1.5]] [union [run-y 60.0 36.0 ear-x 51.0 1.5]]       ; amp L
+    [union [run-y -76.0 -60.0 ear-x [- zm 25.0] 1.5]] [union [run-z [- zm 25.0] 51.0 ear-x -60.0 1.5]] [union [run-y -60.0 -36.0 ear-x 51.0 1.5]]  ; amp R
+    [union [run-y 77.0 63.0 ear-x [+ zm 22.0] 1.5]] [union [run-z [+ zm 22.0] 53.0 ear-x 63.0 1.5]] [union [run-y 63.0 38.0 ear-x 53.0 1.5]]       ; mic L
+    [union [run-y -77.0 -63.0 ear-x [+ zm 22.0] 1.5]] [union [run-z [+ zm 22.0] 53.0 ear-x -63.0 1.5]] [union [run-y -63.0 -38.0 ear-x 53.0 1.5]]]]  ; mic R
 
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries (its neck's dock face at the origin): a floating USB-C plug (+-0.8 mm float mount, tongue 6.5
@@ -169,9 +167,6 @@
 [assembly
  #[[part "cortex-shell" cortex-shell "satin_black"]
    [part "cortex-glass" cortex-glass "visor_glass"]
-   [part "cortex-eye-rings" cortex-eye-rings "gunmetal"]
-   [part "cortex-eyes" cortex-eyes "visor_glass"]
-   [part "cortex-ears" cortex-ears "gunmetal"]
    [part "cortex-panel" cortex-panel "gunmetal"]
    [part "cortex-button" cortex-button "satin_black"]
    [part "cortex-led" cortex-led "visor_glass"]
@@ -188,9 +183,6 @@
    [part "cortex-cables" cortex-cables "cable_orange"]]
  #[[instance "cortex-shell_i" "cortex-shell" 0.0 0.0 0.0]
    [instance "cortex-glass_i" "cortex-glass" 0.0 0.0 0.0]
-   [instance "cortex-eye-rings_i" "cortex-eye-rings" 0.0 0.0 0.0]
-   [instance "cortex-eyes_i" "cortex-eyes" 0.0 0.0 0.0]
-   [instance "cortex-ears_i" "cortex-ears" 0.0 0.0 0.0]
    [instance "cortex-panel_i" "cortex-panel" 0.0 0.0 0.0]
    [instance "cortex-button_i" "cortex-button" 0.0 0.0 0.0]
    [instance "cortex-led_i" "cortex-led" 0.0 0.0 0.0]
@@ -206,9 +198,6 @@
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
  #[[fixed-joint "fix_cortex-glass" "cortex-shell_i" 0.0 0.0 0.0 "cortex-glass_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-eye-rings" "cortex-shell_i" 0.0 0.0 0.0 "cortex-eye-rings_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-eyes" "cortex-shell_i" 0.0 0.0 0.0 "cortex-eyes_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-ears" "cortex-shell_i" 0.0 0.0 0.0 "cortex-ears_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-panel" "cortex-shell_i" 0.0 0.0 0.0 "cortex-panel_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-button" "cortex-shell_i" 0.0 0.0 0.0 "cortex-button_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-led" "cortex-shell_i" 0.0 0.0 0.0 "cortex-led_i" 0.0 0.0 0.0]
