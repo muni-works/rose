@@ -298,6 +298,38 @@ def head(J):
     return out
 
 
+# electronics in the torso bay. PLACEHOLDERS until the limbic-board spec (rose branch claude/limbic-spec, LIMBIC.md)
+# lands: cells, pack arrangement, Jetson and board envelopes are assumptions, sized to the bay; swap numbers here.
+ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700: 43.2 V nominal, ~9 Ah with 4.5 Ah cells
+            pack_grid=(6, 2),                                       # cells per side pack: x by y, standing upright
+            jetson=(87.0, 60.0, 100.0), jetson_kg=0.45,             # Orin NX on a compact carrier + active heatsink (x, y, z)
+            board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
+
+
+def electronics(J):
+    """battery (two side packs), Jetson and limbic board as envelopes in the chest bay (mini only)."""
+    if V['name'] != 'mini':
+        return []
+    E, out = ELEC, []
+    sp = upper_layout(J, 'Left')['sp'][0]
+    y_side = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G       # side plate outer face
+    nx, ny = E['pack_grid']
+    px, py, pz = nx * E['cell_d'] + 2.0, ny * E['cell_d'] + 1.0, E['cell_h'] + 4.0
+    z_top = sp[2] - Q.MOTORS['rs00']['D'] / 2 - 4.0           # under the shoulder-pitch can
+    for s, t in ((1, 'l'), (-1, 'r')):
+        y0 = y_side + 2.0 if s > 0 else -(y_side + 2.0) - py
+        box = trimesh.creation.box(extents=[px, py, pz]).apply_translation([5.5, y0 + py / 2, z_top - pz / 2])
+        out.append((f'elec-battery.{t}', box))
+    yi = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G - T - 1.0 # side plate inner face, less a gap
+    jx, jy, jz = E['jetson']
+    z_d1 = head_layout(J)['yaw'][0][2] - Q.MOTORS['rs00']['L'] / 2 - G - T
+    out.append(('elec-jetson', trimesh.creation.box(extents=[jx, jy, jz]).apply_translation([5.0, 0.0, z_d1 - 4.0 - jz / 2])))
+    bx, by, bz = E['board']
+    by = min(by, 2 * yi)
+    out.append(('elec-limbic', trimesh.creation.box(extents=[bx, by, bz]).apply_translation([5.0, 0.0, Z_D0() + T + 6.0 + bz / 2])))
+    return out
+
+
 def CHEST():
     return 101.0 * R()                 # chest half-width (mini 101)
 
@@ -319,4 +351,4 @@ def structure():
     out = []
     for side in ('Left', 'Right'):
         out += leg(J, side) + arm(J, side, M)
-    return out + torso(J) + head(J)
+    return out + torso(J) + head(J) + electronics(J)

@@ -278,10 +278,10 @@ def design():
     # rib cage, a slimmer abdomen down to a pelvis that flares out over the hips
     Rk = KS.R()
     z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
-    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.86, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk)   # full width at the shoulders
+    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.88, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk)   # full width at the shoulders
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     add('cover-chest', grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
-    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.86 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
+    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.88 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
     add('cover-abdomen', block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk))
     # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
     # then a narrow keel dropping between the hip drums
@@ -386,7 +386,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith('rs') or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec')) or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():
