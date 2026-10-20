@@ -1,0 +1,34 @@
+plane layers kept trace-free: [In1Cu, In3Cu]
+[2026-10-14T20:53:05Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 2 connection(s) infeasible at current rules — terminal of net PHY_RST at (98.67, 19.30)/(112.94, 12.25) has no clearance-legal grid attachment — the pad at (112.94, 12.25) is walled in on all 6 copper layers by GND (11), PHY_XO (7), PHY_LED1 (4) at the current rules and grid pitch 0.413 mm
+anchored 282 track ends into their pads
+restored 1 layer-change vias
+split after clean-up: +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM
+second pass on +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXN, ETH_RXP, SPI_MOSI, SWO, USB_DM: islands 26 -> 17
+[2026-10-14T21:02:35Z WARN  vcad_ecad_pcb::router::auto] complete window PROOF: 1 connection(s) infeasible at current rules — net ETH_CRSDV is severed inside the window: breadth-first search from its to terminal at (111.75, 13.94) exhausted every reachable node — 4 of the 1057 clearance-free (cell, layer) nodes on the 6-layer stack — without touching the other terminal at (109.50, 17.76) (layer FCu); the enclosing cut is 13 blocked nodes spanning x=110.78..112.42, y=13.18..15.22, held by PHY_RXER (17), ETH_MDIO (9), +3V3 (3). With k = 1 reachability is exact, so no path exists on the canonical grid at pitch 0.408 mm
+second pass on +5V, ETH_CRSDV, SPI_MOSI: islands 9 -> 9
+trimmed leaf copper: 84 traces, 42 vias
+Routed 96.6% of connections in 1120.7 s: 1397 traces, 662 vias, 0 synthesized pours -> arm_controller.kicad_pcb
+unrouted nets (9): +5V, ADC_CS, AUX_IO, BRK_CMP, ETH_CRSDV, ETH_MDIO, ETH_RXP, SPI_MOSI, SWO
+  +5V (120.53,26.64) -> (134.50,30.95): blocked by -
+  +5V (134.50,30.95) -> (136.00,34.77): blocked by -
+  SPI_MOSI (83.33,19.80) -> (104.86,23.34): blocked by CANX_CS, ETH_RXD1, GND, IMU_SDO, SPI_SCK, +3V3, AUX_IO, CANB_RX, ETH_CRSDV, ETH_RXD0, IMU_INT, MOT_IN1, NRST, NTC_BRK, SWO, USB_DM, VDDA, ~nc~U10~34, ~nc~U10~89
+  ETH_CRSDV (109.50,17.76) -> (98.67,23.30): blocked by +3V3, BRK_CMP, BRK_REF, ETH_RXD1, GND, HSE_OUT, BOARD_ID, BRK_DIV, ETH_RXD0, HSE_IN, SPI_MISO, VDDA
+  SWO (96.82,6.46) -> (83.33,20.30): blocked by keepout, +3V3, BRK_DIV, CANB_STBY, ETH_TXD0, ETH_TXD1, GND, MOT_IN1, CANU_RX, CANU_TX, CANX_INT, NRST, +5V, ADC_CS, BK1_PG, BRK_FORCE, BRK_REF, CANA_STBY, CANB_RX, CANU_STBY, CANX_CS, ETH_TXEN, IMU_INT, NTC_BRK, NTC_FET, SPI_MOSI, SWCLK, USB_DM, ~nc~U10~60, ~nc~U10~61, ~nc~U10~62, ~nc~U10~63, ~nc~U10~64, ~nc~U10~65, ~nc~U10~89
+  ETH_RXP (131.64,14.40) -> (110.25,10.06): blocked by ETH_CT, ETH_TXD0, ETH_TXD1, ETH_TXEN, ETH_TXP, GND, +5V, ETH_RXN, ETH_TXN, PHY_LED2, PHY_RBIAS, PHY_VDDA
+  BRK_CMP (94.10,40.53) -> (98.67,19.80): blocked by BK1_SW, BOARD_ID, ETH_MDC, ETH_REFCLK, GND, MOT_ILIM, NTC_BRK, NTC_FET, SPI_SCK, VDDA, +12V, +3V3, ADC_DRDY, AUX_IO, BK1_BST, BK1_FB, BK1_PG, BRK_FORCE, BRK_IN, CANX_CS, ETH_CRSDV, ETH_MDIO, ETH_RXD0, ETH_RXD1, HSE_IN, HSE_OUT, IMU_CS, IMU_INT, MOT_IN1, MOT_IN2, NRST, PHY_RST, SPI_MISO, ~nc~U10~34, ~nc~U10~35
+  ADC_CS (83.33,18.30) -> (120.06,33.16): blocked by +3V3, CANX_CS, GND, HSE_OUT, IMU_CS, IMU_INT, IMU_SDO, SPI_SCK, VDDA, +12V, BK1_PG, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, HSE_IN, MOT_ILIM, MOT_IN1, NRST, SPI_MISO, USB_DM
+  ETH_MDIO (113.00,17.76) -> (96.50,27.48): blocked by +3V3, BOARD_ID, GND, IMU_CS, IMU_SDO, NTC_BRK, SPI_MOSI, SPI_SCK, BRK_REF, ETH_MDC, ETH_REFCLK, HSE_IN, HSE_OUT, PHY_VDDA, SPI_MISO, VDDA
+  AUX_IO (119.33,40.35) -> (98.67,21.80): blocked by +3V3, +5V, GND, HSE_OUT, IMU_INT, IMU_SDO, SPI_MISO, VDDA, +12V, BOARD_ID, ETH_CRSDV, ETH_MDC, ETH_REFCLK, ETH_RXD0, ETH_RXD1, HSE_IN, IMU_CS, SPI_SCK, ~nc~U10~34
+finish: black mask, #FF6600FF silk, ENIG (6 copper layers)
+placeholder models: AMASS_XT30PW-M_1x02_P2.50mm_Horizontal, AMASS_XT60PW-M_1x02_P7.20mm_Horizontal, RJ45_Hanrun_HR911105A_Horizontal
+premium: 45 449 (front designators to fab, teardrops)
+./src/common/stdpbase.cpp(59): assert ""traits"" failed in Get(): create wxApp before calling this
+filled 9 zones
+stitching vias: 231
+dropped 1 dangling items
+closed 5 open connections (removed 5 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+closed 5 open connections (removed 1 that broke a rule)
+Found 4 violations
+Found 6 unconnected items
+rendered render/board_{top,bottom,3d}.png

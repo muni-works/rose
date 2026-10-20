@@ -1,0 +1,6 @@
+(version 1)
+# Ground pads on the outer GND flood are also tied in by traces and plane vias,
+# so one thermal spoke into the flood is enough (KiCad's default asks for two).
+(rule "gnd_flood_one_spoke"
+	(condition "A.NetName == 'GND'")
+	(constraint min_resolved_spokes 1))

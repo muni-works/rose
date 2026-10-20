@@ -1,3 +1,12 @@
 __pycache__/
 *.pyc
 .DS_Store
+arm/controller/*.kicad_prl
+arm/controller/route.log
+arm/controller/.best.*
+arm/controller/added.txt
+brain/route.vcad.log
+*.ckpt/
+brain/ddr_only.kicad_pcb
+brain/ddr_only.kicad_pro
+brain/search.csv

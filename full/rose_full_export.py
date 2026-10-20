@@ -160,7 +160,11 @@ for side, s in (('Left', 1.0), ('Right', -1.0)):
     add_cyl(a2, M['X6-60'] + 0.7, 0.040, Z['sr'] - Z['el'], (0.0, 0.0, -(Z['sr'] - Z['el']) / 2))
     add_cyl(a3, M['X4-36'] + 0.6, 0.036, Z['el'] - Z['wr'], (0.0, 0.0, -(Z['el'] - Z['wr']) / 2))
     add_box(hd, 0.4, (0.080, 0.040, 0.150), (0.0, 0.0, -0.075))
-    lo_sr, hi_sr = (-1.7, 1.6) if s > 0 else (-1.6, 1.7)
+    # ADDUCTION CAP (H3 arm pass). -1.7 rad drove the arm straight through the
+    # torso; nothing checked it because sweep.py started its shoulder-roll sweep
+    # at 0. The swept-clean limit is -0.21 rad (-12 deg): the forearm's side
+    # walls reach the chest side plate there. Abduction is unchanged.
+    lo_sr, hi_sr = (-0.21, 1.7) if s > 0 else (-1.7, 0.21)
     add_joint('%s_Shoulder_Pitch' % side, 'Trunk', a1, (0.0, s * SHO_Y, Z['sp']), (0, 1, 0), -3.0, 1.5, 'X8-120')
     add_joint('%s_Shoulder_Roll' % side, a1, a2, (0.0, 0.0, Z['sr'] - Z['sp']), (1, 0, 0), lo_sr, hi_sr, 'X6-60')
     # elbow flexes FORWARD only (human; H2 -0.99..3.07): folded back 132 deg the forearm

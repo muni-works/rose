@@ -1,0 +1,19 @@
+** Drc report for arm_controller.kicad_pcb **
+** Created on 2026-10-14T20:54:45-0400 **
+
+** Found 3 DRC violations **
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(60.4000 mm, 30.8000 mm): Segment of ART1 on B.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(62.6000 mm, 30.8000 mm): Segment of ART1 on B.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(104.0000 mm, 32.6000 mm): Footprint text of ART1 (6L  1.6 mm  ENIG  black / muni orange)
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

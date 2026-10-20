@@ -92,7 +92,11 @@ JOINTS = {
     'sho_pitch': dict(c=(0, SHO_Y, ZSP),       ax='y', m='X8-120',  bd=-1, mode='end'),
     'sho_roll':  dict(c=(SHR_X, SHO_Y, ZSR),   ax='x', m='X6-60',   bd=-1, mode='mid'),
     'elb_pitch': dict(c=(0, SHO_Y, ZE),        ax='y', m='X6-60',   bd=+1, mode='end'),
-    'wrist_yaw': dict(c=(0, SHO_Y, ZW),        ax='z', m='X4-36',   bd=-1, mode='end'),
+    # wrist yaw stands UP into the forearm (bd=+1): its can lives INSIDE the
+    # forearm shell and its mount face is the forearm's lower end, so the hand
+    # bolts BELOW it. With bd=-1 the can hung below the wrist and both rings
+    # faced up - the hand would have had to reach back over its own actuator.
+    'wrist_yaw': dict(c=(0, SHO_Y, ZW),        ax='z', m='X4-36',   bd=+1, mode='end'),
     'waist_yaw': dict(c=(0, 0.0, ZWAIST),      ax='z', m='X8-120',  bd=-1, mode='end'),
     'head_yaw':  dict(c=(0, 0.0, ZHEY),        ax='z', m='X4-36',   bd=-1, mode='end'),
     'head_pitch':dict(c=(0, 0.0, ZHEP),        ax='y', m='X4-36',   bd=-1, mode='mid'),
@@ -417,12 +421,21 @@ ct = P('thigh', 'top', 'z', yo.n1, yo.n1 + T, -10.0, TH_FRONT + T, TH_Y0 - T, TH
 TH_TOP = ct.n1
 TH_REAR = -30.0
 # TAPER. The flanges are TILTED inward about the top plate's side edges so the
-# channel narrows from 174 at the hip to 142 at the shelf - the H2's thigh goes
-# 128 -> 74 over its length; ours can only lean its two walls, and it leans them
-# 4.6 deg. Their rear edge is also cut on the slant (trapezoid) from x -30 at the
+# channel narrows from 174 at the hip to 122 at the shelf - the H2's thigh goes
+# 143 -> 72 over its length; ours can only lean its two walls, and it leans them
+# 7.6 deg. Their rear edge is also cut on the slant (trapezoid) from x -30 at the
 # top to x 0 at the bottom. The web between them is then a trapezoid too. The
 # windows and hems ride the same tilt; the shelf spans the narrowed bottom.
-TH_IN = 16.0                                            # how far each flange bottom leans in
+# 26 mm of lean, not 16: the lean is pivoted at the TOP, so nothing it does can
+# reach the yaw body or grow the hip_yaw sweep envelope (the flange's 0.6 mm
+# tight against hipB's stator plate is at the top, and is unchanged); what limits
+# it at the bottom is the knee body, and the flange bottoms stop 8 mm above it.
+# 22 and not more: the plate-vs-body check uses the plate's AABB, and a TILTED
+# plate's AABB is the rotated prism's box - it reports the flange as 3.8 mm into
+# the yaw body at 26 mm of lean while the flange itself is 24 mm clear there
+# (the lean is nothing at the top, where the body is). 22 is where the box stops
+# lying. sweep.py, which is exact, has room for more.
+TH_IN = 22.0                                            # how far each flange bottom leans in
 TH_H = TH_TOP - TH_FLG_BOT
 TH_TILT = math.degrees(math.atan2(TH_IN, TH_H))
 TH_BOT_REAR = 0.0
@@ -437,8 +450,8 @@ PIV_OUT = (0.0, TH_Y1 + T / 2.0, TH_TOP)
 # point below the pivot (dz < 0), y' - y = -dz sin a > 0 when a > 0. So inner +, outer -.
 P('thigh', 'flange_in',  'y', TH_Y0 - T, TH_Y0, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', TH_TILT, PIV_IN))
 P('thigh', 'flange_out', 'y', TH_Y1, TH_Y1 + T, 0, 0, 0, 0, slots=[TH_WIN], poly=FL_POLY, tilt=('x', -TH_TILT, PIV_OUT))
-P('thigh', 'hem_in',     'y', TH_Y0 - 2 * T, TH_Y0 - T, *TH_HEMR, slots=[TH_WIN], tilt=('x', TH_TILT, PIV_IN))
-P('thigh', 'hem_out',    'y', TH_Y1 + T, TH_Y1 + 2 * T, *TH_HEMR, slots=[TH_WIN], tilt=('x', -TH_TILT, PIV_OUT))
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 WEB_POLY = [(TH_Y0 - T + TH_IN, TH_FLG_BOT), (TH_Y1 + T - TH_IN, TH_FLG_BOT), (TH_Y1 + T, TH_TOP), (TH_Y0 - T, TH_TOP)]
 P('thigh', 'web',        'x', TH_FRONT, TH_FRONT + T, 0, 0, 0, 0, poly=WEB_POLY)
 # the jog: shelf under the yaw body back to the knee plate's front, lower web, knee plate
@@ -452,8 +465,34 @@ kf = L('thigh', 'knee_face', 'knee', 'stator', -KB - KNEE_R - 5.0, TH_LO_X + T, 
 KC = 35.0
 kf.poly = [(kf.u0 + KC, kf.v0), (kf.u1 - KC, kf.v0), (kf.u1, kf.v0 + KC), (kf.u1, kf.v1 - KC),
            (kf.u1 - KC, kf.v1), (kf.u0 + KC, kf.v1), (kf.u0, kf.v1 - KC), (kf.u0, kf.v0 + KC)]
-P('thigh', 'knee_gus', 'x', -KB - KNEE_R - 5.0 - T, -KB - KNEE_R - 5.0, LEG_Y - 64.0, LEG_Y, kf.v0 + KC, kf.v1 - KC)
 P('thigh', 'web_lo', 'x', TH_LO_X, TH_LO_X + T, TH_LO_Y0, TH_LO_Y1, kf.v0 + KC, TH_FLG_BOT - T)
+# KNEE SHROUD (DESIGN.md rule 3: cover what can pinch). The knee is an X15-450:
+# a D166 body lying across the leg, and in profile it was the single heaviest
+# read on the robot - a bare can where the thigh should end. It is also the one
+# closure on the leg that can crush a hand at 68 kg. So the flat rear gusset that
+# used to stiffen the knee plate's rear edge is now the LAST of four facets that
+# start under the shelf, ride over the top of the body and wrap its back: one
+# blank bent off the knee stator plate's straight rear edge, 40 deg per fold,
+# tangent to r 88 (5 mm off the D166 body), corners at r 93.6. That is 187 mm
+# across against the body's 166 and the stator octagon's 178 - it does not grow
+# the knee, it turns it into the bottom of the thigh.
+# It lives INBOARD (y 100..162): everything the shank carries near the knee is
+# outboard of y 167 (the web, its front flange, both crank plates), so the shroud
+# has 5 mm of y clearance through the whole 0..132 deg fold, and the nearest
+# shank BODY in its own y band is a D96 ankle motor at r 114 about the knee axis.
+KS_R = 88.0
+KS_Y0, KS_Y1 = 88.0, 162.0                              # 4 mm past the body's inboard rim (y 92)
+KS_RW = 10.0                                            # the ONE place rule 1's 25 mm is not asked for:
+                                                        # these corners are the fold lines BETWEEN facets,
+                                                        # and a 25 mm round on each leaves the band a row
+                                                        # of pills. The band's outer edges get hems.
+KS_ARC = (-40.0, 0.0, 40.0, 80.0, 120.0)                # facet edges, deg from +z, rearward
+for _a0, _a1 in zip(KS_ARC[:-1], KS_ARC[1:]):
+    _am = (_a0 + _a1) / 2.0
+    _h = KS_R * math.tan(math.radians((_a1 - _a0) / 2.0)) + KS_RW    # +r so the facets overlap at the fold
+    _p = P('thigh', 'knee_shroud%d' % int(_am), 'z', ZK + KS_R, ZK + KS_R + T,
+           -KB - _h, -KB + _h, KS_Y0, KS_Y1, tilt=('y', -_am, (-KB, 0.0, ZK)))
+    _p.r_want = KS_RW
 
 # ---- shank: knee OUTPUT -> ankle motors -> pushrod ankle ----
 # (d) of the H3 programme. No actuator at the ankle: both ankle motors are
@@ -482,6 +521,39 @@ for j_, role in (('knee', 'output'), ('ank_mA', 'stator'), ('ank_mB', 'stator'))
     sw.holes.append((-KB, j['c'][2], (ifc['spig'] if role == 'stator' else ifc['pilot']) + 1.0))
 # front flange folds OUTBOARD off the web's straight front edge (x 6)
 P('shank', 'flange_fr', 'x', -KB + 66.0, -KB + 66.0 + T, WEB_Y0 + T, WEB_Y0 + T + 70.0, ZMB - 51.0, ZK - KNEE_R - 5.0)
+
+# ---- the CALF SHELL: the channel that wraps the two ankle motors ----
+# Both X8-120s hang INBOARD of the web (their bodies run y 88..167), so before
+# this they were simply out in the air: two cans on a stick, which is what the
+# side view said. The shell is one more blank on the same front bend line (x 6):
+# two lap tabs on the web's inboard face -> a front closure across the inboard
+# width -> the inboard wall at y 79..82 (6 mm off the motor bodies) -> a chamfer
+# panel that pinches to the ankle.
+# The wall's PROFILE is the calf: 131 mm deep at the knee end, swelling to 142 at
+# z -650 (28 % of the way from knee to ankle - the H2's calf is 30 % down) and
+# pinching to 106 at z -800. It is closed at the front and open at the back: the
+# cranks (y 170..173), both pushrods (y 171.5) and the crank pins are outboard of
+# the web and stay visible, because they are what explains the ankle.
+# The wall cannot lean until it is BELOW the motors - a tilted wall at y > 88
+# walks straight into a D96 body - so the whole pinch is one 37 deg chamfer panel
+# under them, y 82 -> 131, which is also where the H2 pinches.
+CF_Y = WEB_Y0 - 85.0                                    # 82: inboard face of the wall
+CF_Z0, CF_Z1 = ZMB - 71.0, ZK - 95.0                    # -800 .. -560
+CF_POLY = [(-KB + 66.0, CF_Z1), (-KB - 65.0, CF_Z1), (-KB - 76.0, ZMB + 79.0),
+           (-KB - 40.0, CF_Z0), (-KB + 66.0, CF_Z0)]    # CCW: front-top, rear-top, calf, rear-bottom, front-bottom
+P('shank', 'calf_in', 'y', CF_Y - T, CF_Y, 0, 0, 0, 0, poly=CF_POLY)
+P('shank', 'calf_front', 'x', -KB + 66.0, -KB + 66.0 + T, CF_Y, WEB_Y0, CF_Z0, CF_Z1)
+CF_TIN = 49.0                                           # how far the chamfer leans inboard
+CF_TH = 82.0                                            # its slant length
+CF_TILT = math.degrees(math.asin(CF_TIN / CF_TH))       # 37 deg
+P('shank', 'calf_taper', 'y', CF_Y - T, CF_Y, -KB - 36.0, -KB + 40.0, CF_Z0 - CF_TH, CF_Z0,
+  tilt=('x', CF_TILT, (0.0, CF_Y - T / 2.0, CF_Z0)))
+# lap tabs: the two z-bands on the web's inboard face that are NOT covered by a
+# motor (above A, below B). Their bolts are 22 mm off the x 6 bend line.
+for _tag, _z0, _z1 in (('top', ZMA + 48.0 + 2.0, CF_Z1), ('bot', CF_Z0, ZMB - 48.0 - 4.0)):
+    P('shank', 'calf_lap_' + _tag, 'y', WEB_Y0 - T, WEB_Y0, -KB + 30.0, -KB + 66.0, _z0, _z1,
+      holes=[(-KB + 44.0, (_z0 + _z1) / 2.0, 4.5)])
+    sw.holes.append((-KB + 44.0, (_z0 + _z1) / 2.0, 4.5))
 # fork brackets, inboard and outboard: each laps the web, bends under at z ZAP+82
 # (4 over the jaws' swept top), bends down into a fork plate carrying the pin.
 FK_Z = ZAP + 87.0                                       # 4 over the jaws' swept top (r 83 about the pitch pin)
@@ -524,89 +596,296 @@ P('foot', 'column', 'x', -KB - 1.5, -KB + 1.5, CY0, CY1, ZS + T, ZAR + 9.5,
   holes=[(LEG_Y, ZAR, 13.0), (LEG_Y - 4.0, ZS + 18.0, 4.5), (LEG_Y + 8.0, ZS + 18.0, 4.5)])
 P('foot', 'col_foot', 'z', ZS + T, ZS + 2 * T, -KB + 1.5, -KB + 45.0, CY0, CY1,
   holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
-P('foot', 'sole', 'z', ZS, ZS + T, -KB - 60.0, -KB + 170.0, LEG_Y - 55.0, LEG_Y + 55.0,
+SOLE_X0, SOLE_X1 = -KB - 60.0, -KB + 170.0
+SOLE_Y0, SOLE_Y1 = LEG_Y - 55.0, LEG_Y + 55.0
+P('foot', 'sole', 'z', ZS, ZS + T, SOLE_X0, SOLE_X1, SOLE_Y0, SOLE_Y1,
   holes=[(-KB + 30.0, LEG_Y - 4.0, 4.5), (-KB + 30.0, LEG_Y + 8.0, 4.5)])
+# ---- the foot is a PAN, not a plate ----
+# The sole plane and its footprint are frozen (the sim stands on them); everything
+# here is added ABOVE it. Two side walls bent up off the sole's long edges, 25 mm
+# tall at the ankle and cut down over the toe; a heel wall across the back; and a
+# toe chamfer lapped on the walls' sloped top edges, so the front 55 mm of the
+# foot is a wedge. Total 28 mm from the ground - a shoe rather than a flat plate.
+# The heel wall is short (18) and set 3 mm inside the sole's rear edge: the rear
+# ankle jaw hangs to z -996 at y 143..178 and 23 deg of roll lifts that corner of
+# the pan 8 mm.
+PAN_Z1 = ZS + 2 * T + 25.0                              # -1001: top of the side walls
+PAN_TOE = -KB + 120.0                                   # where the toe chamfer starts
+PAN_SIDE = [(SOLE_X0, ZS + T), (SOLE_X1 - 10.0, ZS + T), (PAN_TOE, PAN_Z1), (SOLE_X0, PAN_Z1)]
+for _tag, _y0 in (('wall_in', SOLE_Y0), ('wall_out', SOLE_Y1 - T)):
+    P('foot', _tag, 'y', _y0, _y0 + T, 0, 0, 0, 0, poly=PAN_SIDE)
+P('foot', 'heel', 'x', SOLE_X0 + T, SOLE_X0 + 2 * T, SOLE_Y0, SOLE_Y1, ZS + T, ZS + T + 18.0)
+PAN_TL = math.hypot(SOLE_X1 - 10.0 - PAN_TOE, PAN_Z1 - ZS - T)
+PAN_TILT = math.degrees(math.asin((PAN_Z1 - ZS - T) / PAN_TL))
+P('foot', 'toe', 'z', PAN_Z1 - T, PAN_Z1, PAN_TOE, PAN_TOE + PAN_TL, SOLE_Y0, SOLE_Y1,
+  tilt=('y', PAN_TILT, (PAN_TOE, 0.0, PAN_Z1)))
 
-# ---- arm ----
+# ---- arm: the H3 pass ----
+# The arm was three sticks and a bare can: shoulder pitch naked on the side of
+# the chest, a parallel upper-arm channel, a thin forearm fork with the wrist
+# actuator hanging off its end, and a 60 x 60 palm plate. The H2's arm is a
+# tapered shell shoulder-to-wrist ending in something that reads as a hand. In
+# sheet that is: a faceted cap over the pitch body, a channel that narrows to
+# the elbow, a forearm channel closed OUTBOARD with the wrist yaw inside it,
+# and a faceted mitt. Every number below is either an actuator envelope plus a
+# clearance or a place sweep.py put it.
+#
+# ---- shoC: the shoulder cap. Fixed to the trunk (pitch STATOR side). ----
+# The pitch X8 stands proud of the chest side (y 168) all the way to y 255: 87 mm
+# of bare can. The cap covers its TOP and FRONT as three facets tangent to r 51
+# (body r 48 + 3) - top plate, 45 deg chamfer, front plate - and stops at y 251,
+# short of the pitch stator plate's slab (y 252..255, trunkS) and of shoA's
+# output plate (y 258). The OUTBOARD end stays open: that is where the roll pod
+# and its dark disc are, and rule 3 says expose what explains.
+CAP_Y0, CAP_Y1 = 169.0, 211.0
+CAP_TOPZ = ZSP + rad('X8-120') + 1.0                  # 511: 1 over the can
+CAP_FRX = rad('X8-120') + 3.0                         # 51
+CAP_RX = 34.0                                         # rear edge: shoA's lap tab sweeps r 72.2
+CAP_TX = 22.0                                         # top plate's front edge: the 45 deg facet
+CAP_C = CAP_TX + (CAP_TOPZ - ZSP)                     # facet line x + (z - axis) = c, at r 50.2
+CAP_FZ = ZSP + CAP_C - CAP_FRX                        # front plate's top edge (482)
+CAP_L = math.hypot(CAP_FRX - CAP_TX, CAP_TOPZ - CAP_FZ)
+P('shoC', 'cowl_top', 'z', CAP_TOPZ, CAP_TOPZ + T, -CAP_RX, CAP_TX, CAP_Y0, CAP_Y1)
+P('shoC', 'cowl_chf', 'z', CAP_TOPZ, CAP_TOPZ + T, CAP_TX, CAP_TX + CAP_L, CAP_Y0, CAP_Y1,
+  tilt=('y', 45.0, (CAP_TX, 0.0, CAP_TOPZ + T / 2.0)))
+P('shoC', 'cowl_fr', 'x', CAP_FRX, CAP_FRX + T, CAP_Y0, CAP_Y1, ZSP - 30.0, CAP_FZ + T / 2.0)
+# hems: the cap's two free edges are exactly the ones a person walks into
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+
 # shoA: shoulder pitch OUTPUT -> shoulder roll STATOR. Lapped pair: the tab bends
 # off shop_out's rear edge INBOARD (y 140..218 at the bend, lobed down beside the
 # roll body), onto a stator plate extended inboard to carry it. The roll body sits
 # forward (x -55..12.5) so the shoulder pitch body (R48) clears the tab plane.
 SRF_X0 = SHR_X - ln('X6-60') / 2.0 - T                # -58.02: shoulder roll stator plate x0
 spo = L('shoA', 'shop_out', 'sho_pitch', 'output', SRF_X0, 36.0, ZSP - 36.0, ZSP + 36.0, outset=T)
+TAB_H = 5.0                           # see BEND_TABS: BOTH shoulder sweeps set it
 SA_Y0 = 172.0                         # inboard limit of the shoA lap: chest side is at y 165..168
 srf = L('shoA', 'shor_face', 'sho_roll', 'stator', SA_Y0, SHO_Y + 44.0, ZSR - 44.0, ZSR + 44.0)
 srf.holes += [(SA_Y0 + 12.0, ZSR - 15.0, 4.5), (SA_Y0 + 12.0, ZSR + 15.0, 4.5)]   # lap bolts
 # shoB: shoulder roll OUTPUT -> elbow STATOR. Channel open inboard; web 15 below the
 # roll axis; elbow body passes through the web; stator bridged over the body.
-SB_Y = SHO_Y + 46.0                   # outboard of the roll stator plate's fitted edge (R43.75) by 2
-SB_XF = 46.0                          # web front edge: elbow clearance hole R41 + 5
-sro = L('shoB', 'shor_out', 'sho_roll', 'output', SHO_Y - 30.0, SB_Y, ZSR - 30.0, ZSR + 30.0, outset=T)
+# 305: 6.25 outboard of the roll stator plate's fitted edge (R43.75), not 2.
+# Adduction is what sets this. Rotating the upper arm inboard, every point of
+# the web dips in y by |dz| sin(theta); the roll STATOR plate (shoA, x -58..-55,
+# y out to 298.75, z 318..406) is fixed, and the web has to be at x < -55 there
+# because it bends off the roll output plate. Each 4 mm of standoff buys ~4 deg
+# of adduction before the two slabs meet.
+SB_Y = SHO_Y + 50.0
 ELB_R = rad('X6-60')
-web = P('shoB', 'web', 'y', SB_Y, SB_Y + T, sro.n0, SB_XF, ZE - ELB_R - 6.0, ZSR - 15.0,
+# The web's front edge and bottom edge were R41+5 and R41+6 off the elbow
+# clearance hole - and `corner_radius` insets a rounded rect until every hole
+# clears its own edge by MIN_EDGE, so a hole 46 from an edge that wants 50
+# drove the whole plate's corner radius to the 2 mm floor. The biggest flat
+# face on the arm had square corners. Both edges now stand R41+11, and the web
+# rounds at the full 20 mm (cobot rule 1).
+SB_XF = ELB_R + 12.0                  # 52: web front edge
+sro = L('shoB', 'shor_out', 'sho_roll', 'output', SHO_Y - 30.0, SB_Y, ZSR - 30.0, ZSR + 30.0, outset=T)
+web = P('shoB', 'web', 'y', SB_Y, SB_Y + T, sro.n0, SB_XF, ZE - ELB_R - 10.0, ZSR - 15.0,
         holes=[(0.0, ZE, 2 * ELB_R + 2.0), (-14.0, ZE + 60.0, 4.5), (14.0, ZE + 60.0, 4.5)])
-P('shoB', 'flange_fr', 'x', SB_XF, SB_XF + T, SHO_Y + 4.0, SB_Y + T, web.v0, web.v1)
+# TAPER. Both flanges are TRAPEZOIDS: 45 mm of channel at the shoulder closing
+# to 29 at the elbow, so the upper arm narrows the way the H2's does (78 -> 61)
+# without a compound curve - the fold lines stay straight, only the blank is
+# cut on the slant. The rear flange bends off the web's rear edge and stands
+# 3 mm outboard of the roll output plate's slab.
+SB_YIN_TOP, SB_YIN_BOT = SHO_Y + 4.0, SHO_Y + 20.0    # inboard edge, shoulder end / elbow end
+def _fl_poly(y_top, y_bot, v0, v1):
+    return [(y_bot, v0), (SB_Y + T, v0), (SB_Y + T, v1), (y_top, v1)]
+P('shoB', 'flange_fr', 'x', SB_XF, SB_XF + T, 0, 0, 0, 0,
+  poly=_fl_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+P('shoB', 'flange_rr', 'x', sro.n0 - T, sro.n0, 0, 0, 0, 0,
+  poly=_fl_poly(SB_YIN_TOP, SB_YIN_BOT, web.v0, web.v1))
+# 8 mm hem band along each flange's slanted inboard edge (person-facing)
+def _hem_poly(y_top, y_bot, v0, v1):
+    return [(y_bot, v0), (y_bot + HEM, v0), (y_top + HEM, v1), (y_top, v1)]
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
 ef = L('shoB', 'elb_face', 'elb_pitch', 'stator', -32.0, 32.0, ZE - 32.0, ZE + ELB_R + 6.0)
 P('shoB', 'elb_shelf', 'z', ef.v1, ef.v1 + T, ef.u0, ef.u1, ef.n0, SB_Y)
 P('shoB', 'elb_lap', 'y', SB_Y - T, SB_Y, ef.u0, ef.u1, ef.v1 + T, ef.v1 + T + 30.0,
   holes=[(-14.0, ZE + 60.0, 4.5), (14.0, ZE + 60.0, 4.5)])
-# elbA: elbow OUTPUT -> wrist STATOR. A fork bent inboard off the output plate,
-# lapped at the wrist by tabs bent up from the wrist stator plate.
-eo = L('elbA', 'elb_out', 'elb_pitch', 'output', -36.0, 36.0, ZE - 30.0, ZE + 30.0, outset=T)
-FK_Y0 = SHO_Y - 28.0
-P('elbA', 'flange_fr', 'x',  eo.u1, eo.u1 + T, FK_Y0, eo.n0, ZW + 3.0, eo.v1,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-P('elbA', 'flange_rr', 'x', eo.u0 - T, eo.u0, FK_Y0, eo.n0, ZW + 3.0, eo.v1,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-wf = L('elbA', 'wrist_face', 'wrist_yaw', 'stator', eo.u0, eo.u1, SHO_Y - 30.0, SHO_Y + 30.0)
-P('elbA', 'wtab_fr', 'x', eo.u1 - T, eo.u1, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-P('elbA', 'wtab_rr', 'x', eo.u0, eo.u0 + T, wf.v0, wf.v1, wf.n1, wf.n1 + 60.0,
-  holes=[(FK_Y0 + 12.0, ZW + 30.0, 4.5), (FK_Y0 + 12.0, ZW + 50.0, 4.5)])
-WR_BOT = ZW - ln('X4-36')
-P('hand', 'palm', 'z', WR_BOT - 2 * T, WR_BOT - T, -30.0, 30.0, SHO_Y - 30.0, SHO_Y + 30.0)
+# elbA: elbow OUTPUT -> wrist STATOR. A CHANNEL, closed outboard, with the wrist
+# yaw can standing inside it; the wrist stator plate is the channel's closed end
+# and the hand's output disc shows at it. The old fork was two 3 mm strips with
+# the wrist actuator hanging off the bottom.
+#
+# The section is set by two things and nothing else. Depth (x): the elbow can is
+# R40 and the upper arm's front flange now stands at x 52, so the side walls sit
+# at |x| 45..48 - inside the upper-arm channel, 5 off the can. Width (y): at the
+# wrist the shell must ENCLOSE the D55 can (y 227.5..282.5), at the elbow it must
+# stay INBOARD of the upper arm's flanges (y 259) because elb_pitch swings the
+# forearm forward through everything the flanges occupy within r 125 of the elbow
+# axis. So the forearm is 33 wide at the elbow and 72 at the wrist, flaring over
+# a 47 mm chamfer that crosses y 259 at r 132 - 7 clear of the flange corner.
+# The H2's forearm does the same thing for the same reason (64 -> 78).
+FA_X = 45.0                                            # side wall inner face
+FA_Y1 = SHO_Y + rad('X4-36') + 8.5                     # 291: outboard shell, 8.5 off the wrist can
+FA_Y0 = SHO_Y - 36.0                                   # 219: inboard edge of the walls
+FA_ZC0, FA_ZC1 = 65.0, 112.0                           # the flare chamfer, bottom / top
+eo = L('elbA', 'elb_out', 'elb_pitch', 'output', -FA_X, FA_X, ZE - 30.0, ZE + 30.0, outset=T)
+FA_ZT = eo.v1                                          # walls run up to the output plate's top edge
+for tag, x0 in (('fr', FA_X), ('rr', -FA_X - T)):
+    # upper wall: the narrow part, inboard of the upper arm's flanges
+    P('elbA', 'wall_' + tag, 'x', x0, x0 + T, FA_Y0, eo.n1, FA_ZC1, FA_ZT)
+    # lower wall: flares outboard to wrap the wrist can
+    P('elbA', 'wall_lo_' + tag, 'x', x0, x0 + T, 0, 0, 0, 0,
+      poly=[(FA_Y0, ZW), (FA_Y1, ZW), (FA_Y1, FA_ZC0), (eo.n1, FA_ZC1), (FA_Y0, FA_ZC1)])
+    # hem on the inboard (open) edge - the forearm is the part that brushes a person
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# the outboard shell: vertical over the can, then a 39.7 deg chamfer up to the
+# elbow output plate's plane. Two facets, one fold - no compound curve.
+P('elbA', 'shell', 'y', FA_Y1, FA_Y1 + T, -FA_X - T, FA_X + T, ZW, FA_ZC0)
+SH_L = math.hypot(FA_Y1 - eo.n1, FA_ZC1 - FA_ZC0)
+SH_A = math.degrees(math.asin((FA_Y1 - eo.n1) / SH_L))
+P('elbA', 'shell_chf', 'y', FA_Y1, FA_Y1 + T, -FA_X - T, FA_X + T, FA_ZC0, FA_ZC0 + SH_L,
+  tilt=('x', SH_A, (0.0, FA_Y1, FA_ZC0)))
+wf = L('elbA', 'wrist_face', 'wrist_yaw', 'stator', -FA_X, FA_X, FA_Y0, FA_Y1)
 
-# ---- pelvis: a PART, on the waist yaw ----
+# ---- hand: a faceted mitt on the wrist output ----
+# 180 long x 90 deep x 35 thick plus a thumb block: legible as a hand at 3 m,
+# which is the whole point of a cobot's hand. Back plate outboard, palm inboard
+# facing the thigh, a 31 deg chamfer off the wrist disc into the palm plane,
+# and a U-section thumb standing 33 mm forward of the palm's front edge. Every
+# free edge that can reach a person is hemmed (cobot rule 2).
+HD_Z1 = wf.n0 - T                                      # top of the hand = under the wrist disc
+HD_Z0 = HD_Z1 - 180.0
+HD_X = 45.0
+# The back plate stands at the forearm shell's own outboard face and the palm
+# 38 inboard of it - NOT centred on the wrist axis. The thigh decides: its outer
+# flange tops out at y 251 and the fingertips hang 8 mm past the hip yaw plate,
+# so a hand centred on y 255 puts its palm inside the thigh at rest. Offset
+# outboard, the palm clears it by 2 mm and the hand sits where a hand sits.
+HD_YB1 = FA_Y1
+HD_YP0 = HD_YB1 - 35.0 - T                             # palm inner face (253): 35 thick
+ho = L('hand', 'wrist_out', 'wrist_yaw', 'output', -HD_X, HD_X, FA_Y0, FA_Y1, outset=T)
+HD_MITT = [(-HD_X, HD_Z0 + 26.0), (-HD_X + 15.0, HD_Z0), (HD_X - 15.0, HD_Z0),
+           (HD_X, HD_Z0 + 26.0), (HD_X, HD_Z1), (-HD_X, HD_Z1)]
+P('hand', 'back', 'y', HD_YB1 - T, HD_YB1, 0, 0, 0, 0, poly=HD_MITT)
+P('hand', 'palm', 'y', HD_YP0, HD_YP0 + T, 0, 0, 0, 0, poly=HD_MITT)
+HD_CL = math.hypot(HD_YP0 - ho.v0, 23.4)
+P('hand', 'chamfer', 'y', ho.v0, ho.v0 + T, -HD_X, HD_X, HD_Z1 - HD_CL, HD_Z1,
+  tilt=('x', math.degrees(math.asin((HD_YP0 - ho.v0) / HD_CL)), (0.0, ho.v0, HD_Z1)))
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+TH_X1 = HD_X + 33.0
+P('hand', 'thumb_top', 'z', HD_Z1 - 22.0, HD_Z1 - 19.0, HD_X, TH_X1, HD_YP0, HD_YB1)
+P('hand', 'thumb_out', 'x', TH_X1 - T, TH_X1, HD_YP0, HD_YB1, HD_Z1 - 82.0, HD_Z1 - 19.0)
+P('hand', 'thumb_bot', 'z', HD_Z1 - 82.0, HD_Z1 - 79.0, HD_X, TH_X1, HD_YP0, HD_YB1)
+
+# ---- profile panels: an x-normal plate tilted about y ----
+# The chest was a rectangle in profile because `Plate` is axis-aligned and the
+# front/rear panels are x-normal: their outline lives in (y, z), so a polygon
+# there shapes the FRONT view and nothing shapes the SIDE view. A tilt about y
+# is what shapes the side view - the panel leans, and the outline's v axis
+# becomes slant length up the lean. Same trick `chamfer` plays about x, one
+# axis over. (H3 (a): the chest is deep at the sternum and tapers to the waist.)
+def xpanel(link, tag, x0, z0, x1, z1, wfun, brk, out, **kw):
+    """A profile panel running from (x0, z0) to (x1, z1) in side view (z1 > z0),
+    half-width wfun(z) with breakpoints `brk`, material on the +x side of the
+    fold line if out > 0 else the -x side. Returns the Plate."""
+    dx, dz = x1 - x0, z1 - z0
+    assert dz > 0.0, tag
+    Lp = math.hypot(dx, dz)
+    ang = math.degrees(math.atan2(dx, dz))
+    zs = [z0] + [z for z in brk if z0 < z < z1] + [z1]
+    rim = [(wfun(z), z0 + (z - z0) / dz * Lp) for z in zs]
+    poly = ([(-rim[0][0], rim[0][1])] + rim
+            + [(-w, v) for (w, v) in reversed(rim[1:])])
+    n0, n1 = (x0, x0 + T) if out > 0 else (x0 - T, x0)
+    return P(link, tag, 'x', n0, n1, 0, 0, 0, 0, poly=poly,
+             tilt=('y', ang, (x0, 0.0, z0)), **kw)
+
+
+# ---- pelvis: a closed faceted pod, on the waist yaw ----
 # The two X15 hip-pitch bodies (y 22..94, x +/-83, z -143..23) live in it; its
 # side walls ARE their stator plates; its top plate is the waist-yaw stator
-# plate (the X8 stands face-up inside it, 4 over the hip bodies). Front and
-# rear are hexagons - the bottom corners chamfered off, which lets the hip
-# bodies' lower rims show through at the corners, the way the H2's pelvis pod
-# shows its hip rings. (c) of the H3 programme.
+# plate (the X8 stands face-up inside it, 4 over the hip bodies). The walls are
+# square down to z -110 and then the pod CHAMFERS IN, fore and aft, to a 136 mm
+# crotch at z -150 - a tilted panel each way, matched by the same cut in the
+# side wall's outline, so the pod tapers toward the thighs in profile and the
+# hip rings still show on its sides. How far in is not taste: at z -110 the
+# hip-pitch body still reaches x 66, so the fold line starts at x +/-68.
 WA_Y = face_n('hip_pitch', 'stator')[0]                # 94
 WA_X0, WA_X1 = -rad('X15-450') - 10.0, rad('X15-450') + 5.0
 PV_Z0 = ZHP - rad('X15-450') - 7.0
 pt = L('pelvisC', 'top', 'waist_yaw', 'stator', WA_X0 - T, WA_X1 + T, -WA_Y - T, WA_Y + T)
 PV_Z1 = pt.n0                                           # waist stator plate bottom = wall top
+PV_ZB = -110.0                                          # the pod goes square to here, then chamfers
+PV_XF, PV_XR = 68.0, -68.0                              # crotch fold lines, front and rear
 hm = L('pelvisS', 'hip_mount', 'hip_pitch', 'stator', WA_X0 - T, WA_X1 + T, PV_Z0, PV_Z1)
-PV_C = 30.0
-PV_HEX = [(-WA_Y + PV_C, PV_Z0), (WA_Y - PV_C, PV_Z0), (WA_Y, PV_Z0 + PV_C), (WA_Y, PV_Z1),
-          (-WA_Y, PV_Z1), (-WA_Y, PV_Z0 + PV_C)]
-P('pelvisC', 'rear_lo',  'x', WA_X0 - T, WA_X0, 0, 0, 0, 0, poly=PV_HEX)
-P('pelvisC', 'front_lo', 'x', WA_X1, WA_X1 + T, 0, 0, 0, 0, poly=PV_HEX)
+# The side wall's TOP-FRONT corner is cut on a hard diagonal and the front wall
+# stops at z 25 - both are the new hip_pitch sweep talking. At full flexion
+# (-107..-115 deg) the thigh's top plate, web and inboard flange fold up THROUGH
+# the volume in front of the pod at z 33..67, and a square pelvis put 1.5 mm of
+# aluminium in it. So the front wall covers the hip-pitch bodies (z -143..23)
+# and stops where they stop - which leaves the waist-yaw body showing above it:
+# the exposed waist reversal, arrived at by a clearance rather than by taste.
+PV_ZTF = 18.0                                           # front wall top (5 under the hip bodies' rim)
+PV_XT = 40.0                                            # side wall's top-front corner
+hm.poly = [(WA_X0 - T, PV_ZB), (PV_XR, PV_Z0), (PV_XF, PV_Z0), (WA_X1 + T, PV_ZB),
+           (WA_X1 + T, PV_ZTF), (PV_XT, PV_Z1), (WA_X0 - T, PV_Z1)]
+# r 10 and not the house 25 on the four pod panels: at 25 the wall's bottom edge
+# and the chamfer's top edge each round away from the fold they share and the
+# chamfer reads as a loose lip. These are fold edges, not edges a person meets.
+P('pelvisC', 'rear_lo',  'x', WA_X0 - T, WA_X0, -WA_Y, WA_Y, PV_ZB, PV_Z1, r_want=10.0)
+P('pelvisC', 'front_lo', 'x', WA_X1, WA_X1 + T, -WA_Y, WA_Y, PV_ZB, PV_ZTF, r_want=10.0)
+xpanel('pelvisC', 'rear_ch',  PV_XR, PV_Z0, WA_X0, PV_ZB, lambda z: WA_Y, (), -1, r_want=10.0)
+xpanel('pelvisC', 'front_ch', PV_XF, PV_Z0, WA_X1, PV_ZB, lambda z: WA_Y, (), +1, r_want=10.0)
 
-# ---- trunk: a chest with CHAMFERS, standing on the waist yaw OUTPUT ----
+# ---- trunk: a chest that is deep at the sternum, on an exposed waist ----
 # The chest floor is the waist-yaw output plate (stacked on the pelvis top, the
-# pancake). Front and rear are ONE convex octagon each (floor width at the seam,
-# flaring to the chest over 48 mm, full width to z 420, chamfering in to the
-# neck); the side is three plates - a waist chamfer panel, the flat side with
-# its window, a shoulder chamfer. That is the H2's torso (widest at two-thirds
-# height, narrowing to waist and neck) in four folds a side.
+# pancake). Above it the shell does NOT start: a 38 mm WAIST COLLAR - two side
+# plates 166 wide bent up off the floor, open front and back - carries the chest
+# and leaves the waist-yaw stack showing between the pelvis (194 wide) and the
+# chest (336). That is the H2's exposed waist link and the second of its four
+# width reversals; the ratio chest:waist is 336:166 = 2.02.
+# From z 150 the shell flares to full width at 230 and holds it to 470 - 8 mm
+# above the shoulder-pitch axis, so the shoulders ARE the chest's top corners -
+# then chamfers to the neck. In PROFILE the front is two tilted panels breaking
+# at the sternum (x 73 -> 100 -> 72) and the rear two breaking at the lumbar
+# (x -78 -> -105 -> -92): 151 mm deep at the waist, 205 at the sternum, 164 at
+# the deck. Per face: one hemmed window, laid along the panel's own lean.
 fl = L('trunkC', 'floor', 'waist_yaw', 'output', -WA_X0 - 0.0, 0.0, 0.0, 0.0, outset=T)
 ZF = fl.n1                                              # chest floor top
-FL_Y = 108.0                                            # floor half-width (the seam)
-fl.u0, fl.u1, fl.v0, fl.v1 = -102.0, 97.0, -FL_Y, FL_Y
-ZC0 = 160.0                                             # chest full width from here
-ZC1 = 420.0                                             # ... to here
+WY = 80.0                                               # waist half-width (X8-120 is D96)
+fl.u0, fl.u1, fl.v0, fl.v1 = -75.0, 70.0, -WY, WY
+ZWT = 150.0                                             # waist collar top = chest shell base
+ZC0 = 230.0                                             # chest full width from here
+ZC1 = 470.0                                             # ... to here (sho pitch axis 462)
 CH_Y = 165.0
-CH_X0, CH_X1 = -102.0, 97.0
 NK_Y = 115.0                                            # half-width at the deck
 ZD = ZHEY - T                                           # deck top = head yaw face (the deck is its stator plate)
-SIDE_WIN = (-60.0, 55.0, ZC0 + 40.0, ZC1 - 40.0)
-P('trunkS', 'side', 'y', CH_Y, CH_Y + T, CH_X0, CH_X1, ZC0, ZC1, slots=[SIDE_WIN])
+# the profile: (x at the waist, at the break, at the deck) and the break height
+XF_W, XF_S, XF_D, ZSTERN = 73.0, 100.0, 72.0, 360.0
+XR_W, XR_L, XR_D, ZLUMBAR = -78.0, -105.0, -92.0, 330.0
+lerp = lambda a, b, t: a + (b - a) * t
+def chest_w(z):
+    """Chest half-width at height z, at the FRONT/REAR panels' fold line."""
+    if z <= ZWT:
+        return WY + T
+    if z < ZC0:
+        return lerp(WY + T, CH_Y + T, (z - ZWT) / (ZC0 - ZWT))
+    if z <= ZC1:
+        return CH_Y + T
+    return lerp(CH_Y + T, NK_Y + T, (z - ZC1) / (ZD - ZC1))
+def chest_x(z):
+    """(rear, front) fold-line x at height z - the chest's profile."""
+    xf = lerp(XF_W, XF_S, (z - ZWT) / (ZSTERN - ZWT)) if z <= ZSTERN else \
+         lerp(XF_S, XF_D, (z - ZSTERN) / (ZD - ZSTERN))
+    xr = lerp(XR_W, XR_L, (z - ZWT) / (ZLUMBAR - ZWT)) if z <= ZLUMBAR else \
+         lerp(XR_L, XR_D, (z - ZLUMBAR) / (ZD - ZLUMBAR))
+    return xr, xf
+P('trunkS', 'waist', 'y', WY, WY + T, -75.0, 70.0, ZF, ZWT)
+# the side plate's outline IS the profile: its front and rear edges follow the
+# tilted panels' fold lines (0.5 inside, so the shell laps instead of overlapping).
+SIDE_WIN = (-45.0, 40.0, ZC0 + 60.0, ZC1 - 50.0)
+SIDE_POLY = [(chest_x(ZC0)[0] + 0.5, ZC0), (chest_x(ZC0)[1] - 0.5, ZC0),
+             (XF_S - 0.5, ZSTERN), (chest_x(ZC1)[1] - 0.5, ZC1),
+             (chest_x(ZC1)[0] + 0.5, ZC1), (XR_L + 0.5, ZLUMBAR)]
+P('trunkS', 'side', 'y', CH_Y, CH_Y + T, 0, 0, 0, 0, poly=SIDE_POLY, slots=[SIDE_WIN])
 P('trunkS', 'side_hem', 'y', CH_Y - T, CH_Y, SIDE_WIN[0] - HEM, SIDE_WIN[1] + HEM,
   SIDE_WIN[2] - HEM, SIDE_WIN[3] + HEM, slots=[SIDE_WIN])
-def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
+def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in, x0, x1):
     """A side chamfer panel from the side plate's edge (y_edge, z_edge) to (y_far, z_far):
     defined flat, hanging from the pivot edge by the slant length, tilted about x."""
     dy, dz = y_far - y_edge, z_far - z_edge
@@ -616,56 +895,188 @@ def chamfer(tag, y_edge, z_edge, y_far, z_far, n_in):
         R_ = _rot_axis('x', a_)
         q = _apply(R_, (0.0, y_edge, z_edge), (0.0, y_edge, z_edge + L_))
         if abs(q[1] - y_far) < 0.5 and abs(q[2] - z_far) < 0.5:
-            return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, CH_X0, CH_X1, z_edge, z_edge + L_,
+            return P('trunkS', tag, 'y', y_edge + n_in, y_edge + n_in + T, x0, x1, z_edge, z_edge + L_,
                      tilt=('x', a_, (0.0, y_edge, z_edge)))
     raise AssertionError('chamfer %s: tilt sign' % tag)
-chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, FL_Y + T / 2.0, ZF, -T / 2.0)
-chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0)
+chamfer('waist_chamfer', CH_Y + T / 2.0, ZC0, WY + T / 2.0, ZWT, -T / 2.0,
+        chest_x(ZWT)[0] + 0.5, chest_x(ZWT)[1] - 0.5)
+chamfer('sho_chamfer',   CH_Y + T / 2.0, ZC1, NK_Y + T / 2.0, ZD, -T / 2.0,
+        chest_x(ZD)[0] + 0.5, chest_x(ZD)[1] - 0.5)
 ss = L('trunkS', 'sho_stat', 'sho_pitch', 'stator', -52.0, 52.0, ZSP - 52.0, ZSP + 52.0)
-P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -30.0, 30.0, CH_Y, ss.n1)
-FR_WIN = (-60.0, 60.0, ZC0 + 20.0, ZC1 - 20.0)
-FR_HEMR = (FR_WIN[0] - HEM, FR_WIN[1] + HEM, FR_WIN[2] - HEM, FR_WIN[3] + HEM)
-OCT = [(-FL_Y - T, ZF), (FL_Y + T, ZF), (CH_Y + T, ZC0), (CH_Y + T, ZC1),
-       (NK_Y + T, ZD), (-NK_Y - T, ZD), (-CH_Y - T, ZC1), (-CH_Y - T, ZC0)]
-P('trunkC', 'rear',      'x', CH_X0 - T, CH_X0, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
-P('trunkC', 'rear_hem',  'x', CH_X0, CH_X0 + T, *FR_HEMR, slots=[FR_WIN])
-P('trunkC', 'front',     'x', CH_X1, CH_X1 + T, 0, 0, 0, 0, slots=[FR_WIN], poly=OCT)
-P('trunkC', 'front_hem', 'x', CH_X1 - T, CH_X1, *FR_HEMR, slots=[FR_WIN])
-L('trunkC', 'deck', 'head_yaw', 'stator', CH_X0, CH_X1, -NK_Y - T, NK_Y + T)
+# 44 wide, not 60: the shoulder-pitch sweep (new in the H3 arm pass) found the
+# roll CAN's inner surface - r 60 about the pitch axis - grazing this gusset's
+# corners at r 62.6, 0.17 mm deep at -24 deg. Nothing on the arm can move; the
+# actuator is where the layout puts it. Corners in to x +/-22 (r 59.2) and the
+# whole 258 deg of shoulder pitch is clean.
+P('trunkS', 'outrigger', 'z', ss.v0 - T, ss.v0, -22.0, 22.0, CH_Y, ss.n1)
+BRK = (ZWT, ZC0, ZC1, ZD)
+fr_lo = xpanel('trunkC', 'front_lo', XF_W, ZWT, XF_S, ZSTERN, chest_w, BRK, +1)
+xpanel('trunkC', 'front_up', XF_S, ZSTERN, XF_D, ZD, chest_w, BRK, +1)
+rr_lo = xpanel('trunkC', 'rear_lo', XR_W, ZWT, XR_L, ZLUMBAR, chest_w, BRK, -1)
+xpanel('trunkC', 'rear_up', XR_L, ZLUMBAR, XR_D, ZD, chest_w, BRK, -1)
+# the windows live in the panel's own frame: v is slant up the lean, not z.
+def window(pl, v0, v1, half):
+    # DIET (skeleton/skin): the aperture stays (lightening + the reveal the skin
+    # window looks through); the hem plate that doubled its edge is gone - the
+    # polymer skin covers the person-facing edge now.
+    pl.slots.append((-half, half, pl.v0 + v0, pl.v0 + v1))
+window(fr_lo, 62.0, 182.0, 58.0)
+window(rr_lo, 57.0, 167.0, 58.0)
+L('trunkC', 'deck', 'head_yaw', 'stator', XR_D, XF_D, -NK_Y - T, NK_Y + T)
 
-# ---- head: an open cage on the pitch output ----
-HZ0, HZ1 = ZHEP - 8.0, ZCROWN - T
-HW = 60.0
-P('head', 'cage_l', 'y', HW - T, HW, -70.0, 55.0, HZ0, HZ1, holes=[(-8.0, ZHEP + 42.0, 60.0)])
-P('head', 'cage_r', 'y', -HW, -HW + T, -70.0, 55.0, HZ0, HZ1, holes=[(-8.0, ZHEP + 42.0, 60.0)])
-P('head', 'cage_top', 'z', HZ1, HZ1 + T, -70.0, 55.0, -HW, HW, holes=[(-8.0, 0.0, 50.0)])
-P('head', 'cage_face', 'x', 55.0, 55.0 + T, -HW, HW, HZ0 + 10.0, HZ1 - 10.0,
-  holes=[(-32.0, ZHEP + 52.0, 28.0), (32.0, ZHEP + 52.0, 28.0), (0.0, ZHEP + 18.0, 20.0)])
+# ---- head: a FACETED HELMET on the pitch output. (H3 programme, item e) ----
+# The old head was a 198 mm open cage - four plates, a die on a visible neck
+# stack, and the single biggest "H2 vs ours" difference in profile. The H2's is a
+# small closed helmet sitting straight on the shoulders. This is that, in bent
+# sheet: 156 tall x 170 wide x 167 deep, closed on every face a person can see.
+#
+# The sagittal profile is ONE convex polygon and every panel is an edge of it, so
+# the side plates are that polygon and the front/top/rear plates are the folds
+# between its vertices. Seven brake hits round the section:
+#   jaw (42,553) -> face (66,588) -> crown_fr (79,681) -> top (38,706)
+#   -> crown_bk (-55,706) -> rear (-88,671) -> underside (-88,559) -> jaw
+# and the flanks themselves tilt inward 6.3 deg, so the crown is 136 not 170.
+#
+# EVERY number on the underside is the head_pitch sweep, not taste. The rim
+# swings about the pitch axis (z 581.4, 57 over the deck) through the URDF's own
+# -20..+49 deg, and the deck is 4 mm below the lowest point it reaches:
+#   chin  (42, 553): at +49 deg it drops to z 531.1 - 3.7 over the yaw output plate
+#   rear  (-88, 559): at -20 deg it drops to z 530.2 - 5.8 over the deck
+# That is why the underside RISES to the rear and why the chin is where it is:
+# a lower chin looks better standing still and shears on the deck looking down.
+# Resting gap chin-to-deck is 28.6 mm (sweep.py measures it), against 49 for the
+# cage - and the cage's
+# 198 mm of box above it is now 156.
+#
+# The cost, recorded: the crown lands at z 709, not the Z_CROWN marker's 771, so
+# the robot stands 1738 mm rather than 1800. The head shrank and nothing below it
+# grew. Putting it back is a rose_pro_layout change (TORSO / leg proportions),
+# not a head one, and a taller neck to reach 1800 would undo this whole pass.
+HD_Y = 85.0                              # flank half-width (helmet 170 wide)
+HD_YT = 68.0                             # ... narrowing to this at the crown (136 across)
+HD_CHIN, HD_FACE0 = (42.0, 553.0), (66.0, 588.0)
+HD_FACE1, HD_BROW = (79.0, 681.0), (38.0, 706.0)
+HD_NAPE, HD_REAR1, HD_REAR0 = (-55.0, 706.0), (-88.0, 671.0), (-88.0, 559.0)
+HD_TOP = HD_BROW[1]
+
+
+def pan(tag, p0, p1, hw, n_in, **kw):
+    """A head panel spanning two points of the sagittal profile: an x-normal
+    plate defined flat at p0 and tilted about y until its far edge lands on p1.
+    n_in picks which side of the fold line the 3 mm sits on. `hw` is a half-width,
+    or a (near, far) pair - a TRAPEZOID blank, which is how the crown panels
+    follow the flanks as those fold inward."""
+    (xa, za), (xb, zb) = p0, p1
+    dx, dz = xb - xa, zb - za
+    Ln = math.hypot(dx, dz)
+    if isinstance(hw, tuple):
+        w0, w1 = hw
+        kw['poly'] = [(-w0, za), (w0, za), (w1, za + Ln), (-w1, za + Ln)]
+        hw = max(w0, w1)
+    return P('head', tag, 'x', xa + n_in, xa + n_in + T, -hw, hw, za, za + Ln,
+             tilt=('y', math.degrees(math.atan2(dx, dz)), (xa, 0.0, za)), **kw)
+
+
+# The flanks are the profile polygon itself, TILTED inward about x so the helmet
+# loses width going up - 170 across the jaw, 136 at the crown. One tilt instead
+# of a separate crown-chamfer strip a side: a strip 28 mm across the fold is all
+# corner at any useful radius, and it left the shell reading as stacked slabs.
+HD_POLY = [HD_CHIN, HD_FACE0, HD_FACE1, HD_BROW, HD_NAPE, HD_REAR1, HD_REAR0]
+HD_TA = math.degrees(math.atan2(HD_Y - HD_YT, HD_TOP - HD_CHIN[1]))
+P('head', 'flank_l', 'y', HD_Y - T, HD_Y, 0, 0, 0, 0, poly=HD_POLY,
+  tilt=('x', HD_TA, (0.0, HD_Y, HD_CHIN[1])))
+P('head', 'flank_r', 'y', -HD_Y, -HD_Y + T, 0, 0, 0, 0, poly=HD_POLY,
+  tilt=('x', -HD_TA, (0.0, -HD_Y, HD_CHIN[1])))
+# every other panel is a trapezoid cut to meet the flanks where it lands
+hw = lambda z: HD_Y - (HD_Y - HD_YT) * (z - HD_CHIN[1]) / (HD_TOP - HD_CHIN[1]) - 1.0
+# the face, tilted 8 deg so the resting gaze is slightly DOWN (DESIGN.md rule 4).
+# One hemmed visor slot across it - a raw 3 mm edge at eye height on a machine
+# that leans in to look at you is exactly what rule 2 is about - with the stereo
+# pair on a plate 20 mm behind it, 66 mm apart (a person's interpupillary
+# distance), so the bores read as eyes set INTO the visor rather than as a face.
+VIS = (-60.0, 60.0, 616.0, 640.0)
+fc = pan('face', HD_FACE0, HD_FACE1, (hw(HD_FACE0[1]), hw(HD_FACE1[1])), -T, slots=[VIS])
+FACE_TILT = fc.tilt
+# DIET (skeleton/skin): hem removed - the polymer skin covers this edge now.
+P('head', 'eyes', 'x', HD_FACE0[0] - 20.0 - T, HD_FACE0[0] - 20.0, -54.0, 54.0, 606.0, 650.0,
+  holes=[(-33.0, 628.0, 28.0), (33.0, 628.0, 28.0)], tilt=FACE_TILT)
+pan('jaw',      HD_CHIN,  HD_FACE0, (hw(HD_CHIN[1]), hw(HD_FACE0[1])), -T)
+pan('crown_fr', HD_FACE1, HD_BROW,  (hw(HD_FACE1[1]), hw(HD_TOP)), -T)
+P('head', 'crown_top', 'z', HD_TOP, HD_TOP + T, HD_NAPE[0], HD_BROW[0], -hw(HD_TOP), hw(HD_TOP))
+pan('crown_bk', HD_REAR1, HD_NAPE,  (hw(HD_REAR1[1]), hw(HD_TOP)), 0.0)
+P('head', 'rear', 'x', HD_REAR0[0], HD_REAR0[0] + T, 0, 0, 0, 0,
+  poly=[(-hw(HD_REAR0[1]), HD_REAR0[1]), (hw(HD_REAR0[1]), HD_REAR0[1]),
+        (hw(HD_REAR1[1]), HD_REAR1[1]), (-hw(HD_REAR1[1]), HD_REAR1[1])])
+# rule 1's 25 mm is for the corners that strike a person. A fold panel 40 mm
+# across the fold is all corner at r 25 - it stops meeting its neighbours and the
+# shell reads as stacked slabs. The SILHOUETTE keeps 25; the seams get 6.
+for _p in PLATES:
+    if _p.link == 'head' and _p.tag in ('jaw', 'crown_fr', 'crown_bk',
+                                        'eyes', 'shelf'):
+        _p.r_want = 6.0
+# the head's own output plate, and the shelf that carries the shell off it. The
+# shelf sits at x -78..-32: inboard of -32 it would foul the pitch body's r 27.5,
+# and behind -78 it drops under the rim and into the deck at -20 deg.
+# hp_out is trimmed to +/-42 x 56: any bigger and the output plate hangs BELOW the
+# jaw line in profile, which is the gap this whole pass exists to close.
+ho = L('head', 'hp_out', 'head_pitch', 'output', -42.0, 42.0, ZHEP - 28.0, ZHEP + 28.0, outset=T)
+P('head', 'shelf', 'z', 559.0, 559.0 + T, -78.0, -34.0, -78.0, 78.0)
+
+# ---- neck: the yaw output, and a bracket that stands the pitch actuator in it ----
+# Both neck actuators are hidden: the X4-36 yaw hangs BELOW the deck inside the
+# chest (it was always there), and the X4-36 pitch is inside the helmet - the
+# flanks come down to z 555 at x 0 and the body's underside is 553.9. What is
+# left showing is 29 mm of bracket, which is a neck.
 L('neck', 'hy_out', 'head_yaw', 'output', -28.0, 28.0, -28.0, 28.0, outset=T)
-L('neck', 'hp_face', 'head_pitch', 'stator', -30.0, 30.0, ZHEP - 30.0, ZHEP + 30.0)
+hp = L('neck', 'hp_face', 'head_pitch', 'stator', -30.0, 30.0, ZHEP - 30.0, ZHEP + 30.0)
+NK_FOOT = face_n('head_yaw', 'output', outset=T)[1]     # top of the yaw output plate
+hp.v0 = NK_FOOT + T                                     # one blank: the stator plate runs down to the foot
+# and its FRONT-bottom corner is chamfered off, because that corner is the one
+# place the helmet's jaw comes back to. Everything closer to the pitch axis than
+# the chin (r 50.7) is safe at any pitch; that corner square would sit at r 59.9,
+# inside the annulus the jaw sweeps, and the swept check caught it at 19 deg.
+NK_CH = (4.0, 25.6)
+hp.poly = [(hp.u0, hp.v0), (NK_CH[0], hp.v0), (hp.u1, hp.v0 + NK_CH[1]), (hp.u1, hp.v1), (hp.u0, hp.v1)]
+hp.u0, hp.u1 = min(q[0] for q in hp.poly), max(q[0] for q in hp.poly)
+hp.v0, hp.v1 = min(q[1] for q in hp.poly), max(q[1] for q in hp.poly)
+P('neck', 'foot', 'z', NK_FOOT, NK_FOOT + T, -30.0, NK_CH[0], face_n('head_pitch', 'stator')[0], -6.0)
 
 
+HEAD_SHELL = ('flank_l', 'flank_r', 'face', 'eyes', 'jaw',
+              'crown_fr', 'crown_top', 'crown_bk', 'rear', 'hp_out', 'shelf')
 OWNER = {
-    ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
-    ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
     ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw',
     ('hipA', 'pitch_face'): 'hip_pitch', ('hipA', 'roll_face'): 'hip_roll',
     ('hipB', 'roll_out'): 'hip_roll',    ('hipB', 'yaw_face'): 'hip_yaw',
     ('thigh', 'yaw_out'): 'hip_yaw',     ('thigh', 'knee_face'): 'knee', ('thigh', 'top'): 'hip_yaw',
+    # the knee shroud IS the knee's cover: every facet is tangent to r 88 about
+    # the knee axis, 5 mm off the D166 body. Its tilted AABB reaches inside the
+    # body (a rotated prism's box does); the plate never does.
+    ('thigh', 'knee_shroud-20'): 'knee', ('thigh', 'knee_shroud20'): 'knee',
+    ('thigh', 'knee_shroud60'): 'knee',  ('thigh', 'knee_shroud100'): 'knee',
     ('shank', 'web'): 'knee',
     ('crankA', 'bar'): 'ank_mA',         ('crankB', 'bar'): 'ank_mB',
     ('shoA', 'shop_out'): 'sho_pitch',   ('shoA', 'shor_face'): 'sho_roll',
     ('shoB', 'shor_out'): 'sho_roll',    ('shoB', 'elb_face'): 'elb_pitch',
     ('elbA', 'elb_out'): 'elb_pitch',    ('elbA', 'wrist_face'): 'wrist_yaw',
+    ('hand', 'wrist_out'): 'wrist_yaw',
+    # the 45 deg facet of the shoulder cap: its AABB (which is what the body
+    # check sees for a tilted plate) dips inside the can it caps; the facet
+    # itself stands 3 mm off it all the way round.
+    ('shoC', 'cowl_chf'): 'sho_pitch',
     ('neck', 'hy_out'): 'head_yaw',      ('neck', 'hp_face'): 'head_pitch',
+    ('neck', 'foot'): 'head_yaw',
 }
+OWNER.update({('head', t): 'head_pitch' for t in HEAD_SHELL})
 SECOND_OWNER = {
-    ('head', 'cage_l'): 'head_pitch', ('head', 'cage_r'): 'head_pitch',
-    ('head', 'cage_face'): 'head_pitch', ('head', 'cage_top'): 'head_pitch',
     ('pelvisS', 'hip_mount'): 'hip_pitch', ('trunkS', 'sho_stat'): 'sho_pitch',
     ('trunkC', 'deck'): 'head_yaw', ('pelvisC', 'top'): 'waist_yaw', ('trunkC', 'floor'): 'waist_yaw', ('shank', 'web'): 'ank_pitch', ('shank', 'web'): 'knee'}
+SECOND_OWNER.update({('head', t): 'head_pitch' for t in HEAD_SHELL})
+SECOND_OWNER[('neck', 'foot')] = 'head_pitch'
 
+
+THIRD_OWNER = {}   # (referenced by the clash report; kept empty until something needs it)
 
 ANGLES = []   # retired with the angle stock
 
@@ -674,8 +1085,22 @@ ANGLES = []   # retired with the angle stock
 BEND_TABS = [
     # link, tab normal, thickness span, u range, v range, bends_to (plate tags)
     # shoA: upper lobe bends off shop_out inboard; lower lobe laps shor_face's inboard extension
-    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, spo.n0), (spo.v0, spo.v0 + 30.0), ('shop_out',)),
-    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, sro.u0 - 4.0), (srf.v0, spo.v0), ()),
+    # SHOULDER PITCH decides how TALL this tab is, and nothing else does. It is
+    # on the OUTPUT side and it reaches inboard to y 172 to lap the roll stator
+    # plate, so it sweeps a disc straight through the y band that the trunk's
+    # shoulder-pitch stator plate and its outrigger occupy - and those two reach
+    # r 59.7 and r 59.2 about the pitch axis. The tab's closest corner to the
+    # axis is its TOP one, at (x -58, z), so its top edge sets its own minimum
+    # radius. At z 456 that was r 58.3 and the tab drove 1.4 mm into the stator
+    # plate over a third of the range - invisible until sho_pitch was swept for
+    # the first time in this pass. At z 435 it is r 64.0, and all 258 deg of
+    # shoulder pitch is clean. TAB_H is the shoulder's whole range of motion.
+    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, spo.n0), (spo.v0, spo.v0 + TAB_H), ('shop_out',)),
+        # ... and SHOULDER ROLL sets how far outboard the lapped lower lobe may
+    # reach. The roll OUTPUT plate is coplanar with this tab (both x -61..-58)
+    # and abduction swings its upper-inboard corner down to y 212.6 at 45 deg.
+    # 208 is 4.6 clear of that. It used to stop at 221 and the two slabs met.
+    ('shoA',  'x', (SRF_X0 - T, SRF_X0), (SA_Y0, 208.0), (srf.v0, spo.v0), ()),
 ]
 ANGLE_MASS = (ANGLE[0] + ANGLE[1] - ANGLE[2]) * ANGLE[2] * 2.70e-3 / 1000.0  # kg per mm
 
@@ -689,22 +1114,40 @@ BENDS = [
     ('thigh', 'z', TH_TOP - T / 2.0,             ('top', 'flange_in', 'flange_out', 'web')),
     ('thigh', 'z', TH_FLG_BOT - T / 2.0,         ('shelf',)),
     ('thigh', 'x', TH_LO_X + T / 2.0,            ('web_lo', 'knee_face')),
-    ('thigh', 'x', -KB - KNEE_R - 5.0 - T / 2.0, ('knee_gus',)),
-    ('shank', 'x', -KB + 66.0 + T / 2.0,         ('web', 'flange_fr')),
+    # the knee shroud: four folds off the knee stator plate's rear edge, 40 deg
+    # apart. The fold lines are not axis-aligned (they are chords of r 88), so
+    # they are named on the axis they are nearest; no facet carries a hole.
+    ('thigh', 'x', -KB - KNEE_R - 5.0 - T / 2.0, ('knee_shroud100',)),
+    ('shank', 'x', -KB + 66.0 + T / 2.0,         ('web', 'flange_fr',
+                                                  'calf_lap_top', 'calf_lap_bot', 'calf_front')),
+    ('shank', 'y', CF_Y - T / 2.0,               ('calf_front', 'calf_in')),
+    ('shank', 'z', CF_Z0 - T / 2.0,              ('calf_in', 'calf_taper')),
     ('shank', 'z', FK_Z - T / 2.0,               ('fork_lap_in', 'fork_bridge_in', 'fork_lap_out', 'fork_bridge_out')),
     ('shank', 'y', FORK_IN_Y - T / 2.0,          ('fork_bridge_in', 'fork_in')),
     ('shank', 'y', FORK_OUT_Y + T / 2.0,         ('fork_bridge_out', 'fork_out')),
     ('ankle', 'x', PIN_A_X - 1.5 + T / 2.0,      ('spine', 'jaw_fr')),
     ('ankle', 'x', PIN_B_X - 1.5 + T / 2.0,      ('jaw_rr',)),
     ('foot',  'z', ZS + T + T / 2.0,             ('column', 'col_foot')),
+    ('foot',  'y', SOLE_Y0 + T / 2.0,            ('sole', 'wall_in')),
+    ('foot',  'y', SOLE_Y1 - T / 2.0,            ('sole', 'wall_out')),
+    ('foot',  'x', SOLE_X0 + T + T / 2.0,        ('sole', 'heel')),
     ('shoB',  'y', SB_Y + T / 2.0,               ('shor_out', 'web')),
     ('shoB',  'x', SB_XF + T / 2.0,              ('flange_fr',)),
+    ('shoB',  'x', sro.n0 - T / 2.0,             ('flange_rr',)),
     ('shoB',  'z', ef.v1 + T / 2.0,              ('elb_face', 'elb_shelf')),
     ('shoB',  'y', SB_Y - T / 2.0,               ('elb_shelf', 'elb_lap')),
-    ('elbA',  'x', eo.u1 + T / 2.0,              ('elb_out', 'flange_fr')),
-    ('elbA',  'x', eo.u0 - T / 2.0,              ('flange_rr',)),
-    ('elbA',  'x', eo.u1 - T / 2.0,              ('wrist_face', 'wtab_fr')),
-    ('elbA',  'x', eo.u0 + T / 2.0,              ('wtab_rr',)),
+    ('shoC',  'x', CAP_TX,                       ('cowl_top', 'cowl_chf')),
+    ('shoC',  'x', CAP_FRX + T / 2.0,            ('cowl_fr',)),
+    ('elbA',  'x', eo.u1 + T / 2.0,              ('elb_out', 'wall_fr')),
+    ('elbA',  'x', eo.u0 - T / 2.0,              ('wall_rr',)),
+    ('elbA',  'z', ZW - T / 2.0,                 ('wall_lo_fr', 'wall_lo_rr', 'wrist_face')),
+    # the helmet: every fold of the sagittal profile, plus the flank's inward one.
+    # The only holes in the shell are the eye bores, 50+ mm off the nearest line.
+    ('head',  'z', HD_FACE0[1],                  ('jaw', 'face', 'eyes')),
+    ('head',  'z', HD_FACE1[1],                  ('face', 'crown_fr')),
+    ('head',  'z', HD_TOP,                       ('crown_fr', 'crown_top', 'crown_bk')),
+    ('head',  'z', HD_REAR1[1],                  ('crown_bk', 'rear')),
+    ('neck',  'z', NK_FOOT + T / 2.0,            ('foot', 'hp_face')),
 ]
 
 

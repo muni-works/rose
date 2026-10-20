@@ -23,10 +23,31 @@ hidden for a reason you can state.
 
 ## What the manufacturing constraint already decides
 
-Bent 3 mm 5052 cannot make compound curves. There will never be a smooth shell.
-Rather than apologise for that, make it the language: **fold lines are the
-styling.** A chamfered corner is three brake hits instead of one square corner
-and turns a box into a shaped shell. Facets, not fillets.
+2026-08-20, the skeleton/skin revision: the full-sheet body — even hemmed,
+even chamfered — is a machine you would not put in a room with a child. The
+thesis splits in two:
+
+- **Bones: bent 3 mm 5052.** Structure, load paths, actuator mounts. Fold
+  lines are still the styling HERE, and every earlier rule about bends,
+  bolt circles and swept clearance still governs. The bones stay visible
+  through the skin's windows: the machine remains legibly a machine.
+- **Skin: polymer shells over the bones.** Printed ASA/PETG first (iterate
+  overnight), vacuum-formed ABS when a panel stabilises; 6-8 mm PU foam
+  behind the contact zones. The skin is what a person touches: ISO/TS 15066
+  lives in the skin now, not in hems. Geometry comes from vcad's `[skin r]`
+  rolling-ball operator over the bone solids — **the minimum curvature
+  radius and the safety spec are the same number.** Warm grey, the one
+  desaturated green accent, actuators showing as dark rings in windows.
+
+What retires: hems as the person-facing edge treatment (the skin covers the
+edge; hems survive on the skin's own openings), and the cosmetic sheet the
+H3 pass grew — helmet shell, knee facets, calf shells, chest chamfer panels
+— whose jobs move to plastic that does curvature for free. Net: several kg
+of aluminium off, ~3 kg of polymer on.
+
+Bent 3 mm 5052 still cannot make compound curves — the bones never will. A
+chamfered corner is three brake hits and turns a box into a shaped shell:
+facets, not fillets, for everything structural.
 
 This is also why the plate generator builds rounded rectangles from boxes plus
 corner cylinders rather than filleting a solid — vcad's booleans against a
@@ -158,6 +179,39 @@ Two rules came out of it:
   is where `sweep.py`'s two new arm sweeps put it. Draw the structure, sweep
   it, and let the clearance tell you what the section is.
 
+## What an H3 would be
+
+The H2 is the first humanoid from Unitree that is shaped like a person rather
+than a crash-test dummy — and it is shaped by cast aluminium and injected
+shells. An "H3" is that silhouette taken one step further *toward* the human
+figure, made in our process, and more honest about what it is. In order of
+what the eye reads at 3 m:
+
+1. **Widths in human order, four reversals.** Chest widest at the shoulder
+   line; a visible waist with the yaw ring exposed; a closed pelvis pod wider
+   than the waist; thigh widest under the hip; knee a pinch; calf a swell;
+   ankle a pinch; a shoe. The H2 does all of it with continuous taper. We do it
+   with **trapezoid flanges and chamfers** — plates tilted about one in-plane
+   axis — so every taper is a fold you can see. That is the one thing an H3 in
+   sheet does *better* than the H2: the surface tells you how it was made.
+2. **The joints you see are the ones that explain.** Shoulder, hip, wrist and
+   the knee's output ring show as dark discs. The knee stator and the hip roll
+   bodies — the two scissor closures that can pinch — get faceted shrouds
+   (rule 3). Nothing else is covered.
+3. **A head that is a helmet, not a die.** Small, closed, low on a collar that
+   hides the neck actuators, a visor slot with a real stereo pair behind it,
+   resting gaze slightly down. Understated: the H2's head is where it stops
+   looking like a machine; ours should still look like one.
+4. **Hands.** A faceted mitt with a thumb, hemmed, legible as a hand. A robot
+   with no hands reads as a rig.
+5. **Arms and shins that are shells, not sticks.** Tapered channels shoulder to
+   wrist and knee to ankle, the actuators inside them, the pushrods visible
+   because they explain.
+
+What an H3 is *not*: cast, smooth, white plastic, faceless, or pretending.
+Every fold is a brake hit; every opening has a hem; every shroud covers a
+pinch and nothing else.
+
 ## The open geometry work
 
 - **Tilted plates.** Chest:waist is 1.32 against the H2's 1.6 and nothing
@@ -169,8 +223,12 @@ Two rules came out of it:
   are layout (three X6-60 bodies between hip pitch and thigh; two X4-36 at the
   ankle). UNITREE.md items B and C — pushrod ankle, pelvis hub — are what fix
   them, not the generator.
-- **The head** is a cube on a neck. It was always meant to be understated; it
-  now reads as the heaviest thing on the robot next to the H2's.
+- ~~**The head** is a cube on a neck.~~ Done, 2026-08-19: a faceted helmet,
+  156 x 170 x 167 against the cage's 198 x 120 x 125, chin 28 mm off the chest
+  deck instead of 49, both neck actuators hidden. Its underside profile is a
+  head_pitch sweep result. It costs 62 mm of standing height (crown 1738, not
+  1800) — the head shrank and nothing below it grew; recovering that is a
+  `rose_pro_layout` change (TORSO or the leg proportions), not a head one.
 - **Hip couplings.** hipA's tab is not geometrically connected and hipB cannot
   be one two-bend blank; `rose_full_bent.py` is owed a pass.
 
@@ -185,3 +243,43 @@ That is an argument for the 1750 mm height beyond ergonomics or looks: at human
 scale, heads meet heads and hands meet hands, and the contact map stops being
 perverse. It also means **this audit must be re-run after the re-cut** — its
 answer is a function of height, and every number in it is about the 1130 mm body.
+
+## What the skin gate found (2026-08-21)
+
+The skin had no clearance check for its first three days: the renders looked
+right and proved nothing. `skin_sweep.py` is the gate, and it works without
+meshing anything — `[skin-gap r g X]` puts the outer surface exactly **+g**
+off the hull of X, so a panel proxy is (its bones + its form blocks) offset by
+`SKIN_GAP`, and `skin gap = bone gap − 2·SKIN_GAP`.
+
+It failed at 8 of 9 joints on the first run. What that taught, in order of
+how much it changed:
+
+**1. A joint is a gap, not a butt joint.** Both panels either side are cut
+back by a cylinder about the joint's own axis, so the clearance is invariant
+under the rotation and cannot close at any angle. The knee-ring window became
+the knee *seam*: the reveal and the clearance are one feature. Seam radii are
+a gate result, not taste — the knee needed 130 mm because at 95 the thigh and
+calf shells still met, and the waist needed 125 because the chest floor and
+pelvis top are a 200-wide pancake pair that touches *by design*.
+
+**2. The shoulder cannot have a panel at all.** 102 mm between the shoulder
+pitch and roll axes against 114 mm of seam the two joints require: the link is
+shorter than its own clearances. No shell fits there at any thickness, so the
+shoulder mechanism stays an exposed joint cluster. The upper arm clears by
+21 mm and is the next tightest; everything below the elbow and everything in
+the legs has 140–390 mm of slack. **This is an arm problem, not a skin
+problem** — the arm is mostly actuator.
+
+**3. The standoff was never the issue.** At `SKIN_GAP` 6 → 3 → 1 mm the worst
+overlap moved 43 → 37 → 33 mm. The dominant term was the form blocks, which
+are sized from static bounding boxes and therefore collide at range extremes
+where the bones do not. The H3 lesson again, one layer out: **the sweep writes
+the shape.**
+
+**Still failing, and honestly:** hip pitch at −103° (thigh into pelvis at deep
+flexion), ankle pitch at −52°, shoulder roll at 97°, elbow at −114°. Every one
+is a limb folding onto its neighbour at the end of its range — which a person
+also does, with soft tissue. The resolution is a design choice not yet made:
+slim the panels, or accept the reduced range and say so in the URDF.
+`skin_sweep.py --range` prices it in degrees.

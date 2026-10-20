@@ -1,0 +1,50 @@
+fanout: In2.Cu: joined 163 stray rail patches; still split: {'VDD_CPU_LIT_S0': 5, 'VDD_DDR_S0': 3, 'VDD_CPU_BIG0_S0': 9, 'VDD_NPU_S0': 2, 'VDD_LOGIC_S0': 18, 'VDD_CPU_BIG1_S0': 2, 'VDD_GPU_S0': 5}
+fanout: In4.Cu: joined 21 stray rail patches; still split: {'VCC_SYSIN': 2, '12V': 2}
+fanout: In6.Cu: joined 0 stray rail patches; still split: {}
+fanout: 1042 region rects
+fanout: 460 signal microvias, 794 GND, 194 power, 804 ball-field links; rail regions {'In2.Cu': 8, 'In4.Cu': 7, 'In6.Cu': 1}
+11:54:31
+[ 2598.7s] stitch 120/131 VDD_CPU_BIG0_S0
+[ 2598.7s]   VDD_CPU_BIG0_S0: 14 stranded pads
+[ 2599.1s] stitch 121/131 VDD_CPU_BIG1_S0
+[ 2599.1s]   VDD_CPU_BIG1_S0: 18 stranded pads
+[ 2599.3s] stitch 122/131 VDD_CPU_LIT_MEM_S0
+[ 2599.3s] stitch 123/131 VDD_CPU_LIT_S0
+[ 2599.3s]   VDD_CPU_LIT_S0: 12 stranded pads
+[ 2599.7s] stitch 124/131 VDD_DDR_S0
+[ 2599.7s]   VDD_DDR_S0: 17 stranded pads
+[ 2600.2s] stitch 125/131 VDD_GPU_MEM_S0
+[ 2600.2s] stitch 126/131 VDD_GPU_S0
+[ 2600.2s]   VDD_GPU_S0: 14 stranded pads
+[ 2600.5s] stitch 127/131 VDD_LOGIC_S0
+[ 2600.5s]   VDD_LOGIC_S0: 18 stranded pads
+[ 2600.9s] stitch 128/131 VDD_NPU_S0
+[ 2600.9s]   VDD_NPU_S0: 14 stranded pads
+[ 2601.4s] stitch 129/131 VDD_VDENC_S0
+[ 2601.4s]   VDD_VDENC_S0: 13 stranded pads
+[ 2601.7s] stitch 130/131 VSEL2
+[ 2601.7s] stitch 131/131 VSEL5
+[ 2601.7s] repairs done
+stitched 15 pads to their planes
+trimmed leaf copper: 321 traces, 91 vias
+Routed 77.2% of connections in 2606.3 s: 3128 traces, 1575 vias, 3 synthesized pours -> brain.kicad_pcb
+unrouted nets (144): BB_CS_n, BB_MISO, BB_MOSI, BIG_NPU_EN, CAM0_CP, CAM0_D0N, CAM0_D0P, CAM0_D1N, CAM0_D1P, CAM0_D2P, CAM0_D3N, CAM1_CN, CAM1_CP, CAM1_D1N, CAM1_D2P, CAM1_D3N, CAM1_D3P, CAM1_PWDN, CAM1_SDA, CAN1_STBY, CAN2_STBY, CAN2_TX, CAN3_H, CAN3_STBY, CAN4_RXI, CAN4_STBY, CANX0_INT, CANX0_OSC1, CANX1_CS, CANX1_INT, CANX1_OSC2, CANX2_INT, CANX_MISO, CANX_MOSI, D0A_CA0, D0A_CA4, D0A_CKE0, D0A_CKE0_SOC, D0A_CK_t, D0A_DMI1, D0A_DQ10, D0A_DQ11, D0A_DQ14, D0A_DQ3, D0A_DQ9, D0B_CA0, D0B_CK_t, D0B_DMI0, D0B_DQ0, D0B_DQ1, D0B_DQ10, D0B_DQ11, D0B_DQ15, D0B_DQ2, D0B_DQ5, D0B_DQ6, D0B_DQ7, D0B_DQS1_c, D0B_DQS1_t, D1C_CA1, D1C_CA2, D1C_DMI1, D1C_DQ10, D1C_DQ14, D1C_DQ4, D1C_DQ5, D1C_DQ8, D1C_DQ9, D1C_DQS1_c, D1C_DQS1_t, D1D_CA1, D1D_CA5, D1D_CK_c, D1D_CS0, D1D_DMI1, D1D_DQ1, D1D_DQ10, D1D_DQ11, D1D_DQ13, D1D_DQ6, EMMC_CLK_SOC, EMMC_DAT1, EMMC_DAT3, EMMC_DAT4, EMMC_DAT6, EMMC_RST_n, EMMC_VDDI, GND, HSE_IN, HSE_OUT, I2C0_SCL, I2C0_SDA, I2C2_SCL, I2C2_SDA, LED_B, LED_G_A, NLDO_EN, NLDO_FB, NPU_LX, PMIC_FB9, PMIC_INT_L, PMIC_PWRCTRL2, PMIC_PWRCTRL3, PMIC_RESET_L, PMIC_SPI_CLK, PMIC_SPI_CS, PMIC_SPI_MOSI_SOC, PMIC_SW10, PMIC_SW3, PMIC_SW4, PMIC_SW7, PMIC_VCCIO, PWRON_L, RT_BOOT0, RT_NRST, SARADC_IN0_BOOT, SGM_OCB, SOC_PWR_EN, SOC_UART2_TX, SWCLK, U3_FB, USB_C_DP, USB_OTG_DP, USB_VBUSDET, VCAP2, VCC1V8_PMU_DDR_S3, VCCA_1V8_S0, VCCA_3V3_S0, VCCIO_SD_S0, VCC_1V8_S0, VCC_1V8_S3, VCC_3V3_PMU, VCC_3V3_S0, VCC_3V3_S3, VDDA_0V75_S0, VDDA_0V85_S0, VDDA_1V2_S0, VDDQ_DDR_S0, VDD_0V75_S3, VDD_CPU_LIT_MEM_S0, VDD_GPU_MEM_S0, VDD_VDENC_MEM_S0, VSEL2, VSEL5
+12:37:57
+** Found 1545 DRC violations **
+** Found 248 unconnected pads **
+** Found 0 Footprint errors **
+unconnected (KiCad connectivity): 248
+ 988 [zones_intersect]
+ 248 [unconnected_items]
+ 199 [isolated_copper]
+ 179 [via_dangling]
+ 100 [track_dangling]
+  29 [clearance]
+  16 [copper_edge_clearance]
+  11 [solder_mask_bridge]
+  10 [shorting_items]
+   4 [silk_over_copper]
+   4 [silk_edge_clearance]
+   3 [courtyards_overlap]
+   1 [starved_thermal]
+   1 [copper_sliver]
