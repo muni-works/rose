@@ -118,7 +118,8 @@
 
 ; ---------------------------------------------------------------------- insides ----
 [let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
-[let cortex-display [tilt [bx [- xfz 12.5] -38.3 [- zf 31.8] [- xfz 1.5] 38.3 [+ zf 31.8]]]]
+[let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
+[let cortex-display [tilt [bx [- xfz 12.5] -38.3 [- zd 31.8] [- xfz 1.5] 38.3 [+ zd 31.8]]]]
 [let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
                               [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 [let cortex-usbc [bx -7.0 -10.0 1.5 7.0 10.0 11.5]]                              ; the dock receptacle, at the origin
