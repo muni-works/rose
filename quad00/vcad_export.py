@@ -134,7 +134,7 @@ def plate_src(m, origin):
         segs = ' '.join(f'[line {f(p[i][0])} {f(p[i][1])} {f(p[(i + 1) % len(p)][0])} {f(p[(i + 1) % len(p)][1])}]' for i in range(len(p)))
         return (f'[extrude {f(e[0])} {f(e[1])} {f(e[2])} [sketch {f(o[0])} {f(o[1])} {f(o[2])} '
                 f'{f(xa[0])} {f(xa[1])} {f(xa[2])} {f(ya[0])} {f(ya[1])} {f(ya[2])} #[{segs}]]]')
-    if not outer:
+    if not outer or len(holes) > 12:         # pocketed (router-lightened) plates: a mesh, not a 40-deep boolean chain
         return None
     s = sk(outer[0]) if len(outer) == 1 else '[union ' + ' '.join(sk(p) for p in outer[:2]) + ']'
     for h in holes:                          # holes: extrude a hair longer so the cut is clean
