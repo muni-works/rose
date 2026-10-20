@@ -185,7 +185,7 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         return (x0 + x1) / 2, CH * k, (x1 - x0) / 2
     rf = 16.0 * Rk                                              # crown fillet, like the head's
-    zt = zc1 + 6.0 * Rk
+    zt = zc1 + 10.0 * Rk
     rings = []
     for z_ in np.linspace(z0, zt - rf, 14):
         xc, a_, b_ = sec(z_)
@@ -388,23 +388,18 @@ def design():
     Wl = KS.waist_layout()
     if Wl is not None:                                          # 3-DoF waist: the chest starts at the pitch axis, a slim drum below
         z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
-    if Wl is None:                                              # one sleek piece, pelvis top to the crown
-        chest = torso_shell(lo, hi, KS.CHEST(), z_ab - 2.0, z_ch, zc1, zs, SHOULDER_FLANK(), Rk)
-        z_ch = z_ab - 2.0                                       # (the panel groove below spans the whole torso)
-    else:
-      chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk, trap=None,
-                  flare=(zs - 62.0 * Rk, zs - 18.0 * Rk, SHOULDER_FLANK() / KS.CHEST()))   # V: widest at the shoulders
+    if Wl is None:                                              # H2/T2: a chest shell that stops above a narrow dark waist
+        z_w1 = 46.0 * Rk
+        chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, SHOULDER_FLANK(), Rk)
+        z_ch = z_w1                                             # (the panel groove spans the chest)
+    else:                                                       # full: the same sleek shell, from the waist-pitch hub up
+        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, SHOULDER_FLANK(), Rk)
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
-    chest_m = (grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
+    chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
     E = KS.ELEC
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
         cuts = [('box', [xb - 2.0, -18.0, zc - 1.75], [6.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
-        if Wl is None:                                          # intake grille, low front, on the one-piece shell
-            Ms = M_(chest_m)
-            for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5):
-                xf = Ms.slice(zc).bounds()[2] if hasattr(Ms.slice(zc), 'bounds') else hi[0]
-                cuts.append(('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]))
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
@@ -417,7 +412,15 @@ def design():
         chest_m = cut_shell(chest_m, OPEN)
     add('cover-chest', chest_m)
     if Wl is None:
-        pass                                                    # no orange waist band: the abdomen runs up under the chest
+        # the waist: a short, narrow, dark segment between chest and pelvis (the T2's waist actuator)
+        wy = max(0.56 * KS.CHEST(), (KS.pack_box()[1][1] + 4.0) if KS.V['name'] == 'mini' else 0.0)
+        wx0, wx1 = lo[0] + 10, (KS.pack_box()[1][0] + 16.0) if KS.V['name'] == 'mini' else hi[0] - 30.0 * Rk
+        wrings = [rrect(np.array([(wx0 + wx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), wy, (wx1 - wx0) / 2, 16.0 * Rk, k=14)
+                  for z_ in (z_ab - 2.0, z_w1 + 3.0)]
+        waist = hull_rings(wrings)
+        if KS.V['name'] == 'mini':                              # intake grille on its front; the pack hatch through its back
+            waist = cut_shell(waist, [('box', [wx1 - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5)] + OPEN)
+        add('trim-waist', waist)
     else:                                                       # H2-style waist: three coaxial pieces, no slots -- each shell turns
         mw = KS.WAIST(); pc_, rc_ = Wl['pitch'][0], Wl['roll'][0]   # about its own joint axis, so nothing needs cutting away
         WS = dict(KS.waist())
@@ -459,10 +462,13 @@ def design():
                    40.0 * Rk - rk_ * (1 - math.cos(th)), xh * 0.8 - rk_ * (1 - math.cos(th)), max(16.0 * Rk - rk_ * (1 - math.cos(th)), 3.0))
              for th in np.linspace(0, np.pi / 2, 6)]
     pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
-    if KS.V['name'] == 'mini':                                  # a plain rounded box, like the head: just the safety cover over the
-        bx0, bx1 = rl[0] - m06['L'] / 2 - 6.0, rl[0] + m06['L'] / 2 + KS.G + KS.T + 6.0      # two hip-roll cans, tucked under the torso
+    if KS.V['name'] in ('mini', 'full'):                        # a plain rounded box, like the head: just the safety cover over the
+        bx0, bx1 = rl[0] - m06['L'] / 2 - KS.G - KS.T - 6.0, rl[0] + m06['L'] / 2 + KS.G + KS.T + 6.0      # two hip-roll cans, tucked under the torso
         by = rl[1] + m06['D'] / 2 + 4.0
-        bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, z_ab - 2.0
+        if KS.waist_layout() is not None:                       # full: it also carries the waist-yaw motor's deck
+            wd = KS.WAIST()['D'] / 2 + 14.0
+            bx0, bx1 = min(bx0, -wd), max(bx1, wd)
+        bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, (z_ab - 2.0) if KS.waist_layout() is None else z_pt
         rcp, rfb = 0.32 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
         bring = lambda z_, d_: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
         prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + [bring(bz1, 0.0)]
@@ -503,7 +509,7 @@ def design():
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
-    hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
+    hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.96, (hhi[0] - hlo[0]) / 2 * 0.98   # wide: room for a big face screen
     hc = hc + np.array([0, 0, -6.0])
     hpz = KS.head_layout(J)['pitch'][0][2]
     if KS.V['name'] != 'mini' and hpz > hc[2] + 0.05 * hh:       # head motors stacked above the shoulders: lift the helmet onto them
@@ -574,7 +580,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch', 'pelvis-deck'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

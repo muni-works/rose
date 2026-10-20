@@ -161,7 +161,7 @@ def waist():
     yc, rc, pc = W['yaw'][0], W['roll'][0], W['pitch'][0]
     out = [(f'{mn}-waist{k}', motor(W[k][0], W[k][1], mn)) for k in ('yaw', 'roll', 'pitch')]
     yh = m['D'] / 2 + 8.0
-    out.append(('pelvis-deck', plate(Rr(-yh, -yh - 40.0 * R(), yh, yh + 40.0 * R()).difference(holes(m, 'back', (yc[0], yc[1]), 45)), 'xy', Z_D0())))
+    out.append(('pelvis-deck', plate(Rr(-yh, -yh - 20.0 * R(), yh, yh + 20.0 * R()).difference(holes(m, 'back', (yc[0], yc[1]), 45)), 'xy', Z_D0())))
     z_w0 = yc[2] + m['L'] / 2 + G
     out.append(('waist-W0', plate(L.circle(yc[0], yc[1], yh).difference(holes(m, 'out', (yc[0], yc[1]))), 'xy', z_w0)))
     x_w1 = rc[0] - m['L'] / 2 - G - T                                     # roll stator back (aft), standing on W0
@@ -556,6 +556,12 @@ def world():
         M = {n: m.apply_scale([1.0, ky, 1.0]) for n, m in M.items()}
     if kx != 1.0:
         M['Trunk'] = M['Trunk'].apply_scale([kx, 1.0, 1.0])
+    li = V.get('leg_in', 0.0)                                             # H2/T2: legs closer in, the hip drums at the pelvis corners
+    if li:                                                                 # (20 mm at the mini: the most that keeps 15 deg inward hip roll)
+        leg = lambda n: any(k in n for k in ('Hip', 'Knee', 'Ankle', 'Shank', 'foot'))
+        sh = lambda n: np.array([0, -li if ('Left' in n or 'left' in n) else li, 0])
+        J = {n: dict(j, p=j['p'] + sh(n)) if leg(n) else j for n, j in J.items()}
+        M = {n: m.apply_translation(sh(n)) if leg(n) else m for n, m in M.items()}
     dz = V.get('waist_dz', 0.0)                                           # the waist stack lengthens the trunk: lift arms + head
     if dz:
         up = lambda n: any(k in n for k in ('Shoulder', 'Elbow', 'Head', 'Arm', 'hand'))
