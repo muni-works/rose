@@ -539,21 +539,21 @@ def design():
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hp = KS.head_layout(J)['pitch'][0]; Rk = KS.R()
     hh, hw = (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96
-    x_face, x_back = hp[0] + 48.0 * Rk, hp[0] - 62.0 * Rk        # the back reaches past the neck: no craning
+    x_face, x_back = hp[0] + 46.0 * Rk, hp[0] - 58.0 * Rk        # the back reaches past the neck: no craning
     hd = (x_face - x_back) / 2
     zb = KS.DOCK_Z(J) + KS.T + 0.5                              # flat bottom, on the dock
     hc = np.array([x_face - hd, 0.0, zb + hh / 2])
-    rc_p = 0.32 * min(hw, hd)                                   # plan corner radius
-    rf, rb_ = 0.30 * min(hw, hd), 6.0 * Rk                      # crown fillet; a small edge round on the flat bottom
+    rc_p = 0.46 * min(hw, hd)                                   # plan corner radius: soft, pebble-like
+    rf, rb_ = 0.42 * min(hw, hd), 0.24 * min(hw, hd)            # generous crown + bottom rounds (it still sits flat)
     hr_ = [(zb + rb_ * (1 - math.sin(th)), rb_ * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 5)]
     hr_ += [(hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 7)]
     hr_ = sorted(hr_)
-    wedge = lambda z_: 0.22 * hd * max(0.0, (z_ - hc[2]) / (hh / 2)) ** 1.6   # the back of the skull rounds in toward the crown
+    wedge = lambda z_: 0.0                                      # no helmet wedge: one soft rounded box
     hr_ = [rrect(np.array([x_face - (hd - wedge(z_)), 0.0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - wedge(z_), max(rc_p - d_, 2.0), k=14)
            for z_, d_ in hr_]
     hm = hull_rings(hr_)
     zm = zb + hh * 0.42                                          # vents: side slots near the back (in left, out right)
-    vents = [('box', [x_back + 14.0 * Rk + 7.0 * i, (hw - 4.0) if s_ > 0 else -(hw + 2.0), zm - 12.0 * Rk], [3.5, 6.0, 24.0 * Rk])
+    vents = [('box', [x_back + rc_p + 4.0 + 7.0 * i, (hw - 4.0) if s_ > 0 else -(hw + 2.0), zm - 12.0 * Rk], [3.5, 6.0, 24.0 * Rk])
              for s_ in (1, -1) for i in range(5)]
     add('cover-helmet', cut_shell(hm, vents))
     m_h = KS.HEAD()
@@ -566,8 +566,8 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
     # the face: a flat screen, gloss black glass, a hair proud
-    sw, sh = hw - rc_p - 4.0, 0.30 * hh
-    scr = [rrect(np.array([x_, 0.0, hc[2] + 0.06 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.35 * min(sw, sh), k=12)
+    sw, sh = hw - rc_p - 6.0, 0.25 * hh                          # a calmer screen, well inside the face
+    scr = [rrect(np.array([x_, 0.0, hc[2] + 0.06 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
            for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
     add('visor-face', hull_rings(scr))
     # the back panel (the cortex's own): power button + status LED, USB-C, Ethernet, on the flat back of the head
