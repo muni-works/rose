@@ -1,6 +1,6 @@
 ; cortex -- the rose head, as its own product.
 ;
-; The brain module: Jetson compute, its own battery, a face screen, stereo eyes, ears and a back panel. It sits on any
+; The brain module: Jetson compute, its own battery, a face screen, stereo eyes and ears; the carrier's own I/O edge shows through a cutout in the back. It sits on any
 ; rose body's neck dock and runs detached on a desk too. ONE USB-C link through the dock carries power (USB-PD 20 V /
 ; 5 A) and data (USB 3). The limbic board stays in the torso, shared by every body.
 ;
@@ -145,7 +145,12 @@
 ; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
 [let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
 [let face-opening [tilt [loft #[[glass-sec [- xfz 8.0] 2.0] [glass-sec [- xfz 3.0] 2.0] [glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 3.0] 0.0]]]]]
-[let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening]] shell-solid]]
+; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
+; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
+; can clip in if wanted)
+[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
+[let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
+[let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cortex-floor [difference dock-cuts [intersection below-floor shell-solid]]]
 
 [let disc-x [fn [x y z r t] [translate x y z [rotate 0.0 90.0 0.0 [cylinder r t]]]]]       ; axis +x, from x
@@ -154,17 +159,6 @@
 ; ears: none of their own. The side vents are the grilles: speaker behind the left/right slots, the mic taped
 ; inside beside them (fewer parts, one tool for the slots)
 [let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
-; the back panel: power button + status LED (left), USB-C + Ethernet (right)
-[let zp 30.0]
-[let pw [* 0.62 hw]]
-[let ph 12.0]
-[let panel-sec [fn [x d] [sketch x 0.0 zp 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [- pw d] [- ph d] 5.0]]]]
-[let cortex-panel [loft #[[panel-sec [+ x-back 1.0] 0.0] [panel-sec [- x-back 0.8] 0.0] [panel-sec [- x-back 1.4] 0.5]]]]
-[let cortex-button [disc-x [- x-back 3.6] [* 0.68 pw] zp 5.0 2.4]]
-[let cortex-led [disc-x [- x-back 2.2] [* 0.40 pw] zp 1.6 1.2]]
-[let cortex-ports [union [translate [- x-back 1.8] [- [* -0.10 pw] 5.0] [- zp 2.0] [cube 0.6 10.0 4.0]]
-                         [translate [- x-back 1.8] [- [* -0.58 pw] 8.0] [- zp 6.0] [cube 0.6 16.0 12.0]]]]
-
 ; ---------------------------------------------------------------------- insides ----
 [let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
 [let cortex-display [tilt [bx [- xfz 14.2] -38.3 [- zd 31.8] [- xfz 3.2] 38.3 [+ zd 31.8]]]]
@@ -179,15 +173,15 @@
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
-[let jxa -40.0]
-[let jxb 12.0]
-[let cortex-compute [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 28.0]]]                   ; A603 + Orin NX
-[let cortex-heatsink [bx -34.0 -31.5 [+ zj0 28.0] 6.0 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx jxa -46.0 tf jxb -44.0 zj0] [bx jxa 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+[let jxa -53.0]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
+[let jxb -1.0]
+[let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
+                          [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
+[let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
+[let cortex-sled [union [bx [+ jxa 4.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 4.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
-[let cortex-duct [difference [bx -46.0 [- 1.5 xa] [+ zh0 1.5] -34.0 [- xa 1.5] [- zh1 1.5]]
-                             [bx -47.0 [- 0.0 xa] zh0 -34.0 xa zh1]]]
+; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
 [let spk [fn [y0 sy] [disc-y ear-x [if [> sy 0.0] [- y0 5.4] y0] zm 14.0 5.4]]]
 [let cortex-speakers [union [spk [- hw wall] 1.0] [spk [- 0.0 [- hw wall]] -1.0]]]
 ; mic boards taped to the wall, port over the mic dot
@@ -203,20 +197,18 @@
 [let run-y [fn [y0 y1 x z r] [bx [- x r] [min #[y0 y1]] [- z r] [+ x r] [max #[y0 y1]] [+ z r]]]]
 [let run-z [fn [z0 z1 x y r] [bx [- x r] [- y r] [min #[z0 z1]] [+ x r] [+ y r] [max #[z0 z1]]]]]
 [let csi [fn [sy] [pipe [bx 18.0 [* sy 44.0] 70.0 19.0 [* sy 53.0] [- ze 6.0]]                   ; down behind the eye ...
-                        [union [bx 0.0 [min #[[* sy 44.0] [* sy 53.0]]] 70.0 19.0 [max #[[* sy 44.0] [* sy 53.0]]] 71.0]]]]]  ; ... into the A603 side
+                        [union [bx [- jxb 6.0] [min #[[* sy 44.0] [* sy 53.0]]] 70.0 19.0 [max #[[* sy 44.0] [* sy 53.0]]] 71.0]]]]]  ; ... into the A603 side
 [let mic-run [fn [sy] [run-y [* sy 77.5] [* sy 43.5] -20.0 zmic 1.5]]]                          ; mic -> A603
 [let audio [fn [sy] [pipe [run-z zm 39.8 -4.0 [* sy 77.0] 1.5]                               ; speaker -> amp
-                          [union [run-y [* sy 76.0] [* sy 43.5] 0.0 40.5 1.5]]                  ; amp -> A603 (over the bracket)
+                          [union [run-y [* sy 76.0] [* sy 43.5] -4.0 40.5 1.5]]                  ; amp -> A603 (over the bracket)
                           [union [mic-run sy]]]]]
 [let cortex-cables
   [pipe [csi 1.0] [union [csi -1.0]] [union [audio 1.0]] [union [audio -1.0]]
     [union [bx jxb -7.0 55.0 19.0 7.0 56.0]] [union [bx 18.0 -7.0 55.0 19.0 7.0 72.0]] [union [bx 18.0 -7.0 71.0 21.5 7.0 72.0]]  ; HDMI FPC
     [union [run-x -7.0 -20.0 0.0 8.0 1.75]]                                                      ; dock VBUS/CC -> PD sink
-    [union [run-z 10.0 50.0 -45.0 0.0 1.75]] [union [run-x -45.0 jxa 0.0 50.0 1.75]]               ; charger -> A603 DC
+    [union [run-z 10.0 zj0 -45.0 0.0 1.75]]                 ; charger -> A603 DC
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
-    [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 zj0 9.0 -41.0 1.75]]                  ; dock USB 3 -> A603
-    [union [run-x [+ x-back wall] -44.0 -29.4 zp 3.0]] [union [run-z zp 42.0 -44.0 -29.4 3.0]] [union [run-x -44.0 jxa -29.4 42.0 3.0]]                                              ; panel RJ45 -> A603
-    [union [run-x [+ x-back wall] -44.0 -5.0 zp 2.5]] [union [run-z zp 42.0 -44.0 -5.0 2.5]] [union [run-x -44.0 jxa -5.0 42.0 2.5]]]]                                              ; panel USB-C -> A603
+    [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock USB 3 -> A603
 
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries (its neck's dock face at the origin): a floating USB-C plug (+-0.8 mm float mount, tongue 6.5
@@ -230,10 +222,6 @@
  #[[part "cortex-tub" cortex-tub "satin_black"]
    [part "cortex-floor" cortex-floor "aluminium"]
    [part "cortex-glass" cortex-glass "visor_glass"]
-   [part "cortex-panel" cortex-panel "gunmetal"]
-   [part "cortex-button" cortex-button "satin_black"]
-   [part "cortex-led" cortex-led "visor_glass"]
-   [part "cortex-ports" cortex-ports "visor_glass"]
    [part "cortex-display" cortex-display "heatsink"]
    [part "cortex-cams" cortex-cams "pcb_green"]
    [part "cortex-usbc" cortex-usbc "pcb_green"]
@@ -242,7 +230,6 @@
    [part "cortex-sled" cortex-sled "aluminium"]
    [part "cortex-compute" cortex-compute "pcb_green"]
    [part "cortex-heatsink" cortex-heatsink "heatsink"]
-   [part "cortex-duct" cortex-duct "motor_dark"]
    [part "cortex-speakers" cortex-speakers "motor_dark"]
    [part "cortex-mics" cortex-mics "pcb_green"]
    [part "cortex-amps" cortex-amps "pcb_green"]
@@ -250,10 +237,6 @@
  #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
    [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
    [instance "cortex-glass_i" "cortex-glass" 0.0 0.0 0.0]
-   [instance "cortex-panel_i" "cortex-panel" 0.0 0.0 0.0]
-   [instance "cortex-button_i" "cortex-button" 0.0 0.0 0.0]
-   [instance "cortex-led_i" "cortex-led" 0.0 0.0 0.0]
-   [instance "cortex-ports_i" "cortex-ports" 0.0 0.0 0.0]
    [instance "cortex-display_i" "cortex-display" 0.0 0.0 0.0]
    [instance "cortex-cams_i" "cortex-cams" 0.0 0.0 0.0]
    [instance "cortex-usbc_i" "cortex-usbc" 0.0 0.0 0.0]
@@ -262,17 +245,12 @@
    [instance "cortex-sled_i" "cortex-sled" 0.0 0.0 0.0]
    [instance "cortex-compute_i" "cortex-compute" 0.0 0.0 0.0]
    [instance "cortex-heatsink_i" "cortex-heatsink" 0.0 0.0 0.0]
-   [instance "cortex-duct_i" "cortex-duct" 0.0 0.0 0.0]
    [instance "cortex-speakers_i" "cortex-speakers" 0.0 0.0 0.0]
    [instance "cortex-mics_i" "cortex-mics" 0.0 0.0 0.0]
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
  #[[fixed-joint "fix_cortex-tub" "cortex-floor_i" 0.0 0.0 0.0 "cortex-tub_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-glass" "cortex-floor_i" 0.0 0.0 0.0 "cortex-glass_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-panel" "cortex-floor_i" 0.0 0.0 0.0 "cortex-panel_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-button" "cortex-floor_i" 0.0 0.0 0.0 "cortex-button_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-led" "cortex-floor_i" 0.0 0.0 0.0 "cortex-led_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-ports" "cortex-floor_i" 0.0 0.0 0.0 "cortex-ports_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-display" "cortex-floor_i" 0.0 0.0 0.0 "cortex-display_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-cams" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cams_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-usbc" "cortex-floor_i" 0.0 0.0 0.0 "cortex-usbc_i" 0.0 0.0 0.0]
@@ -281,7 +259,6 @@
    [fixed-joint "fix_cortex-sled" "cortex-floor_i" 0.0 0.0 0.0 "cortex-sled_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-compute" "cortex-floor_i" 0.0 0.0 0.0 "cortex-compute_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-heatsink" "cortex-floor_i" 0.0 0.0 0.0 "cortex-heatsink_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-duct" "cortex-floor_i" 0.0 0.0 0.0 "cortex-duct_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-speakers" "cortex-floor_i" 0.0 0.0 0.0 "cortex-speakers_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-mics" "cortex-floor_i" 0.0 0.0 0.0 "cortex-mics_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-amps" "cortex-floor_i" 0.0 0.0 0.0 "cortex-amps_i" 0.0 0.0 0.0]
