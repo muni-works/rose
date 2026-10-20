@@ -14,7 +14,7 @@ BODIES = {
     'wroll': ['waist-W2', 'waist-W3', 'motor-waistpitch', 'cover-waistroll'],
     'wyaw': ['waist-W0', 'waist-W1', 'motor-waistroll', 'cover-waist'],
     'torso': ['cover-pack', 'pelvis-deck', 'motor-waistyaw', 'waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
-    'roll.{t}': ['chassis-hipR.{t}l', 'trim-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
+    'roll.{t}': ['chassis-hipR.{t}l', 'cover-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
     'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'motor-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
     'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'motor-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
     'knee.{t}': ['shin-', 'motor-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],

@@ -458,7 +458,15 @@ def design():
     keel += [rrect(np.array([xm, 0, kb + rk_ * (1 - math.sin(th))]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]),
                    40.0 * Rk - rk_ * (1 - math.cos(th)), xh * 0.8 - rk_ * (1 - math.cos(th)), max(16.0 * Rk - rk_ * (1 - math.cos(th)), 3.0))
              for th in np.linspace(0, np.pi / 2, 6)]
-    pel = upper if KS.V['name'] == 'mini' else upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))   # mini: no keel, one flat underside
+    pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
+    if KS.V['name'] == 'mini':                                  # a plain rounded box, like the head: just the safety cover over the
+        bx0, bx1 = rl[0] - m06['L'] / 2 - 6.0, rl[0] + m06['L'] / 2 + KS.G + KS.T + 6.0      # two hip-roll cans, tucked under the torso
+        by = rl[1] + m06['D'] / 2 + 4.0
+        bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, z_ab - 2.0
+        rcp, rfb = 0.32 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
+        bring = lambda z_, d_: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
+        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + [bring(bz1, 0.0)]
+        pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
@@ -470,7 +478,7 @@ def design():
         upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] - 20.0]))
         gv = np.concatenate([upper.vertices + np.array([dx, 0, 0]) for dx in (-2.0, 2.0)])
         guard = tm(Manifold.hull_points(gv.astype(np.float32)))
-        add(f'trim-hipguard.{t}l', guard)
+        add(f'cover-hipguard.{t}l', guard)
         gc_ = guard.bounds.mean(0)
         brk = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m)   # the bracket: an internal slot
         pel = pel - sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)
