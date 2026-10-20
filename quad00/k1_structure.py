@@ -303,7 +303,7 @@ def head(J):
 ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700: 43.2 V nominal, ~9 Ah with 4.5 Ah cells
             pack_grid=(6, 2),                                       # cells per side pack: x by y, standing upright
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
-            bms=5.0,                                                # 12S BMS on each pack's aft face
+            bms=10.0,                                                # 12S BMS on each pack's aft face (10 mm: >=60 A FETs, LIMBIC.md)
             fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out); brake resistor (size TBD)
             estop=dict(head_d=40.0, proud=26.0, body_d=30.0, body_l=32.0, z=205.0),   # IDEC XA1E-BV402R on the upper back
             vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(145.0, 175.0)),          # slot grilles: abdomen front, chest back
@@ -319,11 +319,11 @@ def electronics(J):
     sp = upper_layout(J, 'Left')['sp'][0]
     y_side = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G       # side plate outer face
     nx, ny = E['pack_grid']
-    px, py, pz = nx * E['cell_d'] + 2.0, ny * E['cell_d'] + 1.0, E['cell_h'] + 4.0
+    px, py, pz = nx * E['cell_d'], ny * E['cell_d'] + 1.0, E['cell_h'] + 4.0          # cells touching along x (spot-welded strips on top)
     z_top = sp[2] - Q.MOTORS['rs00']['D'] / 2 - 4.0           # under the shoulder-pitch can
     for s, t in ((1, 'l'), (-1, 'r')):
         y0 = y_side + 2.0 if s > 0 else -(y_side + 2.0) - py
-        xc = 7.5                                                # 2 mm forward: the BMS clears the back panel groove
+        xc = 10.0                                                # forward of centre: room aft for a 10 mm BMS
         box = trimesh.creation.box(extents=[px, py, pz]).apply_translation([xc, y0 + py / 2, z_top - pz / 2])
         out.append((f'elec-battery.{t}', box))
         # its 12S BMS (~40 x 60) on the aft face, kept inboard + high: the chest's back corner rounds in low and outboard
