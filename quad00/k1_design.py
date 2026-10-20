@@ -430,15 +430,19 @@ def design():
     x0, x1 = lo[0] + 10, hi[0] - 12; xm, xh = (x0 + x1) / 2, (x1 - x0) / 2
     xh = max(xh, (max(abs(rl[0] - m06['L'] / 2 - xm), abs(rl[0] + m06['L'] / 2 - xm)) + 5.0) / 0.88)   # deep enough for the roll cans
     z_pt = 14.0 * Rk if KS.waist_layout() is None else KS.Z_D0() + KS.T + 0.5   # waist: the pelvis closes over the deck
-    secs = [rrect(np.array([xm, 0, z_pt]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST() * 0.84, xh, 22.0 * Rk)]   # meets the abdomen; flares over the hip cans below
+    secs = [rrect(np.array([xm, 0, z_pt]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST() * 0.84, xh, 24.0 * Rk)]   # meets the torso; flares over the hip cans below
     for th in np.linspace(0, np.pi / 2, 7):                     # the cans' lower quadrant, 5 mm proud
         r_ = m06['D'] / 2 + 5.0
         y_, z_ = rl[1] + r_ * np.cos(th), rl[2] - r_ * np.sin(th)
-        secs.append(rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), max(y_, 30.0 * Rk), xh * (1 - 0.12 * np.sin(th)), 22.0 * Rk))
+        secs.append(rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), max(y_, 30.0 * Rk), xh, 24.0 * Rk))   # constant depth: a box, like the torso
     upper = Manifold.hull_points(np.concatenate(secs).astype(np.float32))
     zk = rl[2] - m06['D'] / 2 - 5.0
-    keel = [rrect(np.array([xm, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), w_ * Rk, xh * f_, 16.0 * Rk)
-            for z_, w_, f_ in ((zk + 20 * Rk, 46.0, 0.86), (zk - 26 * Rk, 38.0, 0.7), (zk - 34 * Rk, 30.0, 0.55))]
+    rk_ = 14.0 * Rk                                             # keel: one rounded box between the hip drums, filleted bottom
+    kb = zk - 34.0 * Rk
+    keel = [rrect(np.array([xm, 0, zk + 20 * Rk]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), 40.0 * Rk, xh * 0.8, 16.0 * Rk)]
+    keel += [rrect(np.array([xm, 0, kb + rk_ * (1 - math.sin(th))]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]),
+                   40.0 * Rk - rk_ * (1 - math.cos(th)), xh * 0.8 - rk_ * (1 - math.cos(th)), max(16.0 * Rk - rk_ * (1 - math.cos(th)), 3.0))
+             for th in np.linspace(0, np.pi / 2, 6)]
     pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
