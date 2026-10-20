@@ -302,7 +302,12 @@ def head(J):
 # lands: cells, pack arrangement, Jetson and board envelopes are assumptions, sized to the bay; swap numbers here.
 ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700: 43.2 V nominal, ~9 Ah with 4.5 Ah cells
             pack_grid=(6, 2),                                       # cells per side pack: x by y, standing upright
-            jetson=(87.0, 60.0, 100.0), jetson_kg=0.45,             # Orin NX on a compact carrier + active heatsink (x, y, z)
+            jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
+            bms=5.0,                                                # 12S BMS on each pack's aft face
+            fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out); brake resistor (size TBD)
+            estop=dict(head_d=40.0, proud=26.0, body_d=30.0, body_l=32.0, z=205.0),   # IDEC XA1E-BV402R on the upper back
+            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(145.0, 175.0)),          # slot grilles: abdomen front, chest back
+            foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
             board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
 
@@ -318,15 +323,42 @@ def electronics(J):
     z_top = sp[2] - Q.MOTORS['rs00']['D'] / 2 - 4.0           # under the shoulder-pitch can
     for s, t in ((1, 'l'), (-1, 'r')):
         y0 = y_side + 2.0 if s > 0 else -(y_side + 2.0) - py
-        box = trimesh.creation.box(extents=[px, py, pz]).apply_translation([5.5, y0 + py / 2, z_top - pz / 2])
+        xc = 7.5                                                # 2 mm forward: the BMS clears the back panel groove
+        box = trimesh.creation.box(extents=[px, py, pz]).apply_translation([xc, y0 + py / 2, z_top - pz / 2])
         out.append((f'elec-battery.{t}', box))
+        # its 12S BMS (~40 x 60) on the aft face, kept inboard + high: the chest's back corner rounds in low and outboard
+        by0 = y0 if s > 0 else y0 + py - 40.0
+        out.append((f'elec-bms.{t}', trimesh.creation.box(extents=[E['bms'], 40.0, 60.0]).apply_translation(
+            [xc - px / 2 - E['bms'] / 2, by0 + 20.0, z_top - 30.0])))
     yi = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G - T - 1.0 # side plate inner face, less a gap
     jx, jy, jz = E['jetson']
     z_d1 = head_layout(J)['yaw'][0][2] - Q.MOTORS['rs00']['L'] / 2 - G - T
     out.append(('elec-jetson', trimesh.creation.box(extents=[jx, jy, jz]).apply_translation([5.0, 0.0, z_d1 - 4.0 - jz / 2])))
+    R_ = R()
+    fx, fy, fz = E['fan']; zo = E['vent_out']['z']
+    x_back = -65.0 * R_                                       # inside the chest back wall
+    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_back + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
+    rx, ry, rz = E['brake']
+    out.append(('elec-brake', trimesh.creation.box(extents=[rx, ry, rz]).apply_translation([5.0 - jx / 2 - 3 - rx / 2, 0.0, zo[0] - 5 - rz / 2])))
+    es = E['estop']
+    body = trimesh.creation.cylinder(radius=es['body_d'] / 2, height=es['body_l']).apply_transform(
+        trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_translation([x_back + 2 + es['body_l'] / 2, 0.0, es['z'] * R_])
+    out.append(('elec-estopbody', body))
     bx, by, bz = E['board']
     by = min(by, 2 * yi)
     out.append(('elec-limbic', trimesh.creation.box(extents=[bx, by, bz]).apply_translation([5.0, 0.0, Z_D0() + T + 6.0 + bz / 2])))
+    return out
+
+
+def foot_nodes(J):
+    """v1 foot contact: a small CAN node in each sole (in the ankle body)."""
+    if V['name'] != 'mini':
+        return []
+    nx, ny, nz = ELEC['foot_node']
+    out = []
+    for side in ('Left', 'Right'):
+        a = layout(J, side)['ankle']
+        out.append((f'node-foot.{side[0].lower()}l', trimesh.creation.box(extents=[nx, ny, nz]).apply_translation([a[0] + 40.0, a[1], a[2] - 27.0])))
     return out
 
 
@@ -351,4 +383,4 @@ def structure():
     out = []
     for side in ('Left', 'Right'):
         out += leg(J, side) + arm(J, side, M)
-    return out + torso(J) + head(J) + electronics(J)
+    return out + torso(J) + head(J) + electronics(J) + foot_nodes(J)

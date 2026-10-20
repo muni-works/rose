@@ -85,6 +85,20 @@ def band_manifold(spec):
     return prism(hu, hv, rc) - prism(hu - GROOVE_W, hv - GROOVE_W, max(rc - GROOVE_W, 1.0))
 
 
+def cut_shell(m, cuts):
+    """pocket cuts into a ring-built shell (vent slots, a mounting hole): boxes and x-axis cylinders, kept as loon cuts."""
+    out_m = M_(m)
+    for c in cuts:
+        if c[0] == 'box':
+            out_m = out_m - Manifold.cube(list(c[2])).translate(list(c[1]))
+        else:                                                   # ('xcyl', centre on the face, radius, depth)
+            _, p, r, dep = c
+            out_m = out_m - Manifold.cylinder(dep * 2, r, r, 48).rotate([0, 90, 0]).translate([p[0] - dep, p[1], p[2]])
+    o = tm(out_m)
+    o.metadata = dict(m.metadata, cut=list(m.metadata.get('cut', [])) + list(cuts))
+    return o
+
+
 def grooved(m, specs):
     """cut parting lines into a ring-built shell: shell minus (bands ^ skin), skin = shell minus its inset copy."""
     rings = m.metadata['loft']
@@ -278,11 +292,27 @@ def design():
     # rib cage, a slimmer abdomen down to a pelvis that flares out over the hips
     Rk = KS.R()
     z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
-    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.88, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk)   # full width at the shoulders
+    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk)   # crisper corners: room for the side battery packs   # full width at the shoulders
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
-    add('cover-chest', grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
-    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.88 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
-    add('cover-abdomen', block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk))
+    chest_m = (grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
+    E = KS.ELEC
+    if KS.V['name'] == 'mini':
+        xb = chest_m.bounds[0][0]
+        cuts = [('box', [xb - 2.0, -18.0, zc - 1.75], [6.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
+        cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))          # e-stop: 16.2 mm hole in the back
+        chest_m = cut_shell(chest_m, cuts)
+    add('cover-chest', chest_m)
+    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
+    abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
+    if KS.V['name'] == 'mini':                                  # intake grille, low front
+        xf = abd.bounds[1][0]
+        abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)])
+    add('cover-abdomen', abd)
+    if KS.V['name'] == 'mini':                                  # the e-stop: red 40 mm mushroom on the upper back
+        es = KS.ELEC['estop']; xb = chest_m.bounds[0][0]
+        head = cyl(np.array([xb - es['proud'] + 6.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], es['head_d'] / 2, 12.0)
+        stem = cyl(np.array([xb - es['proud'] / 2 + 1.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], 11.0, es['proud'] - 10.0)
+        add('estop-head', head); add('estop-collar', stem)
     # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
     # then a narrow keel dropping between the hip drums
     rl = KS.layout(J, 'Left')['roll'][0]; m06 = KS.BIG(); Rk = KS.R()
@@ -386,7 +416,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec')) or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

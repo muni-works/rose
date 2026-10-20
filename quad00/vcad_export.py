@@ -47,12 +47,19 @@ MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('muni
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
         'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
-        'limbic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45)}
+        'limbic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'node': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
+        'fan': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'estopbody': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
+        'brake': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'bms': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
+        'estophead': ('estop_red', 0.78, 0.04, 0.03, 0.0, 0.35), 'estopcollar': ('estop_yellow', 0.98, 0.78, 0.05, 0.0, 0.45)}
 
 
 def mat_of(n):
     if n.startswith('elec-'):
         return n.split('-')[1].split('.')[0]
+    if n.startswith('estop-'):
+        return 'estop' + n.split('-')[1]
+    if n.startswith('node-'):
+        return 'node'
     k = n.split('-')[0].split('.')[0]
     if k in MATS:
         return k
@@ -153,7 +160,10 @@ def loft_src(rings, o):
 
 def cuts_src(src, cuts, o):
     for kind, *a in cuts:
-        if kind == 'ycyl':
+        if kind == 'xcyl':                    # a hole along x, `depth` into the face at c
+            c, r, dep = np.asarray(a[0], float) - o, a[1], a[2]
+            tool = f'[translate {f(c[0] - dep)} {f(c[1])} {f(c[2])} [rotate 0 90 0 [cylinder-n {f(r)} {f(2 * dep)} 48]]]'
+        elif kind == 'ycyl':
             c, r = np.asarray(a[0], float) - o, a[1]
             tool = f'[translate {f(c[0])} {f(-r)} {f(c[2])} [rotate -90 0 0 [cylinder-n {f(r)} {f(2 * r)} 72]]]'
         else:
@@ -192,12 +202,14 @@ def shell_src(m, o):
         return f'[intersection {oval} {big}]'
     if 'loft' in md:
         src = loft_src(md['loft'], o)
-        if md.get('grooves'):                 # parting lines: shell minus (bands ^ skin), skin = shell minus its inset copy
+        if md.get('grooves'):                 # parting lines cut into the skin: shell minus (bands minus the inset copy)
             import k1_design as KD
             inset = loft_src(KD.inset_rings(md['loft'], KD.GROOVE_D), o)
             bands = [band_src(sp, o) for sp in md['grooves']]
             band = bands[0] if len(bands) == 1 else '[union ' + ' '.join(bands) + ']'
-            src = f'[difference [intersection {band} [difference {inset} {src}]] {src}]'
+            # loft - (band - inset): the same cut as loft - (band ^ (loft - inset)), but it never subtracts one loft
+            # from a near-parallel copy of itself, which vcad's boolean gets wrong (it added volume, then cut a notch)
+            src = f'[difference [difference {inset} {band}] {src}]'
         return cuts_src(src, md.get('cut', []), o)
     return None
 
