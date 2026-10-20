@@ -396,8 +396,8 @@ def design():
     if Wl is not None:                                          # 3-DoF waist: the chest starts at the pitch axis, a slim drum below
         z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
     if Wl is None:                                              # H2/T2: a chest shell that stops above a narrow dark waist
-        z_w1 = 46.0 * Rk
-        zc1 = min(zc1, zs + 8.0 * Rk)                          # the shell stops just above the shoulder axis: the cans sit at its top corners
+        z_w1 = z_ab - 2.0                                       # one piece again: from the pelvis line...
+        zc1 = zs + 36.0 * Rk                                    # ...up over the shoulder-pitch drums (crown = zc1 + 10)
         chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, SHOULDER_FLANK(), Rk)
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
@@ -409,6 +409,8 @@ def design():
         xb = chest_m.bounds[0][0]
         Mc = M_(chest_m)                                        # exhaust slots through the (leaning) back wall at each slot's height
         cuts = [('box', [Mc.slice(zc).bounds()[0] - 2.0, -18.0, zc - 1.75], [7.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
+        if Wl is None:                                          # intake grille, low front
+            cuts += [('box', [Mc.slice(zc).bounds()[2] - 5.0, -24.0, zc - 1.75], [7.0, 48.0, 3.5]) for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5)]
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
@@ -436,15 +438,7 @@ def design():
         chest_m = cut_shell(chest_m, OPEN)
     add('cover-chest', chest_m)
     if Wl is None:
-        # the waist: a short, narrow, dark segment between chest and pelvis (the T2's waist actuator)
-        wy = max(0.56 * KS.CHEST(), (KS.pack_box()[1][1] + 4.0) if KS.V['name'] == 'mini' else 0.0)
-        wx0, wx1 = lo[0] + 10, (KS.pack_box()[1][0] + 16.0) if KS.V['name'] == 'mini' else hi[0] - 30.0 * Rk
-        wrings = [rrect(np.array([(wx0 + wx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), wy, (wx1 - wx0) / 2, 16.0 * Rk, k=14)
-                  for z_ in (z_ab - 2.0, z_w1 + 3.0)]
-        waist = hull_rings(wrings)
-        if KS.V['name'] == 'mini':                              # intake grille on its front; the pack hatch through its back
-            waist = cut_shell(waist, [('box', [wx1 - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5)] + OPEN)
-        add('trim-waist', waist)
+        pass                                                    # one-piece torso: no separate waist band
     else:                                                       # H2-style waist: three coaxial pieces, no slots -- each shell turns
         mw = KS.WAIST(); pc_, rc_ = Wl['pitch'][0], Wl['roll'][0]   # about its own joint axis, so nothing needs cutting away
         WS = dict(KS.waist())
