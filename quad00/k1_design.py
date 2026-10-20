@@ -510,8 +510,8 @@ def design():
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
-    hh, hw, hd = (hhi[2] - hlo[2]) * 0.74, (hhi[1] - hlo[1]) / 2 * 0.96, (hhi[0] - hlo[0]) / 2 * 0.92   # wide (big screen), short + shallow
-    hc = hc + np.array([0, 0, (hhi[2] - hlo[2]) * (0.86 - 0.74) / 2])  # chin up: the crown stays where it was
+    hh, hw, hd = (hhi[2] - hlo[2]) * 0.66, (hhi[1] - hlo[1]) / 2 * 0.96, (hhi[0] - hlo[0]) / 2 * 0.92   # wide (big screen), short + shallow
+    hc = hc + np.array([0, 0, (hhi[2] - hlo[2]) * (0.86 - 0.66) / 2])  # chin up: the crown stays where it was
     hc = hc + np.array([0, 0, -6.0])
     hpz = KS.head_layout(J)['pitch'][0][2]
     if KS.V['name'] != 'mini' and hpz > hc[2] + 0.05 * hh:       # head motors stacked above the shoulders: lift the helmet onto them
@@ -543,7 +543,7 @@ def design():
     add('cover-helmet', hm)
     # the face: a flat screen, gloss black glass, set into the front face a hair proud
     x_f = hc[0] + hd                                            # the flat front face
-    sw, sh = hw - rc_p - 4.0, 0.24 * hh                         # landscape, inside the flat region
+    sw, sh = hw - rc_p - 4.0, 0.27 * hh                         # landscape, inside the flat region
     scr = [rrect(np.array([x_, hc[1], hc[2] + 0.10 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.35 * min(sw, sh), k=12)
            for x_, d_ in ((x_f - 3.0, 0.0), (x_f + 0.4, 0.0), (x_f + 0.8, 0.4))]
     vf = hull_rings(scr)
