@@ -107,12 +107,19 @@ def rrect(c, v, w, a, b, rc, k=10):
     return np.concatenate(pts)
 
 
-def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w=None):
-    """a link lofted from a section at p0 to one at p1 (radii r0, r1), with a swell at 40 %."""
+def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w=None, depth=None):
+    """a link lofted from a section at p0 to one at p1 (radii r0, r1), with a swell at 40 %.
+    depth=[(t, r), ...] sculpts it instead: the fore/aft depth follows that profile, the width stays at half_w."""
     p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
     u = unit(p1 - p0)
     v = unit(np.asarray(lateral, float) - u * (np.asarray(lateral) @ u)); w = np.cross(u, v)
     rings = []
+    if depth:
+        L_ = np.linalg.norm(p1 - p0)
+        for t, r in depth:
+            a = half_w if half_w is not None else r * flat
+            rings.append(rrect(p0 + u * t * L_, v, w, a, r, 0.4 * min(a, r)))
+        return hull_rings(rings)
     for t, k in ((0.0, 1.0), (0.18, 1.0 + 0.6 * (swell - 1)), (0.42, swell), (0.7, 1.0 + 0.5 * (swell - 1)), (1.0, 1.0)):
         r = r0 + (r1 - r0) * t
         a = r * k * flat if half_w is None else min(r * k * flat, half_w)   # never wider than the joint drums' faces
@@ -196,10 +203,14 @@ def design():
             cyo, chw = s * (max(ys_) + min(ys_)) / 2, (max(ys_) - min(ys_)) / 2 + 3.0
         yo = np.array([0, s * cyo, 0])
         ck0 = 0.84 if KS.V['name'] == 'mini' else 0.98       # tiny: the first ankle can sits right under the knee
-        calf = bone(jp(kn) + yo, rk * ck0, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=KS.V['flat'], n=3.0, half_w=chw)
+        r0c = rk * ck0
+        # mini: a sculpted calf -- full just under the knee, slim at the ankle; never thinner than the ankle cans need
+        cdep = [(0.0, r0c), (0.16, r0c * 1.14), (0.40, r0c * 0.98), (0.68, r0c * 0.82), (1.0, 26.0)] if KS.V['name'] == 'mini' else None
+        calf = bone(jp(kn) + yo, r0c, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=KS.V['flat'], n=3.0, half_w=chw, depth=cdep)
         cmid = (jp(kn) + ank) / 2 + yo
         add(f'cover-calf.{tag}l', grooved(calf, [('frame', 0, cmid + np.array([0, 0, 18.0]), chw - 9.0, 0.30 * np.linalg.norm(jp(kn) - ank), 10.0)]))   # a shin panel, front and back
-        calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=KS.V['flat'], n=3.0, half_w=chw + 3.0))
+        calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=KS.V['flat'], n=3.0, half_w=chw + 3.0,
+                           depth=[(t, r + 3.0) for t, r in cdep] if cdep else None))
         if KS.V['name'] == 'mini':
             add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
         else:                                                  # tiny: a 35 mm thigh, relieved for the fold (no clevis room)
@@ -238,11 +249,13 @@ def design():
         tip = ey_ + KS.hang(J, M, side)
         wrist = ey_ + (tip - ey_) * 0.62
         fo = np.array([0, s * 5.0, 0])                      # forearm rides outboard of the inner elbow plate
-        fore = bone(ey_ + fo, rel * 0.8, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.0)
+        r0f = rel * 0.8
+        fdep = [(0.0, r0f), (0.2, r0f * 1.12), (0.55, r0f * 0.92), (1.0, 15.0)]            # full under the elbow, slim at the wrist
+        fore = bone(ey_ + fo, r0f, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.0, depth=fdep)
         add(f'cover-forearm.{tag}a', fore)
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
         low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=33.0)
-        fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=29.5))
+        fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=29.5, depth=[(t, r + 3.0) for t, r in fdep]))
         add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
