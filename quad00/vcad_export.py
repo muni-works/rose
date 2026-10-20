@@ -274,6 +274,23 @@ def body_of(n):
     return b
 
 
+# The cortex head is its own product, authored in loon (cortex/cortex.loon). The robot file [use]s it: the Python
+# cortex parts (cortex.py, kept only as collision proxies for the ROM / harness checks) are skipped here.
+CX_PY = ('cover-helmet', 'visor-', 'trim-eyering', 'trim-ear', 'trim-headpanel', 'cover-headbutton', 'elec-cx', 'elec-jetson',
+         'elec-cbat', 'cable-hcsi', 'cable-haudio', 'cable-hmic', 'cable-hhdmi', 'cable-hpower', 'cable-hdock', 'cable-heth',
+         'cable-husbc', 'trim-dockplug', 'trim-dockpin', 'elec-dockplug')
+CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('cortex-ear-grilles', 'satin_black'),
+           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
+           ('cortex-pads', 'gold'), ('cortex-strikes', 'steel'), ('cortex-keeper', 'steel'), ('cortex-display', 'heatsink'),
+           ('cortex-cams', 'pcb_green'), ('cortex-dockboard', 'pcb_green'), ('cortex-power', 'pcb_green'),
+           ('cortex-battery', 'cell_pack'), ('cortex-sled', 'aluminium'), ('cortex-compute', 'pcb_green'),
+           ('cortex-heatsink', 'heatsink'), ('cortex-speakers', 'motor_dark'), ('cortex-mics', 'pcb_green'),
+           ('cortex-amps', 'pcb_green'), ('cortex-cables', 'cable_orange')]
+CX_NECK = [('dock-face', 'gunmetal'), ('dock-pogo', 'gold'), ('dock-pogo-block', 'pcb_green'), ('dock-cones', 'steel'),
+           ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', 'satin_black')]
+CX_MATS = {'gold': (1.0, 0.78, 0.34, 1.0, 0.25), 'steel': (0.6, 0.6, 0.62, 0.9, 0.35), 'cable_orange': (1.0, 0.42, 0.05, 0.0, 0.45)}
+
+
 def main(variant='mini', explodes=(0.0,)):
     KS.use(variant)
     KD = _patch()
@@ -287,7 +304,10 @@ def main(variant='mini', explodes=(0.0,)):
     recs = []                                 # (part name, body, source, material, shell?, local centroid)
     used_mats = set()
     n_native = n_mesh = 0
+    has_cx = KS.VARIANT.get('cortex', variant == 'mini') if hasattr(KS, 'VARIANT') else variant == 'mini'
     for n, m in D + C:
+        if has_cx and n.startswith(CX_PY):
+            continue
         b = body_of(n)
         if b is None:
             print('  (skipped, no body)', n)
@@ -314,10 +334,22 @@ def main(variant='mini', explodes=(0.0,)):
             n_native += 1
         mk = mat_of(n); used_mats.add(mk)
         recs.append((n.replace('.', '_'), b, src, mk, mk not in ('plate', 'motor'), m.bounds.mean(0) - o))
+    if has_cx:                                # the cortex module, placed at the dock origin in the head-pitch frame
+        HF = KS.head_frame(J, M)
+        o = np.array([HF['ox'], HF['oy'], HF['zb']]) - P['hpitch']
+        for nm, mk in CX_HEAD + CX_NECK:
+            dz = -0.5 if nm.startswith('dock-') else 0.0
+            recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz)} {nm}]', 'cx:' + mk, False, o))
+        cx_link = os.path.join(outdir, 'cortex.loon')
+        if not os.path.lexists(cx_link):
+            os.symlink(os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex', 'cortex.loon'), outdir), cx_link)
     z0 = -min(m.bounds[0][2] for _, m in D)  # the torso sits this high, so the soles stand on z = 0
     ankle_drop = abs(P['ankle.l'][2])
     jl = joints(J)
     mats = {MATS[k][0]: MATS[k] for k in used_mats}
+    cxm = {r[3][3:] for r in recs if r[3].startswith('cx:')}
+    for k in cxm - set(mats):                 # cortex materials the robot palette lacks
+        mats[k] = (k,) + (CX_MATS.get(k) or next(v[1:] for v in MATS.values() if v[0] == k))
     outs = []
     for e in explodes:
         parts, inst, fixed, anchor = [], [], [], {}
@@ -327,7 +359,7 @@ def main(variant='mini', explodes=(0.0,)):
                 d = d / np.linalg.norm(d) if np.linalg.norm(d) > 15 else np.array([1.0, 0, 0])
                 d = d * 45.0 * e
                 src = f'[translate {f(d[0])} {f(d[1])} {f(d[2])} {src}]'
-            parts.append(f'[part "{pn}" {src} "{MATS[mk][0]}"]')
+            parts.append(f'[part "{pn}" {src} "{mk[3:] if mk.startswith("cx:") else MATS[mk][0]}"]')
             z = z0 + 0.35 * e * ankle_drop if b == 'torso' and b not in anchor else 0.0
             inst.append(f'[instance "{pn}_i" "{pn}" 0.0 0.0 {f(z)}]')
             if b in anchor:
@@ -348,6 +380,8 @@ def main(variant='mini', explodes=(0.0,)):
                 + (f'; exploded {e:.2f}' if e else '') + '.',
                 ';; frame: x fore, y left, z up, mm; each body is authored about its joint pivot.']
         head += [f'[material "{v[0]}" {v[1]} {v[2]} {v[3]} {v[4]} {v[5]}]' for v in mats.values()]
+        if has_cx:
+            head += ['[use cortex [' + ' '.join(nm for nm, _ in CX_HEAD + CX_NECK) + ']]']
         src = '\n'.join(head) + '\n[assembly\n #[' + '\n   '.join(parts) + ']\n #[' + '\n   '.join(inst) + ']\n #[' + \
             '\n   '.join(fixed + jts) + ']\n "' + anchor['torso'] + '"]\n'
         path = os.path.join(outdir, f'{variant}.loon' if not e else f'{variant}-explode-{int(round(e * 100)):03d}.loon')
