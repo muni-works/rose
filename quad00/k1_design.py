@@ -521,17 +521,14 @@ def design():
     hd = hd * 0.95
     rc_p = 0.32 * min(hw, hd)                                   # plan corner radius
     rf = 0.30 * min(hw, hd)                                     # crown fillet
-    rb = 0.75 * min(hw, hd)                                     # chin: a deep round-off so the head pitches clear of the chest
-    zb = hc[2] - hh / 2 + 0.06 * hh                             # the chin, a little up from the egg's
+    zb = hc[2] - hh / 2                                         # the chin: the crown's fillet mirrored -- a simple box, top and bottom
     hr_ = []
-    for th in np.linspace(0, np.pi / 2, 9):                     # chin round-off (bottom), then crown fillet (top)
-        hr_.append((zb + rb * (1 - math.sin(th)), rb * (1 - math.cos(th))))
+    for th in np.linspace(0, np.pi / 2, 7):
+        hr_.append((zb + rf * (1 - math.sin(th)), rf * (1 - math.cos(th))))
     for th in np.linspace(np.pi / 2, 0, 7):
         hr_.append((hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))))
-    z_j = hc[2] - 0.12 * hh                                     # the jaw: below here the face slopes back (chin clears the chest)
-    jaw = lambda z_: 0.38 * hd * min(1.0, max(0.0, (z_j - z_) / (z_j - zb)))
-    hr_ = sorted(hr_ + [(z_j, 0.0)])                           # loft order: bottom to top
-    hr_ = [rrect(np.array([hc[0] - jaw(z_) / 2, hc[1], z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - jaw(z_) / 2, max(rc_p - d_, 2.0), k=14)
+    hr_ = sorted(hr_)                                           # loft order: bottom to top
+    hr_ = [rrect(np.array([hc[0], hc[1], z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_, max(rc_p - d_, 2.0), k=14)
            for z_, d_ in hr_]
     helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
     hpc = KS.head_layout(J)['pitch'][0]
