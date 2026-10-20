@@ -364,7 +364,9 @@ def design():
         # belongs to the arm (wraps the roll drum, flows into the upper arm), the chest top sloping down to meet it
         spc, src = U['sp'][0], U['sr'][0]
         # to the deltoid's inner face (the roll drum's RADIUS + 3 mm: the roll axis runs fore/aft), less a running gap that grows with size
-        y_in = min(SHOULDER_FLANK() - 14.0, abs(spc[1]) + KS.ARM()['L'] / 2 + KS.G - 2.0)   # from the pitch output face (covers the yoke plates)
+        y_in = min(SHOULDER_FLANK() - 14.0, abs(spc[1]) + KS.ARM()['L'] / 2 + KS.G - 2.0)
+        if KS.waist_layout() is None:                        # the shell stops at the shoulder axis: the drum wraps the whole pitch can
+            y_in = abs(spc[1]) - KS.ARM()['L'] / 2 - 2.0   # from the pitch output face (covers the yoke plates)
         y_out = abs(src[1]) - (rsr + 3.0) - 2.0 * max(1.0, KS.R())
         r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
         dmid = np.array([spc[0], s * (y_in + y_out) / 2, spc[2]])
@@ -392,6 +394,7 @@ def design():
         z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
     if Wl is None:                                              # H2/T2: a chest shell that stops above a narrow dark waist
         z_w1 = 46.0 * Rk
+        zc1 = min(zc1, zs + 8.0 * Rk)                          # the shell stops just above the shoulder axis: the cans sit at its top corners
         chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, SHOULDER_FLANK(), Rk)
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
