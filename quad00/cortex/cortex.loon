@@ -62,8 +62,14 @@
 
 ; a horizontal section of the head at height z, inset d all round
 [let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
+; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
+; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
+[let zk 40.0]
+[let kb 38.0]
+[let xb [fn [z] [if [> z zk] [+ x-back [* kb [* [/ [- z zk] [- hh zk]] [/ [- z zk] [- hh zk]]]]] x-back]]]
 [let head-sec [fn [z d]
   [let xf [- x-face [* rake z]]]
+  [let x-back [xb z]]
   [let hdz [/ [- xf x-back] 2.0]]
   [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [- xf hdz] 0.0 [- hdz d] [- hw d] [max #[[- rc d] 2.0]]]]]]
 
@@ -84,10 +90,12 @@
 [let shell-solid
   [loft [flatten #[
     [map [fn [st] [head-sec [nth st 0] [nth st 1]]] [round-st rb]]
+    [map [fn [z] [head-sec z 0.0]] #[zk 52.0 64.0 76.0 88.0]]
     [map [fn [st] [head-sec [- hh [nth st 0]] [nth st 1]]] [reverse [round-st rf]]]]]]]
 [let shell-inner                                ; the offset surface, wall inside
   [loft [flatten #[
     [map [fn [st] [head-sec [+ wall [nth st 0]] [+ wall [nth st 1]]]] [round-st [- rb wall]]]
+    [map [fn [z] [head-sec z wall]] #[zk 52.0 64.0 76.0 88.0]]
     [map [fn [st] [head-sec [- [- hh wall] [nth st 0]] [+ wall [nth st 1]]]] [reverse [round-st [- rf wall]]]]]]]]
 [let below-floor [bx -100.0 -100.0 -1.0 100.0 100.0 tf]]
 
@@ -124,9 +132,9 @@
 ; inside beside them (fewer parts, one tool for the slots)
 [let ear-x [+ [+ x-back rc] 18.0]]             ; the vent field's centre (speaker, mic, duct)
 ; the back panel: power button + status LED (left), USB-C + Ethernet (right)
-[let zp [* 0.38 hh]]
+[let zp 30.0]
 [let pw [* 0.62 hw]]
-[let ph [* 0.16 hh]]
+[let ph 12.0]
 [let panel-sec [fn [x d] [sketch x 0.0 zp 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [- pw d] [- ph d] 5.0]]]]
 [let cortex-panel [loft #[[panel-sec [+ x-back 1.0] 0.0] [panel-sec [- x-back 0.8] 0.0] [panel-sec [- x-back 1.4] 0.5]]]]
 [let cortex-button [disc-x [- x-back 3.6] [* 0.68 pw] zp 5.0 2.4]]
@@ -155,8 +163,8 @@
 [let cortex-sled [union [bx jxa -46.0 tf jxb -44.0 zj0] [bx jxa 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 44.0]]
-[let cortex-duct [difference [bx -34.5 [- 1.5 hw] [+ zh0 1.5] -8.5 -31.5 [- zh1 1.5]]
-                             [bx -36.0 [- wall hw] zh0 -7.0 -31.5 zh1]]]
+[let cortex-duct [difference [bx -31.5 [- 1.5 hw] [+ zh0 1.5] -8.5 -31.5 [- zh1 1.5]]
+                             [bx -33.0 [- wall hw] zh0 -7.0 -31.5 zh1]]]
 [let spk [fn [y0 sy] [disc-y ear-x [if [> sy 0.0] [- y0 5.4] y0] zm 14.0 5.4]]]
 [let cortex-speakers [union [spk [- hw wall] 1.0] [spk [- 0.0 [- hw wall]] -1.0]]]
 [let zmic 52.0]                                                                 ; mic boards taped to the wall, above the speaker
@@ -183,8 +191,8 @@
     [union [run-z 10.0 50.0 -45.0 0.0 1.75]] [union [run-x -45.0 jxa 0.0 50.0 1.75]]               ; charger -> A603 DC
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
     [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 zj0 9.0 -41.0 1.75]]                  ; dock USB 3 -> A603
-    [union [run-x [+ x-back wall] jxa -29.4 zp 3.0]]                                              ; panel RJ45 -> A603
-    [union [run-x [+ x-back wall] jxa -5.0 zp 2.5]]]]                                              ; panel USB-C -> A603
+    [union [run-x [+ x-back wall] -44.0 -29.4 zp 3.0]] [union [run-z zp 42.0 -44.0 -29.4 3.0]] [union [run-x -44.0 jxa -29.4 42.0 3.0]]                                              ; panel RJ45 -> A603
+    [union [run-x [+ x-back wall] -44.0 -5.0 zp 2.5]] [union [run-z zp 42.0 -44.0 -5.0 2.5]] [union [run-x -44.0 jxa -5.0 42.0 2.5]]]]                                              ; panel USB-C -> A603
 
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries (its neck's dock face at the origin): a floating USB-C plug (+-0.8 mm float mount, tongue 6.5
