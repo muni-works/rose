@@ -32,9 +32,9 @@ VARIANTS = {
     # full: the 2 m humanoid (Booster T2 / Unitree H2 class) in the mini's design language. RobStride for now (rana
     # in v2): the RS04 (120 N.m) is the largest they make, so the legs are torque-short (hip/knee need ~530 N.m at
     # 2 m, full/SIZING.md) -- this is a packaging/kinematics/look model until the rana actuators exist.
-    'full': dict(scale=200.0 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
-                 ankle_f=None, head_z=465.0, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
-                 foot_drop=0.0, pocket=(80.0, 92.0), plate_t=6.35),
+    'full': dict(scale=170.3 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
+                 ankle_f=None, head_z=395.5, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
+                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88),
 }
 V = dict(VARIANTS['mini'], name='mini')
 
@@ -68,6 +68,115 @@ def ANK():
 
 def HEAD():
     return Q.MOTORS[V['head']]
+
+
+def WAIST():
+    return Q.MOTORS[V['waist']] if V.get('waist') else None
+
+
+def waist_layout():
+    """the 3-DoF waist (H2/T2-style), stacked on the pelvis deck: yaw (z, stator down), roll (x, output fore),
+    pitch (y, output +y). None when the variant has no waist."""
+    m = WAIST()
+    if m is None:
+        return None
+    zy = Z_D0() + T + G + m['L'] / 2                                       # yaw stator on the pelvis deck
+    zr = zy + m['L'] / 2 + G + T + G + m['D'] / 2                          # roll can on the yaw output plate
+    zp = zr + m['D'] / 2 + 12.0 + m['D'] / 2                               # pitch can above the roll (12 mm: the W2/W3 corner)
+    return dict(yaw=(np.array([0.0, 0, zy]), np.array([0, 0, 1.0])), roll=(np.array([0.0, 0, zr]), np.array([1.0, 0, 0])),
+                pitch=(np.array([0.0, 0, zp]), np.array([0, 1.0, 0])))
+
+
+def WRIST():
+    return Q.MOTORS[V['wrist']] if V.get('wrist') else None
+
+
+def wrist_layout(J, side, M=None):
+    """the 3-DoF wrist (H2/T2 7-DoF arm): roll (forearm axis, mid-forearm, output down), pitch (y) at the wrist,
+    yaw (x) under it in the hand. None without a wrist."""
+    mw = WRIST()
+    if mw is None:
+        return None
+    if M is None:
+        J, M = world()
+    U = upper_layout(J, side); s = U['s']; ma = ARM()
+    ey = U['ey'][0]
+    f_in, f_out = -(ma['L'] / 2 + G) + 3.5, ma['L'] / 2 + G + T + 3.3                 # the forearm's y span (k1_design)
+    r_sl = math.hypot(12.0, mw['L'] / 2 + G + T) + 3.0                    # the round sleeve over R0/R1 (k1_design)
+    yc = ey[1] + s * (f_in + r_sl)                                         # forearm keeps its inboard face, grows outboard
+    wz = ey[2] + hang(J, M, side)[2] * 0.62
+    rz = (ey[2] - ma['D'] / 2 + wz) / 2                                    # roll mid-forearm
+    yz = wz - mw['D'] / 2 - 12.0 - mw['D'] / 2                              # yaw under the pitch, 12 mm apart (the P0/P1 corner)
+    return dict(s=s, r_sl=r_sl, roll=(np.array([ey[0], yc, rz]), np.array([0, 0, -1.0])), pitch=(np.array([ey[0], yc, wz]), np.array([0, s * 1.0, 0])),
+                yaw=(np.array([ey[0], yc, yz]), np.array([1.0, 0, 0])))
+
+
+def wrist(J, side, M):
+    """wrist motors + plates: F2 (under F1) -> roll -> R0/R1 -> pitch -> P0/P1 -> yaw -> H0 (the hand)."""
+    W = wrist_layout(J, side, M)
+    if W is None:
+        return []
+    mw, mn, s = WRIST(), V['wrist'], W['s']
+    tag = side[0].lower()
+    U = upper_layout(J, side); ey = U['ey'][0]; ma = ARM()
+    rc, pc, yc = W['roll'][0], W['pitch'][0], W['yaw'][0]
+    out = [(f'{mn}-wrist{k}.{tag}a', motor(W[k][0], W[k][1], mn)) for k in ('roll', 'pitch', 'yaw')]
+    y_f1 = abs(ey[1]) + ma['L'] / 2 + G                                   # F1's inner face (|y|)
+    z_f2 = rc[2] + mw['L'] / 2 + G
+    F2 = L.unary_union([L.circle(rc[0], rc[1], mw['D'] / 2), Rr(rc[0] - 22, rc[1], rc[0] + 22, s * (y_f1 + T))])
+    out.append((f'wrist-F2.{tag}a', plate(F2.difference(holes(mw, 'back', (rc[0], rc[1]), 45)), 'xy', z_f2)))
+    z_r0 = rc[2] - mw['L'] / 2 - G - T
+    yr1 = abs(pc[1]) - mw['L'] / 2 - G - T                                # pitch stator back (inboard)
+    R0 = L.unary_union([L.circle(rc[0], rc[1], mw['D'] / 2), Rr(rc[0] - 12, rc[1], rc[0] + 12, s * yr1)])
+    out.append((f'wrist-R0.{tag}a', plate(R0.difference(holes(mw, 'out', (rc[0], rc[1]))), 'xy', z_r0)))
+    R1 = L.unary_union([L.circle(pc[0], pc[2], mw['back'][0] / 2 + 8), Rr(pc[0] - 12, pc[2], pc[0] + 12, z_r0)])
+    out.append((f'wrist-R1.{tag}a', plate(R1.difference(holes(mw, 'back', (pc[0], pc[2]), 45)), 'xz', min(s * yr1, s * (yr1 + T)))))
+    yp0 = abs(pc[1]) + mw['L'] / 2 + G                                    # pitch output (outboard)
+    x_p1 = yc[0] - mw['L'] / 2 - G - T                                    # yaw stator back (aft)
+    z_top = yc[2] + mw['D'] / 2 + G                                       # P0 stays over the yaw can
+    P0 = L.unary_union([L.circle(pc[0], pc[2], mw['out'][0] / 2 + 14), Rr(x_p1 + T, z_top, pc[0] + 18, pc[2])])
+    out.append((f'wrist-P0.{tag}a', plate(P0.difference(holes(mw, 'out', (pc[0], pc[2]))), 'xz', min(s * yp0, s * (yp0 + T)))))
+    P1 = L.unary_union([L.circle(yc[1], yc[2], mw['back'][0] / 2 + 8), Rr(yc[1] - s * 18, yc[2], s * (yp0 + T), z_top + 10.0)])
+    out.append((f'wrist-P1.{tag}a', plate(P1.difference(holes(mw, 'back', (yc[1], yc[2]), 45)), 'yz', x_p1)))
+    x_h0 = yc[0] + mw['L'] / 2 + G                                        # yaw output (fore): the hand's spine
+    tip = ey + hang(J, M, side)
+    H0 = L.unary_union([L.circle(yc[1], yc[2], mw['out'][0] / 2 + 14), Rr(yc[1] - 16, yc[2], yc[1] + 16, tip[2] + 40.0 * R())])
+    out.append((f'wrist-H0.{tag}a', plate(H0.difference(holes(mw, 'out', (yc[1], yc[2]))), 'yz', x_h0)))
+    return out
+
+
+def Z_CD():
+    """the chest's bottom deck: on the waist pitch output when there's a waist, else the one torso deck."""
+    W = waist_layout()
+    return Z_D0() if W is None else W['pitch'][0][2] + WAIST()['D'] / 2 + G
+
+
+def waist():
+    """waist motors + plates: pelvis deck (on the hip-roll mounts) -> yaw -> W0 -> roll -> W1/W2 -> pitch -> W3 -> chest deck."""
+    W = waist_layout()
+    if W is None:
+        return []
+    m, mn = WAIST(), V['waist']
+    yc, rc, pc = W['yaw'][0], W['roll'][0], W['pitch'][0]
+    out = [(f'{mn}-waist{k}', motor(W[k][0], W[k][1], mn)) for k in ('yaw', 'roll', 'pitch')]
+    yh = m['D'] / 2 + 8.0
+    out.append(('pelvis-deck', plate(Rr(-yh, -yh - 40.0 * R(), yh, yh + 40.0 * R()).difference(holes(m, 'back', (yc[0], yc[1]), 45)), 'xy', Z_D0())))
+    z_w0 = yc[2] + m['L'] / 2 + G
+    out.append(('waist-W0', plate(L.circle(yc[0], yc[1], yh).difference(holes(m, 'out', (yc[0], yc[1]))), 'xy', z_w0)))
+    x_w1 = rc[0] - m['L'] / 2 - G - T                                     # roll stator back (aft), standing on W0
+    W1 = L.unary_union([L.circle(rc[1], rc[2], m['back'][0] / 2 + 14), Rr(-yh * 0.7, z_w0 + T, yh * 0.7, rc[2])])
+    out.append(('waist-W1', plate(W1.difference(holes(m, 'back', (rc[1], rc[2]), 45)), 'yz', x_w1)))
+    x_w2 = rc[0] + m['L'] / 2 + G                                         # roll output (fore), up to the pitch stator plate
+    y_w3 = -(m['L'] / 2 + G + T)                                           # pitch stator back (-y)
+    z_w3 = rc[2] + m['D'] / 2 + G                                         # W3's lower edge, just over the roll can
+    W2 = L.unary_union([L.circle(rc[1], rc[2], m['out'][0] + 30), Rr(y_w3, rc[2], y_w3 + T + 24.0, pc[2] - m['D'] / 2 - G)])
+    out.append(('waist-W2', plate(W2.difference(holes(m, 'out', (rc[1], rc[2]))), 'yz', x_w2)))
+    W3 = L.unary_union([L.circle(pc[0], pc[2], m['back'][0] / 2 + 14), Rr(pc[0] - 20.0, z_w3, x_w2, pc[2])]).intersection(L.box(-1e3, z_w3, x_w2, 1e3))
+    out.append(('waist-W3', plate(W3.difference(holes(m, 'back', (pc[0], pc[2]), 45)), 'xz', y_w3)))
+    y_w4 = m['L'] / 2 + G                                                 # pitch output (+y), up to the chest deck
+    W4 = L.unary_union([L.circle(pc[0], pc[2], m['out'][0] + 30), Rr(pc[0] - 30.0, pc[2], pc[0] + 30.0, Z_CD())])
+    out.append(('waist-W4', plate(W4.difference(holes(m, 'out', (pc[0], pc[2]))), 'xz', y_w4)))
+    return out
 
 
 def plate(profile, plane, w0, t=None):
@@ -236,7 +345,7 @@ def upper_layout(J, side):
 def head_layout(J):
     m = HEAD()
     if V['head_z']:
-        z = V['head_z']                                                    # yaw down in the chest top, between the shoulder cans
+        z = V['head_z'] + V.get('waist_dz', 0.0)                                                    # yaw down in the chest top, between the shoulder cans
     else:                                                                  # no room between them: up above the shoulder cans
         sp = upper_layout(J, 'Left')['sp'][0]
         z = sp[2] + ARM()['D'] / 2 + G + T + G + m['L'] / 2
@@ -277,7 +386,12 @@ def arm(J, side, M):
     # forearm: F1 on the elbow output (xz, outboard), down to the wrist
     y_f1 = abs(ey[1]) + m['L'] / 2 + G
     wr = ey + hang(J, M, side) * 0.62
-    F1 = L.stadium([(ey[0], ey[2], m['out'][0] + 30), (wr[0], wr[2], 30)]).difference(holes(m, 'out', (ey[0], ey[2])))
+    Wr = wrist_layout(J, side, M)
+    if Wr is not None:                                                    # down to the wrist roll's mounting plate
+        z_f2 = Wr['roll'][0][2] + WRIST()['L'] / 2 + G
+        F1 = L.stadium([(ey[0], ey[2], m['out'][0] + 30), (wr[0], z_f2 + T + 15, 30)]).intersection(L.box(-1e3, z_f2 + T, 1e3, 1e3)).difference(holes(m, 'out', (ey[0], ey[2])))
+    else:
+        F1 = L.stadium([(ey[0], ey[2], m['out'][0] + 30), (wr[0], wr[2], 30)]).difference(holes(m, 'out', (ey[0], ey[2])))
     out.append((f'arm-forearmF1.{tag}a', plate(F1, 'xz', yw(y_f1))))
     return out
 
@@ -291,7 +405,7 @@ def torso(J):
     y_s = abs(sp[1]) - m['L'] / 2 - G - T                                # side plate inner face
     hy = H['yaw'][0]
     z_d1 = hy[2] - mh['L'] / 2 - G - T
-    z_d0 = Z_D0()
+    z_d0 = Z_CD()
     x0, x1 = -55.0 * R(), 65.0 * R()
     for s, tag in ((1, 'l'), (-1, 'r')):
         S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(x0, z_d0, x1, max(sp[2], z_d1))]).intersection(L.box(-1e3, -1e3, 1e3, z_d1 if z_d1 > sp[2] else 1e3))
@@ -386,7 +500,7 @@ def foot_nodes(J):
 
 
 def CHEST():
-    return 101.0 * R()                 # chest half-width (mini 101)
+    return 101.0 * R() * V.get('ky', 1.0)          # chest half-width (mini 101)
 
 
 def Z_D0():
@@ -398,6 +512,17 @@ def world():
     J, M = KT.world(K.arms_down())
     J = {n: dict(j, p=np.asarray(j['p']) * V['scale']) for n, j in J.items()}
     M = {n: m.copy().apply_scale(V['scale']) for n, m in M.items()}
+    ky, kx = V.get('ky', 1.0), V.get('trunk_kx', 1.0)                    # full: slimmer across (H2 is 456 mm wide), shallower trunk
+    if ky != 1.0:
+        J = {n: dict(j, p=j['p'] * np.array([1.0, ky, 1.0])) for n, j in J.items()}
+        M = {n: m.apply_scale([1.0, ky, 1.0]) for n, m in M.items()}
+    if kx != 1.0:
+        M['Trunk'] = M['Trunk'].apply_scale([kx, 1.0, 1.0])
+    dz = V.get('waist_dz', 0.0)                                           # the waist stack lengthens the trunk: lift arms + head
+    if dz:
+        up = lambda n: any(k in n for k in ('Shoulder', 'Elbow', 'Head', 'Arm', 'hand'))
+        J = {n: dict(j, p=j['p'] + np.array([0, 0, dz])) if up(n) else j for n, j in J.items()}
+        M = {n: m.apply_translation([0, 0, dz]) if up(n) else m for n, m in M.items()}
     return J, M
 
 
@@ -405,5 +530,5 @@ def structure():
     J, M = world()
     out = []
     for side in ('Left', 'Right'):
-        out += leg(J, side) + arm(J, side, M)
-    return out + torso(J) + head(J) + electronics(J) + foot_nodes(J)
+        out += leg(J, side) + arm(J, side, M) + wrist(J, side, M)
+    return out + torso(J) + waist() + head(J) + electronics(J) + foot_nodes(J)

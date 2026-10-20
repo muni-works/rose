@@ -39,7 +39,7 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
 
 def SHOULDER_FLANK():
     """half-width of the chest at the shoulder line: the shoulder-pitch disc sits flush in it (full-size H2/T2 language)."""
-    return 124.0 * KS.R()
+    return 124.0 * KS.R() * KS.V.get('ky', 1.0)
 
 
 def _circle(c, u, v, r, n=48):
@@ -102,6 +102,9 @@ def cut_shell(m, cuts):
     for c in cuts:
         if c[0] == 'box':
             out_m = out_m - Manifold.cube(list(c[2])).translate(list(c[1]))
+        elif c[0] == 'ycyl':                                    # ('ycyl', centre, radius[, half length]): a bore along y
+            p, r = c[1], c[2]; hl = c[3] if len(c) > 3 else r
+            out_m = out_m - Manifold.cylinder(2 * hl, r, r, 72).rotate([-90, 0, 0]).translate([p[0], p[1] - hl, p[2]])
         else:                                                   # ('xcyl', centre on the face, radius, depth)
             _, p, r, dep = c
             out_m = out_m - Manifold.cylinder(dep * 2, r, r, 48).rotate([0, 90, 0]).translate([p[0] - dep, p[1], p[2]])
@@ -285,16 +288,38 @@ def design():
         fo = np.array([0, s * (f_in + f_out) / 2, 0]); f_half = (f_out - f_in) / 2  # forearm rides outboard of the inner elbow plate
         r0f = rel * 0.8
         fdep = [(0.0, r0f), (0.2, r0f * 1.12), (0.55, r0f * 0.92), (1.0, 15.0)]            # full under the elbow, slim at the wrist
-        fore = bone(ey_ + fo, r0f, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=f_half, depth=fdep)
+        Wr = KS.wrist_layout(J, side, M)
+        if Wr is not None:                                     # 7-DoF arm: the forearm ends round over the wrist-roll can
+            mw = KS.WRIST(); rcw, pcw, ycw = Wr['roll'][0], Wr['pitch'][0], Wr['yaw'][0]
+            r_sl = Wr['r_sl']                                  # sleeve: holds R0/R1 + the pitch can's ends
+            f_half = r_sl; fo = np.array([0, rcw[1] - ey_[1], 0])      # same inboard face, wider outboard
+            wrist = np.array([ey_[0], ey_[1], rcw[2] - mw['L'] / 2])
+            fdep = [(0.0, r0f), (0.2, r0f * 1.12), (0.6, max(r0f * 0.9, r_sl + 2.0)), (1.0, r_sl)]
+        fore = bone(ey_ + fo, r0f, wrist + fo, 18.0 if Wr is None else r_sl, lateral=(0, 1.0, 0), half_w=f_half, depth=fdep)
         add(f'cover-forearm.{tag}a', fore)
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
         low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=ma_['L'] / 2 + g_ + t_ + 3.3)
         fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
         add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
-        palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
-        add(f'cover-hand.{tag}a', hull_rings(palm))
-        add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
+        if Wr is None:
+            palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
+            add(f'cover-hand.{tag}a', hull_rings(palm))
+            add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
+        else:                                                  # round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
+            WS = dict(KS.wrist(J, side, M)); g = lambda k: M_(WS[f'{k}.{tag}a'])
+            z_sl0, z_sl1 = rcw[2] - mw['L'] / 2 - 1.0, pcw[2] + mw['D'] / 2 + 1.0
+            add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1 if z_sl0 > z_sl1 else z_sl1 - z_sl0))
+            drum = M_(cyl(pcw, [0, 1.0, 0], mw['D'] / 2 + 3.0, mw['L'] + 2 * (KS.G + KS.T) + 2.0))
+            add(f'trim-wristpitch.{tag}a', tm(drum - sweep_union(g('wrist-P0'), pcw, [((0, 1.0, 0), -75, 75)], scale=1.04, step=5.0)))
+            rd = (pcw[2] - mw['D'] / 2 - 3.0) - ycw[2] - 2.0          # the hand's crown: a dome about the yaw axis, under the pitch drum
+            cw = np.array([ycw[0] + 4.0, ycw[1], 0])
+            crown = [(ycw[2] + rd * math.cos(th), max(rd * math.sin(th), 6.0)) for th in np.linspace(0.0, 1.35, 6)]
+            zt = tip[2]
+            body_ = [(ycw[2] - 0.25 * (ycw[2] - zt), 35.0), (ycw[2] - 0.55 * (ycw[2] - zt), 31.0), (ycw[2] - 0.82 * (ycw[2] - zt), 20.0), (zt, 8.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, 40.0 * min(1.0, a_ / 30.0 + 0.3), n=2.4) for z_, a_ in crown + body_]
+            hand = M_(hull_rings(palm)) - sweep_union(g('wrist-P1') + g('wrist-P0'), ycw, [((1.0, 0, 0), -45, 45)], scale=1.04, step=5.0)
+            add(f'cover-hand.{tag}a', tm(hand))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         # shoulder, full-size humanoid language (H2/T2): a round pitch disc flush on the chest flank, a deltoid that
         # belongs to the arm (wraps the roll drum, flows into the upper arm), the chest top sloping down to meet it
@@ -323,6 +348,9 @@ def design():
     # rib cage, a slimmer abdomen down to a pelvis that flares out over the hips
     Rk = KS.R()
     z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
+    Wl = KS.waist_layout()
+    if Wl is not None:                                          # 3-DoF waist: the chest starts at the pitch axis, a slim drum below
+        z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
     chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk, trap=None,
                   flare=(zs - 62.0 * Rk, zs - 18.0 * Rk, SHOULDER_FLANK() / KS.CHEST()))   # V: widest at the shoulders   # full width at the shoulders
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
@@ -334,13 +362,31 @@ def design():
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
+    if KS.waist_layout() is not None:                           # bore for the waist pitch hub + its plates: the chest turns about it
+        Wp = KS.waist_layout()['pitch'][0]
+        chest_m = cut_shell(chest_m, [('ycyl', list(Wp), KS.WAIST()['back'][0] / 2 + 22.0, 0.62 * KS.CHEST() * 0.90 + 2.0)])
     add('cover-chest', chest_m)
-    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
-    abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
-    if KS.V['name'] == 'mini':                                  # intake grille, low front
-        xf = abd.bounds[1][0]
-        abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)])
-    add('cover-abdomen', abd)
+    if Wl is None:
+        add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
+    else:                                                       # gunmetal pitch hub, coaxial (turns in place under the chest), and a
+        mw = KS.WAIST(); pc_, rc_, yc_ = Wl['pitch'][0], Wl['roll'][0], Wl['yaw'][0]      # satin drum coaxial with the yaw: the H2's waist
+        hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 5.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
+            sweep_union(M_(dict(KS.waist())['waist-W4']), pc_, [((0, 1.0, 0), -25, 60)], scale=1.03, step=5.0)   # the chest mount pitches through it
+        add('accent-waisthub', tm(hub))
+        r_d = math.hypot(mw['L'] / 2 + KS.G + KS.T + 2.0, mw['D'] / 2) + 4.0
+        z_d = KS.Z_D0() + KS.T + 1.0                              # on the pelvis top, clear of the deck
+        WS = dict(KS.waist())
+        drum = M_(cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d)) + \
+            M_(cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # yaw drum + roll hub, one satin piece
+        drum = drum - sweep_union(M_(WS['waist-W2']) + M_(WS['waist-W3']) + M_(WS[f"{KS.V['waist']}-waistpitch"]),
+                                  rc_, [((1.0, 0, 0), -25, 25)], scale=1.03, step=5.0)       # the roll swings the pitch stage over it
+        add('cover-waist', tm(drum))
+    if Wl is None:
+        abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
+        if KS.V['name'] == 'mini':                              # intake grille, low front
+            xf = abd.bounds[1][0]
+            abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)])
+        add('cover-abdomen', abd)
     if KS.V['name'] == 'mini' and KS.ELEC['estop']:             # the e-stop: red 40 mm mushroom on the upper back
         es = KS.ELEC['estop']; xb = chest_m.bounds[0][0]
         head = cyl(np.array([xb - es['proud'] + 6.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], es['head_d'] / 2, 12.0)
@@ -351,7 +397,8 @@ def design():
     rl = KS.layout(J, 'Left')['roll'][0]; m06 = KS.BIG(); Rk = KS.R()
     x0, x1 = lo[0] + 10, hi[0] - 12; xm, xh = (x0 + x1) / 2, (x1 - x0) / 2
     xh = max(xh, (max(abs(rl[0] - m06['L'] / 2 - xm), abs(rl[0] + m06['L'] / 2 - xm)) + 5.0) / 0.88)   # deep enough for the roll cans
-    secs = [rrect(np.array([xm, 0, 14.0 * Rk]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST() * 0.84, xh, 22.0 * Rk)]   # meets the abdomen; flares over the hip cans below
+    z_pt = 14.0 * Rk if KS.waist_layout() is None else KS.Z_D0() + KS.T + 0.5   # waist: the pelvis closes over the deck
+    secs = [rrect(np.array([xm, 0, z_pt]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST() * 0.84, xh, 22.0 * Rk)]   # meets the abdomen; flares over the hip cans below
     for th in np.linspace(0, np.pi / 2, 7):                     # the cans' lower quadrant, 5 mm proud
         r_ = m06['D'] / 2 + 5.0
         y_, z_ = rl[1] + r_ * np.cos(th), rl[2] - r_ * np.sin(th)
@@ -449,7 +496,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-')) or (n == 'torso-deck0' and KS.waist_layout() is not None)) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

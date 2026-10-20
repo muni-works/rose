@@ -165,7 +165,8 @@ def cuts_src(src, cuts, o):
             tool = f'[translate {f(c[0] - dep)} {f(c[1])} {f(c[2])} [rotate 0 90 0 [cylinder-n {f(r)} {f(2 * dep)} 48]]]'
         elif kind == 'ycyl':
             c, r = np.asarray(a[0], float) - o, a[1]
-            tool = f'[translate {f(c[0])} {f(-r)} {f(c[2])} [rotate -90 0 0 [cylinder-n {f(r)} {f(2 * r)} 72]]]'
+            hl = a[2] if len(a) > 2 else r
+            tool = f'[translate {f(c[0])} {f(c[1] - hl)} {f(c[2])} [rotate -90 0 0 [cylinder-n {f(r)} {f(2 * hl)} 72]]]'
         else:
             p, sz = np.asarray(a[0], float) - o, a[1]
             tool = f'[translate {f(p[0])} {f(p[1])} {f(p[2])} [cube {f(sz[0])} {f(sz[1])} {f(sz[2])}]]'
@@ -216,6 +217,9 @@ def shell_src(m, o):
 
 def pivots(J):
     P = {'torso': np.zeros(3)}
+    W = KS.waist_layout()
+    if W is not None:
+        P['wyaw'], P['wroll'], P['chest'] = W['yaw'][0], W['roll'][0], W['pitch'][0]
     H = KS.head_layout(J)
     P['hyaw'], P['hpitch'] = H['yaw'][0], H['pitch'][0]
     for side, t in (('Left', 'l'), ('Right', 'r')):
@@ -225,12 +229,22 @@ def pivots(J):
         P[f'anklep.{t}'] = P[f'ankle.{t}'] = Lg['ankle']
         for k in ('sp', 'sr', 'ep', 'ey'):
             P[f'{k}.{t}'] = U[k][0]
+        Wr = KS.wrist_layout(J, side)
+        if Wr is not None:
+            for k, b in (('roll', 'wr'), ('pitch', 'wp'), ('yaw', 'wy')):
+                P[f'{b}.{t}'] = Wr[k][0]
     return P
 
 
 def joints(J):
     """(name, parent, child, axis, lo, hi) -- axes signed as the K1's, limits from its URDF."""
     out = []
+    import rom_mini as R_
+    top = R_.TOP()
+    W = KS.waist_layout()
+    if W is not None:
+        for jn, par, ch, k in (('Waist_yaw', 'torso', 'wyaw', 'yaw'), ('Waist_roll', 'wyaw', 'wroll', 'roll'), ('Waist_pitch', 'wroll', 'chest', 'pitch')):
+            out.append((jn.lower(), par, ch, np.asarray(W[k][1], float), *R_.WAIST_LIM[jn]))
     lim = lambda n: tuple(np.degrees(J[n]['lim']))
     sgn = lambda ours, n: np.asarray(ours, float) * (np.sign(np.dot(ours, J[n]['axis'])) or 1.0)
     for side, t in (('Left', 'l'), ('Right', 'r')):
@@ -240,12 +254,16 @@ def joints(J):
                                ('Ankle_Pitch', f'knee.{t}', f'anklep.{t}', [0, 1, 0]), ('Ankle_Roll', f'anklep.{t}', f'ankle.{t}', [1, 0, 0])):
             n = f'{side}_{jn}'
             out.append((f'{t}_{jn.lower()}', par, ch, sgn(a, n), *lim(n)))
-        for jn, par, ch, a, n in (('shoulder_pitch', 'torso', f'sp.{t}', [0, 1, 0], f'A{side}_Shoulder_Pitch'),
+        for jn, par, ch, a, n in (('shoulder_pitch', top, f'sp.{t}', [0, 1, 0], f'A{side}_Shoulder_Pitch'),
                                   ('shoulder_roll', f'sp.{t}', f'sr.{t}', [1, 0, 0], f'{side}_Shoulder_Roll'),
                                   ('upperarm_rot', f'sr.{t}', f'ep.{t}', [0, 0, -1], f'{side}_Elbow_Pitch'),
                                   ('elbow', f'ep.{t}', f'ey.{t}', [0, s, 0], f'{side}_Elbow_Yaw')):
             out.append((f'{t}_{jn}', par, ch, sgn(a, n), *lim(n)))
-    out.append(('head_yaw', 'torso', 'hyaw', sgn([0, 0, 1], 'AAHead_yaw'), *lim('AAHead_yaw')))
+        Wr = KS.wrist_layout(J, side)
+        if Wr is not None:
+            for jn, par, ch, k in (('Wrist_roll', f'ey.{t}', f'wr.{t}', 'roll'), ('Wrist_pitch', f'wr.{t}', f'wp.{t}', 'pitch'), ('Wrist_yaw', f'wp.{t}', f'wy.{t}', 'yaw')):
+                out.append((f'{t}_{jn.lower()}', par, ch, np.asarray(Wr[k][1], float), *R_.WRIST_LIM[jn]))
+    out.append(('head_yaw', top, 'hyaw', sgn([0, 0, 1], 'AAHead_yaw'), *lim('AAHead_yaw')))
     out.append(('head_pitch', 'hyaw', 'hpitch', sgn([0, 1, 0], 'Head_pitch'), *lim('Head_pitch')))
     return out
 
