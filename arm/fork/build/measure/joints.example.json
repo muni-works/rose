@@ -1,0 +1,8 @@
+{
+  "J1_yaw":         {"id": 1, "model": "RS04", "sign": 1, "offset": 0.0},
+  "J2_sho_pitch":   {"id": 2, "model": "RS04", "sign": 1, "offset": 0.0},
+  "J4_elbow":       {"id": 4, "model": "RS04", "sign": 1, "offset": 0.0},
+  "J5_fore_roll":   {"id": 5, "model": "RS02", "sign": 1, "offset": 0.0},
+  "J6_wrist_pitch": {"id": 6, "model": "RS02", "sign": 1, "offset": 0.0},
+  "J7_tool_roll":   {"id": 7, "model": "RS00", "sign": 1, "offset": 0.0}
+}
