@@ -49,7 +49,7 @@ MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('muni
         'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
         'limbic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'node': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
         'fan': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'estopbody': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
-        'brake': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'bms': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
+        'brake': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'dock': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'elrs': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'bms': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
         'estophead': ('estop_red', 0.78, 0.04, 0.03, 0.0, 0.35), 'estopcollar': ('estop_yellow', 0.98, 0.78, 0.05, 0.0, 0.45)}
 
 

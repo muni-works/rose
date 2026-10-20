@@ -365,9 +365,14 @@ def design():
     if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
         Wp_ = KS.waist_layout()['pitch'][0]
         chest_m = relief(chest_m, sweep_union(M_(dict(KS.waist())['waist-W3']), Wp_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0))
+    if KS.V['name'] == 'mini':                                  # the back pack's opening (140 x 155): the pack face closes it
+        P_ = KS.ELEC['pack']; x_face = KS.X_BACK() - 5.5
+        OPEN = [('box', [x_face - 200.0, -70.0, P_['z'][0] - 2.0], [200.0, 140.0, P_['z'][1] - P_['z'][0] + 4.0])]
+        chest_m = cut_shell(chest_m, OPEN)
     add('cover-chest', chest_m)
     if Wl is None:
-        add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
+        band = block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk)   # proud of the chest's waist
+        add('accent-waist', cut_shell(band, OPEN) if KS.V['name'] == 'mini' else band)
     else:                                                       # H2-style waist: three coaxial pieces, no slots -- each shell turns
         mw = KS.WAIST(); pc_, rc_ = Wl['pitch'][0], Wl['roll'][0]   # about its own joint axis, so nothing needs cutting away
         WS = dict(KS.waist())
@@ -382,7 +387,11 @@ def design():
         abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
         if KS.V['name'] == 'mini':                              # intake grille, low front
             xf = abd.bounds[1][0]
-            abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)])
+            abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)] + OPEN)
+            P_ = KS.ELEC['pack']; xf_ = KS.X_BACK() - 5.5; z0_, z1_ = P_['z']; xa = xf_ - P_['x']; hy = P_['y'] / 2
+            rings = [rrect(np.array([(xa + xf_) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hy - d_, (xf_ - xa) / 2 - d_, 10.0)
+                     for z_, d_ in ((z0_, 3.0), (z0_ + 3.0, 0.0), (z1_ - 3.0, 0.0), (z1_, 3.0))]
+            add('cover-pack', hull_rings(rings))                  # the pack case (PA12): tool-less, slides down the rails
         add('cover-abdomen', abd)
     if KS.V['name'] == 'mini' and KS.ELEC['estop']:             # the e-stop: red 40 mm mushroom on the upper back
         es = KS.ELEC['estop']; xb = chest_m.bounds[0][0]
@@ -493,7 +502,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-')) ) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-back', 'torso-rail', 'torso-latch'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

@@ -15,6 +15,7 @@ import math
 import numpy as np, trimesh
 from manifold3d import Manifold, CrossSection, FillRule
 import leg as L
+from shapely.geometry import Polygon
 import quad as Q
 import k1 as K, k1_teardown as KT
 
@@ -24,7 +25,7 @@ G = 1.0                      # assembly gap
 # one design, two sizes. R = layout scale relative to the mini (absolute mm that track the body scale by R;
 # motor- and plate-driven dims are computed from the motors and don't scale)
 VARIANTS = {
-    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0)),
+    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0), lighten=dict(rim=7.0, rib=5.0, pitch=28.0, boss=6.0)),
     'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm='rs00', ankle='rs00', head='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
     # tiny: upper arm 20 mm longer (forearm shorter) so the elbow folds past the RS00 rotation drum; foot 14 mm deeper so the
     # low ankle drum clears the sole in roll
@@ -179,12 +180,36 @@ def waist():
     return out
 
 
-def plate(profile, plane, w0, t=None):
+def plate(profile, plane, w0, t=None, light=True):
     """extrude a shapely profile into a plate: plane 'xz' (normal y), 'yz' (normal x), 'xy' (normal z)."""
     t = T if t is None else t
+    if light and V.get('lighten'):
+        profile = lighten(profile, **V['lighten'])
     cs = CrossSection(L.rings(profile), FillRule.EvenOdd)
     m = L.to_world(cs.extrude(t).translate((0, 0, w0)), plane)
     return L.tri(m)
+
+
+def lighten(profile, rim, rib, pitch, boss):
+    """router pocketing: a +-45 deg rib lattice inside a rim, solid bosses round every hole. Through-cut (3.2 mm stock)."""
+    from shapely.geometry import LineString
+    inner = profile.buffer(-rim, join_style=2)
+    if inner.is_empty:
+        return profile
+    polys = list(profile.geoms) if profile.geom_type == 'MultiPolygon' else [profile]
+    keep = L.unary_union([Polygon(h).buffer(boss) for p_ in polys for h in p_.interiors] or [Polygon()])
+    x0, y0, x1, y1 = inner.bounds
+    span = (x1 - x0) + (y1 - y0)
+    lines = []
+    for c in np.arange(-span, span, pitch):                       # +45 and -45 families through the plate's own box
+        lines.append(LineString([(x0 + c - span, y0 - span), (x0 + c + span, y0 + span)]))
+        lines.append(LineString([(x0 + c - span, y1 + span), (x0 + c + span, y1 - span)]))
+    ribs = L.unary_union(lines).buffer(rib / 2, cap_style=2)
+    pockets = inner.difference(ribs).difference(keep)
+    geoms = list(pockets.geoms) if hasattr(pockets, 'geoms') else [pockets]
+    cut = [g.buffer(-2.0).buffer(2.0) for g in geoms if g.area > 90.0]    # router: 4 mm min radius, no slivers
+    cut = [g for g in cut if not g.is_empty]
+    return profile.difference(L.unary_union(cut)) if cut else profile
 
 
 def motor(c, ax, mot):
@@ -241,7 +266,7 @@ def leg(J, side):
     y0, y1 = span(rc[1] - s * 20, y_pf - s * T)        # butts against the inner hip plate
     R1 = L.unary_union([L.circle(rc[1], rc[2], m06['out'][0] + 30), L.rounded(y0, hp[2] + (4 if V['name'] == 'mini' else -10), y1, rc[2], 8)])   # mini: stops above the pitch axis, the rest would show inboard of the hip drum
     R1 = R1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(rc[1], rc[2])))
-    out.append((f'chassis-hipR.{tag}l', plate(R1, 'yz', x_ro)))
+    out.append((f'chassis-hipR.{tag}l', plate(R1, 'yz', x_ro, light=False)))
     # -- hip inner: xz plate on the pitch stator back, forward to hip R; stays below the roll can and above the yaw
     z_top = yc[2] + m02['L'] / 2 + G                       # yaw stator top
     z_rb = rc[2] - m06['D'] / 2 - G                        # roll can bottom
@@ -250,18 +275,18 @@ def leg(J, side):
     r_sw = hp[2] - (yc[2] + m02['L'] / 2) - 3.0                         # the yaw can swings round the pitch axis at this radius
     HI = HI.intersection(L.unary_union([L.circle(hp[0], hp[2], 2 * r_sw), L.box(-1e3, hp[2], 1e3, 1e3)]))
     HI = HI.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(hp[0], hp[2])))
-    out.append((f'chassis-hipinner.{tag}l', plate(HI, 'xz', y_pi)))
+    out.append((f'chassis-hipinner.{tag}l', plate(HI, 'xz', y_pi, light=False)))
     # -- hip A: xz plate on the pitch output (outboard), down to the yaw-top plate
     y_out = hp[1] + s * (m06['L'] / 2 + G)
     A1 = L.unary_union([L.circle(hp[0], hp[2], m06['out'][0] + 30), L.rounded(hp[0] - 40, z_top, hp[0] + 40, hp[2], 10)])
     A1 = A1.intersection(L.box(-1e3, z_top + T, 1e3, 1e3))
     A1 = A1.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(hp[0], hp[2])))
-    out.append((f'chassis-hipA.{tag}l', plate(A1, 'xz', face(y_out, s))))
+    out.append((f'chassis-hipA.{tag}l', plate(A1, 'xz', face(y_out, s), light=False)))
     # -- hip B2: xy plate on the yaw stator top, out to hip A
     yb0, yb1 = span(yc[1] - s * 40, y_out)
     B2 = L.unary_union([L.circle(yc[0], yc[1], m02['back'][0] + 22), L.rounded(yc[0] - 40, yb0, yc[0] + 40, yb1, 8)])
     B2 = B2.difference(L.holes_on(m02['back'][0], m02['back'][1], m02['hole'], phase=45, at=(yc[0], yc[1])))
-    out.append((f'chassis-hipB2.{tag}l', plate(B2, 'xy', z_top)))
+    out.append((f'chassis-hipB2.{tag}l', plate(B2, 'xy', z_top, light=False)))
     # -- thigh: a top plate on the yaw output, an inner plate (knee stator) + outer plate down to the knee
     z_yo = yc[2] - m02['L'] / 2 - G                 # yaw output face (down)
     yk_in = kc[1] - s * (m06['L'] / 2 + G)          # knee back face (inboard)
@@ -295,10 +320,10 @@ def leg(J, side):
         out.append((f"{V['ankle']}-ankle{(42, 66)[len(a_mot) - 1]}.{side[0].lower()}l", motor(cm, [0, s * 1.0, 0], V['ankle'])))
     shin_o = L.stadium([(kc[0], kc[2], W - 4), (a_mot[0][0], a_mot[0][2], m00['D'] + 10), (a_mot[1][0], a_mot[1][2], m00['D'] + 10), (ac[0], ac[2], 40)])
     shin_o = shin_o.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(kc[0], kc[2])))
-    out.append((f'shin-outer.{side[0].lower()}l', plate(shin_o, 'xz', y_so)))
+    out.append((f'shin-outer.{side[0].lower()}l', plate(shin_o, 'xz', y_so, light=False)))   # shins stay solid: buckling-critical
     z_box = kc[2] - m06['D'] / 2 - 6               # the inner shin plate starts below the knee can
     shin_i = L.stadium([(a_mot[0][0], z_box - 34, m00['D'] + 22), (a_mot[1][0], a_mot[1][2], m00['D'] + 22), (ac[0], ac[2], 48)])
-    out.append((f'shin-inner.{side[0].lower()}l', plate(shin_i, 'xz', y_si)))
+    out.append((f'shin-inner.{side[0].lower()}l', plate(shin_i, 'xz', y_si, light=False)))
     # bridge from the outer shin plate to the inner one under the knee can (a yz web), keeps the box closed
     if V['web_x'] is not None:
         web = L.rounded(min(y_si, y_so) + T, z_box - 16, max(y_si, y_so), z_box, 4)
@@ -435,55 +460,64 @@ def head(J):
 
 # electronics in the torso bay. PLACEHOLDERS until the limbic-board spec (rose branch claude/limbic-spec, LIMBIC.md)
 # lands: cells, pack arrangement, Jetson and board envelopes are assumptions, sized to the bay; swap numbers here.
-ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700: 43.2 V nominal, ~9 Ah with 4.5 Ah cells
-            pack_grid=(6, 2),                                       # cells per side pack: x by y, standing upright
+ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700 (Molicel P50B class): 432 Wh, ~1.7 h walking
+            # ONE tool-less swappable pack on the back (LIMBIC.md option C, claude/limbic-spec e8bdb9c): slides DOWN on two rails
+            # on the back plate, gravity-seats a blind-mate dock at the bottom, spring latch at the top lip. Case 136 (y) x 58 (x,
+            # proud of the back) x 150 (z) incl. a <=10 mm BQ76952 cell-monitor slab (power FETs on the limbic board) + 2 mm PA12.
+            # Option D (short missions, documented only): same footprint, 80 mm deep, 12S3P 648 Wh, +1 kg; ROM clears, but the
+            # walking knee is already at RS06 continuous, so it's thermally marginal.
+            pack=dict(y=136.0, x=58.0, z=(20.0, 170.0), kg=2.0, cells=(2, 6, 2)),   # cells x, y, z (upright 21700s, two tiers)
+            monitor=10.0,                                           # BQ76952 slab on the pack's dock face
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
-            bms=10.0,                                                # 12S BMS on each pack's aft face (10 mm: >=60 A FETs, LIMBIC.md)
-            fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out); brake resistor (size TBD)
-            estop=None,                                             # no e-stop (the K1 has none); was an IDEC XA1E-BV402R on the upper back
-            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(145.0, 175.0)),          # slot grilles: abdomen front, chest back
+            fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out, above the pack); brake resistor (size TBD)
+            estop=None,                                             # no hard e-stop (the K1 has none): wireless ELRS e-stop instead
+            elrs=(20.0, 14.0, 5.0),                                 # ELRS 2.4 GHz RX (RP1/RP2 class), chest top; antenna along the PA12 wall
+            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(178.0, 208.0)),          # slot grilles: abdomen front, chest back over the pack
             foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
             board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
 
+def X_BACK():
+    """the back plate's aft face (mini): on the side plates' aft edges."""
+    return -55.0 * R() - T
+
+
 def electronics(J):
-    """battery (two side packs), Jetson and limbic board as envelopes in the chest bay (mini only)."""
+    """the back pack (+ its back plate, rails, dock, latch), Jetson, limbic board, fan, brake, ELRS (mini only)."""
     if V['name'] != 'mini':
         return []
     E, out = ELEC, []
     sp = upper_layout(J, 'Left')['sp'][0]
-    y_side = abs(sp[1]) - ARM()['L'] / 2 - G                 # side plate outer face
-    nx, ny = E['pack_grid']
-    px, py, pz = nx * E['cell_d'], ny * E['cell_d'] + 1.0, E['cell_h'] + 4.0          # cells touching along x (spot-welded strips on top)
-    z_top = sp[2] - ARM()['D'] / 2 - 4.0                     # under the shoulder-pitch can
-    for s, t in ((1, 'l'), (-1, 'r')):
-        y0 = y_side + 2.0 if s > 0 else -(y_side + 2.0) - py
-        xc = 10.0                                                # forward of centre: room aft for a 10 mm BMS
-        box = trimesh.creation.box(extents=[px, py, pz]).apply_translation([xc, y0 + py / 2, z_top - pz / 2])
-        out.append((f'elec-battery.{t}', box))
-        # its 12S BMS (~40 x 60) on the aft face, kept inboard + high: the chest's back corner rounds in low and outboard
-        by0 = y0 if s > 0 else y0 + py - 40.0
-        out.append((f'elec-bms.{t}', trimesh.creation.box(extents=[E['bms'], 40.0, 60.0]).apply_translation(
-            [xc - px / 2 - E['bms'] / 2, by0 + 20.0, z_top - 30.0])))
-    yi = abs(sp[1]) - ARM()['L'] / 2 - G - T - 1.0           # side plate inner face, less a gap
+    y_s = abs(sp[1]) - ARM()['L'] / 2 - G - T                 # side plate inner face
+    P = E['pack']; z0, z1 = P['z']
+    xb = X_BACK()
+    # back plate between the side plates' aft edges, deck0 up to the pack top; rails on it, dock at the bottom, latch at the top
+    out.append(('torso-back', plate(Rr(-(y_s + T), z0 - 4.0, y_s + T, z1), 'yz', xb)))
+    x_rail = xb - 4.5
+    for s_, t in ((1, 'l'), (-1, 'r')):
+        out.append((f'torso-rail.{t}', trimesh.creation.box(bounds=[[x_rail, s_ * 30.0 - 4.0, z0 + 6.0], [xb, s_ * 30.0 + 4.0, z1 - 4.0]])))
+    out.append(('elec-dock', trimesh.creation.box(bounds=[[x_rail, -16.0, z0 - 2.0], [xb, 16.0, z0 + 16.0]])))   # blind-mate, gravity-seated
+    out.append(('torso-latch', trimesh.creation.box(bounds=[[xb - 10.0, 24.0, z1 + 1.0], [xb, 44.0, z1 + 5.0]])))   # spring latch over the lip
+    # the pack: cells + monitor slab inside the case (the case is a shell, cover-pack)
+    x_face = x_rail - 1.0                                       # pack's dock face
+    cx, cy, cz = P['cells']
+    bx, by_, bz = cx * E['cell_d'], cy * E['cell_d'], cz * E['cell_h'] + 4.0
+    x_c0 = x_face - 2.0 - E['monitor']
+    out.append(('elec-bms', trimesh.creation.box(bounds=[[x_c0, -by_ / 2, z0 + 3.0], [x_face - 2.0, by_ / 2, z1 - 3.0]])))
+    out.append(('elec-battery', trimesh.creation.box(bounds=[[x_c0 - bx, -by_ / 2, (z0 + z1) / 2 - bz / 2], [x_c0, by_ / 2, (z0 + z1) / 2 + bz / 2]])))
     jx, jy, jz = E['jetson']
     z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
     out.append(('elec-jetson', trimesh.creation.box(extents=[jx, jy, jz]).apply_translation([5.0, 0.0, z_d1 - 4.0 - jz / 2])))
-    R_ = R()
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
-    x_back = -65.0 * R_                                       # inside the chest back wall
-    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_back + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
+    x_wall = -65.0 * R()                                      # inside the chest back wall
+    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
     rx, ry, rz = E['brake']
-    out.append(('elec-brake', trimesh.creation.box(extents=[rx, ry, rz]).apply_translation([5.0 - jx / 2 - 3 - rx / 2, 0.0, zo[0] - 5 - rz / 2])))
-    es = E['estop']
-    if not es:
-        return out
-    body = trimesh.creation.cylinder(radius=es['body_d'] / 2, height=es['body_l']).apply_transform(
-        trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_translation([x_back + 2 + es['body_l'] / 2, 0.0, es['z'] * R_])
-    out.append(('elec-estopbody', body))
-    bx, by, bz = E['board']
-    by = min(by, 2 * yi)
-    out.append(('elec-limbic', trimesh.creation.box(extents=[bx, by, bz]).apply_translation([5.0, 0.0, Z_D0() + T + 6.0 + bz / 2])))
+    out.append(('elec-brake', trimesh.creation.box(extents=[rx, ry, rz]).apply_translation([5.0 - jx / 2 - 3 - rx / 2, 0.0, 120.0])))
+    ex, ey_, ez = E['elrs']
+    out.append(('elec-elrs', trimesh.creation.box(extents=[ex, ey_, ez]).apply_translation([45.0, 0.0, z_d1 - 6.0 - ez / 2])))
+    bx_, by2, bz_ = E['board']
+    by2 = min(by2, 2 * (y_s - 1.0))
+    out.append(('elec-limbic', trimesh.creation.box(extents=[bx_, by2, bz_]).apply_translation([5.0, 0.0, Z_D0() + T + 6.0 + bz_ / 2])))
     return out
 
 
