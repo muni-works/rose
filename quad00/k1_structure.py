@@ -305,7 +305,7 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
             bms=10.0,                                                # 12S BMS on each pack's aft face (10 mm: >=60 A FETs, LIMBIC.md)
             fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out); brake resistor (size TBD)
-            estop=dict(head_d=40.0, proud=26.0, body_d=30.0, body_l=32.0, z=205.0),   # IDEC XA1E-BV402R on the upper back
+            estop=None,                                             # no e-stop (the K1 has none); was an IDEC XA1E-BV402R on the upper back
             vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(145.0, 175.0)),          # slot grilles: abdomen front, chest back
             foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
             board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
@@ -341,6 +341,8 @@ def electronics(J):
     rx, ry, rz = E['brake']
     out.append(('elec-brake', trimesh.creation.box(extents=[rx, ry, rz]).apply_translation([5.0 - jx / 2 - 3 - rx / 2, 0.0, zo[0] - 5 - rz / 2])))
     es = E['estop']
+    if not es:
+        return out
     body = trimesh.creation.cylinder(radius=es['body_d'] / 2, height=es['body_l']).apply_transform(
         trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])).apply_translation([x_back + 2 + es['body_l'] / 2, 0.0, es['z'] * R_])
     out.append(('elec-estopbody', body))

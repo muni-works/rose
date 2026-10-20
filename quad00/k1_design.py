@@ -45,6 +45,7 @@ def hull_rings(rings, **meta):
     return m
 
 
+JOINT_CAPS = False                     # the orange joint caps (pucks); off since 2026-10-20
 GROOVE_D, GROOVE_W = 1.2, 1.6          # parting lines: depth into the skin, width
 
 
@@ -299,7 +300,8 @@ def design():
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
         cuts = [('box', [xb - 2.0, -18.0, zc - 1.75], [6.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
-        cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))          # e-stop: 16.2 mm hole in the back
+        if E['estop']:
+            cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
     add('cover-chest', chest_m)
     add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
@@ -308,7 +310,7 @@ def design():
         xf = abd.bounds[1][0]
         abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)])
     add('cover-abdomen', abd)
-    if KS.V['name'] == 'mini':                                  # the e-stop: red 40 mm mushroom on the upper back
+    if KS.V['name'] == 'mini' and KS.ELEC['estop']:             # the e-stop: red 40 mm mushroom on the upper back
         es = KS.ELEC['estop']; xb = chest_m.bounds[0][0]
         head = cyl(np.array([xb - es['proud'] + 6.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], es['head_d'] / 2, 12.0)
         stem = cyl(np.array([xb - es['proud'] / 2 + 1.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], 11.0, es['proud'] - 10.0)
@@ -391,7 +393,7 @@ def design():
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
         add(f'puck-ear.{"l" if s > 0 else "r"}', cyl(np.array([hp_[0], s * (hw - 1.0), hc[2] - hh * 0.02]), [0, 1.0, 0], 17.0, 4.0))
-    return out
+    return out if JOINT_CAPS else [(n, m) for n, m in out if not n.startswith('puck-')]   # caps off: plain satin drums, like the K1
 
 
 PERM = {0: np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]), 1: np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]), 2: np.eye(3)}
