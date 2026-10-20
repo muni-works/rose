@@ -183,7 +183,9 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
         k = 0.84 + (0.90 - 0.84) * ss(z0, z_ch, z) + (1.0 - 0.90) * ss(z_ch, zs - 40.0 * Rk, z)
         k *= 1.0 + (flank / CH - 1.0) * ss(zs - 62.0 * Rk, zs - 18.0 * Rk, z)
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
-        return (x0 + x1) / 2, CH * k, (x1 - x0) / 2
+        lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
+        xm, h = (x0 + x1) / 2, (x1 - x0) / 2
+        return xm, CH * k, h * (1 - lean)
     rf = 16.0 * Rk                                              # crown fillet, like the head's
     zt = zc1 + 10.0 * Rk
     rings = []
@@ -399,7 +401,8 @@ def design():
     E = KS.ELEC
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
-        cuts = [('box', [xb - 2.0, -18.0, zc - 1.75], [6.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
+        Mc = M_(chest_m)                                        # exhaust slots through the (leaning) back wall at each slot's height
+        cuts = [('box', [Mc.slice(zc).bounds()[0] - 2.0, -18.0, zc - 1.75], [7.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)

@@ -25,7 +25,7 @@ G = 1.0                      # assembly gap
 # one design, two sizes. R = layout scale relative to the mini (absolute mm that track the body scale by R;
 # motor- and plate-driven dims are computed from the motors and don't scale)
 VARIANTS = {
-    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0), lighten=dict(rim=7.0, rib=5.0, pitch=28.0, boss=6.0), leg_in=20.0),
+    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0), lighten=dict(rim=7.0, rib=5.0, pitch=28.0, boss=6.0), leg_in=20.0, torso_lean=0.25),
     'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm='rs00', ankle='rs00', head='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
     # tiny: upper arm 20 mm longer (forearm shorter) so the elbow folds past the RS00 rotation drum; foot 14 mm deeper so the
     # low ankle drum clears the sole in roll
@@ -35,7 +35,7 @@ VARIANTS = {
     # 2 m, full/SIZING.md) -- this is a packaging/kinematics/look model until the rana actuators exist.
     'full': dict(scale=170.3 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
                  ankle_f=None, head_z=395.5, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
-                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88, leg_in=30.0),
+                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88, leg_in=30.0, torso_lean=0.25),
 }
 V = dict(VARIANTS['mini'], name='mini')
 
@@ -469,10 +469,10 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             pack=dict(cells=(4, 3, 2), kg=2.0),                     # cells x, y, z
             monitor=10.0,                                           # BQ76952 slab on the pack's dock (front) face
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
-            fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out, above the pack); brake resistor (size TBD)
+            fan=(10.0, 30.0, 30.0), brake=(28.0, 50.0, 20.0),       # 30 mm exhaust fan (blowing out, above the pack, under the leaning back); brake resistor (size TBD)
             estop=None,                                             # no hard e-stop (the K1 has none): wireless ELRS e-stop instead
             elrs=(20.0, 14.0, 5.0),                                 # ELRS 2.4 GHz RX (RP1/RP2 class), chest top; antenna along the PA12 wall
-            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(178.0, 208.0)),          # slot grilles: abdomen front, chest back over the pack
+            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(172.0, 200.0)),          # slot grilles: abdomen front, chest back over the pack
             foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
             board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
@@ -504,7 +504,7 @@ def electronics(J):
     x_dp = hi[0] + 6.0                                          # dock cross plate, between the side plates
     out.append(('torso-dock', plate(Rr(-y_s, Z_D0() + T, y_s, lo[2] + 70.0), 'yz', x_dp)))
     out.append(('elec-dock', trimesh.creation.box(bounds=[[hi[0] + 0.5, -16.0, lo[2] + 4.0], [x_dp, 16.0, lo[2] + 24.0]])))
-    out.append(('torso-latch', trimesh.creation.box(bounds=[[lo[0] + 10.0, -10.0, hi[2] + 0.5], [lo[0] + 22.0, 10.0, hi[2] + 3.5]])))
+    out.append(('torso-latch', trimesh.creation.box(bounds=[[lo[0] + 10.0, 22.0, hi[2] + 0.5], [lo[0] + 22.0, 38.0, hi[2] + 3.5]])))
     cx, cy, cz = E['pack']['cells']
     xm = hi[0] - 2.0 - E['monitor']
     out.append(('elec-bms', trimesh.creation.box(bounds=[[xm, lo[1] + 2.0, lo[2] + 2.0], [hi[0] - 2.0, hi[1] - 2.0, hi[2] - 2.0]])))
@@ -518,7 +518,7 @@ def electronics(J):
     rx, ry, rz = E['brake']
     out.append(('elec-brake', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_ + 2.0 + rz), 112.0], [-50.0 + rx, -(y_o + bz_ + 2.0), 112.0 + ry]])))
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
-    x_wall = -65.0 * R()                                      # inside the chest back wall, over the hatch
+    x_wall = -65.0 * R() + 8.0                                # inside the chest back wall (which leans in up here), over the hatch
     out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
     ex, ey_, ez = E['elrs']
     z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
