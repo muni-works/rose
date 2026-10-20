@@ -37,6 +37,16 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
     return tm(body), trimesh.util.concatenate(caps), r, L
 
 
+def SHOULDER_FLANK():
+    """half-width of the chest at the shoulder line: the shoulder-pitch disc sits flush in it (full-size H2/T2 language)."""
+    return 124.0 * KS.R()
+
+
+def _circle(c, u, v, r, n=48):
+    t = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    return c[None, :] + r * (np.cos(t)[:, None] * u[None, :] + np.sin(t)[:, None] * v[None, :])
+
+
 def hull_rings(rings, **meta):
     """the shell = hull of its section rings; the rings ride along (metadata) so exporters can loft them natively."""
     m = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
@@ -142,17 +152,23 @@ def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w
     return hull_rings(rings)
 
 
-def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_top=None):
+def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_top=None, trap=None, flare=None):
     """a rounded torso block: superellipse sections (x fore, y side) stacked up z, tapered."""
     rings = []
     for t in np.linspace(0, 1, 9):
         z = z0 + (z1 - z0) * t
         tt = t if taper_top is None else min(1.0, (z - z0) / (taper_top - z0))     # taper_top: full width from here up
         k = taper[0] + (taper[1] - taper[0]) * tt
-        rings.append(rrect(np.array([(x0 + x1) / 2, 0, z]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * k, (x1 - x0) / 2 * (0.94 + 0.06 * k), RC))
+        if flare:                                               # broad shoulders: the flanks flare out to the shoulder line
+            zf0, zf1, kf = flare
+            ks = 1.0 + (kf - 1.0) * min(1.0, max(0.0, (z - zf0) / (zf1 - zf0)))
+        else:
+            ks = 1.0
+        rings.append(rrect(np.array([(x0 + x1) / 2, 0, z]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * k * ks, (x1 - x0) / 2 * (0.94 + 0.06 * k), RC))
     if dome:
         for f, d in ((0.9, 0.4), (0.7, 0.75), (0.4, 1.0)):
-            rings.append(rrect(np.array([(x0 + x1) / 2, 0, z1 + dome * d]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * taper[1] * f, (x1 - x0) / 2 * f, RC * f))
+            fy = f if trap is None else f * trap               # trapezius: the top slopes down to the shoulders
+            rings.append(rrect(np.array([(x0 + x1) / 2, 0, z1 + dome * d]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * taper[1] * fy * (flare[2] if flare else 1.0), (x1 - x0) / 2 * f, RC * f))
     return hull_rings(rings)
 
 
@@ -278,12 +294,22 @@ def design():
         add(f'cover-hand.{tag}a', hull_rings(palm))
         add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
+        # shoulder, full-size humanoid language (H2/T2): a round pitch disc flush on the chest flank, a deltoid that
+        # belongs to the arm (wraps the roll drum, flows into the upper arm), the chest top sloping down to meet it
         spc, src = U['sp'][0], U['sr'][0]
-        yc_ = np.array([(spc[0] + src[0]) / 2, 0, (spc[2] + src[2]) / 2])
-        secs = [rrect(np.array([yc_[0], s * y_, yc_[2]]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 33.0, 32.0, 13.0) for y_ in (KS.CHEST() - 13.0, abs(src[1]) - Lsr / 2 + 8.0)]   # stops at the shoulder drum's inner face: the upper arm swings clear
-        yoke = tm(Manifold.hull_points(np.concatenate(secs).astype(np.float32)))
-        ua = M_(dict(out)[f'cover-upperarm.{tag}a'])
-        add(f'cover-shoulderyoke.{tag}a', relief(yoke, sweep_union(ua, U['sr'][0], [(U['sr'][1], -25, 25)], scale=1.03, step=3.0)))   # upper arm swings in clear
+        y_in, y_out = SHOULDER_FLANK() - 14.0, abs(src[1]) - Lsr / 2 - 2.0  # from inside the flared flank to the deltoid, 2 mm gap
+        r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
+        dmid = np.array([spc[0], s * (y_in + y_out) / 2, spc[2]])
+        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], 'rs00', pad=r_disc - 28.5, fil=8.0, extra_len=(y_out - y_in) - 51.0)
+        add(f'cover-shoulderyoke.{tag}a', disc)                              # coaxial with the pitch axis: turns in place
+        ua_m = dict(out)[f'cover-upperarm.{tag}a']
+        ax_ = np.asarray(U['sr'][1], float); c_ = U['sr'][0] + np.array([3.0, 0, 0])
+        vv, ww = np.array([0, 1.0, 0]), np.array([0, 0, 1.0])
+        rr_ = rsr + 3.0                                                       # the roll drum, 3 mm proud: coaxial, so it rolls clean
+        shell_pts = np.concatenate([_circle(c_ + ax_ * t_, vv, ww, rr_ - fr_, 160) for t_, fr_ in
+                                    [(s_ * (Lsr / 2 - 8.0 + 8.0 * np.sin(a_)), 8.0 * (1 - np.cos(a_))) for s_ in (-1, 1) for a_ in np.linspace(0, np.pi / 2, 7)]])
+        top = np.concatenate(ua_m.metadata['loft'][:2])                      # the upper arm's top sections
+        add(f'cover-deltoid.{tag}a', tm(Manifold.hull_points(np.concatenate([shell_pts, top]).astype(np.float32))))
     # ---- torso: chest, accent waist, pelvis (inside the K1's trunk envelope, our own blocks)
     T = M['Trunk']; lo, hi = T.bounds
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
@@ -293,7 +319,8 @@ def design():
     # rib cage, a slimmer abdomen down to a pelvis that flares out over the hips
     Rk = KS.R()
     z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
-    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk)   # crisper corners: room for the side battery packs   # full width at the shoulders
+    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk, trap=None,
+                  flare=(zs - 62.0 * Rk, zs - 18.0 * Rk, SHOULDER_FLANK() / KS.CHEST()))   # V: widest at the shoulders   # full width at the shoulders
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = (grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
     E = KS.ELEC

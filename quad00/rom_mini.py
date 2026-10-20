@@ -17,7 +17,7 @@ BODIES = {
     'knee.{t}': ['shin-', 'rs00-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],
     'ankle.{t}': ['cover-shoe.{t}l', 'sole.{t}l', 'node-foot.{t}l'],
     'sp.{t}': ['arm-yokeP', 'rs00-sr.{t}a', 'cover-shoulderyoke.{t}a', 'cover-shoulder.{t}a', 'puck-shoulder.{t}a'],
-    'sr.{t}': ['arm-upperU', 'rs00-ep.{t}a', 'cover-upperarm.{t}a', 'trim-upperarm.{t}a'],
+    'sr.{t}': ['arm-upperU', 'rs00-ep.{t}a', 'cover-upperarm.{t}a', 'cover-deltoid.{t}a', 'trim-upperarm.{t}a'],
     'ep.{t}': ['arm-elbowE', 'rs00-ey.{t}a', 'cover-elbowfork.{t}a', 'cover-elbow.{t}a', 'puck-elbow.{t}a'],
     'ey.{t}': ['arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
     'hyaw': ['neck-N', 'rs00-headpitch', 'cover-neck', 'trim-headhub'],
