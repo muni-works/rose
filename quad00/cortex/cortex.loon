@@ -106,28 +106,31 @@
 [let zg 66.0]                                   ;               z
 [let gw 11.0]                                   ; half width (the slot's end radius)
 [let gh 19.0]                                   ; half height
-[let dot-p 2.4]
+[let dot-p 2.2]                                 ; hex pitch
+[let dot-r 0.7]                                 ; 1.4 mm holes: ~37% open (thermal check, SPEC.md)
 [let dot-h [* dot-p 0.866]]
-[let in-slot [fn [q]
-  [let vv [max #[0.0 [- [abs [nth q 1]] [- gh gw]]]]]
-  [< [+ [* [nth q 0] [nth q 0]] [* vv vv]] [* [- gw 0.8] [- gw 0.8]]]]]
-[let dots [filter in-slot [flatten #[
-  [flatten [map [fn [k] [map [fn [i] #[[* i dot-p] [* [* 2.0 k] dot-h]]] [range -5 6]]] [range -5 6]]]
-  [flatten [map [fn [k] [map [fn [i] #[[* [+ i 0.5] dot-p] [* [+ [* 2.0 k] 1.0] dot-h]]] [range -5 5]]] [range -5 5]]]]]]]
-[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n 0.55 [+ [* 2.0 hw] 8.0] 12]]]]]
-[let ear-holes [fold [dot-hole [nth dots 0]] [fn [acc q] [union acc [dot-hole q]]] dots]]
-; the exhaust: a matching dot grid low on the back sweep, a horizontal slot behind the fan duct
-[let zx 72.0]                                   ; exhaust grille centre, z
-[let xa 18.0]                                   ; half width (y)
-[let xr 6.0]                                    ; half height (the slot's end radius)
-[let in-xslot [fn [q]
-  [let uu [max #[0.0 [- [abs [nth q 0]] [- xa xr]]]]]
-  [< [+ [* uu uu] [* [nth q 1] [nth q 1]]] [* [- xr 0.8] [- xr 0.8]]]]]
-[let xdots [filter in-xslot [flatten #[
-  [flatten [map [fn [k] [map [fn [i] #[[* i dot-p] [* [* 2.0 k] dot-h]]] [range -8 9]]] [range -2 3]]]
-  [flatten [map [fn [k] [map [fn [i] #[[* [+ i 0.5] dot-p] [* [+ [* 2.0 k] 1.0] dot-h]]] [range -8 8]]] [range -2 2]]]]]]]
-[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n 0.55 20.0 12]]]]]
-[let exhaust-holes [fold [xdot-hole [nth xdots 0]] [fn [acc q] [union acc [xdot-hole q]]] xdots]]
+; a hex grid as rows of (u, v), u along the row; ni/nk = half extents in pitches / row pairs
+[let hex-rows [fn [ni nk] [flatten #[
+  [map [fn [k] [map [fn [i] #[[* i dot-p] [* [* 2.0 k] dot-h]]] [range [- 0 ni] [+ ni 1]]]] [range [- 0 nk] [+ nk 1]]]
+  [map [fn [k] [map [fn [i] #[[* [+ i 0.5] dot-p] [* [+ [* 2.0 k] 1.0] dot-h]]] [range [- 0 ni] ni]]] [range [- 0 nk] nk]]]]]]
+; inside a rounded slot of half length a along u, end radius b
+[let in-pill [fn [u v a b]
+  [let uu [max #[0.0 [- [abs u] [- a b]]]]]
+  [< [+ [* uu uu] [* v v]] [* [- b 0.8] [- b 0.8]]]]]
+; union a grid row by row (keeps each boolean small)
+[let grid-holes [fn [rows hole]
+  [let solids [map [fn [r] [fold [hole [nth r 0]] [fn [acc q] [union acc [hole q]]] r]] [filter [fn [r] [> [len r] 0]] rows]]]
+  [fold [nth solids 0] [fn [acc x] [union acc x]] solids]]]
+[let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]]]
+[let ear-holes [grid-holes ear-rows dot-hole]]
+; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
+[let zx 76.0]                                   ; exhaust grille centre, z
+[let xa 45.0]                                   ; half width (y)
+[let xr 11.0]                                   ; half height (the slot's end radius)
+[let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 21 3]]]
+[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
+[let exhaust-holes [grid-holes x-rows xdot-hole]]
 [let vents [union ear-holes exhaust-holes]]
 [let zmic [- zg [* 6.0 dot-h]]]                  ; the mic port's dot (row -6, centre column)
 [let zm [+ zg 8.5]]                             ; speaker centre (left)
@@ -169,16 +172,16 @@
 ; side brackets, fan up into the open crown. The heatsink's fins exhaust aft: a short duct carries it to the dot
 ; grid on the back sweep. Intake: the ear grids (the speakers fill only their tops) and the crown.
 [let cortex-usbc [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 10.0]]]                        ; dock receptacle board, opening down
-[let cortex-power [bx -50.0 -20.0 [+ tf 1.0] -20.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
+[let cortex-power [bx -45.0 -20.0 [+ tf 1.0] -15.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
-[let jxa -53.0]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
-[let jxb -1.0]
+[let jxa -51.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
+[let jxb 0.5]
 [let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
                           [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
 [let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx [+ jxa 4.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 4.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+[let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
@@ -205,7 +208,7 @@
 [let cortex-cables
   [pipe [csi 1.0] [union [csi -1.0]] [union [audio 1.0]] [union [audio -1.0]]
     [union [bx jxb -7.0 55.0 19.0 7.0 56.0]] [union [bx 18.0 -7.0 55.0 19.0 7.0 72.0]] [union [bx 18.0 -7.0 71.0 21.5 7.0 72.0]]  ; HDMI FPC
-    [union [run-x -7.0 -20.0 0.0 8.0 1.75]]                                                      ; dock VBUS/CC -> PD sink
+    [union [run-x -7.0 -15.0 0.0 8.0 1.75]]                                                      ; dock VBUS/CC -> PD sink
     [union [run-z 10.0 zj0 -45.0 0.0 1.75]]                 ; charger -> A603 DC
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
     [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock USB 3 -> A603
