@@ -257,7 +257,7 @@ def leg(J, side):
     face = lambda c_, d_: c_ if d_ > 0 else c_ - T              # plate w0 for a plate on the +/- side of a face at c_
     # -- roll mount (pelvis frame): yz plate on the roll stator back (aft)
     x_rb = rc[0] - m06['L'] / 2 - G
-    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], Z_D0(), 8)])   # up to the torso deck
+    rm = L.unary_union([L.circle(rc[1], rc[2], m06['back'][0] + 22), L.rounded(*span(0.0, rc[1])[:1], rc[2] - 30, span(0.0, rc[1])[1], Z_D0(), 8)]).convex_hull   # up to the torso deck: one clean teardrop
     rm = rm.difference(L.holes_on(m06['back'][0], m06['back'][1], m06['hole'], phase=45, at=(rc[1], rc[2])))
     out.append((f'chassis-rollmount.{tag}l', plate(rm, 'yz', x_rb - T)))
     # -- hip R: yz plate on the roll output (fore), down + outboard to the pitch's inner plate

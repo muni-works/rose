@@ -181,7 +181,7 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
     zf = zs - 40.0 * Rk                                         # the armpit: the flare ends at the shoulder drum's bottom edge
     def sec(z):
-        zh = z0 + 88.0 * Rk                                     # full width from here up (the side bays)
+        zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
             k = 0.80 + (0.97 - 0.80) * ss(z0, zh, z)
         else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
@@ -412,7 +412,8 @@ def design():
         chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, y_cap, Rk)
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
-        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, SHOULDER_FLANK(), Rk)
+        y_cap = dict(out)['cover-shoulderyoke.la'].bounds[1][1] + 2.0   # the mini's shaping: corners just over the shoulder drums
+        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk)
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
     E = KS.ELEC
