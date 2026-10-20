@@ -105,3 +105,8 @@ The exterior shape is frozen as of this spec. It changes only if a check above f
 Already-forced changes, all in the thermal check:
 - larger grille holes
 - a wider exhaust slot
+
+## Renders
+
+![front 3/4](renders/cortex-front34.png) ![side](renders/cortex-side.png)
+![back](renders/cortex-back.png) ![exploded](renders/cortex-exploded.png)
