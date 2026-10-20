@@ -175,6 +175,28 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_t
     return hull_rings(rings)
 
 
+def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
+    """the sleek one-piece torso (head language): abdomen flowing into the chest, a V out to the shoulder line,
+    big plan radii and a head-style crown fillet. Monotonic in width + depth, so its hull is the loft."""
+    ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
+    def sec(z):
+        k = 0.84 + (0.90 - 0.84) * ss(z0, z_ch, z) + (1.0 - 0.90) * ss(z_ch, zs - 40.0 * Rk, z)
+        k *= 1.0 + (flank / CH - 1.0) * ss(zs - 62.0 * Rk, zs - 18.0 * Rk, z)
+        x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
+        return (x0 + x1) / 2, CH * k, (x1 - x0) / 2
+    rf = 16.0 * Rk                                              # crown fillet, like the head's
+    zt = zc1 + 6.0 * Rk
+    rings = []
+    for z_ in np.linspace(z0, zt - rf, 14):
+        xc, a_, b_ = sec(z_)
+        rings.append(rrect(np.array([xc, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 24.0 * Rk, k=14))
+    xc, a_, b_ = sec(zt - rf)
+    for th in np.linspace(0, np.pi / 2, 7)[1:]:
+        d_ = rf * (1 - math.cos(th))
+        rings.append(rrect(np.array([xc, 0, zt - rf + rf * math.sin(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
+    return hull_rings(rings)
+
+
 def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
     """union of `parts` (Manifold) rotated about `center` over a grid of (axis, lo, hi) ranges, dilated by `scale` about the centre."""
     import itertools
@@ -351,14 +373,23 @@ def design():
     Wl = KS.waist_layout()
     if Wl is not None:                                          # 3-DoF waist: the chest starts at the pitch axis, a slim drum below
         z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
-    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk, trap=None,
-                  flare=(zs - 62.0 * Rk, zs - 18.0 * Rk, SHOULDER_FLANK() / KS.CHEST()))   # V: widest at the shoulders   # full width at the shoulders
+    if Wl is None:                                              # one sleek piece, pelvis top to the crown
+        chest = torso_shell(lo, hi, KS.CHEST(), z_ab - 2.0, z_ch, zc1, zs, SHOULDER_FLANK(), Rk)
+        z_ch = z_ab - 2.0                                       # (the panel groove below spans the whole torso)
+    else:
+      chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.90, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk, RC=15.0 * Rk, trap=None,
+                  flare=(zs - 62.0 * Rk, zs - 18.0 * Rk, SHOULDER_FLANK() / KS.CHEST()))   # V: widest at the shoulders
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = (grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
     E = KS.ELEC
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
         cuts = [('box', [xb - 2.0, -18.0, zc - 1.75], [6.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
+        if Wl is None:                                          # intake grille, low front, on the one-piece shell
+            Ms = M_(chest_m)
+            for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5):
+                xf = Ms.slice(zc).bounds()[2] if hasattr(Ms.slice(zc), 'bounds') else hi[0]
+                cuts.append(('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]))
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
@@ -383,15 +414,11 @@ def design():
             sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
         add('trim-waisthub', tm(hub))                         # gunmetal pitch hub (chest): carries the chest mount
     if Wl is None:
-        abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_ch + 2.0, RC=20.0 * Rk)
-        if KS.V['name'] == 'mini':                              # intake grille, low front
-            xf = abd.bounds[1][0]
-            abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)] + OPEN)
+        if KS.V['name'] == 'mini':                              # intake grille, low front (the abdomen is the torso shell now)
             plo, phi = KS.pack_box()
             rings = [rrect(np.array([(plo[0] + phi[0]) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), phi[1] - d_, (phi[0] - plo[0]) / 2 - d_, 6.0)
                      for z_, d_ in ((plo[2], 1.5), (plo[2] + 1.5, 0.0), (phi[2] - 1.5, 0.0), (phi[2], 1.5))]
             add('cover-pack', hull_rings(rings))                  # the pack case (PA12): slides into the bay, its back is the hatch
-        add('cover-abdomen', abd)
     if KS.V['name'] == 'mini' and KS.ELEC['estop']:             # the e-stop: red 40 mm mushroom on the upper back
         es = KS.ELEC['estop']; xb = chest_m.bounds[0][0]
         head = cyl(np.array([xb - es['proud'] + 6.0, 0, es['z'] * KS.R()]), [1.0, 0, 0], es['head_d'] / 2, 12.0)
