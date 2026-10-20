@@ -127,12 +127,13 @@ def bone(p0, r0, p1, r1, swell=1.0, flat=1.0, lateral=(0, 1.0, 0), n=2.2, half_w
     return hull_rings(rings)
 
 
-def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0):
+def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_top=None):
     """a rounded torso block: superellipse sections (x fore, y side) stacked up z, tapered."""
     rings = []
     for t in np.linspace(0, 1, 9):
         z = z0 + (z1 - z0) * t
-        k = taper[0] + (taper[1] - taper[0]) * t
+        tt = t if taper_top is None else min(1.0, (z - z0) / (taper_top - z0))     # taper_top: full width from here up
+        k = taper[0] + (taper[1] - taper[0]) * tt
         rings.append(rrect(np.array([(x0 + x1) / 2, 0, z]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), y * k, (x1 - x0) / 2 * (0.94 + 0.06 * k), RC))
     if dome:
         for f, d in ((0.9, 0.4), (0.7, 0.75), (0.4, 1.0)):
@@ -178,9 +179,9 @@ def design():
             pod = tm(M_(pod) - Manifold.cylinder(Lr_, KS.BIG()['D'] / 2 + 1.5, KS.BIG()['D'] / 2 + 1.5, 96).rotate([0, 90, 0]).translate([rc_[0] - Lr_ / 2, rc_[1], rc_[2]]))
         add(f'cover-hip.{tag}l', pod)
         add(f'puck-hip.{tag}l', cp)
-        add(f'trim-hipyaw.{tag}l', Hy)
+        add(f'cover-hipyaw.{tag}l', Hy)
         z_pb, z_yt = pod.bounds[0][2], lay['yaw'][0][2] + Ly / 2
-        add(f'trim-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
+        add(f'cover-hipneck.{tag}l', cyl(np.array([lay['yaw'][0][0], lay['yaw'][0][1], z_yt - 4]), [0, 0, 1.0], ry_ - 1.0, z_pb - z_yt + 16))   # pod into the yaw collar
         yaw_bot = lay['yaw'][0] - unit(ja(hy)) * (Ly / 2) * np.sign(unit(ja(hy))[2])
         Lg = dict(KS.leg(J, side)); kcy = jp(kn)[1]
         reach = lambda names: max(abs(v - kcy) for n_ in names for v in Lg[f'{n_}.{tag}l'].bounds[:, 1])
@@ -273,16 +274,21 @@ def design():
     zs = J['ALeft_Shoulder_Pitch']['p'][2]
     Hl0 = KS.head_layout(J); z_d1 = Hl0['yaw'][0][2] - 25.5 - KS.G - KS.T
     zc1 = max(zs + 28 * KS.R(), z_d1 + KS.T + 3.0)                # the chest closes over the neck-yaw deck
-    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), 40.0 * KS.R(), zc1, taper=(1.0, 1.0), dome=14.0 * KS.R())
-    zc_mid = 40.0 * KS.R() + (zc1 - 40.0 * KS.R()) * 0.56
-    add('cover-chest', grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.62, (zc1 - 40.0 * KS.R()) * 0.36, 14.0 * KS.R())]))   # chest panel, front + back
-    add('accent-waist', block(lo[0] + 8, hi[0] - 10, KS.CHEST() - 3.0, 14.0 * KS.R(), 40.0 * KS.R(), RC=18.0 * KS.R()))
+    # torso in three: a chest that narrows to the waist (a V, not a box), the orange band at the bottom of the
+    # rib cage, a slimmer abdomen down to a pelvis that flares out over the hips
+    Rk = KS.R()
+    z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
+    chest = block(lo[0] + 4, hi[0] - 6, KS.CHEST(), z_ch, zc1, taper=(0.86, 1.0), dome=14.0 * Rk, taper_top=zs - 40.0 * Rk)   # full width at the shoulders
+    zc_mid = z_ch + (zc1 - z_ch) * 0.52
+    add('cover-chest', grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())]))   # chest panel, front + back
+    add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.86 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
+    add('cover-abdomen', block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk))
     # pelvis, K1-style: a block that wraps the two hidden hip-roll cans and follows their round bellies in,
     # then a narrow keel dropping between the hip drums
     rl = KS.layout(J, 'Left')['roll'][0]; m06 = KS.BIG(); Rk = KS.R()
     x0, x1 = lo[0] + 10, hi[0] - 12; xm, xh = (x0 + x1) / 2, (x1 - x0) / 2
     xh = max(xh, (max(abs(rl[0] - m06['L'] / 2 - xm), abs(rl[0] + m06['L'] / 2 - xm)) + 5.0) / 0.88)   # deep enough for the roll cans
-    secs = [rrect(np.array([xm, 0, 14.0 * Rk]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST(), xh, 22.0 * Rk)]
+    secs = [rrect(np.array([xm, 0, 14.0 * Rk]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), KS.CHEST() * 0.84, xh, 22.0 * Rk)]   # meets the abdomen; flares over the hip cans below
     for th in np.linspace(0, np.pi / 2, 7):                     # the cans' lower quadrant, 5 mm proud
         r_ = m06['D'] / 2 + 5.0
         y_, z_ = rl[1] + r_ * np.cos(th), rl[2] - r_ * np.sin(th)
@@ -295,7 +301,7 @@ def design():
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
-        collar = M_(got[f'trim-hipneck.{t}l']) + M_(got[f'trim-hipyaw.{t}l'])
+        collar = M_(got[f'cover-hipneck.{t}l']) + M_(got[f'cover-hipyaw.{t}l'])
         pel = pel - sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04)          # the thigh swings under the pelvis
         hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
         # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
