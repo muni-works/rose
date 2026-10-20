@@ -180,8 +180,12 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     big plan radii and a head-style crown fillet. Piecewise hulls, so the concave flanks survive (export lofts the rings)."""
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
     def sec(z):
-        u = min(1.0, max(0.0, (z - z0) / (zs - 18.0 * Rk - z0)))
-        k = 0.95 + (1.10 - 0.95) * u ** 3                     # a concave funnel: near-vertical sides, flaring late to the shoulders
+        zh = z0 + 88.0 * Rk                                     # full width from here up (the side bays)
+        if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
+            k = 0.80 + (0.97 - 0.80) * ss(z0, zh, z)
+        else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
+            u = min(1.0, max(0.0, (z - zh) / (zs + 6.0 * Rk - zh)))
+            k = 0.97 + (flank / CH - 0.97) * u ** 3
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
         xm, h = (x0 + x1) / 2, (x1 - x0) / 2
@@ -189,7 +193,12 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     rf = 16.0 * Rk                                              # crown fillet, like the head's
     zt = zc1 + 10.0 * Rk
     rings = []
-    for z_ in np.linspace(z0, zt - rf, 14):
+    rbt = 14.0 * Rk                                             # bottom round-off, like the crown
+    xc, a_, b_ = sec(z0 + rbt)
+    for th in np.linspace(0, np.pi / 2, 7)[:-1]:
+        d_ = rbt * (1 - math.sin(th))
+        rings.append(rrect(np.array([xc, 0, z0 + rbt - rbt * math.cos(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
+    for z_ in np.linspace(z0 + rbt, zt - rf, 16):
         xc, a_, b_ = sec(z_)
         rings.append(rrect(np.array([xc, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 24.0 * Rk, k=14))
     xc, a_, b_ = sec(zt - rf)
@@ -398,7 +407,8 @@ def design():
     if Wl is None:                                              # H2/T2: a chest shell that stops above a narrow dark waist
         z_w1 = z_ab - 2.0                                       # one piece again: from the pelvis line...
         zc1 = zs + 36.0 * Rk                                    # ...up over the shoulder-pitch drums (crown = zc1 + 10)
-        chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, SHOULDER_FLANK(), Rk)
+        y_cap = dict(out)['cover-shoulderyoke.la'].bounds[1][1] + 2.0 if KS.V['name'] == 'mini' else 1.10 * KS.CHEST()   # top corners just over the shoulder drums (tiny: its arms swing too close)
+        chest = torso_shell(lo, hi, KS.CHEST(), z_w1, max(z_ch, z_w1 + 20.0 * Rk), zc1, zs, y_cap, Rk)
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
         chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, SHOULDER_FLANK(), Rk)
