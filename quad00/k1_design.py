@@ -212,6 +212,11 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     return m
 
 
+def hullof_(m_):
+    """the convex hull of a Manifold: one smooth cut instead of a faceted sweep."""
+    return Manifold.hull_points(np.asarray(m_.to_mesh().vert_properties[:, :3], np.float32))
+
+
 def roll_arch(mesh, c, rng, shell, rmin=0.0):
     """a wheel arch about the hip-roll axis (x): the annular sector the drum sweeps over `rng` (deg), +3 mm each way,
     extruded through the shell's depth -- one smooth cylindrical cut instead of a faceted sweep."""
@@ -404,7 +409,7 @@ def design():
     z_ab, z_band, z_ch = 14.0 * Rk, 54.0 * Rk, 76.0 * Rk
     Wl = KS.waist_layout()
     if Wl is not None:                                          # 3-DoF waist: the chest starts at the pitch axis, a slim drum below
-        z_ch = Wl['pitch'][0][2] - 0.08 * KS.WAIST()['D']
+        z_ch = Wl['pitch'][0][2] - 0.45 * KS.WAIST()['D']
     if Wl is None:                                              # H2/T2: a chest shell that stops above a narrow dark waist
         z_w1 = z_ab - 2.0                                       # one piece again: from the pelvis line...
         zc1 = zs + 36.0 * Rk                                    # ...up over the shoulder-pitch drums (crown = zc1 + 10)
@@ -446,7 +451,10 @@ def design():
         add('visor-port', hull_rings(port))                       # USB-C charge port
     if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
         Wp_ = KS.waist_layout()['pitch'][0]
-        chest_m = relief(chest_m, sweep_union(M_(dict(KS.waist())['waist-W3']), Wp_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0))
+        WS_ = dict(KS.waist()); mw_ = KS.WAIST(); rc__ = KS.waist_layout()['roll'][0]
+        barrel = M_(cyl(rc__, [1.0, 0, 0], mw_['D'] / 2 + 9.0, 2 * (mw_['L'] / 2 + KS.G + KS.T + 4.0)))   # the roll stage the chest pitches over
+        roll_stage = M_(WS_['waist-W3']) + M_(WS_['waist-W2']) + barrel
+        chest_m = relief(chest_m, hullof_(sweep_union(roll_stage, Wp_, [((0, 1.0, 0), -65, 35)], scale=1.04, step=5.0)))   # one clean arch under the chest
     if KS.V['name'] == 'mini':                                  # the back pack's opening (140 x 155): the pack face closes it
         plo, phi = KS.pack_box()                                  # the pack hatch: its back face fills it, flush low, 6 mm in high
         OPEN = [('box', [plo[0] - 100.0, plo[1] - 0.5, plo[2] - 0.5], [100.5, phi[1] - plo[1] + 1.0, phi[2] - plo[2] + 1.0])]
