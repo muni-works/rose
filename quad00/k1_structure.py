@@ -474,7 +474,7 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             elrs=(20.0, 14.0, 5.0),                                 # ELRS 2.4 GHz RX (RP1/RP2 class), chest top; antenna along the PA12 wall
             vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(172.0, 200.0)),          # slot grilles: abdomen front, chest back over the pack
             foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
-            board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
+            board=(110.0, 88.0, 15.0), board_kg=0.12)   # 110 x 88 (claude/limbic-spec 0a00f7b), tall parts outboard               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
 
 def pack_box(J=None):
@@ -504,7 +504,7 @@ def electronics(J):
     x_dp = hi[0] + 6.0                                          # dock cross plate, between the side plates
     out.append(('torso-dock', plate(Rr(-y_s, Z_D0() + T, y_s, lo[2] + 70.0), 'yz', x_dp)))
     out.append(('elec-dock', trimesh.creation.box(bounds=[[hi[0] + 0.5, -16.0, lo[2] + 4.0], [x_dp, 16.0, lo[2] + 24.0]])))
-    out.append(('torso-latch', trimesh.creation.box(bounds=[[lo[0] + 10.0, 22.0, hi[2] + 0.5], [lo[0] + 22.0, 38.0, hi[2] + 3.5]])))
+    out.append(('torso-latch', trimesh.creation.box(bounds=[[lo[0] + 30.0, 22.0, hi[2] + 0.5], [lo[0] + 42.0, 38.0, hi[2] + 3.5]])))
     cx, cy, cz = E['pack']['cells']
     xm = hi[0] - 2.0 - E['monitor']
     out.append(('elec-bms', trimesh.creation.box(bounds=[[xm, lo[1] + 2.0, lo[2] + 2.0], [hi[0] - 2.0, hi[1] - 2.0, hi[2] - 2.0]])))
@@ -514,12 +514,13 @@ def electronics(J):
     jx, jy, jz = E['jetson']
     out.append(('elec-jetson', trimesh.creation.box(bounds=[[-40.0, y_o, 108.0], [-40.0 + jz, y_o + jx, 108.0 + jy]])))   # on its side: 87 x 50 x 52
     bx_, by_, bz_ = E['board']
-    out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 92.0], [-50.0 + bx_, -y_o, 92.0 + by_]])))   # on edge
-    rx, ry, rz = E['brake']
-    out.append(('elec-brake', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_ + 2.0 + rz), 112.0], [-50.0 + rx, -(y_o + bz_ + 2.0), 112.0 + ry]])))
+    out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 78.0], [-50.0 + bx_, -y_o, 78.0 + by_]])))   # on edge, z 78..166
+    rx, ry, rz = E['brake']                                   # below the board, lying flat (clear of its outboard parts)
+    out.append(('elec-brake', trimesh.creation.box(bounds=[[-50.0, -(y_o + 2.0 + 20.0), 50.0], [-50.0 + ry, -(y_o + 2.0), 50.0 + rx - 2.0]])))
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
     x_wall = -65.0 * R() + 8.0                                # inside the chest back wall (which leans in up here), over the hatch
-    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
+    for i, yf in enumerate((-(fy / 2 + 1.0), fy / 2 + 1.0)):  # 2 x 30 mm, side by side (>= 4 CFM with the front intake)
+        out.append((f'elec-fan.{"r" if yf < 0 else "l"}', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, yf, (zo[0] + zo[1]) / 2])))
     ex, ey_, ez = E['elrs']
     z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
     out.append(('elec-elrs', trimesh.creation.box(extents=[ex, ey_, ez]).apply_translation([45.0, 0.0, z_d1 - 6.0 - ez / 2])))

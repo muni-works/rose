@@ -419,7 +419,7 @@ def design():
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
         Mc = M_(chest_m)                                        # exhaust slots through the (leaning) back wall at each slot's height
-        cuts = [('box', [Mc.slice(zc).bounds()[0] - 2.0, -18.0, zc - 1.75], [7.0, 36.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
+        cuts = [('box', [Mc.slice(zc).bounds()[0] - 2.0, -33.0, zc - 1.75], [7.0, 66.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
         if Wl is None:                                          # intake grille, low front
             cuts += [('box', [Mc.slice(zc).bounds()[2] - 5.0, -24.0, zc - 1.75], [7.0, 48.0, 3.5]) for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5)]
         if E['estop']:
@@ -431,14 +431,14 @@ def design():
         xw0, xw1 = Mc.slice(zp0).bounds()[0], Mc.slice(zp1).bounds()[0]
         k_ = (xw1 - xw0) / (zp1 - zp0)
         onwall = lambda q: np.asarray(q, float) + np.outer(k_ * (np.asarray(q, float)[:, 2] - zp0), [1.0, 0, 0])   # x follows the lean
-        zm, pw = (zp0 + zp1) / 2, 44.0 * KS.R()
+        zm, pw = (zp0 + zp1) / 2, 52.0 * KS.R()
         prings = [onwall(rrect(np.array([xw0 + dx, 0, zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), (zp1 - zp0) / 2 - d_, pw - d_, 6.0, k=10))
                   for dx, d_ in ((1.0, 0.0), (-0.6, 0.0), (-1.2, 0.6))]
         add('trim-backpanel', cut_shell(hull_rings(prings), cuts))
         xo = lambda z_: xw0 + k_ * (z_ - zp0) - 1.2                # the panel's outer face at height z
-        add('cover-backbutton', cyl(np.array([xo(zm - 3.0) - 1.0, 30.0 * KS.R(), zm - 3.0]), [1.0, 0, 0], 5.5, 2.4))      # power
-        add('visor-led', cyl(np.array([xo(zm + 9.0) - 0.4, 30.0 * KS.R(), zm + 9.0]), [1.0, 0, 0], 1.8, 1.2))             # status
-        port = [rrect(np.array([xo(zm) + dx, -30.0 * KS.R(), zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]
+        add('cover-backbutton', cyl(np.array([xo(zm - 3.0) - 1.0, 42.0 * KS.R(), zm - 3.0]), [1.0, 0, 0], 5.5, 2.4))      # power
+        add('visor-led', cyl(np.array([xo(zm + 9.0) - 0.4, 42.0 * KS.R(), zm + 9.0]), [1.0, 0, 0], 1.8, 1.2))             # status
+        port = [rrect(np.array([xo(zm) + dx, -42.0 * KS.R(), zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]
         add('visor-port', hull_rings(port))                       # USB-C charge port
     if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
         Wp_ = KS.waist_layout()['pitch'][0]
