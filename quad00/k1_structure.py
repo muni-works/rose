@@ -454,9 +454,34 @@ def head(J):
     out.append(('neck-N0', plate(N0, 'xy', z_n0)))
     N1 = L.unary_union([L.circle(hp[0], hp[2], m['back'][0] + 22), Rr(hp[0] - 20, z_n0 + T, hp[0] + 20, hp[2])]).difference(holes(m, 'back', (hp[0], hp[2]), 45))
     out.append(('neck-N1', plate(N1.intersection(L.box(-1e3, z_n0 + T, 1e3, 1e3)), 'xz', y_n1)))
-    Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 45 * R(), hp[2] - 10, hp[0] + 50 * R(), hp[2] + 70 * R(), 10)]).difference(holes(m, 'out', (hp[0], hp[2])))
+    zd = DOCK_Z(J)
+    Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 22 * R(), hp[2], hp[0] + 22 * R(), zd, 6)]).difference(holes(m, 'out', (hp[0], hp[2])))
     out.append(('head-H1', plate(Hh, 'xz', m['L'] / 2 + G)))
+    # the dock: the cortex head (Jetson + its own battery) lifts off this plate and can live on a desk; flat bottom
+    yd = m['L'] / 2 + G + T
+    out.append(('head-dock', plate(Rr(hp[0] - 34 * R(), -yd, hp[0] + 34 * R(), yd, 8), 'xy', zd)))
     return out
+
+
+def DOCK_Z(J):
+    """the neck's dock plate (top of the head-pitch stage): the cortex head's flat bottom sits on it."""
+    hp = head_layout(J)['pitch'][0]
+    return hp[2] + HEAD()['D'] / 2 + 6.0
+
+
+CORTEX = dict(jetson=(87.0, 52.0, 50.0),                     # Seeed A603 + Orin NX, lying flat in the head (x, y, z); fan pulls fore, blows aft
+              battery=(70.0, 40.0, 22.0), battery_kg=0.10)    # small permanent cortex pack (2S1P 21700, placeholder): runs it off the dock
+
+
+def cortex(J):
+    """the cortex module's insides (mini): Jetson flat behind the screen, its battery beside it."""
+    if V['name'] != 'mini':
+        return []
+    hp = head_layout(J)['pitch'][0]
+    z0 = DOCK_Z(J) + T + 4.0
+    jx, jy, jz = CORTEX['jetson']; bx, by, bz = CORTEX['battery']
+    return [('elec-jetson', trimesh.creation.box(bounds=[[hp[0] - 50 * R(), -jy / 2, z0], [hp[0] - 50 * R() + jx, jy / 2, z0 + jz]])),
+            ('elec-cbat', trimesh.creation.box(bounds=[[hp[0] - 30 * R(), jy / 2 + 3.0, z0], [hp[0] - 30 * R() + bx, jy / 2 + 3.0 + by, z0 + bz]]))]
 
 
 # electronics in the torso bay. PLACEHOLDERS until the limbic-board spec (rose branch claude/limbic-spec, LIMBIC.md)
@@ -512,11 +537,7 @@ def electronics(J):
     out.append(('elec-battery', trimesh.creation.box(bounds=[[xm - cx * E['cell_d'], -cy * E['cell_d'] / 2, lo[2] + 2.0], [xm, cy * E['cell_d'] / 2, hi[2] - 2.0]])))
     # side bays (outboard of the side plates, under the shoulder cans): Jetson left, limbic board + brake right
     y_o = y_s + T + 2.0
-    jx, jy, jz = E['jetson']
-    out.append(('elec-jetson', trimesh.creation.box(bounds=[[-40.0, y_o, 108.0], [-40.0 + jz, y_o + jx, 108.0 + jy]])))   # on its side: 87 x 50 x 52
-    # A603 fan pulls from the fore (cool) side and blows aft/up to the exhaust; a 2 mm PA12 shelf off its top-fore edge to the
-    # front wall stops its hot air recirculating over the top into the cool stream rising up the fore side (limbic thermal pass)
-    out.append(('cover-baffle', trimesh.creation.box(bounds=[[-40.0 + jz, y_o, 108.0 + jy + 1.0], [72.0 * R(), y_o + jx, 108.0 + jy + 3.0]])))
+    # (the Jetson lives in the cortex head now: the left side bay is free)
     bx_, by_, bz_ = E['board']
     out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 78.0], [-50.0 + bx_, -y_o, 78.0 + by_]])))   # on edge, z 78..166
     rx, ry, rz = E['brake']                                   # below the board, lying flat (clear of its outboard parts)
@@ -581,4 +602,4 @@ def structure():
     out = []
     for side in ('Left', 'Right'):
         out += leg(J, side) + arm(J, side, M) + wrist(J, side, M)
-    return out + torso(J) + waist() + head(J) + electronics(J) + foot_nodes(J)
+    return out + torso(J) + waist() + head(J) + electronics(J) + cortex(J) + foot_nodes(J)

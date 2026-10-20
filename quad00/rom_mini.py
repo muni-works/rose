@@ -13,7 +13,7 @@ THRESH = 200.0                                  # mm^3 of new overlap = a collis
 BODIES = {
     'wroll': ['waist-W2', 'waist-W3', 'motor-waistpitch', 'cover-waistroll'],
     'wyaw': ['waist-W0', 'waist-W1', 'motor-waistroll', 'cover-waist'],
-    'torso': ['cover-baffle', 'trim-backpanel', 'cover-backbutton', 'visor-led', 'visor-port', 'trim-waist', 'cover-pack', 'pelvis-deck', 'motor-waistyaw', 'waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
+    'torso': ['trim-waist', 'cover-pack', 'pelvis-deck', 'motor-waistyaw', 'waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
     'roll.{t}': ['chassis-hipR.{t}l', 'cover-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
     'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'motor-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
     'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'motor-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
@@ -27,7 +27,7 @@ BODIES = {
     'wy.{t}': ['wrist-H0'],
     'ey.{t}': ['wrist-F2', 'motor-wristroll', 'arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
     'hyaw': ['neck-N', 'motor-headpitch', 'cover-neck', 'cover-headhub'],
-    'hpitch': ['head-H1', 'cover-helmet', 'visor-face', 'puck-ear'],
+    'hpitch': ['cover-headcheek', 'head-H1', 'head-dock', 'trim-headdock', 'cover-helmet', 'visor-face', 'trim-headpanel', 'cover-headbutton', 'visor-headled', 'visor-headport', 'visor-headeth', 'puck-ear'],
 }
 LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']
 ARM = ['sp', 'sr', 'ep', 'ey', 'wr', 'wp', 'wy']
@@ -51,6 +51,8 @@ CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'tri
 
 
 def body_of(name):
+    if name.startswith(('elec-jetson', 'elec-cbat')):
+        return 'hpitch'                                 # the cortex: Jetson + its battery ride in the head
     b = _body_of(name)
     if b and b.startswith('ey.') and name.startswith('cover-hand') and KS.WRIST() is not None:
         return 'wy.' + b.split('.')[1]                  # 7-DoF arm: the hand rides the wrist yaw

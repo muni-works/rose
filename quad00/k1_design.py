@@ -434,21 +434,6 @@ def design():
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
-        # the back panel (Booster-style): one gunmetal plate lying on the leaning back over the exhaust grille,
-        # a power button and a status LED on the left, the charge port on the right
-        zp0, zp1 = E['vent_out']['z'][0] - 1.0, E['vent_out']['z'][1] + 6.0
-        xw0, xw1 = Mc.slice(zp0).bounds()[0], Mc.slice(zp1).bounds()[0]
-        k_ = (xw1 - xw0) / (zp1 - zp0)
-        onwall = lambda q: np.asarray(q, float) + np.outer(k_ * (np.asarray(q, float)[:, 2] - zp0), [1.0, 0, 0])   # x follows the lean
-        zm, pw = (zp0 + zp1) / 2, 52.0 * KS.R()
-        prings = [onwall(rrect(np.array([xw0 + dx, 0, zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), (zp1 - zp0) / 2 - d_, pw - d_, 6.0, k=10))
-                  for dx, d_ in ((1.0, 0.0), (-0.6, 0.0), (-1.2, 0.6))]
-        add('trim-backpanel', cut_shell(hull_rings(prings), cuts))
-        xo = lambda z_: xw0 + k_ * (z_ - zp0) - 1.2                # the panel's outer face at height z
-        add('cover-backbutton', cyl(np.array([xo(zm - 3.0) - 1.0, 42.0 * KS.R(), zm - 3.0]), [1.0, 0, 0], 5.5, 2.4))      # power
-        add('visor-led', cyl(np.array([xo(zm + 9.0) - 0.4, 42.0 * KS.R(), zm + 9.0]), [1.0, 0, 0], 1.8, 1.2))             # status
-        port = [rrect(np.array([xo(zm) + dx, -42.0 * KS.R(), zm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]
-        add('visor-port', hull_rings(port))                       # USB-C charge port
     if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
         Wp_ = KS.waist_layout()['pitch'][0]
         WS_ = dict(KS.waist()); mw_ = KS.WAIST(); rc__ = KS.waist_layout()['roll'][0]
@@ -542,57 +527,59 @@ def design():
         nz0, nw = Hl['yaw'][0][2] + 20.0, (30.0, 34.0)
     else:                                                       # yaw motor up in the neck: a wider neck from just above the chest dome
         nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (max(33.0, KS.HEAD()['D'] / 2 + 3.0), max(36.0, KS.HEAD()['D'] / 2 + 3.0))
-    nz1 = Hl['pitch'][0][2] - 10.0
+    nz1 = Hl['pitch'][0][2] - max(33.0, KS.HEAD()['D'] / 2 + 4.5) + 2.0   # 2 mm into the pitch drum (round about the pitch axis: no clash)
     if Wl is None:                                              # one round satin column, sunk into the chest crown (round: it yaws clean)
         nz0 = min(nz0, zc1 + 6.0 * Rk - 8.0)
     add('cover-neck', cyl(np.array([Hl['yaw'][0][0], 0, (nz0 + nz1) / 2]), [0, 0, 1.0], max(nw), nz1 - nz0))
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
+    # the cortex head (Jetson + its own battery, buttons + ports on the back): a module with a flat bottom that sits on the
+    # neck's dock plate and can live detached, on a desk. Box language: flat face for the screen, wedged back, crown fillet.
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
-    hc = (hlo + hhi) / 2
-    hh, hw, hd = (hhi[2] - hlo[2]) * 0.58, (hhi[1] - hlo[1]) / 2 * 0.96, (hhi[0] - hlo[0]) / 2 * 0.88   # wide (big screen), short + shallow
-    hc = hc + np.array([0, 0, (hhi[2] - hlo[2]) * (0.86 - 0.58) / 2])  # chin up: the crown stays where it was
-    hc = hc + np.array([0, 0, -6.0])
-    hpz = KS.head_layout(J)['pitch'][0][2]
-    if KS.V['name'] != 'mini' and hpz > hc[2] + 0.05 * hh:       # head motors stacked above the shoulders: lift the helmet onto them
-        dz = hpz - (hc[2] + 0.05 * hh)
-        hc = hc + np.array([0, 0, dz]); hlo = hlo + np.array([0, 0, dz]); hhi = hhi + np.array([0, 0, dz])
-    # a rounded box (H2/T2): flat sides + a flat face for the screen, filleted crown and chin, corners rounded in plan
-    hd = hd * 0.95
+    hp = KS.head_layout(J)['pitch'][0]; Rk = KS.R()
+    hh, hw = (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96
+    x_face, x_back = hp[0] + 48.0 * Rk, hp[0] - 62.0 * Rk        # the back reaches past the neck: no craning
+    hd = (x_face - x_back) / 2
+    zb = KS.DOCK_Z(J) + KS.T + 0.5                              # flat bottom, on the dock
+    hc = np.array([x_face - hd, 0.0, zb + hh / 2])
     rc_p = 0.32 * min(hw, hd)                                   # plan corner radius
-    rf = 0.30 * min(hw, hd)                                     # crown fillet
-    zb = hc[2] - hh / 2                                         # the chin: the crown's fillet mirrored -- a simple box, top and bottom
-    hr_ = []
-    for th in np.linspace(0, np.pi / 2, 7):
-        hr_.append((zb + rf * (1 - math.sin(th)), rf * (1 - math.cos(th))))
-    for th in np.linspace(np.pi / 2, 0, 7):
-        hr_.append((hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))))
-    hr_ = sorted(hr_)                                           # loft order: bottom to top
-    x_face = hc[0] + hd                                         # the face stays one flat plane; the back wedges in (a rounded
-    wedge = lambda z_: 0.42 * hd * abs((z_ - hc[2]) / (hh / 2)) ** 1.6   # triangle from the side, apex at the back of the skull)
-    hr_ = [rrect(np.array([x_face - (hd - wedge(z_)), hc[1], z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - wedge(z_), max(rc_p - d_, 2.0), k=14)
+    rf, rb_ = 0.30 * min(hw, hd), 6.0 * Rk                      # crown fillet; a small edge round on the flat bottom
+    hr_ = [(zb + rb_ * (1 - math.sin(th)), rb_ * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 5)]
+    hr_ += [(hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 7)]
+    hr_ = sorted(hr_)
+    wedge = lambda z_: 0.22 * hd * max(0.0, (z_ - hc[2]) / (hh / 2)) ** 1.6   # the back of the skull rounds in toward the crown
+    hr_ = [rrect(np.array([x_face - (hd - wedge(z_)), 0.0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - wedge(z_), max(rc_p - d_, 2.0), k=14)
            for z_, d_ in hr_]
-    helmet = Manifold.hull_points(np.concatenate(hr_).astype(np.float32))
-    hpc = KS.head_layout(J)['pitch'][0]
-    pr, px = KS.V['pocket']
-    pocket = Manifold.cylinder(2 * pr, pr, pr, 72).rotate([-90, 0, 0]).translate([hpc[0], -pr, hpc[2]]) + \
-        Manifold.cube([2 * px, 2 * pr, hpc[2] - hlo[2] + 20]).translate([hpc[0] - px, -pr, hlo[2] - 20])
-    helmet = helmet - pocket
-    add('cover-headhub', cyl(hpc, [0, 1.0, 0], max(33.0, KS.HEAD()['D'] / 2 + 4.5), max(56.0, KS.HEAD()['L'] + 5.0)))           # the head-pitch hub, coaxial: lives in the helmet's opening
-    hm = tm(helmet)
-    hm.metadata.update(loft=[np.asarray(r, float) for r in hr_],      # native: loft minus (y-cylinder r pr about the pitch axis + box)
-                       cut=[('ycyl', hpc, pr), ('box', [hpc[0] - px, -pr, hlo[2] - 20], [2 * px, 2 * pr, hpc[2] - hlo[2] + 20])])
-    add('cover-helmet', hm)
-    # the face: a flat screen, gloss black glass, set into the front face a hair proud
-    x_f = hc[0] + hd                                            # the flat front face
-    sw, sh = hw - rc_p - 4.0, 0.30 * hh                         # landscape, inside the flat region
-    scr = [rrect(np.array([x_, hc[1], hc[2] + 0.10 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.35 * min(sw, sh), k=12)
-           for x_, d_ in ((x_f - 3.0, 0.0), (x_f + 0.4, 0.0), (x_f + 0.8, 0.4))]
-    vf = hull_rings(scr)
-    if (M_(vf) ^ pocket).volume() > 1.0:                        # small heads: the neck pocket reaches the face -- trim the screen with it
-        vf = tm(M_(vf) - pocket)
-    add('visor-face', vf)
+    hm = hull_rings(hr_)
+    zm = zb + hh * 0.42                                          # vents: side slots near the back (in left, out right)
+    vents = [('box', [x_back + 14.0 * Rk + 7.0 * i, (hw - 4.0) if s_ > 0 else -(hw + 2.0), zm - 12.0 * Rk], [3.5, 6.0, 24.0 * Rk])
+             for s_ in (1, -1) for i in range(5)]
+    add('cover-helmet', cut_shell(hm, vents))
+    m_h = KS.HEAD()
+    r_hub, yo_ = max(33.0, m_h['D'] / 2 + 4.5), m_h['L'] / 2 + KS.G + KS.T + 1.0
+    y0_, y1_ = -yo_, m_h['L'] / 2 + 0.5                         # the head-pitch drum in two coaxial halves: neck side (over the
+    add('cover-headhub', cyl(np.array([hp[0], (y0_ + y1_) / 2, hp[2]]), [0, 1.0, 0], r_hub, y1_ - y0_))   # stator plate) and head side
+    add('cover-headcheek', cyl(np.array([hp[0], (y1_ + 0.5 + yo_ + 0.5) / 2, hp[2]]), [0, 1.0, 0], r_hub, yo_ - y1_))   # (over the dock bracket)
+    yd = m_h['L'] / 2 + KS.G + KS.T
+    dock = [rrect(np.array([hp[0], 0, KS.DOCK_Z(J) + dz_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), yd + 3.0, 37.0 * Rk, 8.0, k=10)
+            for dz_ in (-1.0, KS.T + 0.4)]
+    add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
+    # the face: a flat screen, gloss black glass, a hair proud
+    sw, sh = hw - rc_p - 4.0, 0.30 * hh
+    scr = [rrect(np.array([x_, 0.0, hc[2] + 0.06 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.35 * min(sw, sh), k=12)
+           for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
+    add('visor-face', hull_rings(scr))
+    # the back panel (the cortex's own): power button + status LED, USB-C, Ethernet, on the flat back of the head
+    zpm, pw, ph = zb + hh * 0.38, hw * 0.62, hh * 0.16
+    prings = [rrect(np.array([x_back + dx, 0.0, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), ph - d_, pw - d_, 5.0, k=10)
+              for dx, d_ in ((1.0, 0.0), (-0.8, 0.0), (-1.4, 0.5))]
+    add('trim-headpanel', hull_rings(prings))
+    xo = x_back - 1.4
+    add('cover-headbutton', cyl(np.array([xo - 1.0, 0.68 * pw, zpm]), [1.0, 0, 0], 5.0, 2.4))                 # power
+    add('visor-headled', cyl(np.array([xo - 0.4, 0.40 * pw, zpm]), [1.0, 0, 0], 1.6, 1.2))                  # status
+    add('visor-headport', hull_rings([rrect(np.array([xo + dx, -0.10 * pw, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]))   # USB-C
+    add('visor-headeth', hull_rings([rrect(np.array([xo + dx, -0.58 * pw, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 6.0, 8.0, 1.0, k=6) for dx in (0.4, -0.2)]))     # Ethernet
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
