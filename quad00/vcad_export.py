@@ -46,7 +46,7 @@ MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('muni
         'accent': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
-        'cbat': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
+        'cable': ('cable_black', 0.03, 0.03, 0.035, 0.0, 0.7), 'cxdisplay': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'cxcam': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxspk': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cxamp': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxmic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxpower': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxdock': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cbat': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
         'limbic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'node': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),
         'fan': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'estopbody': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
         'brake': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'dock': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'elrs': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'bms': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45),

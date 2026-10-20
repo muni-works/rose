@@ -536,15 +536,11 @@ def design():
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
     # the cortex head (Jetson + its own battery, buttons + ports on the back): a module with a flat bottom that sits on the
     # neck's dock plate and can live detached, on a desk. Box language: flat face for the screen, wedged back, crown fillet.
-    Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hp = KS.head_layout(J)['pitch'][0]; Rk = KS.R()
-    hh, hw = (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96
-    x_face, x_back = hp[0] + 46.0 * Rk, hp[0] - 58.0 * Rk        # the back reaches past the neck: no craning
-    hd = (x_face - x_back) / 2
-    zb = KS.DOCK_Z(J) + KS.T + 0.5                              # flat bottom, on the dock
+    HF = KS.head_frame(J, M)                                    # shared with the parts inside (k1_structure.cortex)
+    hh, hw, hd, x_face, x_back, zb = HF['hh'], HF['hw'], HF['hd'], HF['x_face'], HF['x_back'], HF['zb']
     hc = np.array([x_face - hd, 0.0, zb + hh / 2])
-    rc_p = 0.46 * min(hw, hd)                                   # plan corner radius: soft, pebble-like
-    rf, rb_ = 0.42 * min(hw, hd), 0.24 * min(hw, hd)            # generous crown + bottom rounds (it still sits flat)
+    rc_p, rf, rb_ = HF['rc_p'], HF['rf'], HF['rb']              # soft plan corners; generous crown + bottom rounds (it still sits flat)
     hr_ = [(zb + rb_ * (1 - math.sin(th)), rb_ * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 5)]
     hr_ += [(hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 7)]
     hr_ = sorted(hr_)
@@ -566,19 +562,19 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
     # the face: a flat screen, gloss black glass, a hair proud
-    sw, sh = hw - rc_p - 3.0, 0.31 * hh                          # the face screen: most of the flat face
-    scr = [rrect(np.array([x_, 0.0, hc[2] + 0.06 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
+    sw, sh = hw - rc_p - 3.0, 0.31 * hh                          # the face glass: most of the flat face (display + both eyes behind it)
+    zfc = (zb + rb_ + zb + hh - rf) / 2                          # the flat band's centre: the display + cameras sit on it (k1_structure.cortex)
+    scr = [rrect(np.array([x_, 0.0, zfc]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
            for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
     add('visor-face', hull_rings(scr))
     # eyes: a stereo camera pair behind the top edge of the glass (phone-style), a hair proud, gunmetal bezels
-    zc_s = hc[2] + 0.06 * hh
     for sy in (1, -1):
-        e = np.array([x_face + 0.8, sy * 0.40 * sw, zc_s + sh - 8.0 * Rk])
+        e = np.array([x_face + 0.8, sy * KS.CORTEX['camera']['baseline'] / 2 * Rk, zfc + 4.0 * Rk])   # on the IMX219 lenses
         add(f'trim-eyering.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.3, 0, 0]), [1.0, 0, 0], 5.2 * Rk, 1.0))
         add(f'visor-eye.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.9, 0, 0]), [1.0, 0, 0], 3.6 * Rk, 0.8))
     # ears: a microphone / speaker grille on each side, forward of the vents
     for sy in (1, -1):
-        ec = np.array([x_face - 0.27 * (x_face - x_back), sy * (hw + 0.4), hc[2]])
+        ec = np.array([x_face - 0.27 * (x_face - x_back), sy * (hw + 0.4), zfc])
         ear = M_(cyl(ec, [0, 1.0, 0], 11.0 * Rk, 1.4))
         for k in range(7):                                      # a hex of mic holes
             a_ = k * np.pi / 3
@@ -626,7 +622,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node', 'cover-baffle')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch', 'pelvis-deck'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node', 'cover-baffle')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch', 'pelvis-deck', 'cable-'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

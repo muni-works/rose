@@ -51,8 +51,12 @@ CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'tri
 
 
 def body_of(name):
-    if name.startswith(('elec-jetson', 'elec-cbat')):
-        return 'hpitch'                                 # the cortex: Jetson + its battery ride in the head
+    if name.startswith(('elec-jetson', 'elec-cbat', 'elec-cx', 'cable-h')):
+        return 'hpitch'                                 # the cortex: Jetson, its battery, sensors + wiring ride in the head
+    if name.startswith('cable-n'):
+        return 'hyaw'
+    if name.startswith('cable-t'):
+        return 'torso'
     b = _body_of(name)
     if b and b.startswith('ey.') and name.startswith('cover-hand') and KS.WRIST() is not None:
         return 'wy.' + b.split('.')[1]                  # 7-DoF arm: the hand rides the wrist yaw
