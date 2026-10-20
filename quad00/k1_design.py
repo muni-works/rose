@@ -371,8 +371,7 @@ def design():
         chest_m = cut_shell(chest_m, OPEN)
     add('cover-chest', chest_m)
     if Wl is None:
-        band = block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk)   # proud of the chest's waist
-        add('accent-waist', cut_shell(band, OPEN) if KS.V['name'] == 'mini' else band)
+        pass                                                    # no orange waist band: the abdomen runs up under the chest
     else:                                                       # H2-style waist: three coaxial pieces, no slots -- each shell turns
         mw = KS.WAIST(); pc_, rc_ = Wl['pitch'][0], Wl['roll'][0]   # about its own joint axis, so nothing needs cutting away
         WS = dict(KS.waist())
@@ -384,7 +383,7 @@ def design():
             sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
         add('trim-waisthub', tm(hub))                         # gunmetal pitch hub (chest): carries the chest mount
     if Wl is None:
-        abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
+        abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_ch + 2.0, RC=20.0 * Rk)
         if KS.V['name'] == 'mini':                              # intake grille, low front
             xf = abd.bounds[1][0]
             abd = cut_shell(abd, [('box', [xf - 4.0, -24.0, zc - 1.75], [6.0, 48.0, 3.5]) for zc in np.linspace(KS.ELEC['vent_in']['z'][0] + 3, KS.ELEC['vent_in']['z'][1] - 3, 5)] + OPEN)
