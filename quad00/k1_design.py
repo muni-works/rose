@@ -493,7 +493,7 @@ def design():
         else:
             pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
 
-    if KS.V['name'] != 'mini':                                  # mini: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
+    if KS.V['name'] not in ('mini', 'full'):                    # mini + full: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
         add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
@@ -573,6 +573,8 @@ def clip(plate, shell, wall=2.0):
     sec = (Sr.slice(lo[ax] + 0.1) ^ Sr.slice(hi[ax] - 0.1)).offset(-wall, JoinType.Round)
     cut = Manifold.extrude(sec, hi[ax] - lo[ax] + 2).translate([0, 0, lo[ax] - 1]).transform(Rt(R.T))
     parts = sorted((P ^ cut).decompose(), key=lambda q: -q.volume())
+    if not parts:                                               # no shell over it (open hips): the plate stays whole
+        return plate
     return tm(parts[0])                                        # router-cut part = the main body (drops slivers)
 
 
