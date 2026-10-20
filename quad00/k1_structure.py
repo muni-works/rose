@@ -515,7 +515,7 @@ def electronics(J):
     bx_, by_, bz_ = E['board']
     out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 92.0], [-50.0 + bx_, -y_o, 92.0 + by_]])))   # on edge
     rx, ry, rz = E['brake']
-    out.append(('elec-brake', trimesh.creation.box(bounds=[[0.0, -(y_o + bz_ + 2.0 + rz), 112.0], [rx, -(y_o + bz_ + 2.0), 112.0 + ry]])))
+    out.append(('elec-brake', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_ + 2.0 + rz), 112.0], [-50.0 + rx, -(y_o + bz_ + 2.0), 112.0 + ry]])))
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
     x_wall = -65.0 * R()                                      # inside the chest back wall, over the hatch
     out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
