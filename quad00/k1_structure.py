@@ -161,7 +161,8 @@ def waist():
     yc, rc, pc = W['yaw'][0], W['roll'][0], W['pitch'][0]
     out = [(f'{mn}-waist{k}', motor(W[k][0], W[k][1], mn)) for k in ('yaw', 'roll', 'pitch')]
     yh = m['D'] / 2 + 8.0
-    out.append(('pelvis-deck', plate(Rr(-yh, -yh - 20.0 * R(), yh, yh + 20.0 * R()).difference(holes(m, 'back', (yc[0], yc[1]), 45)), 'xy', Z_D0())))
+    r_drum = math.hypot(m['L'] / 2 + G + T + 2.0, m['D'] / 2) + 4.0       # the yaw drum's radius (k1_design): the deck follows its edge
+    out.append(('pelvis-deck', plate(L.circle(yc[0], yc[1], 2 * r_drum).difference(holes(m, 'back', (yc[0], yc[1]), 45)), 'xy', Z_D0())))
     z_w0 = yc[2] + m['L'] / 2 + G
     out.append(('waist-W0', plate(L.circle(yc[0], yc[1], yh).difference(holes(m, 'out', (yc[0], yc[1]))), 'xy', z_w0)))
     x_w1 = rc[0] - m['L'] / 2 - G - T                                     # roll stator back (aft), standing on W0
