@@ -179,12 +179,13 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     """the sleek one-piece torso (head language): near-vertical sides that funnel out late to the shoulder line,
     big plan radii and a head-style crown fillet. Piecewise hulls, so the concave flanks survive (export lofts the rings)."""
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
+    zf = zs - 40.0 * Rk                                         # the armpit: the flare ends at the shoulder drum's bottom edge
     def sec(z):
         zh = z0 + 88.0 * Rk                                     # full width from here up (the side bays)
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
             k = 0.80 + (0.97 - 0.80) * ss(z0, zh, z)
         else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
-            u = min(1.0, max(0.0, (z - zh) / (zs + 6.0 * Rk - zh)))
+            u = min(1.0, max(0.0, (z - zh) / (zf - zh)))       # full width by the drum's bottom: the side wraps the whole drum
             k = 0.97 + (flank / CH - 0.97) * u ** 3
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
@@ -377,7 +378,7 @@ def design():
         spc, src = U['sp'][0], U['sr'][0]
         # to the deltoid's inner face (the roll drum's RADIUS + 3 mm: the roll axis runs fore/aft), less a running gap that grows with size
         y_in = min(SHOULDER_FLANK() - 14.0, abs(spc[1]) + KS.ARM()['L'] / 2 + KS.G - 2.0)
-        if KS.waist_layout() is None:                        # the shell stops at the shoulder axis: the drum wraps the whole pitch can
+        if True:                                              # the drum wraps the whole pitch can (the shell's crown fillet no longer hides it)
             y_in = abs(spc[1]) - KS.ARM()['L'] / 2 - 2.0   # from the pitch output face (covers the yoke plates)
         y_out = abs(src[1]) - (rsr + 3.0) - 2.0 * max(1.0, KS.R())
         r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
