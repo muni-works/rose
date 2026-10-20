@@ -461,13 +461,12 @@ def head(J):
 # electronics in the torso bay. PLACEHOLDERS until the limbic-board spec (rose branch claude/limbic-spec, LIMBIC.md)
 # lands: cells, pack arrangement, Jetson and board envelopes are assumptions, sized to the bay; swap numbers here.
 ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 21700 (Molicel P50B class): 432 Wh, ~1.7 h walking
-            # ONE tool-less swappable pack on the back (LIMBIC.md option C, claude/limbic-spec e8bdb9c): slides DOWN on two rails
-            # on the back plate, gravity-seats a blind-mate dock at the bottom, spring latch at the top lip. Case 136 (y) x 58 (x,
-            # proud of the back) x 150 (z) incl. a <=10 mm BQ76952 cell-monitor slab (power FETs on the limbic board) + 2 mm PA12.
-            # Option D (short missions, documented only): same footprint, 80 mm deep, 12S3P 648 Wh, +1 kg; ROM clears, but the
-            # walking knee is already at RS06 continuous, so it's thermally marginal.
-            pack=dict(y=136.0, x=58.0, z=(20.0, 170.0), kg=2.0, cells=(2, 6, 2)),   # cells x, y, z (upright 21700s, two tiers)
-            monitor=10.0,                                           # BQ76952 slab on the pack's dock face
+            # ONE swappable pack inside the chassis, K1-style: it slides in from the back into the bay between the torso side
+            # plates, on two guide strips on deck0, until its front face blind-mates the dock on a cross plate; latch at the
+            # hatch, whose face IS the pack's back (flush with the shell). Cells lie in 3 (y) x 4 (x) x 2 tiers, upright.
+            # (Retired: the back-mounted option C. Option D (12S3P) no longer fits the bay.)
+            pack=dict(cells=(4, 3, 2), kg=2.0),                     # cells x, y, z
+            monitor=10.0,                                           # BQ76952 slab on the pack's dock (front) face
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
             fan=(10.0, 40.0, 40.0), brake=(28.0, 50.0, 20.0),       # 40 mm exhaust fan (blowing out, above the pack); brake resistor (size TBD)
             estop=None,                                             # no hard e-stop (the K1 has none): wireless ELRS e-stop instead
@@ -477,47 +476,52 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             board=(110.0, 74.0, 15.0), board_kg=0.12)               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
 
-def X_BACK():
-    """the back plate's aft face (mini): on the side plates' aft edges."""
-    return -55.0 * R() - T
+def pack_box(J=None):
+    """the pack's envelope in the bay (mini): ((x0, y0, z0), (x1, y1, z1)) incl. the 2 mm PA12 case."""
+    E = ELEC
+    if J is None:
+        J, _ = world()
+    sp = upper_layout(J, 'Left')['sp'][0]
+    y_s = abs(sp[1]) - ARM()['L'] / 2 - G - T                 # side plate inner face
+    cx, cy, cz = E['pack']['cells']
+    x1 = -61.0 * R()                                          # the hatch: flush with the abdomen's back skin (6 mm in from the chest's)
+    x0 = x1 + 2.0 + cx * E['cell_d'] + E['monitor'] + 2.0
+    z0 = Z_D0() + T + 3.0                                     # on 3 mm guide strips on deck0
+    return (np.array([x1, -(y_s - 1.0), z0]), np.array([x0, y_s - 1.0, z0 + 4.0 + cz * E['cell_h'] + 4.0]))
 
 
 def electronics(J):
-    """the back pack (+ its back plate, rails, dock, latch), Jetson, limbic board, fan, brake, ELRS (mini only)."""
+    """the in-bay pack + dock, Jetson and limbic board in the side bays, fan, brake, ELRS (mini only)."""
     if V['name'] != 'mini':
         return []
     E, out = ELEC, []
     sp = upper_layout(J, 'Left')['sp'][0]
     y_s = abs(sp[1]) - ARM()['L'] / 2 - G - T                 # side plate inner face
-    P = E['pack']; z0, z1 = P['z']
-    xb = X_BACK()
-    # back plate between the side plates' aft edges, deck0 up to the pack top; rails on it, dock at the bottom, latch at the top
-    out.append(('torso-back', plate(Rr(-(y_s + T), z0 - 4.0, y_s + T, z1), 'yz', xb)))
-    x_rail = xb - 4.5
-    for s_, t in ((1, 'l'), (-1, 'r')):
-        out.append((f'torso-rail.{t}', trimesh.creation.box(bounds=[[x_rail, s_ * 30.0 - 4.0, z0 + 6.0], [xb, s_ * 30.0 + 4.0, z1 - 4.0]])))
-    out.append(('elec-dock', trimesh.creation.box(bounds=[[x_rail, -16.0, z0 - 2.0], [xb, 16.0, z0 + 16.0]])))   # blind-mate, gravity-seated
-    out.append(('torso-latch', trimesh.creation.box(bounds=[[xb - 10.0, 24.0, z1 + 1.0], [xb, 44.0, z1 + 5.0]])))   # spring latch over the lip
-    # the pack: cells + monitor slab inside the case (the case is a shell, cover-pack)
-    x_face = x_rail - 1.0                                       # pack's dock face
-    cx, cy, cz = P['cells']
-    bx, by_, bz = cx * E['cell_d'], cy * E['cell_d'], cz * E['cell_h'] + 4.0
-    x_c0 = x_face - 2.0 - E['monitor']
-    out.append(('elec-bms', trimesh.creation.box(bounds=[[x_c0, -by_ / 2, z0 + 3.0], [x_face - 2.0, by_ / 2, z1 - 3.0]])))
-    out.append(('elec-battery', trimesh.creation.box(bounds=[[x_c0 - bx, -by_ / 2, (z0 + z1) / 2 - bz / 2], [x_c0, by_ / 2, (z0 + z1) / 2 + bz / 2]])))
+    lo, hi = pack_box(J)
+    for s_, t in ((1, 'l'), (-1, 'r')):                         # guide strips the pack slides in on
+        out.append((f'torso-rail.{t}', trimesh.creation.box(bounds=[[lo[0] + 4.0, s_ * (y_s - 14.0) - 4.0, Z_D0() + T], [hi[0], s_ * (y_s - 14.0) + 4.0, lo[2]]])))
+    x_dp = hi[0] + 6.0                                          # dock cross plate, between the side plates
+    out.append(('torso-dock', plate(Rr(-y_s, Z_D0() + T, y_s, lo[2] + 70.0), 'yz', x_dp)))
+    out.append(('elec-dock', trimesh.creation.box(bounds=[[hi[0] + 0.5, -16.0, lo[2] + 4.0], [x_dp, 16.0, lo[2] + 24.0]])))
+    out.append(('torso-latch', trimesh.creation.box(bounds=[[lo[0] + 10.0, -10.0, hi[2] + 0.5], [lo[0] + 22.0, 10.0, hi[2] + 3.5]])))
+    cx, cy, cz = E['pack']['cells']
+    xm = hi[0] - 2.0 - E['monitor']
+    out.append(('elec-bms', trimesh.creation.box(bounds=[[xm, lo[1] + 2.0, lo[2] + 2.0], [hi[0] - 2.0, hi[1] - 2.0, hi[2] - 2.0]])))
+    out.append(('elec-battery', trimesh.creation.box(bounds=[[xm - cx * E['cell_d'], -cy * E['cell_d'] / 2, lo[2] + 2.0], [xm, cy * E['cell_d'] / 2, hi[2] - 2.0]])))
+    # side bays (outboard of the side plates, under the shoulder cans): Jetson left, limbic board + brake right
+    y_o = y_s + T + 2.0
     jx, jy, jz = E['jetson']
-    z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
-    out.append(('elec-jetson', trimesh.creation.box(extents=[jx, jy, jz]).apply_translation([5.0, 0.0, z_d1 - 4.0 - jz / 2])))
-    fx, fy, fz = E['fan']; zo = E['vent_out']['z']
-    x_wall = -65.0 * R()                                      # inside the chest back wall
-    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
+    out.append(('elec-jetson', trimesh.creation.box(bounds=[[-40.0, y_o, 108.0], [-40.0 + jz, y_o + jx, 108.0 + jy]])))   # on its side: 87 x 50 x 52
+    bx_, by_, bz_ = E['board']
+    out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 92.0], [-50.0 + bx_, -y_o, 92.0 + by_]])))   # on edge
     rx, ry, rz = E['brake']
-    out.append(('elec-brake', trimesh.creation.box(extents=[rx, ry, rz]).apply_translation([5.0 - jx / 2 - 3 - rx / 2, 0.0, 120.0])))
+    out.append(('elec-brake', trimesh.creation.box(bounds=[[0.0, -(y_o + bz_ + 2.0 + rz), 112.0], [rx, -(y_o + bz_ + 2.0), 112.0 + ry]])))
+    fx, fy, fz = E['fan']; zo = E['vent_out']['z']
+    x_wall = -65.0 * R()                                      # inside the chest back wall, over the hatch
+    out.append(('elec-fan', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, 0.0, (zo[0] + zo[1]) / 2])))
     ex, ey_, ez = E['elrs']
+    z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
     out.append(('elec-elrs', trimesh.creation.box(extents=[ex, ey_, ez]).apply_translation([45.0, 0.0, z_d1 - 6.0 - ez / 2])))
-    bx_, by2, bz_ = E['board']
-    by2 = min(by2, 2 * (y_s - 1.0))
-    out.append(('elec-limbic', trimesh.creation.box(extents=[bx_, by2, bz_]).apply_translation([5.0, 0.0, Z_D0() + T + 6.0 + bz_ / 2])))
     return out
 
 
