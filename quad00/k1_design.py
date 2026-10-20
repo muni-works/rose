@@ -6,7 +6,7 @@ K1 frame: x fore, y left, z up (mm). Joint positions + axes from the K1 URDF (ar
 import math
 import numpy as np
 import k1_structure as KS, trimesh
-from manifold3d import Manifold, Mesh, OpType, JoinType
+from manifold3d import CrossSection, FillRule, Manifold, Mesh, OpType, JoinType
 import k1 as K, k1_teardown as KT, quad as Q
 from design import ring, tm, M_, cyl
 
@@ -195,6 +195,21 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
         d_ = rf * (1 - math.cos(th))
         rings.append(rrect(np.array([xc, 0, zt - rf + rf * math.sin(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
     return hull_rings(rings)
+
+
+def roll_arch(mesh, c, rng, shell, rmin=0.0):
+    """a wheel arch about the hip-roll axis (x): the annular sector the drum sweeps over `rng` (deg), +3 mm each way,
+    extruded through the shell's depth -- one smooth cylindrical cut instead of a faceted sweep."""
+    v = np.asarray(mesh.vertices) - np.asarray(c)
+    r = np.hypot(v[:, 1], v[:, 2]); th = np.degrees(np.arctan2(v[:, 2], v[:, 1]))
+    th0, th1 = th.min() + rng[0] - 2.0, th.max() + rng[1] + 2.0
+    r0, r1 = max(r.min() - 3.0, rmin, 1.0), r.max() + 3.0
+    a = np.radians(np.linspace(th0, th1, 96))
+    pts = [(r1 * math.cos(t), r1 * math.sin(t)) for t in a] + [(r0 * math.cos(t), r0 * math.sin(t)) for t in a[::-1]]
+    bb = (shell if isinstance(shell, Manifold) else M_(shell)).bounding_box()
+    xlo, xhi = bb[0] - 5.0, bb[3] + 5.0
+    sec = CrossSection([pts], FillRule.EvenOdd)
+    return sec.extrude(xhi - xlo).transform(np.array([[0, 0, 1.0, xlo], [1.0, 0, 0, 0], [0, 1.0, 0, 0]])).translate([0, c[1], c[2]])
 
 
 def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
@@ -457,8 +472,13 @@ def design():
         guard = tm(Manifold.hull_points(gv.astype(np.float32)))
         add(f'trim-hipguard.{t}l', guard)
         gc_ = guard.bounds.mean(0)
-        hipr = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m) + M_(got[f'cover-hip.{t}l'])   # slot with running clearance
-        pel = pel - sweep_union(hipr, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)             # and rolls out from it
+        brk = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m)   # the bracket: an internal slot
+        pel = pel - sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)
+        if KS.V['name'] == 'tiny':                              # the tiny's drum rolls in too close for an arch: keep the swept cut
+            pel = pel - sweep_union(M_(got[f'cover-hip.{t}l']), lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)
+        else:
+            pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
+
     add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
