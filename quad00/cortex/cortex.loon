@@ -99,15 +99,25 @@
     [map [fn [st] [head-sec [- [- hh wall] [nth st 0]] [+ wall [nth st 1]]]] [reverse [round-st [- rf wall]]]]]]]]
 [let below-floor [bx -100.0 -100.0 -1.0 100.0 100.0 tf]]
 
-; side vents, low to high: speaker behind the lower slots, the mic taped above it, the fan duct (right) at the top
-[let zv0 20.0]
-[let zv1 84.0]
-[let zm 35.0]                                   ; speaker centre
-[let vent [fn [i side]
-  [translate [+ [+ [+ x-back rc] 4.0] [* 7.0 i]] [if [> side 0.0] [- hw 4.0] [- 0.0 [+ hw 2.0]]] zv0 [cube 3.5 6.0 [- zv1 zv0]]]]]
-[let vents
-  [pipe [vent 0.0 1.0] [union [vent 1.0 1.0]] [union [vent 2.0 1.0]] [union [vent 3.0 1.0]] [union [vent 4.0 1.0]]
-        [union [vent 0.0 -1.0]] [union [vent 1.0 -1.0]] [union [vent 2.0 -1.0]] [union [vent 3.0 -1.0]] [union [vent 4.0 -1.0]]]]
+; the ears: a dot grid each side, a rounded slot of 1.1 mm holes on a 2.4 mm hex pitch (laser-drilled, or moulded
+; with core pins -- no slides). Left: speaker behind the top, mic below it. Right: fan exhaust behind the top, mic below.
+; Both mics sit on the same dot, so the pair is level and symmetric.
+[let gx -20.0]                                  ; grille centre, x
+[let zg 66.0]                                   ;               z
+[let gw 11.0]                                   ; half width (the slot's end radius)
+[let gh 19.0]                                   ; half height
+[let dot-p 2.4]
+[let dot-h [* dot-p 0.866]]
+[let in-slot [fn [q]
+  [let vv [max #[0.0 [- [abs [nth q 1]] [- gh gw]]]]]
+  [< [+ [* [nth q 0] [nth q 0]] [* vv vv]] [* [- gw 0.8] [- gw 0.8]]]]]
+[let dots [filter in-slot [flatten #[
+  [flatten [map [fn [k] [map [fn [i] #[[* i dot-p] [* [* 2.0 k] dot-h]]] [range -5 6]]] [range -5 6]]]
+  [flatten [map [fn [k] [map [fn [i] #[[* [+ i 0.5] dot-p] [* [+ [* 2.0 k] 1.0] dot-h]]] [range -5 5]]] [range -5 5]]]]]]]
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n 0.55 [+ [* 2.0 hw] 8.0] 12]]]]]
+[let vents [fold [dot-hole [nth dots 0]] [fn [acc q] [union acc [dot-hole q]]] dots]]
+[let zmic [- zg [* 6.0 dot-h]]]                  ; the mic port's dot (row -6, centre column)
+[let zm [+ zg 8.5]]                             ; speaker centre (left)
 [let dock-cuts
   [pipe [translate -1.95 -4.8 -1.0 [cube 3.9 9.6 6.0]]                          ; the USB-C receptacle slot (plug tongue along y)
         [union [translate -2.2 15.8 -1.0 [cube 4.4 4.4 6.0]]]                   ; alignment pin holes
@@ -130,7 +140,7 @@
 
 ; ears: none of their own. The side vents are the grilles: speaker behind the left/right slots, the mic taped
 ; inside beside them (fewer parts, one tool for the slots)
-[let ear-x [+ [+ x-back rc] 18.0]]             ; the vent field's centre (speaker, mic, duct)
+[let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
 ; the back panel: power button + status LED (left), USB-C + Ethernet (right)
 [let zp 30.0]
 [let pw [* 0.62 hw]]
@@ -163,15 +173,14 @@
 [let cortex-sled [union [bx jxa -46.0 tf jxb -44.0 zj0] [bx jxa 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 44.0]]
-[let cortex-duct [difference [bx -31.5 [- 1.5 hw] [+ zh0 1.5] -8.5 -31.5 [- zh1 1.5]]
-                             [bx -33.0 [- wall hw] zh0 -7.0 -31.5 zh1]]]
+[let cortex-duct [difference [bx -31.5 [- 1.5 hw] [+ zh0 1.5] -14.5 -31.5 [- zh1 1.5]]
+                             [bx -33.0 [- wall hw] zh0 -13.0 -31.5 zh1]]]
 [let spk [fn [y0 sy] [disc-y ear-x [if [> sy 0.0] [- y0 5.4] y0] zm 14.0 5.4]]]
-[let cortex-speakers [union [spk [- hw wall] 1.0] [spk [- 0.0 [- hw wall]] -1.0]]]
-[let zmic 52.0]                                                                 ; mic boards taped to the wall, above the speaker
-[let cortex-mics [union [bx [- ear-x 8.35] [- hw 4.3] zmic [+ ear-x 8.35] [- hw wall] [+ zmic 12.7]]
-                        [bx [- ear-x 8.35] [- wall hw] zmic [+ ear-x 8.35] [- 4.3 hw] [+ zmic 12.7]]]]
-[let cortex-amps [union [bx -5.0 [- hw 5.5] 22.0 14.4 [- hw wall] 39.8]         ; amps on the wall, ahead of the speaker
-                        [bx -5.0 [- wall hw] 22.0 14.4 [- 5.5 hw] 39.8]]]
+[let cortex-speakers [spk [- hw wall] 1.0]]          ; one speaker, left (the right ear exhausts)
+; mic boards taped to the wall, port over the mic dot
+[let cortex-mics [union [bx [- ear-x 8.35] [- hw 4.3] [- zmic 6.35] [+ ear-x 8.35] [- hw wall] [+ zmic 6.35]]
+                        [bx [- ear-x 8.35] [- wall hw] [- zmic 6.35] [+ ear-x 8.35] [- 4.3 hw] [+ zmic 6.35]]]]
+[let cortex-amps [bx -5.0 [- hw 5.5] 22.0 14.4 [- hw wall] 39.8]]         ; amp on the left wall, ahead of the speaker
 
 ; ----------------------------------------------------------------------- wiring ----
 ; Routed orthogonally (harness practice: runs along x, y, z, clipped at the turns). Round cables are square-section
@@ -181,11 +190,12 @@
 [let run-z [fn [z0 z1 x y r] [bx [- x r] [- y r] [min #[z0 z1]] [+ x r] [+ y r] [max #[z0 z1]]]]]
 [let csi [fn [sy] [pipe [bx 18.0 [* sy 44.0] 70.0 19.0 [* sy 53.0] [- ze 6.0]]                   ; down behind the eye ...
                         [union [bx 0.0 [min #[[* sy 44.0] [* sy 53.0]]] 70.0 19.0 [max #[[* sy 44.0] [* sy 53.0]]] 71.0]]]]]  ; ... into the A603 side
-[let audio [fn [sy] [pipe [run-x -8.6 -5.0 [* sy 77.0] zm 1.5]                                  ; speaker -> amp
-                          [union [run-y [* sy 76.0] [* sy 43.5] 0.0 40.5 1.5]]                   ; amp -> A603 (over the bracket)
-                          [union [run-y [* sy 77.5] [* sy 43.5] -20.0 [+ zmic 6.0] 1.5]]]]]       ; mic -> A603
+[let mic-run [fn [sy] [run-y [* sy 77.5] [* sy 43.5] -20.0 zmic 1.5]]]                          ; mic -> A603
+[let audio [pipe [run-z zm 39.8 -4.0 77.0 1.5]                                                   ; speaker -> amp
+                 [union [run-y 76.0 43.5 0.0 40.5 1.5]]                                          ; amp -> A603 (over the bracket)
+                 [union [mic-run 1.0]] [union [mic-run -1.0]]]]
 [let cortex-cables
-  [pipe [csi 1.0] [union [csi -1.0]] [union [audio 1.0]] [union [audio -1.0]]
+  [pipe [csi 1.0] [union [csi -1.0]] [union audio]
     [union [bx jxb -7.0 55.0 19.0 7.0 56.0]] [union [bx 18.0 -7.0 55.0 19.0 7.0 72.0]] [union [bx 18.0 -7.0 71.0 21.5 7.0 72.0]]  ; HDMI FPC
     [union [run-x -7.0 -20.0 0.0 8.0 1.75]]                                                      ; dock VBUS/CC -> PD sink
     [union [run-z 10.0 50.0 -45.0 0.0 1.75]] [union [run-x -45.0 jxa 0.0 50.0 1.75]]               ; charger -> A603 DC
