@@ -25,7 +25,7 @@ G = 1.0                      # assembly gap
 # one design, two sizes. R = layout scale relative to the mini (absolute mm that track the body scale by R;
 # motor- and plate-driven dims are computed from the motors and don't scale)
 VARIANTS = {
-    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0), lighten=dict(rim=7.0, rib=5.0, pitch=28.0, boss=6.0)),
+    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0), lighten=dict(rim=7.0, rib=5.0, pitch=28.0, boss=6.0), leg_in=20.0),
     'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm='rs00', ankle='rs00', head='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
     # tiny: upper arm 20 mm longer (forearm shorter) so the elbow folds past the RS00 rotation drum; foot 14 mm deeper so the
     # low ankle drum clears the sole in roll
@@ -35,7 +35,7 @@ VARIANTS = {
     # 2 m, full/SIZING.md) -- this is a packaging/kinematics/look model until the rana actuators exist.
     'full': dict(scale=170.3 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
                  ankle_f=None, head_z=395.5, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
-                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88),
+                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88, leg_in=30.0),
 }
 V = dict(VARIANTS['mini'], name='mini')
 

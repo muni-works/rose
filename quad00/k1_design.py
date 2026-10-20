@@ -481,7 +481,7 @@ def design():
         pel = pel - hullof(sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04))          # the thigh swings under the pelvis
         hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
         # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
-        upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] - 20.0]))
+        upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] + (m06['D'] * 0.5 if KS.V.get('leg_in') else -20.0)]))
         gv = np.concatenate([upper.vertices + np.array([dx, 0, 0]) for dx in (-2.0, 2.0)])
         guard = tm(Manifold.hull_points(gv.astype(np.float32)))
         add(f'cover-hipguard.{t}l', guard)

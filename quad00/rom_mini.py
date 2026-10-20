@@ -33,7 +33,8 @@ LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']
 ARM = ['sp', 'sr', 'ep', 'ey', 'wr', 'wp', 'wy']
 
 # what a K1-class walker actually uses (deg, K1 sign convention); the sweep reports against these
-NEED = {'Hip_Roll': (-15, 40), 'Hip_Pitch': (-100, 30), 'Hip_Yaw': (-45, 45), 'Knee_Pitch': (0, 120),
+NEED = {'Hip_Roll': (-10, 40),   # inward -10 (walking ~8): legs 20 mm in, H2/T2 stance (Cam 2026-10-20)
+         'Hip_Pitch': (-100, 30), 'Hip_Yaw': (-45, 45), 'Knee_Pitch': (0, 120),
         'Ankle_Pitch': (-45, 20), 'Ankle_Roll': (-20, 20), 'Shoulder_Pitch': (-180, 60), 'Shoulder_Roll': (-10, 90),
         'Elbow_Pitch': (-90, 90), 'Elbow_Yaw': (-130, 0), 'Head_yaw': (-57, 57), 'Head_pitch': (-20, 40),
         'Wrist_roll': (-90, 90), 'Wrist_pitch': (-45, 45), 'Wrist_yaw': (-30, 30),
