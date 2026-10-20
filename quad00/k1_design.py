@@ -421,7 +421,10 @@ def design():
         Mc = M_(chest_m)                                        # exhaust slots through the (leaning) back wall at each slot's height
         cuts = [('box', [Mc.slice(zc).bounds()[0] - 2.0, -33.0, zc - 1.75], [7.0, 66.0, 3.5]) for zc in np.linspace(E['vent_out']['z'][0] + 3, E['vent_out']['z'][1] - 3, 5)]
         if Wl is None:                                          # intake grille, low front
-            cuts += [('box', [Mc.slice(zc).bounds()[2] - 5.0, -24.0, zc - 1.75], [7.0, 48.0, 3.5]) for zc in np.linspace(E['vent_in']['z'][0] + 3, E['vent_in']['z'][1] - 3, 5)]
+            vy0, vy1 = E['vent_in']['y']; vz0, vz1 = E['vent_in']['z']
+            for sy in (1, -1):                                   # one per side bay: the pack blocks the middle
+                for zc in np.arange(vz0 + 2.0, vz1 - 1.0, 7.0):  # 3.5 mm slots on a 7 mm pitch: 50 % open
+                    cuts.append(('box', [Mc.slice(zc).bounds()[2] - 12.0, vy0 if sy > 0 else -vy1, zc - 1.75], [14.0, vy1 - vy0, 3.5]))
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)

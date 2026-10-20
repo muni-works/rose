@@ -472,7 +472,8 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             fan=(10.0, 30.0, 30.0), brake=(28.0, 50.0, 20.0),       # 30 mm exhaust fan (blowing out, above the pack, under the leaning back); brake resistor (size TBD)
             estop=None,                                             # no hard e-stop (the K1 has none): wireless ELRS e-stop instead
             elrs=(20.0, 14.0, 5.0),                                 # ELRS 2.4 GHz RX (RP1/RP2 class), chest top; antenna along the PA12 wall
-            vent_in=dict(z=(22.0, 46.0)), vent_out=dict(z=(172.0, 200.0)),          # slot grilles: abdomen front, chest back over the pack
+            vent_in=dict(z=(28.0, 82.0), y=(48.0, 78.0)),   # two low front grilles, one per side bay (>=12 cm2 open for 4 CFM)
+            vent_out=dict(z=(172.0, 200.0)),                # exhaust grille: chest back, over the pack
             foot_node=(20.0, 15.0, 6.0),                            # STM32G0 + FSR node in each sole (v1)
             board=(110.0, 88.0, 15.0), board_kg=0.12)   # 110 x 88 (claude/limbic-spec 0a00f7b), tall parts outboard               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
