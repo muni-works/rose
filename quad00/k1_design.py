@@ -238,16 +238,16 @@ def design():
         r0c = rk * ck0
         # mini: a sculpted calf -- full just under the knee, slim at the ankle; never thinner than the ankle cans need
         cdep = [(0.0, r0c), (0.16, r0c * 1.14), (0.40, r0c * 0.98), (0.68, r0c * 0.82), (1.0, 26.0)] if KS.V['name'] == 'mini' else None
-        calf = bone(jp(kn) + yo, r0c, ank + yo + np.array([0, 0, 14.0]), 30.0, flat=KS.V['flat'], n=3.0, half_w=chw, depth=cdep)
+        calf = bone(jp(kn) + yo, r0c, ank + yo + np.array([0, 0, 14.0 * max(1.0, KS.R())]), max(30.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 2.0 if KS.R() > 1.5 else 0.0), flat=KS.V['flat'], n=3.0, half_w=chw, depth=cdep)
         cmid = (jp(kn) + ank) / 2 + yo
         add(f'cover-calf.{tag}l', grooved(calf, [('frame', 0, cmid + np.array([0, 0, 18.0]), chw - 9.0, 0.30 * np.linalg.norm(jp(kn) - ank), 10.0)]))   # a shin panel, front and back
-        calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0]), 33.0, flat=KS.V['flat'], n=3.0, half_w=chw + 3.0,
+        calf_fat = M_(bone(jp(kn) + yo, rk * ck0 + 3, ank + yo + np.array([0, 0, 14.0 * max(1.0, KS.R())]), max(33.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 5.0 if KS.R() > 1.5 else 0.0), flat=KS.V['flat'], n=3.0, half_w=chw + 3.0,
                            depth=[(t, r + 3.0) for t, r in cdep] if cdep else None))
-        if KS.V['name'] == 'mini':
+        if KS.V['name'] in ('mini', 'full'):                 # long thighs: the full fold cut
             add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(calf_fat, jp(kn), [(ja(kn), -2, 130)], step=4.0)))
         else:                                                  # tiny: a 35 mm thigh, relieved for the fold (no clevis room)
             add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(M_(calf), jp(kn), [(ja(kn), -2, 102)], scale=1.02, step=4.0)))
-        Ha, ca, ra, La = housing(ank, ja(an), 'rs00', pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
+        Ha, ca, ra, La = housing(ank, ja(an), KS.V['ankle'], pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
         add(f'trim-ankle.{tag}l', Ha)
         F = M[f'{side.lower()}_foot_link']
         lo, hi = F.bounds
@@ -269,10 +269,10 @@ def design():
         # ---- arm: shoulder roll drum, upper arm (through the upper-arm rotation drum), elbow, forearm, mitten
         sp, sr, ep, ey = (f'A{side}_Shoulder_Pitch', f'{side}_Shoulder_Roll', f'{side}_Elbow_Pitch', f'{side}_Elbow_Yaw')
         U = KS.upper_layout(J, side)                   # arm drums on the structure's motors
-        Hsr, csr, rsr, Lsr = housing(U['sr'][0] + np.array([3.0, 0, 0]), U['sr'][1], 'rs00', extra_len=22.0)   # long enough to hold the yoke + upper-arm plates
+        Hsr, csr, rsr, Lsr = housing(U['sr'][0] + np.array([3.0, 0, 0]), U['sr'][1], KS.V['arm'], extra_len=22.0)   # long enough to hold the yoke + upper-arm plates
         add(f'cover-shoulder.{tag}a', Hsr); add(f'puck-shoulder.{tag}a', csr)
-        Hue, cue, rue, Lue = housing(U['ep'][0] + np.array([2.0, 0, -6.0]), U['ep'][1], 'rs00', pad=6.0, extra_len=20.0)
-        Hel, cel, rel, Lel = housing(U['ey'][0], U['ey'][1], 'rs00', extra_len=14.0)   # room for the elbow + forearm plates
+        Hue, cue, rue, Lue = housing(U['ep'][0] + np.array([2.0, 0, -6.0]), U['ep'][1], KS.V['arm'], pad=6.0, extra_len=20.0)
+        Hel, cel, rel, Lel = housing(U['ey'][0], U['ey'][1], KS.V['arm'], extra_len=14.0)   # room for the elbow + forearm plates
         add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
         epc = U['ep'][0]
@@ -280,14 +280,16 @@ def design():
         ey_ = U['ey'][0]
         tip = ey_ + KS.hang(J, M, side)
         wrist = ey_ + (tip - ey_) * 0.62
-        fo = np.array([0, s * 5.0, 0])                      # forearm rides outboard of the inner elbow plate
+        ma_ = KS.ARM(); g_, t_ = KS.G, KS.T
+        f_in, f_out = -(ma_['L'] / 2 + g_) + 3.5, ma_['L'] / 2 + g_ + t_ + 3.3      # clear of E2 inboard, over F1 outboard
+        fo = np.array([0, s * (f_in + f_out) / 2, 0]); f_half = (f_out - f_in) / 2  # forearm rides outboard of the inner elbow plate
         r0f = rel * 0.8
         fdep = [(0.0, r0f), (0.2, r0f * 1.12), (0.55, r0f * 0.92), (1.0, 15.0)]            # full under the elbow, slim at the wrist
-        fore = bone(ey_ + fo, r0f, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=28.0, depth=fdep)
+        fore = bone(ey_ + fo, r0f, wrist + fo, 18.0, lateral=(0, 1.0, 0), half_w=f_half, depth=fdep)
         add(f'cover-forearm.{tag}a', fore)
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
-        low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=33.0)
-        fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=29.5, depth=[(t, r + 3.0) for t, r in fdep]))
+        low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=ma_['L'] / 2 + g_ + t_ + 3.3)
+        fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
         add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
@@ -297,10 +299,12 @@ def design():
         # shoulder, full-size humanoid language (H2/T2): a round pitch disc flush on the chest flank, a deltoid that
         # belongs to the arm (wraps the roll drum, flows into the upper arm), the chest top sloping down to meet it
         spc, src = U['sp'][0], U['sr'][0]
-        y_in, y_out = SHOULDER_FLANK() - 14.0, abs(src[1]) - Lsr / 2 - 2.0  # from inside the flared flank to the deltoid, 2 mm gap
+        # to the deltoid's inner face (the roll drum's RADIUS + 3 mm: the roll axis runs fore/aft), less a running gap that grows with size
+        y_in = min(SHOULDER_FLANK() - 14.0, abs(spc[1]) + KS.ARM()['L'] / 2 + KS.G - 2.0)   # from the pitch output face (covers the yoke plates)
+        y_out = abs(src[1]) - (rsr + 3.0) - 2.0 * max(1.0, KS.R())
         r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
         dmid = np.array([spc[0], s * (y_in + y_out) / 2, spc[2]])
-        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], 'rs00', pad=r_disc - 28.5, fil=8.0, extra_len=(y_out - y_in) - 51.0)
+        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], KS.V['arm'], pad=r_disc - KS.ARM()['D'] / 2, fil=8.0, extra_len=(y_out - y_in) - KS.ARM()['L'])
         add(f'cover-shoulderyoke.{tag}a', disc)                              # coaxial with the pitch axis: turns in place
         ua_m = dict(out)[f'cover-upperarm.{tag}a']
         ax_ = np.asarray(U['sr'][1], float); c_ = U['sr'][0] + np.array([3.0, 0, 0])
@@ -377,13 +381,13 @@ def design():
     if KS.V['name'] == 'mini':
         nz0, nw = Hl['yaw'][0][2] + 20.0, (30.0, 34.0)
     else:                                                       # yaw motor up in the neck: a wider neck from just above the chest dome
-        nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (33.0, 36.0)
+        nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (max(33.0, KS.HEAD()['D'] / 2 + 3.0), max(36.0, KS.HEAD()['D'] / 2 + 3.0))
     nz1 = Hl['pitch'][0][2] - 10.0
     neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 0.8 * min(nw)) for z_ in (nz0, nz1)]
     add('cover-neck', hull_rings(neck))                       # satin like the shells: a quiet neck, not a pale block
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
-        add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], 31.5, nz0 + 4 - yz0))
+        add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
     Hh = M['Head_2']; hlo, hhi = Hh.bounds
     hc = (hlo + hhi) / 2
     hh, hw, hd = (hhi[2] - hlo[2]) * 0.86, (hhi[1] - hlo[1]) / 2 * 0.84, (hhi[0] - hlo[0]) / 2 * 0.98
@@ -403,7 +407,7 @@ def design():
     pocket = Manifold.cylinder(2 * pr, pr, pr, 72).rotate([-90, 0, 0]).translate([hpc[0], -pr, hpc[2]]) + \
         Manifold.cube([2 * px, 2 * pr, hpc[2] - hlo[2] + 20]).translate([hpc[0] - px, -pr, hlo[2] - 20])
     helmet = helmet - pocket
-    add('trim-headhub', cyl(hpc, [0, 1.0, 0], 33.0, 56.0))           # the head-pitch hub, coaxial: lives in the helmet's opening
+    add('trim-headhub', cyl(hpc, [0, 1.0, 0], max(33.0, KS.HEAD()['D'] / 2 + 4.5), max(56.0, KS.HEAD()['L'] + 5.0)))           # the head-pitch hub, coaxial: lives in the helmet's opening
     hm = tm(helmet)
     hm.metadata.update(loft=[np.asarray(r, float) for r in hr_],      # native: loft minus (y-cylinder r pr about the pitch axis + box)
                        cut=[('ycyl', hpc, pr), ('box', [hpc[0] - px, -pr, hlo[2] - 20], [2 * px, 2 * pr, hpc[2] - hlo[2] + 20])])
@@ -445,7 +449,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

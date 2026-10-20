@@ -2,6 +2,7 @@
 
 Bodies are the rigid groups between joints (shells + plates + motor cans). A pose collides when the moving subtree's
 overlap with everything else grows past its overlap at the zero pose (adjacent drums overlap coaxially by design)."""
+import re
 import numpy as np, trimesh
 from manifold3d import Manifold, Mesh, OpType
 import k1_design as KD, k1_structure as KS
@@ -10,17 +11,17 @@ THRESH = 200.0                                  # mm^3 of new overlap = a collis
 
 # body -> name prefixes ({t} = side tag); the order of CHAIN is parent -> child
 BODIES = {
-    'torso': ['elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'rs06-roll.', 'chassis-rollmount.', 'torso-', 'rs00-sp.', 'rs00-headyaw'],
-    'roll.{t}': ['chassis-hipR.{t}l', 'trim-hipguard.{t}l', 'chassis-hipinner.{t}l', 'rs06-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
-    'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'rs02-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
-    'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'rs06-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
-    'knee.{t}': ['shin-', 'rs00-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],
+    'torso': ['elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
+    'roll.{t}': ['chassis-hipR.{t}l', 'trim-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
+    'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'motor-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
+    'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'motor-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
+    'knee.{t}': ['shin-', 'motor-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],
     'ankle.{t}': ['cover-shoe.{t}l', 'sole.{t}l', 'node-foot.{t}l'],
-    'sp.{t}': ['arm-yokeP', 'rs00-sr.{t}a', 'cover-shoulderyoke.{t}a', 'cover-shoulder.{t}a', 'puck-shoulder.{t}a'],
-    'sr.{t}': ['arm-upperU', 'rs00-ep.{t}a', 'cover-upperarm.{t}a', 'cover-deltoid.{t}a', 'trim-upperarm.{t}a'],
-    'ep.{t}': ['arm-elbowE', 'rs00-ey.{t}a', 'cover-elbowfork.{t}a', 'cover-elbow.{t}a', 'puck-elbow.{t}a'],
+    'sp.{t}': ['arm-yokeP', 'motor-sr.{t}a', 'cover-shoulderyoke.{t}a', 'cover-shoulder.{t}a', 'puck-shoulder.{t}a'],
+    'sr.{t}': ['arm-upperU', 'motor-ep.{t}a', 'cover-upperarm.{t}a', 'cover-deltoid.{t}a', 'trim-upperarm.{t}a'],
+    'ep.{t}': ['arm-elbowE', 'motor-ey.{t}a', 'cover-elbowfork.{t}a', 'cover-elbow.{t}a', 'puck-elbow.{t}a'],
     'ey.{t}': ['arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
-    'hyaw': ['neck-N', 'rs00-headpitch', 'cover-neck', 'trim-headhub'],
+    'hyaw': ['neck-N', 'motor-headpitch', 'cover-neck', 'trim-headhub'],
     'hpitch': ['head-H1', 'cover-helmet', 'visor-face', 'puck-ear'],
 }
 LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']
@@ -37,6 +38,8 @@ def toM(m):
 
 
 def body_of(name):
+    if re.match(r'^rs\d\d-', name):                 # motors are named by model; the body map is by role
+        name = 'motor-' + name.split('-', 1)[1]
     for side, t in (('', 'l'), ('', 'r')):
         for b, prefixes in BODIES.items():
             for p in prefixes:

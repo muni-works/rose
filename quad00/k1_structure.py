@@ -24,18 +24,26 @@ G = 1.0                      # assembly gap
 # one design, two sizes. R = layout scale relative to the mini (absolute mm that track the body scale by R;
 # motor- and plate-driven dims are computed from the motors and don't scale)
 VARIANTS = {
-    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0)),
-    'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
+    'mini': dict(scale=100.0 / 94.0, big='rs06', yaw='rs02', arm='rs00', ankle='rs00', head='rs00', arm_out=16.0, ankle_f=(0.42, 0.66), head_z=205.0, flat=1.3, shin_gap=0.0, web_x=-20.0, hub_bore=None, elbow_dz=0.0, foot_drop=0.0, pocket=(40.0, 46.0)),
+    'tiny': dict(scale=0.75, big='rs00', yaw='rs00', arm='rs00', ankle='rs00', head='rs00', arm_out=30.0, ankle_f=None, head_z=None, flat=1.6, shin_gap=6.4, web_x=None, hub_bore=22.0, elbow_dz=-20.0, foot_drop=14.0, pocket=(44.0, 50.0)),
     # tiny: upper arm 20 mm longer (forearm shorter) so the elbow folds past the RS00 rotation drum; foot 14 mm deeper so the
     # low ankle drum clears the sole in roll
     # tiny: the RS00 knee is as long as the ankle RS00s, so the inner shin plate stands off 6.4 mm inboard of the thigh's
+    # full: the 2 m humanoid (Booster T2 / Unitree H2 class) in the mini's design language. RobStride for now (rana
+    # in v2): the RS04 (120 N.m) is the largest they make, so the legs are torque-short (hip/knee need ~530 N.m at
+    # 2 m, full/SIZING.md) -- this is a packaging/kinematics/look model until the rana actuators exist.
+    'full': dict(scale=200.0 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
+                 ankle_f=None, head_z=465.0, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
+                 foot_drop=0.0, pocket=(80.0, 92.0), plate_t=6.35),
 }
 V = dict(VARIANTS['mini'], name='mini')
 
 
 def use(name):
     """switch every builder (structure + design + rom) to a variant."""
+    global T
     V.clear(); V.update(VARIANTS[name], name=name)
+    T = V.get('plate_t', L.T)                                  # plate stock: 3.2 mm, 6.35 mm at full size (buckling goes as t^3)
 
 
 def R():
@@ -50,8 +58,21 @@ def YAW():
     return Q.MOTORS[V['yaw']]
 
 
-def plate(profile, plane, w0, t=T):
+def ARM():
+    return Q.MOTORS[V['arm']]
+
+
+def ANK():
+    return Q.MOTORS[V['ankle']]
+
+
+def HEAD():
+    return Q.MOTORS[V['head']]
+
+
+def plate(profile, plane, w0, t=None):
     """extrude a shapely profile into a plate: plane 'xz' (normal y), 'yz' (normal x), 'xy' (normal z)."""
+    t = T if t is None else t
     cs = CrossSection(L.rings(profile), FillRule.EvenOdd)
     m = L.to_world(cs.extrude(t).translate((0, 0, w0)), plane)
     return L.tri(m)
@@ -66,7 +87,7 @@ def motor(c, ax, mot):
 def layout(J, side):
     """our joint placements (motor centre, axis, model) for one leg, on the K1's axes."""
     s = 1 if side == 'Left' else -1
-    m06, m02, m00 = BIG(), YAW(), Q.MOTORS['rs00']
+    m06, m02, m00 = BIG(), YAW(), ANK()
     hp = J[f'{side}_Hip_Pitch']['p'].copy()
     hr = J[f'{side}_Hip_Roll']['p'].copy()
     hy = J[f'{side}_Hip_Yaw']['p'].copy()
@@ -89,7 +110,7 @@ def leg(J, side):
     """the leg's plates and motors."""
     P = layout(J, side)
     s = P['s']
-    m06, m02, m00 = BIG(), YAW(), Q.MOTORS['rs00']
+    m06, m02, m00 = BIG(), YAW(), ANK()
     out = []
     hp, _, _ = P['pitch']; rc, _, _ = P['roll']; yc, _, _ = P['yaw']; kc, _, _ = P['knee']; ac = P['ankle']
     # -- motors
@@ -162,7 +183,7 @@ def leg(J, side):
         c = kc + (ac - kc) * f
         cm = np.array([c[0], (y_so - G - m00['L'] / 2) if s > 0 else (y_so + T + G + m00['L'] / 2), c[2]])
         a_mot.append(cm)
-        out.append((f'rs00-ankle{(42, 66)[len(a_mot) - 1]}.{side[0].lower()}l', motor(cm, [0, s * 1.0, 0], 'rs00')))
+        out.append((f"{V['ankle']}-ankle{(42, 66)[len(a_mot) - 1]}.{side[0].lower()}l", motor(cm, [0, s * 1.0, 0], V['ankle'])))
     shin_o = L.stadium([(kc[0], kc[2], W - 4), (a_mot[0][0], a_mot[0][2], m00['D'] + 10), (a_mot[1][0], a_mot[1][2], m00['D'] + 10), (ac[0], ac[2], 40)])
     shin_o = shin_o.difference(L.holes_on(m06['out'][0], m06['out'][1], m06['hole'], at=(kc[0], kc[2])))
     out.append((f'shin-outer.{side[0].lower()}l', plate(shin_o, 'xz', y_so)))
@@ -198,9 +219,9 @@ def hang(J, M, side):
 
 
 def upper_layout(J, side):
-    """our arm + head motor placements on the K1 layout (all RS00). Axes squared up to x/y/z."""
+    """our arm motor placements on the K1 layout. Axes squared up to x/y/z."""
     s = 1 if side == 'Left' else -1
-    m = Q.MOTORS['rs00']
+    m = ARM()
     sr = J[f'{side}_Shoulder_Roll']['p'].copy()
     sr = sr + np.array([0, s * V['arm_out'], 0])                          # plumb arms need the hands clear of the hip drums
     ey = J[f'{side}_Elbow_Yaw']['p'].copy()
@@ -213,12 +234,12 @@ def upper_layout(J, side):
 
 
 def head_layout(J):
-    m = Q.MOTORS['rs00']
+    m = HEAD()
     if V['head_z']:
         z = V['head_z']                                                    # yaw down in the chest top, between the shoulder cans
     else:                                                                  # no room between them: up above the shoulder cans
         sp = upper_layout(J, 'Left')['sp'][0]
-        z = sp[2] + m['D'] / 2 + G + T + G + m['L'] / 2
+        z = sp[2] + ARM()['D'] / 2 + G + T + G + m['L'] / 2
     hy = np.array([J['AAHead_yaw']['p'][0], 0.0, z])
     hpz = hy[2] + m['L'] / 2 + G + T + G + m['D'] / 2
     return dict(yaw=(hy, np.array([0, 0, 1.0])), pitch=(np.array([hy[0], 0.0, hpz]), np.array([0, 1.0, 0])))
@@ -226,9 +247,9 @@ def head_layout(J):
 
 def arm(J, side, M):
     P = upper_layout(J, side)
-    s, m = P['s'], Q.MOTORS['rs00']
+    s, m = P['s'], ARM()
     tag = side[0].lower()
-    out = [(f'rs00-{k}.{tag}a', motor(P[k][0], P[k][1], 'rs00')) for k in ('sp', 'sr', 'ep', 'ey')]
+    out = [(f"{V['arm']}-{k}.{tag}a", motor(P[k][0], P[k][1], V['arm'])) for k in ('sp', 'sr', 'ep', 'ey')]
     sp, sr, ep, ey = (P[k][0] for k in ('sp', 'sr', 'ep', 'ey'))
     yw = lambda y0: min(s * y0, s * (y0 + T))                            # w0 of an xz plate starting at |y| = y0, growing outboard
     # shoulder yoke: P1 on the pitch output (xz), P2 on the roll stator back (yz)
@@ -263,30 +284,30 @@ def arm(J, side, M):
 
 def torso(J):
     """the spine: two side plates carrying the shoulder-pitch stators, a bottom deck on the roll mounts, a top deck under the neck yaw."""
-    m = Q.MOTORS['rs00']
+    m, mh = ARM(), HEAD()
     out = []
     U = upper_layout(J, 'Left'); H = head_layout(J)
     sp = U['sp'][0]
     y_s = abs(sp[1]) - m['L'] / 2 - G - T                                # side plate inner face
     hy = H['yaw'][0]
-    z_d1 = hy[2] - m['L'] / 2 - G - T
+    z_d1 = hy[2] - mh['L'] / 2 - G - T
     z_d0 = Z_D0()
     x0, x1 = -55.0 * R(), 65.0 * R()
     for s, tag in ((1, 'l'), (-1, 'r')):
         S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(x0, z_d0, x1, max(sp[2], z_d1))]).intersection(L.box(-1e3, -1e3, 1e3, z_d1 if z_d1 > sp[2] else 1e3))
         out.append((f'torso-side.{tag}', plate(S.difference(holes(m, 'back', (sp[0], sp[2]), 45)), 'xz', y_s if s > 0 else -y_s - T)))
     out.append(('torso-deck0', plate(Rr(x0, -y_s, x1, y_s), 'xy', z_d0)))
-    yd = max(y_s, m['back'][0] / 2 + 8.0)                                  # rests on the side plates' tops when the gap is narrow
-    D1 = Rr(hy[0] - 40, -yd, hy[0] + 45, yd).difference(holes(m, 'back', (hy[0], hy[1]), 45))
+    yd = max(y_s, mh['back'][0] / 2 + 8.0)                                 # rests on the side plates' tops when the gap is narrow
+    D1 = Rr(hy[0] - 40, -yd, hy[0] + 45, yd).difference(holes(mh, 'back', (hy[0], hy[1]), 45))
     out.append(('torso-deck1', plate(D1, 'xy', z_d1)))
     return out
 
 
 def head(J):
-    m = Q.MOTORS['rs00']
+    m = HEAD()
     H = head_layout(J)
     hy, hp = H['yaw'][0], H['pitch'][0]
-    out = [('rs00-headyaw', motor(hy, H['yaw'][1], 'rs00')), ('rs00-headpitch', motor(hp, H['pitch'][1], 'rs00'))]
+    out = [(f"{V['head']}-headyaw", motor(hy, H['yaw'][1], V['head'])), (f"{V['head']}-headpitch", motor(hp, H['pitch'][1], V['head']))]
     z_n0 = hy[2] + m['L'] / 2 + G
     y_n1 = -(m['L'] / 2 + G + T)                                         # pitch stator back (-y)
     N0 = L.unary_union([L.circle(hy[0], hy[1], m['out'][0] + 30), Rr(hy[0] - 20, y_n1 + T, hy[0] + 20, 18)]).difference(holes(m, 'out', (hy[0], hy[1])))
@@ -317,10 +338,10 @@ def electronics(J):
         return []
     E, out = ELEC, []
     sp = upper_layout(J, 'Left')['sp'][0]
-    y_side = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G       # side plate outer face
+    y_side = abs(sp[1]) - ARM()['L'] / 2 - G                 # side plate outer face
     nx, ny = E['pack_grid']
     px, py, pz = nx * E['cell_d'], ny * E['cell_d'] + 1.0, E['cell_h'] + 4.0          # cells touching along x (spot-welded strips on top)
-    z_top = sp[2] - Q.MOTORS['rs00']['D'] / 2 - 4.0           # under the shoulder-pitch can
+    z_top = sp[2] - ARM()['D'] / 2 - 4.0                     # under the shoulder-pitch can
     for s, t in ((1, 'l'), (-1, 'r')):
         y0 = y_side + 2.0 if s > 0 else -(y_side + 2.0) - py
         xc = 10.0                                                # forward of centre: room aft for a 10 mm BMS
@@ -330,9 +351,9 @@ def electronics(J):
         by0 = y0 if s > 0 else y0 + py - 40.0
         out.append((f'elec-bms.{t}', trimesh.creation.box(extents=[E['bms'], 40.0, 60.0]).apply_translation(
             [xc - px / 2 - E['bms'] / 2, by0 + 20.0, z_top - 30.0])))
-    yi = abs(sp[1]) - Q.MOTORS['rs00']['L'] / 2 - G - T - 1.0 # side plate inner face, less a gap
+    yi = abs(sp[1]) - ARM()['L'] / 2 - G - T - 1.0           # side plate inner face, less a gap
     jx, jy, jz = E['jetson']
-    z_d1 = head_layout(J)['yaw'][0][2] - Q.MOTORS['rs00']['L'] / 2 - G - T
+    z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
     out.append(('elec-jetson', trimesh.creation.box(extents=[jx, jy, jz]).apply_translation([5.0, 0.0, z_d1 - 4.0 - jz / 2])))
     R_ = R()
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
