@@ -26,7 +26,7 @@ BODIES = {
     'wp.{t}': ['wrist-P0', 'wrist-P1', 'motor-wristyaw'],
     'wy.{t}': ['wrist-H0'],
     'ey.{t}': ['wrist-F2', 'motor-wristroll', 'arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
-    'hyaw': ['neck-N', 'motor-headpitch', 'cover-neck', 'trim-headhub'],
+    'hyaw': ['neck-N', 'motor-headpitch', 'cover-neck', 'cover-headhub'],
     'hpitch': ['head-H1', 'cover-helmet', 'visor-face', 'puck-ear'],
 }
 LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']

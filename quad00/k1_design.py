@@ -443,12 +443,13 @@ def design():
     keel += [rrect(np.array([xm, 0, kb + rk_ * (1 - math.sin(th))]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]),
                    40.0 * Rk - rk_ * (1 - math.cos(th)), xh * 0.8 - rk_ * (1 - math.cos(th)), max(16.0 * Rk - rk_ * (1 - math.cos(th)), 3.0))
              for th in np.linspace(0, np.pi / 2, 6)]
-    pel = upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))
+    pel = upper if KS.V['name'] == 'mini' else upper + Manifold.hull_points(np.concatenate(keel).astype(np.float32))   # mini: no keel, one flat underside
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
         collar = M_(got[f'cover-hipneck.{t}l']) + M_(got[f'cover-hipyaw.{t}l'])
-        pel = pel - sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04)          # the thigh swings under the pelvis
+        hullof = lambda m_: Manifold.hull_points(np.asarray(m_.to_mesh().vert_properties[:, :3], np.float32))   # one smooth convex cut, not a faceted scoop
+        pel = pel - hullof(sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04))          # the thigh swings under the pelvis
         hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
         # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
         upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] - 20.0]))
@@ -466,8 +467,9 @@ def design():
     else:                                                       # yaw motor up in the neck: a wider neck from just above the chest dome
         nz0, nw = zc1 + 14.0 * KS.R() + 1.0, (max(33.0, KS.HEAD()['D'] / 2 + 3.0), max(36.0, KS.HEAD()['D'] / 2 + 3.0))
     nz1 = Hl['pitch'][0][2] - 10.0
-    neck = [rrect(np.array([Hl['yaw'][0][0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), nw[0], nw[1], 0.8 * min(nw)) for z_ in (nz0, nz1)]
-    add('cover-neck', hull_rings(neck))                       # satin like the shells: a quiet neck, not a pale block
+    if Wl is None:                                              # one round satin column, sunk into the chest crown (round: it yaws clean)
+        nz0 = min(nz0, zc1 + 6.0 * Rk - 8.0)
+    add('cover-neck', cyl(np.array([Hl['yaw'][0][0], 0, (nz0 + nz1) / 2]), [0, 0, 1.0], max(nw), nz1 - nz0))
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
@@ -501,7 +503,7 @@ def design():
     pocket = Manifold.cylinder(2 * pr, pr, pr, 72).rotate([-90, 0, 0]).translate([hpc[0], -pr, hpc[2]]) + \
         Manifold.cube([2 * px, 2 * pr, hpc[2] - hlo[2] + 20]).translate([hpc[0] - px, -pr, hlo[2] - 20])
     helmet = helmet - pocket
-    add('trim-headhub', cyl(hpc, [0, 1.0, 0], max(33.0, KS.HEAD()['D'] / 2 + 4.5), max(56.0, KS.HEAD()['L'] + 5.0)))           # the head-pitch hub, coaxial: lives in the helmet's opening
+    add('cover-headhub', cyl(hpc, [0, 1.0, 0], max(33.0, KS.HEAD()['D'] / 2 + 4.5), max(56.0, KS.HEAD()['L'] + 5.0)))           # the head-pitch hub, coaxial: lives in the helmet's opening
     hm = tm(helmet)
     hm.metadata.update(loft=[np.asarray(r, float) for r in hr_],      # native: loft minus (y-cylinder r pr about the pitch axis + box)
                        cut=[('ycyl', hpc, pr), ('box', [hpc[0] - px, -pr, hlo[2] - 20], [2 * px, 2 * pr, hpc[2] - hlo[2] + 20])])
