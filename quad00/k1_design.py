@@ -562,14 +562,14 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
     # the face: a flat screen, gloss black glass, a hair proud
-    sw, sh = hw - rc_p - 3.0, 0.31 * hh                          # the face glass: most of the flat face (display + both eyes behind it)
+    sw, sh = hw - rc_p - 3.0, 0.33 * hh                          # the face glass: most of the flat face (display + both eyes behind it)
     zfc = (zb + rb_ + zb + hh - rf) / 2                          # the flat band's centre: the display + cameras sit on it (k1_structure.cortex)
     scr = [rrect(np.array([x_, 0.0, zfc]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
            for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
     add('visor-face', hull_rings(scr))
     # eyes: a stereo camera pair behind the top edge of the glass (phone-style), a hair proud, gunmetal bezels
     for sy in (1, -1):
-        e = np.array([x_face + 0.8, sy * KS.CORTEX['camera']['baseline'] / 2 * Rk, zfc + 4.0 * Rk])   # on the IMX219 lenses
+        e = np.array([x_face + 0.8, sy * KS.CORTEX['camera']['baseline'] / 2 * Rk, KS.EYE_Z(HF)])   # on the IMX219 lenses
         add(f'trim-eyering.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.3, 0, 0]), [1.0, 0, 0], 5.2 * Rk, 1.0))
         add(f'visor-eye.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.9, 0, 0]), [1.0, 0, 0], 3.6 * Rk, 0.8))
     # ears: a microphone / speaker grille on each side, forward of the vents

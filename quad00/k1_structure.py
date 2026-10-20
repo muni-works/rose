@@ -506,6 +506,12 @@ CORTEX = dict(
 )
 
 
+def EYE_Z(HF):
+    """the cameras' height: up in the face's flat band (eye level above the screen centre), clear of the crown round."""
+    zf0, zf1 = HF['zb'] + HF['rb'], HF['zb'] + HF['hh'] - HF['rf']
+    return zf1 - CORTEX['camera']['size'][2] / 2 - 4.0 * R()
+
+
 def cortex(J, M):
     """the cortex head's insides (mini), laid out in the shared head frame (head_frame)."""
     if V['name'] != 'mini':
@@ -521,7 +527,8 @@ def cortex(J, M):
     cx_, cy_, cz_ = C['camera']['size']
     for sy in (1, -1):
         yc = sy * C['camera']['baseline'] / 2
-        out.append(box(f'elec-cxcam.{"l" if sy > 0 else "r"}', [xf - 1.5 - cx_, yc - cy_ / 2, zc + 4 - cz_ / 2], [xf - 1.5, yc + cy_ / 2, zc + 4 + cz_ / 2]))
+        ze = EYE_Z(HF)
+        out.append(box(f'elec-cxcam.{"l" if sy > 0 else "r"}', [xf - 1.5 - cx_, yc - cy_ / 2, ze - cz_ / 2], [xf - 1.5, yc + cy_ / 2, ze + cz_ / 2]))
     jx, jy, jz = C['compute']['size']
     x1 = xf - 1.5 - dx - 4.0                                       # behind the display, 4 mm for the HDMI FPC
     out.append(box('elec-jetson', [x1 - jx, -jy / 2, zb + 2.6], [x1, jy / 2, zb + 2.6 + jz]))
