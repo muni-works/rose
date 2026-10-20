@@ -566,10 +566,25 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
     # the face: a flat screen, gloss black glass, a hair proud
-    sw, sh = hw - rc_p - 6.0, 0.25 * hh                          # a calmer screen, well inside the face
+    sw, sh = hw - rc_p - 3.0, 0.31 * hh                          # the face screen: most of the flat face
     scr = [rrect(np.array([x_, 0.0, hc[2] + 0.06 * hh]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
            for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
     add('visor-face', hull_rings(scr))
+    # eyes: a stereo camera pair behind the top edge of the glass (phone-style), a hair proud, gunmetal bezels
+    zc_s = hc[2] + 0.06 * hh
+    for sy in (1, -1):
+        e = np.array([x_face + 0.8, sy * 0.40 * sw, zc_s + sh - 8.0 * Rk])
+        add(f'trim-eyering.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.3, 0, 0]), [1.0, 0, 0], 5.2 * Rk, 1.0))
+        add(f'visor-eye.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.9, 0, 0]), [1.0, 0, 0], 3.6 * Rk, 0.8))
+    # ears: a microphone / speaker grille on each side, forward of the vents
+    for sy in (1, -1):
+        ec = np.array([x_face - 0.27 * (x_face - x_back), sy * (hw + 0.4), hc[2]])
+        ear = M_(cyl(ec, [0, 1.0, 0], 11.0 * Rk, 1.4))
+        for k in range(7):                                      # a hex of mic holes
+            a_ = k * np.pi / 3
+            hpos = ec + (np.array([5.5 * Rk * math.cos(a_), 0, 5.5 * Rk * math.sin(a_)]) if k else np.zeros(3))
+            ear = ear - M_(cyl(hpos, [0, 1.0, 0], 1.1 * Rk, 4.0))
+        add(f'trim-ear.{"l" if sy > 0 else "r"}', tm(ear))
     # the back panel (the cortex's own): power button + status LED, USB-C, Ethernet, on the flat back of the head
     zpm, pw, ph = zb + hh * 0.38, hw * 0.62, hh * 0.16
     prings = [rrect(np.array([x_back + dx, 0.0, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), ph - d_, pw - d_, 5.0, k=10)
