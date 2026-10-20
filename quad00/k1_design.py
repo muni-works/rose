@@ -534,24 +534,14 @@ def design():
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
-    # the cortex head (Jetson + its own battery, buttons + ports on the back): a module with a flat bottom that sits on the
-    # neck's dock plate and can live detached, on a desk. Box language: flat face for the screen, wedged back, crown fillet.
+    # the cortex head is its own product (cortex.py): its skin comes from there; the neck keeps the pitch drum + dock trim
+    import cortex as CX
     hp = KS.head_layout(J)['pitch'][0]; Rk = KS.R()
-    HF = KS.head_frame(J, M)                                    # shared with the parts inside (k1_structure.cortex)
-    hh, hw, hd, x_face, x_back, zb = HF['hh'], HF['hw'], HF['hd'], HF['x_face'], HF['x_back'], HF['zb']
-    hc = np.array([x_face - hd, 0.0, zb + hh / 2])
-    rc_p, rf, rb_ = HF['rc_p'], HF['rf'], HF['rb']              # soft plan corners; generous crown + bottom rounds (it still sits flat)
-    hr_ = [(zb + rb_ * (1 - math.sin(th)), rb_ * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 5)]
-    hr_ += [(hc[2] + hh / 2 - rf * (1 - math.sin(th)), rf * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 7)]
-    hr_ = sorted(hr_)
-    wedge = lambda z_: 0.0                                      # no helmet wedge: one soft rounded box
-    hr_ = [rrect(np.array([x_face - (hd - wedge(z_)), 0.0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), hw - d_, hd - d_ - wedge(z_), max(rc_p - d_, 2.0), k=14)
-           for z_, d_ in hr_]
-    hm = hull_rings(hr_)
-    zm = zb + hh * 0.42                                          # vents: side slots near the back (in left, out right)
-    vents = [('box', [x_back + rc_p + 4.0 + 7.0 * i, (hw - 4.0) if s_ > 0 else -(hw + 2.0), zm - 12.0 * Rk], [3.5, 6.0, 24.0 * Rk])
-             for s_ in (1, -1) for i in range(5)]
-    add('cover-helmet', cut_shell(hm, vents))
+    HF = KS.head_frame(J, M)
+    hh, hw = HF['hh'], HF['hw']
+    hc = np.array([HF['x_face'] - HF['hd'], 0.0, HF['zb'] + hh / 2])
+    for n_, m_ in CX.shell(HF):
+        add(n_, m_)
     m_h = KS.HEAD()
     r_hub, yo_ = max(33.0, m_h['D'] / 2 + 4.5), m_h['L'] / 2 + KS.G + KS.T + 1.0
     y0_, y1_ = -yo_, m_h['L'] / 2 + 0.5                         # the head-pitch drum in two coaxial halves: neck side (over the
@@ -560,37 +550,8 @@ def design():
     yd = m_h['L'] / 2 + KS.G + KS.T
     dock = [rrect(np.array([hp[0], 0, KS.DOCK_Z(J) + dz_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), yd + 3.0, 37.0 * Rk, 8.0, k=10)
             for dz_ in (-1.0, KS.T + 0.4)]
-    add('trim-headdock', hull_rings(dock))                       # the dock: a gunmetal plate the head seats on
-    # the face: a flat screen, gloss black glass, a hair proud
-    sw, sh = hw - rc_p - 3.0, 0.33 * hh                          # the face glass: most of the flat face (display + both eyes behind it)
-    zfc = (zb + rb_ + zb + hh - rf) / 2                          # the flat band's centre: the display + cameras sit on it (k1_structure.cortex)
-    scr = [rrect(np.array([x_, 0.0, zfc]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), sh - d_, sw - d_, 0.55 * min(sw, sh), k=12)
-           for x_, d_ in ((x_face - 3.0, 0.0), (x_face + 0.4, 0.0), (x_face + 0.8, 0.4))]
-    add('visor-face', hull_rings(scr))
-    # eyes: a stereo camera pair behind the top edge of the glass (phone-style), a hair proud, gunmetal bezels
-    for sy in (1, -1):
-        e = np.array([x_face + 0.8, sy * KS.CORTEX['camera']['baseline'] / 2 * Rk, KS.EYE_Z(HF)])   # on the IMX219 lenses
-        add(f'trim-eyering.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.3, 0, 0]), [1.0, 0, 0], 5.2 * Rk, 1.0))
-        add(f'visor-eye.{"l" if sy > 0 else "r"}', cyl(e + np.array([0.9, 0, 0]), [1.0, 0, 0], 3.6 * Rk, 0.8))
-    # ears: a microphone / speaker grille on each side, forward of the vents
-    for sy in (1, -1):
-        ec = np.array([x_face - 0.27 * (x_face - x_back), sy * (hw + 0.4), zfc])
-        ear = M_(cyl(ec, [0, 1.0, 0], 11.0 * Rk, 1.4))
-        for k in range(7):                                      # a hex of mic holes
-            a_ = k * np.pi / 3
-            hpos = ec + (np.array([5.5 * Rk * math.cos(a_), 0, 5.5 * Rk * math.sin(a_)]) if k else np.zeros(3))
-            ear = ear - M_(cyl(hpos, [0, 1.0, 0], 1.1 * Rk, 4.0))
-        add(f'trim-ear.{"l" if sy > 0 else "r"}', tm(ear))
-    # the back panel (the cortex's own): power button + status LED, USB-C, Ethernet, on the flat back of the head
-    zpm, pw, ph = zb + hh * 0.38, hw * 0.62, hh * 0.16
-    prings = [rrect(np.array([x_back + dx, 0.0, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), ph - d_, pw - d_, 5.0, k=10)
-              for dx, d_ in ((1.0, 0.0), (-0.8, 0.0), (-1.4, 0.5))]
-    add('trim-headpanel', hull_rings(prings))
-    xo = x_back - 1.4
-    add('cover-headbutton', cyl(np.array([xo - 1.0, 0.68 * pw, zpm]), [1.0, 0, 0], 5.0, 2.4))                 # power
-    add('visor-headled', cyl(np.array([xo - 0.4, 0.40 * pw, zpm]), [1.0, 0, 0], 1.6, 1.2))                  # status
-    add('visor-headport', hull_rings([rrect(np.array([xo + dx, -0.10 * pw, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 2.0, 5.0, 1.9, k=8) for dx in (0.4, -0.2)]))   # USB-C
-    add('visor-headeth', hull_rings([rrect(np.array([xo + dx, -0.58 * pw, zpm]), np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), 6.0, 8.0, 1.0, k=6) for dx in (0.4, -0.2)]))     # Ethernet
+    x0_, y0d, x1_, y1d = CX.dock_cutout((hp[0], 0.0, 0.0))
+    add('trim-headdock', cut_shell(hull_rings(dock), [('box', [x0_, y0d, KS.DOCK_Z(J) - 3.0], [x1_ - x0_, y1d - y0d, KS.T + 6.0])]))   # the dock face (gunmetal), plug opening
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):

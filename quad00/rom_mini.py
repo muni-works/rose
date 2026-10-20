@@ -51,7 +51,7 @@ CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'tri
 
 
 def body_of(name):
-    if name.startswith(('elec-jetson', 'elec-cbat', 'elec-cx', 'cable-h')):
+    if name.startswith(('elec-jetson', 'elec-cbat', 'elec-cx', 'cable-h', 'elec-dockplug', 'trim-dockplug', 'trim-dockpin')):
         return 'hpitch'                                 # the cortex: Jetson, its battery, sensors + wiring ride in the head
     if name.startswith('cable-n'):
         return 'hyaw'

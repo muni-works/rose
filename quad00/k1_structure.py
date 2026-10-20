@@ -463,93 +463,36 @@ def head(J):
     # the dock: the cortex head (Jetson + its own battery) lifts off this plate and can live on a desk; flat bottom
     yd = m['L'] / 2 + G + T
     dk = Rr(hp[0] - 34 * R(), -yd, hp[0] + 34 * R(), yd, 8)
-    if V['name'] == 'mini':                                          # the pogo receptacle's opening (the head's block drops into it)
-        M_ = world()[1]; HF = head_frame(J, M_); xk = HF['x_back'] + 4.5 + CORTEX['battery']['size'][0] + 1.0
-        kx, ky, _ = CORTEX['dock']['size']
-        dk = dk.difference(Rr(xk - 0.5, -ky / 2 - 0.5, xk + kx + 0.5, ky / 2 + 0.5, 1.0))
+    import cortex as CX                                              # the dock: a floating USB-C plug + 2 alignment pins (cortex.DOCK)
+    x0, y0, x1, y1 = CX.dock_cutout((hp[0], 0.0, zd + T))
+    dk = dk.difference(Rr(x0, y0, x1, y1, 1.0))
     out.append(('head-dock', plate(dk, 'xy', zd)))
+    out += CX.dock_body((hp[0], 0.0, zd + T), T)
     return out
 
 
 def DOCK_Z(J):
     """the neck's dock plate (top of the head-pitch stage): the cortex head's flat bottom sits on it."""
+    import cortex as CX
     hp = head_layout(J)['pitch'][0]
-    return hp[2] + HEAD()['D'] / 2 + 6.0
+    r_drum = max(33.0, HEAD()['D'] / 2 + 4.5)                      # the floating USB-C plug lives under the dock face, over the drum
+    return hp[2] + r_drum + CX.DOCK['plug']['size'][2] + 2.0
 
 
 def head_frame(J, M):
-    """the cortex head's box (shared by the shell in k1_design and the parts inside): face/back planes, flat bottom, size."""
+    """the cortex head's frame on this body: its dock origin sits on the neck's dock face (cortex.py owns the product)."""
+    import cortex as CX
     hlo, hhi = M['Head_2'].bounds
     hp = head_layout(J)['pitch'][0]
-    hh, hw = (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96
-    x_face, x_back = hp[0] + 46.0 * R(), hp[0] - 58.0 * R()
-    hd = (x_face - x_back) / 2
-    zb = DOCK_Z(J) + T + 0.5
-    return dict(hh=hh, hw=hw, hd=hd, x_face=x_face, x_back=x_back, zb=zb, rc_p=0.30 * min(hw, hd), rf=0.42 * min(hw, hd), rb=0.24 * min(hw, hd))
-
-
-# the cortex head's parts (mini). Datasheet sizes where found; ASSUMED where marked. (x, y, z) as mounted.
-CORTEX = dict(
-    compute=dict(part='NVIDIA Jetson Orin NX 16GB on Seeed A603 carrier (87 x 52 mm) + ATS 63 x 40 x 8 fan heatsink',
-                 size=(52.0, 87.0, 36.0), kg=0.40),          # stack height 36 ASSUMED (board + SO-DIMM + module + 8 mm heatsink)
-    display=dict(part='Waveshare 3.5inch HDMI LCD (E), IPS 640x480, 76.6 x 63.6 mm, active 70.68 x 53.36',
-                 size=(11.0, 76.6, 63.6), kg=0.06),          # thickness 11 ASSUMED (panel + driver board)
-    camera=dict(part='2x Arducam IMX219 (B0287-class) 25 x 24 mm, 22-pin 0.5 mm FFC to the A603 CSI ports',
-                size=(13.0, 25.0, 24.0), baseline=106.0),    # board + lens depth 13 ASSUMED
-    speaker=dict(part='2x Visaton K 28 WPC BL, 8 ohm 1 W, 28 x 5.4 mm', size=(28.0, 5.4, 28.0)),
-    amp=dict(part='2x Adafruit 3006 MAX98357A I2S amp, 19.4 x 17.8 x 3.0 mm', size=(19.4, 3.0, 17.8)),
-    mic=dict(part='2x Adafruit 3421 SPH0645LM4H I2S MEMS mic, 16.7 x 12.7 x 1.8 mm', size=(16.7, 1.8, 12.7)),
-    battery=dict(part='3S1P 21700 (Molicel P45B class, 3 x 4.5 Ah, 11.1 V 50 Wh) + 3S BMS: the A603 wants 9-20 V',
-                 size=(22.0, 66.0, 74.0), kg=0.23),
-    power=dict(part='3S charger / power-path board (BQ25713 class), ASSUMED 40 x 30 x 6', size=(30.0, 40.0, 6.0)),
-    dock=dict(part='12-pin pogo connector pair (Mill-Max 2.54 mm class): 2x 19 V, 2x GND, GbE 4 pairs, 2 spare', size=(8.0, 32.0, 8.0)),
-)
-
-
-def EYE_Z(HF):
-    """the cameras' height: up in the face's flat band (eye level above the screen centre), clear of the crown round."""
-    zf0, zf1 = HF['zb'] + HF['rb'], HF['zb'] + HF['hh'] - HF['rf']
-    return zf1 - CORTEX['camera']['size'][2] / 2 - 4.0 * R()
+    return CX.frame((hp[0], 0.0, DOCK_Z(J) + T + 0.5), (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96, R())
 
 
 def cortex(J, M):
-    """the cortex head's insides (mini), laid out in the shared head frame (head_frame)."""
+    """the cortex's insides on this body (mini): cortex.py lays them out in the head frame."""
     if V['name'] != 'mini':
         return []
-    HF = head_frame(J, M); C = CORTEX
-    xf, xb, zb, hw, hh = HF['x_face'], HF['x_back'], HF['zb'], HF['hw'], HF['hh']
-    box = lambda n, lo, hi: (n, trimesh.creation.box(bounds=[lo, hi]))
-    zf0, zf1 = zb + HF['rb'], zb + hh - HF['rf']                 # the flat band of the face
-    zc = (zf0 + zf1) / 2
-    out = []
-    dx, dy, dz = C['display']['size']
-    out.append(box('elec-cxdisplay', [xf - 1.5 - dx, -dy / 2, zc - dz / 2], [xf - 1.5, dy / 2, zc + dz / 2]))
-    cx_, cy_, cz_ = C['camera']['size']
-    for sy in (1, -1):
-        yc = sy * C['camera']['baseline'] / 2
-        ze = EYE_Z(HF)
-        out.append(box(f'elec-cxcam.{"l" if sy > 0 else "r"}', [xf - 1.5 - cx_, yc - cy_ / 2, ze - cz_ / 2], [xf - 1.5, yc + cy_ / 2, ze + cz_ / 2]))
-    jx, jy, jz = C['compute']['size']
-    x1 = xf - 1.5 - dx - 4.0                                       # behind the display, 4 mm for the HDMI FPC
-    out.append(box('elec-jetson', [x1 - jx, -jy / 2, zb + 2.6], [x1, jy / 2, zb + 2.6 + jz]))
-    bx, by, bz = C['battery']['size']
-    out.append(box('elec-cbat', [xb + 4.5, 0.0, zb + 4.0], [xb + 4.5 + bx, by, zb + 4.0 + bz]))
-    px, py, pz = C['power']['size']
-    out.append(box('elec-cxpower', [xb + 3.0, -6.0, zb + 2.6 + bz + 2.0], [xb + 3.0 + px, -6.0 + py, zb + 2.6 + bz + 2.0 + pz]))
-    kx, ky, kz = C['dock']['size']
-    xk = xb + 4.5 + bx + 1.0                                       # the dock pogo block: in the floor between the pack and the Jetson
-    out.append(box('elec-cxdock', [xk, -ky / 2, zb - 3.0], [xk + kx, ky / 2, zb - 3.0 + kz]))
-    ec_x = xf - 0.27 * (xf - xb)                                   # the ears (k1_design): speaker behind the grille, mic above, amp below
-    for sy in (1, -1):
-        t = "l" if sy > 0 else "r"
-        sd, st, _ = C['speaker']['size']
-        yw = sy * (hw - 2.5)
-        out.append(('elec-cxspk.' + t, trimesh.creation.cylinder(radius=sd / 2, segment=[[ec_x, yw, zc], [ec_x, yw - sy * st, zc]], sections=48)))
-        mx, my, mz = C['mic']['size']
-        out.append(box('elec-cxmic.' + t, [ec_x - mx / 2, min(yw, yw - sy * my), zc + sd / 2 + 2], [ec_x + mx / 2, max(yw, yw - sy * my), zc + sd / 2 + 2 + mz]))
-        ax_, ay_, az_ = C['amp']['size']
-        out.append(box('elec-cxamp.' + t, [ec_x - ax_ / 2, min(yw, yw - sy * ay_), zc - sd / 2 - 2 - az_], [ec_x + ax_ / 2, max(yw, yw - sy * ay_), zc - sd / 2 - 2]))
-    return out
+    import cortex as CX
+    return CX.insides(head_frame(J, M))
 
 
 def harness(J, M):
@@ -557,32 +500,16 @@ def harness(J, M):
     chest, through the right side plate (a 10 mm pass-through), to the limbic board's top edge."""
     if V['name'] != 'mini':
         return []
-    P = dict(cortex(J, M))
-    c = lambda n: P[n].bounds
-    HF = head_frame(J, M); xb, zb, hh = HF['x_back'], HF['zb'], HF['hh']
-    jet, cam_l, disp, pw_, dock = c('elec-jetson'), c('elec-cxcam.l'), c('elec-cxdisplay'), c('elec-cxpower'), c('elec-cxdock')
-    xg = (P['elec-cbat'].bounds[1][0] + jet[0][0]) / 2              # the gap between the pack and the Jetson
-    jt, jb = jet[1][2], jet[0][0]                                   # Jetson top, back edge
-    zpm = zb + hh * 0.38                                            # the back panel (k1_design)
-    out = []
-    for sy, t in ((1, 'l'), (-1, 'r')):
-        cy = sy * (cam_l[0][1] + cam_l[1][1]) / 2
-        out.append(cable(f'cable-hcsi.{t}', [[cam_l[0][0] - 0.8, cy, (cam_l[0][2] + cam_l[1][2]) / 2], [cam_l[0][0] - 3, sy * 46, jt + 4], [jet[1][0] - 10, sy * 20, jt + 1.5]], flat=16.0))
-        a = c(f'elec-cxamp.{t}'); m_ = c(f'elec-cxmic.{t}')
-        out.append(cable(f'cable-haudio.{t}', [[(a[0][0] + a[1][0]) / 2, sy * (abs(a[0][1]) + abs(a[1][1])) / 2 - sy * 2, (a[0][2] + a[1][2]) / 2], [8, sy * 52, jt + 4], [-4, sy * 36, jt + 2.5]], r=1.5))
-        out.append(cable(f'cable-hmic.{t}', [[(m_[0][0] + m_[1][0]) / 2, sy * (abs(m_[0][1]) + abs(m_[1][1])) / 2 - sy * 2, (m_[0][2] + m_[1][2]) / 2], [6, sy * 50, jt + 12], [-8, sy * 34, jt + 2.5]], r=1.5))
-    out.append(cable('cable-hhdmi', [[disp[0][0] - 1.2, 0, disp[1][2] - 12], [disp[0][0] - 1.2, -10, jet[0][2] + 14], [jet[1][0] + 0.6, -10, jet[0][2] + 10]], flat=14.0))
-    out.append(cable('cable-hpower', [[pw_[1][0] - 2, 14, pw_[0][2] - 1], [xg, 14, pw_[0][2] - 5], [xg, 25, jet[0][2] + 15], [jb - 0.6, 25, jet[0][2] + 13]], r=2.5))
-    out.append(cable('cable-hdockdc', [[(dock[0][0] + dock[1][0]) / 2, 10, dock[1][2]], [xg, 8, jet[0][2] + 18], [xg, 5, pw_[0][2] - 5], [pw_[1][0] - 2, 5, pw_[0][2] - 1]], r=2.5))
-    out.append(cable('cable-hdockgbe', [[(dock[0][0] + dock[1][0]) / 2, -10, dock[1][2]], [jb - 0.6, -10, jet[0][2] + 9]], r=2.5))
-    out.append(cable('cable-heth', [[xb + 3.5, -0.58 * HF['hw'] * 0.62, zpm], [xb + 18, -29, zpm - 10], [jb - 0.6, -29, jet[0][2] + 14]], r=3.0))
-    out.append(cable('cable-husbc', [[xb + 3.5, -0.10 * HF['hw'] * 0.62 - 1.0, zpm], [xb + 18, -5, zpm - 12], [jb - 0.6, -5, jet[0][2] + 22]], r=2.5))
+    import cortex as CX
+    out = CX.wiring(head_frame(J, M))
     # the spine: dock (head) -> behind the pitch drum -> into the chest past the yaw -> side plate pass-through -> limbic board
     H = head_layout(J); hp, hy = H['pitch'][0], H['yaw'][0]
     r_drum = max(33.0, HEAD()['D'] / 2 + 4.5)
     xs = hp[0] - r_drum - 4.0                                       # just behind the pitch drum
     zd = DOCK_Z(J)
-    out.append(cable('cable-hspine', [[(dock[0][0] + dock[1][0]) / 2, 0, zd - 1], [xs, 0, zd - 8], [xs, 0, hp[2] + 8.0]], r=3.0))    # rides the head (pitch); the pitch flex loop is the gap below
+    pz_ = CX.DOCK['plug']['size'][2]                                # from the floating USB-C plug under the dock face
+    px_ = CX.DOCK['plug']['size'][0]
+    out.append(cable('cable-hspine', [[hp[0] - px_ / 2 + 1.0, 0, zd - pz_ / 2], [xs, 0, zd - pz_ / 2], [xs, 0, hp[2] + 8.0]], r=3.0))    # off the plug's back face, down behind the drum; the pitch flex loop is the gap below
     out.append(cable('cable-nspine', [[xs, 0, hp[2] - 8.0], [xs, 0, hy[2] + 48.0]], r=3.0))                                         # rides the neck (yaw)
     E = ELEC; brd = None
     xh, zh = PASS_THROUGH()
