@@ -514,6 +514,9 @@ def electronics(J):
     y_o = y_s + T + 2.0
     jx, jy, jz = E['jetson']
     out.append(('elec-jetson', trimesh.creation.box(bounds=[[-40.0, y_o, 108.0], [-40.0 + jz, y_o + jx, 108.0 + jy]])))   # on its side: 87 x 50 x 52
+    # A603 fan pulls from the fore (cool) side and blows aft/up to the exhaust; a 2 mm PA12 shelf off its top-fore edge to the
+    # front wall stops its hot air recirculating over the top into the cool stream rising up the fore side (limbic thermal pass)
+    out.append(('cover-baffle', trimesh.creation.box(bounds=[[-40.0 + jz, y_o, 108.0 + jy + 1.0], [72.0 * R(), y_o + jx, 108.0 + jy + 3.0]])))
     bx_, by_, bz_ = E['board']
     out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 78.0], [-50.0 + bx_, -y_o, 78.0 + by_]])))   # on edge, z 78..166
     rx, ry, rz = E['brake']                                   # below the board, lying flat (clear of its outboard parts)
