@@ -493,7 +493,8 @@ def design():
         else:
             pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
 
-    add('cover-pelvis', tm(pel))
+    if KS.V['name'] != 'mini':                                  # mini: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
+        add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
     if KS.V['name'] == 'mini':
