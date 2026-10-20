@@ -176,12 +176,12 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_t
 
 
 def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
-    """the sleek one-piece torso (head language): abdomen flowing into the chest, a V out to the shoulder line,
-    big plan radii and a head-style crown fillet. Monotonic in width + depth, so its hull is the loft."""
+    """the sleek one-piece torso (head language): near-vertical sides that funnel out late to the shoulder line,
+    big plan radii and a head-style crown fillet. Piecewise hulls, so the concave flanks survive (export lofts the rings)."""
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
     def sec(z):
-        k = 0.84 + (0.90 - 0.84) * ss(z0, z_ch, z) + (1.0 - 0.90) * ss(z_ch, zs - 40.0 * Rk, z)
-        k *= 1.0 + (flank / CH - 1.0) * ss(zs - 62.0 * Rk, zs - 18.0 * Rk, z)
+        u = min(1.0, max(0.0, (z - z0) / (zs - 18.0 * Rk - z0)))
+        k = 0.95 + (1.10 - 0.95) * u ** 3                     # a concave funnel: near-vertical sides, flaring late to the shoulders
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
         xm, h = (x0 + x1) / 2, (x1 - x0) / 2
@@ -196,7 +196,10 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
     for th in np.linspace(0, np.pi / 2, 7)[1:]:
         d_ = rf * (1 - math.cos(th))
         rings.append(rrect(np.array([xc, 0, zt - rf + rf * math.sin(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
-    return hull_rings(rings)
+    # concave sides: a hull of each ring pair (a hull of all of them would fill the funnel back to a V)
+    m = tm(Manifold.batch_boolean([Manifold.hull_points(np.concatenate([a, b]).astype(np.float32)) for a, b in zip(rings, rings[1:])], OpType.Add))
+    m.metadata['loft'] = [np.asarray(r, float) for r in rings]
+    return m
 
 
 def roll_arch(mesh, c, rng, shell, rmin=0.0):
