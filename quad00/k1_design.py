@@ -362,25 +362,22 @@ def design():
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
-    if KS.waist_layout() is not None:                           # bore for the waist pitch hub + its plates: the chest turns about it
-        Wp = KS.waist_layout()['pitch'][0]
-        chest_m = cut_shell(chest_m, [('ycyl', list(Wp), KS.WAIST()['back'][0] / 2 + 22.0, 0.62 * KS.CHEST() * 0.90 + 2.0)])
+    if KS.waist_layout() is not None:                           # the waist-pitch stator plate turns in a thin internal pocket
+        Wp_ = KS.waist_layout()['pitch'][0]
+        chest_m = relief(chest_m, sweep_union(M_(dict(KS.waist())['waist-W3']), Wp_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0))
     add('cover-chest', chest_m)
     if Wl is None:
         add('accent-waist', block(lo[0] + 6, hi[0] - 8, KS.CHEST() * 0.90 + 1.5, z_band, z_ch + 2.0, RC=18.0 * Rk))   # proud of the chest's waist
-    else:                                                       # gunmetal pitch hub, coaxial (turns in place under the chest), and a
-        mw = KS.WAIST(); pc_, rc_, yc_ = Wl['pitch'][0], Wl['roll'][0], Wl['yaw'][0]      # satin drum coaxial with the yaw: the H2's waist
-        hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 5.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
-            sweep_union(M_(dict(KS.waist())['waist-W4']), pc_, [((0, 1.0, 0), -25, 60)], scale=1.03, step=5.0)   # the chest mount pitches through it
-        add('accent-waisthub', tm(hub))
+    else:                                                       # H2-style waist: three coaxial pieces, no slots -- each shell turns
+        mw = KS.WAIST(); pc_, rc_ = Wl['pitch'][0], Wl['roll'][0]   # about its own joint axis, so nothing needs cutting away
+        WS = dict(KS.waist())
         r_d = math.hypot(mw['L'] / 2 + KS.G + KS.T + 2.0, mw['D'] / 2) + 4.0
         z_d = KS.Z_D0() + KS.T + 1.0                              # on the pelvis top, clear of the deck
-        WS = dict(KS.waist())
-        drum = M_(cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d)) + \
-            M_(cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # yaw drum + roll hub, one satin piece
-        drum = drum - sweep_union(M_(WS['waist-W2']) + M_(WS['waist-W3']) + M_(WS[f"{KS.V['waist']}-waistpitch"]),
-                                  rc_, [((1.0, 0, 0), -25, 25)], scale=1.03, step=5.0)       # the roll swings the pitch stage over it
-        add('cover-waist', tm(drum))
+        add('cover-waist', cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d))          # yaw drum (yaw stage), up to the roll axis
+        add('cover-waistroll', cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # roll barrel (roll stage)
+        hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 10.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
+            sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
+        add('trim-waisthub', tm(hub))                         # gunmetal pitch hub (chest): carries the chest mount
     if Wl is None:
         abd = block(lo[0] + 10, hi[0] - 12, KS.CHEST() * 0.84, z_ab - 2.0, z_band + 2.0, RC=20.0 * Rk)
         if KS.V['name'] == 'mini':                              # intake grille, low front
@@ -496,7 +493,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-')) or (n == 'torso-deck0' and KS.waist_layout() is not None)) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-')) ) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

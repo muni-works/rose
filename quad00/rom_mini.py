@@ -11,9 +11,9 @@ THRESH = 200.0                                  # mm^3 of new overlap = a collis
 
 # body -> name prefixes ({t} = side tag); the order of CHAIN is parent -> child
 BODIES = {
+    'wroll': ['waist-W2', 'waist-W3', 'motor-waistpitch', 'cover-waistroll'],
     'wyaw': ['waist-W0', 'waist-W1', 'motor-waistroll', 'cover-waist'],
-    'wroll': ['waist-W2', 'waist-W3', 'motor-waistpitch', 'accent-waisthub'],
-    'torso': ['pelvis-deck', 'motor-waistyaw', 'waist-W4', 'elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
+    'torso': ['pelvis-deck', 'motor-waistyaw', 'waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'accent-waist', 'cover-abdomen', 'cover-pelvis', 'trim-neckbase', 'motor-roll.', 'chassis-rollmount.', 'torso-', 'motor-sp.', 'motor-headyaw'],
     'roll.{t}': ['chassis-hipR.{t}l', 'trim-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
     'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'motor-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
     'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'motor-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
@@ -46,7 +46,7 @@ def toM(m):
     return Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
 
 
-CHEST_PRE = ('waist-W4', 'elec-', 'estop-', 'cover-chest', 'trim-neckbase', 'torso-', 'motor-sp.', 'motor-headyaw')
+CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'trim-neckbase', 'torso-', 'motor-sp.', 'motor-headyaw')
 
 
 def body_of(name):
