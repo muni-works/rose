@@ -17,7 +17,7 @@ BODIES = {
     'roll.{t}': ['chassis-hipR.{t}l', 'cover-hipguard.{t}l', 'chassis-hipinner.{t}l', 'motor-pitch.{t}l', 'cover-hip.{t}l', 'puck-hip.{t}l'],
     'pitch.{t}': ['chassis-hipA.{t}l', 'chassis-hipB2.{t}l', 'motor-yaw.{t}l', 'cover-hipyaw.{t}l', 'cover-hipneck.{t}l'],
     'yaw.{t}': ['chassis-thightop.{t}l', 'thigh-', 'motor-knee.{t}l', 'cover-thigh.{t}l', 'cover-knee.{t}l', 'puck-knee.{t}l', 'trim-yawring.{t}l'],
-    'knee.{t}': ['shin-', 'motor-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l'],
+    'knee.{t}': ['shin-', 'motor-ankle', 'cover-calf.{t}l', 'trim-ankle.{t}l', 'puck-ankle.{t}l'],
     'ankle.{t}': ['cover-shoe.{t}l', 'sole.{t}l', 'node-foot.{t}l'],
     'sp.{t}': ['arm-yokeP', 'motor-sr.{t}a', 'cover-shoulderyoke.{t}a', 'cover-shoulder.{t}a', 'puck-shoulder.{t}a'],
     'sr.{t}': ['arm-upperU', 'motor-ep.{t}a', 'cover-upperarm.{t}a', 'cover-deltoid.{t}a', 'trim-upperarm.{t}a'],
@@ -51,6 +51,8 @@ CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'tri
 
 
 def body_of(name):
+    if name.startswith('puckring-'):
+        return body_of('puck-' + name[9:])           # a drum cap's gunmetal ring rides with its cap
     if name.startswith(('elec-jetson', 'elec-cbat', 'elec-cx', 'cable-h', 'elec-dockplug', 'trim-dockplug', 'trim-dockpin')):
         return 'hpitch'                                 # the cortex: Jetson, its battery, sensors + wiring ride in the head
     if name.startswith('cable-n'):

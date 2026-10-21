@@ -22,6 +22,9 @@ def perp(a):
     v = unit(np.cross(a, t)); return v, np.cross(a, v)
 
 
+CAPRING = {}                                                    # id(caps) -> its gunmetal rings
+
+
 def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
     """a rounded drum around a motor: hull of a full-radius ring set back from each face + a smaller one at it."""
     m = Q.MOTORS[mot]
@@ -33,8 +36,13 @@ def housing(p, ax, mot, pad=PAD, fil=FIL, extra_len=6.0):
         pts.append(ring(np.asarray(p) + a * s * (L / 2 - fil * 0.3), v, w, r - fil * 0.55, r - fil * 0.55, n=2.0, k=72))
         pts.append(ring(np.asarray(p) + a * s * (L / 2), v, w, r - fil, r - fil, n=2.0, k=72))
     body = Manifold.hull_points(np.concatenate(pts).astype(np.float32))
-    caps = [cyl(np.asarray(p) + a * s * (L / 2 + 0.3), a, (r - fil) * 0.82, 1.6) for s in (-1, 1)]
-    return tm(body), trimesh.util.concatenate(caps), r, L
+    # release 1 (the white v10.8 arm's language): each drum end is a black-anodized cap 0.5 mm recessed inside a 1.5 mm
+    # gunmetal ring, both on the drum face (ring 1.2 mm proud, cap 0.7)
+    rc = (r - fil) - 2.0                                       # cap + ring fill the drum's flat face: no plate or bolt circle shows
+    caps = trimesh.util.concatenate([cyl(np.asarray(p) + a * s * (L / 2 + 0.35), a, rc, 0.7) for s in (-1, 1)])
+    CAPRING[id(caps)] = tm(Manifold.batch_boolean([M_(cyl(np.asarray(p) + a * s * (L / 2 + 0.6), a, rc + 1.5, 1.2)) - M_(cyl(np.asarray(p) + a * s * (L / 2 + 0.6), a, rc, 3.0))
+                                                   for s in (-1, 1)], OpType.Add))
+    return tm(body), caps, r, L
 
 
 def SHOULDER_FLANK():
@@ -232,6 +240,30 @@ def roll_arch(mesh, c, rng, shell, rmin=0.0):
     return sec.extrude(xhi - xlo).transform(np.array([[0, 0, 1.0, xlo], [1.0, 0, 0, 0], [0, 1.0, 0, 0]])).translate([0, c[1], c[2]])
 
 
+def M_bb(m):
+    """the bounding box of a Manifold, as a Manifold."""
+    b = m.bounding_box()
+    return Manifold.cube([b[3] - b[0], b[4] - b[1], b[5] - b[2]]).translate([b[0], b[1], b[2]])
+
+
+def arch_cut(vol, c, ax, pad=3.0, rmin=0.5):
+    """the clean annular sector about axis `ax` (0 = x, 1 = y) through `c` that encloses `vol` (a swept clearance
+    volume) with `pad` mm all round: a relief made of true arcs concentric with the joint, never a faceted scoop."""
+    v = np.asarray(vol.to_mesh().vert_properties[:, :3], float) - np.asarray(c, float)
+    u_, w_ = [(1, 2), (2, 0)][ax]                               # x axis: (y, z) plane; y axis: (z, x) plane
+    r = np.hypot(v[:, u_], v[:, w_]); th = np.arctan2(v[:, w_], v[:, u_])
+    t0 = math.atan2(v[:, w_].mean(), v[:, u_].mean())
+    th = (th - t0 + np.pi) % (2 * np.pi) - np.pi + t0           # unwrap about the volume's own direction
+    th0, th1 = th.min() - pad / max(r.max(), 1.0), th.max() + pad / max(r.max(), 1.0)
+    r0, r1 = max(r.min() - pad, rmin), r.max() + pad
+    a = np.linspace(th0, th1, 128)
+    pts = [(r1 * math.cos(t), r1 * math.sin(t)) for t in a] + [(r0 * math.cos(t), r0 * math.sin(t)) for t in a[::-1]]
+    lo, hi = v[:, ax].min() - pad, v[:, ax].max() + pad
+    sec = CrossSection([pts], FillRule.EvenOdd).extrude(hi - lo).translate([0, 0, lo])
+    M = np.array([[0, 0, 1.0, 0], [1.0, 0, 0, 0], [0, 1.0, 0, 0]]) if ax == 0 else np.array([[0, 1.0, 0, 0], [0, 0, 1.0, 0], [1.0, 0, 0, 0]])
+    return sec.transform(M).translate(list(np.asarray(c, float)))
+
+
 def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
     """union of `parts` (Manifold) rotated about `center` over a grid of (axis, lo, hi) ranges, dilated by `scale` about the centre."""
     import itertools
@@ -308,7 +340,7 @@ def design():
         else:                                                  # tiny: a 35 mm thigh, relieved for the fold (no clevis room)
             add(f'cover-thigh.{tag}l', relief(thigh, sweep_union(M_(calf), jp(kn), [(ja(kn), -2, 102)], scale=1.02, step=4.0)))
         Ha, ca, ra, La = housing(ank, ja(an), KS.V['ankle'], pad=-8.0, fil=5.0, extra_len=26.0)     # the ankle U-joint: a small drum, no motor in it
-        add(f'trim-ankle.{tag}l', Ha)
+        add(f'trim-ankle.{tag}l', Ha); add(f'puck-ankle.{tag}l', ca)
         F = M[f'{side.lower()}_foot_link']
         lo, hi = F.bounds
         z0 = lo[2] - KS.V['foot_drop']
@@ -515,20 +547,23 @@ def design():
             wd = KS.WAIST()['D'] / 2 + 14.0
             bx0, bx1 = min(bx0, -wd), max(bx1, wd)
         bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, (z_ab - 2.0) if KS.waist_layout() is None else z_pt
-        rcp, rfb = 0.32 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
+        rcp, rfb = 0.48 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
         bring = lambda z_, d_: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
-        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + [bring(bz1, 0.0)]
+        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)]
+        rft = 10.0 * Rk                                     # the chest's soft top edge: a fillet, not a lid
+        prs += [bring(bz1 - rft * (1 - math.sin(th)), rft * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 7)]
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
         collar = M_(got[f'cover-hipneck.{t}l']) + M_(got[f'cover-hipyaw.{t}l'])
         hullof = lambda m_: Manifold.hull_points(np.asarray(m_.to_mesh().vert_properties[:, :3], np.float32))   # one smooth convex cut, not a faceted scoop
-        pel = pel - hullof(sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 125)], scale=1.04))          # the thigh swings under the pelvis
+        sw_p = sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 125)], scale=1.04, step=5.0)   # the thigh swings under the pelvis
+        pel = pel - (arch_cut(sw_p ^ M_bb(pel), lay['pitch'][0], 1) if KS.V['name'] != 'tiny' else hullof(sw_p))
         rolled = collar + M_(got[f'cover-hip.{t}l']) + M_(dict(KS.leg(J, side))[f'chassis-hipinner.{t}l'])
         lo_, hi_ = np.asarray(rolled.bounding_box()[:3]), np.asarray(rolled.bounding_box()[3:])
         rolled = rolled.translate(list(-(lo_ + hi_) / 2)).scale([1.06] * 3).translate(list((lo_ + hi_) / 2))   # 6 % proud about its own middle
-        pel = pel - sweep_union(rolled, lay['roll'][0], [((1.0, 0, 0), 40, 94)], step=2.0)   # and rolls out past the walking range: free to the K1 limit
+        sw_r = sweep_union(rolled, lay['roll'][0], [((1.0, 0, 0), 40, 94)], step=2.0)   # and rolls out past the walking range: free to the K1 limit
         hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
         # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
         upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] + (m06['D'] * 0.5 if KS.V.get('leg_in') else -20.0)]))
@@ -537,7 +572,15 @@ def design():
         add(f'cover-hipguard.{t}l', guard)
         gc_ = guard.bounds.mean(0)
         brk = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m)   # the bracket: an internal slot
-        pel = pel - sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 92)], scale=1.03, step=2.0)
+        sw_b = sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 92)], scale=1.03, step=2.0)   # the bracket: an internal slot
+        if KS.V['name'] != 'tiny':                              # the leg: one clean arch per side about the roll axis, annular
+            sw_r = sw_r ^ M_bb(pel)                             # (outside the hidden roll can, so the shell stays whole)
+            if not sw_r.is_empty():
+                pel = pel - (arch_cut(sw_r, lay['roll'][0], 0, rmin=m06['D'] / 2 + 7.0))
+            sw_b = sw_b ^ M_bb(pel)
+            pel = pel - (arch_cut(sw_b, lay['roll'][0], 0) if not sw_b.is_empty() else Manifold())   # a clean sector slot, not facets
+        else:
+            pel = pel - sw_r - sw_b
         if KS.V['name'] == 'tiny':                              # the tiny's drum rolls in too close for an arch: keep the swept cut
             pel = pel - sweep_union(M_(got[f'cover-hip.{t}l']), lay['roll'][0], [((1.0, 0, 0), -24, 92)], scale=1.03, step=2.0)
         else:
@@ -629,7 +672,15 @@ def design():
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
         add(f'puck-ear.{"l" if s > 0 else "r"}', cyl(np.array([hp_[0], s * (hw - 1.0), hc[2] - hh * 0.02]), [0, 1.0, 0], 17.0, 4.0))
-    return out if JOINT_CAPS else [(n, m) for n, m in out if not n.startswith('puck-')]   # caps off: plain satin drums, like the K1
+    # drum ends: black caps in gunmetal rings (release 1); the orange ear caps stay off unless JOINT_CAPS
+    res = []
+    for n, m in out:
+        if n.startswith('puck-ear') and not JOINT_CAPS:
+            continue
+        res.append((n, m))
+        if n.startswith('puck-') and id(m) in CAPRING:
+            res.append(('puckring-' + n[5:], CAPRING[id(m)]))
+    return res
 
 
 PERM = {0: np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]), 1: np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]), 2: np.eye(3)}

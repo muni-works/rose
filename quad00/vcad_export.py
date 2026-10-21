@@ -36,7 +36,7 @@ def _patch():
         body, caps, r, L = h0(p, ax, mot, pad, fil, extra_len)
         REC[id(body)] = ('cyl', np.asarray(p, float), np.asarray(ax, float), r, L, fil)
         a = np.asarray(ax, float) / np.linalg.norm(ax)
-        REC[id(caps)] = ('caps', np.asarray(p, float), a, (r - fil) * 0.82, L, 1.6); KEEP.extend([body, caps])
+        REC[id(caps)] = ('caps', np.asarray(p, float), a, (r - fil) - 2.0, L, 0.7); KEEP.extend([body, caps])
         return body, caps, r, L
     KD.housing = housing
     return KD
@@ -54,7 +54,7 @@ COLORWAY = os.environ.get('QUAD00_COLORWAY', 'release')
 _tone, _neon = COLORWAYS[COLORWAY]
 SHELL = 'satin_black' if _tone is BLACK else 'satin_white'
 
-MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('accent_' + COLORWAY, *_neon, 0.0, 0.4),
+MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('black_anodized', 0.071, 0.071, 0.075, 0.6, 0.4), 'puckring': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
         'accent': ('accent_' + COLORWAY, *_neon, 0.0, 0.4), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35), 'drum': ('black_anodized', 0.071, 0.071, 0.075, 0.6, 0.4),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
@@ -338,7 +338,7 @@ def main(variant='mini', explodes=(0.0,)):
             src = cyl_src(c - o, ax, r, h, fil)
         elif rec and rec[0] == 'caps':
             _, c, a, r, L, th = rec
-            src = '[union ' + ' '.join(cyl_src(c - o + a * s * (L / 2 + 0.3), a, r, th) for s in (-1, 1)) + ']'
+            src = '[union ' + ' '.join(cyl_src(c - o + a * s * (L / 2 + 0.35), a, r, th) for s in (-1, 1)) + ']'
         elif mat_of(n) == 'plate':
             src = plate_src(m, o)
         else:
