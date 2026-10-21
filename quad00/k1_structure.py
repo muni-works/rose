@@ -43,7 +43,12 @@ V = dict(VARIANTS['mini'], name='mini')
 def use(name):
     """switch every builder (structure + design + rom) to a variant."""
     global T
-    V.clear(); V.update(VARIANTS[name], name=name)
+    if name == 'mega':                                      # MOCKUP: the full's design at ~2.1 m (proportions only, no engineering)
+        V.clear(); V.update(VARIANTS['full'], scale=210.0 / 94.0, name='full', size='mega')
+    elif name == 'mega25':                                  # MOCKUP: the full's design at 2.5 m (Cam: "mock up the 2.5 m version")
+        V.clear(); V.update(VARIANTS['full'], scale=250.0 / 94.0, name='full', size='mega25')
+    else:
+        V.clear(); V.update(VARIANTS[name], name=name)
     T = V.get('plate_t', L.T)                                  # plate stock: 3.2 mm, 6.35 mm at full size (buckling goes as t^3)
 
 

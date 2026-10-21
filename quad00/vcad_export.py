@@ -304,7 +304,7 @@ def main(variant='mini', explodes=(0.0,)):
     recs = []                                 # (part name, body, source, material, shell?, local centroid)
     used_mats = set()
     n_native = n_mesh = 0
-    has_cx = variant in ('mini', 'full')       # the cortex head (loon), scaled to the body
+    has_cx = variant in ('mini', 'full', 'mega', 'mega25')   # the cortex head (loon) for each body size
     for n, m in D + C:
         if has_cx and n.startswith(CX_PY):
             continue
@@ -344,7 +344,7 @@ def main(variant='mini', explodes=(0.0,)):
             recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
         cx_link = os.path.join(outdir, 'cortex.loon')
         cx_src = os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex',
-                                              'cortex-full.loon' if variant == 'full' else 'cortex.loon'), outdir)
+                                              {'full': 'cortex-full.loon', 'mega': 'cortex-mega.loon', 'mega25': 'cortex-mega.loon'}.get(variant, 'cortex.loon')), outdir)
         if os.path.lexists(cx_link):
             os.remove(cx_link)
         os.symlink(cx_src, cx_link)

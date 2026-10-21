@@ -1,9 +1,9 @@
 """mega humanoid actuator sizing: heavy-duty human scale (Cam 2026-10-21): ~1.95 m, bulkier, 25-50 kg payload,
 fits doors. Quasi-static joint torques for the governing load cases x a dynamic factor; continuous = the worst
 held pose. Segment lengths from Winter's anthropometric fractions of height. All E (estimates) until a sim exists."""
-import math
-H = 1.95                              # m (US door 2.03 m clear: the head clears with ~80 mm)
-M_ROBOT = 95.0                        # kg: H1-class 47 kg x (1.95/1.8)^3 = 60 kg, x1.6 "bulkier" (bigger actuators + structure)
+import math, sys
+H = float(sys.argv[1]) if len(sys.argv) > 1 else 1.95                              # m (US door 2.03 m clear: the head clears with ~80 mm)
+M_ROBOT = 47.0 * (H / 1.8) ** 3 * 1.6  # kg (95 at 1.95 m): H1-class 47 kg x (1.95/1.8)^3 = 60 kg, x1.6 "bulkier" (bigger actuators + structure)
 PAY_MAX, PAY_CONT = 50.0, 25.0        # kg: 50 short lifts, 25 carried continuously
 g = 9.81
 thigh, shank, upper, fore = 0.245 * H, 0.246 * H, 0.186 * H, 0.146 * H + 0.05   # m (forearm to grip)
@@ -27,7 +27,7 @@ cases['ankle roll'] = (DYN * tot(PAY_MAX) * g * 0.05, tot(PAY_CONT) * g * 0.02 /
 cases['waist pitch'] = (DYN * (PAY_MAX * g * 0.40 + 0.6 * m_up * g * 0.20), PAY_CONT * g * 0.25 + 0.6 * m_up * g * 0.05)
 cases['waist yaw'] = (0.4 * cases['waist pitch'][0], 0.2 * cases['waist pitch'][1])
 # SHOULDER PITCH: half the payload per arm held 0.35 m forward (box hugged), arm 6 kg at 0.3 m; peak = arm out at 0.6 m
-m_arm = 6.0
+m_arm = 6.0 * (H / 1.95) ** 3
 cases['shoulder pitch'] = (DYN * (PAY_MAX / 2 * g * 0.45 + m_arm * g * 0.30), PAY_CONT / 2 * g * 0.30 + m_arm * g * 0.15)
 cases['shoulder roll'] = (0.6 * cases['shoulder pitch'][0], 0.5 * cases['shoulder pitch'][1])
 cases['upper-arm yaw'] = (0.35 * cases['shoulder pitch'][0], 0.3 * cases['shoulder pitch'][1])
