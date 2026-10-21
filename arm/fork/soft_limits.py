@@ -33,8 +33,8 @@ TABLE = os.path.join(HERE, 'soft_limits_v10.npz')
 SPACING = 5.0          # mm, surface sampling
 GAP_MIN = SPACING + 1.0
 CLEAR = 5.0            # mm to the desk / the humanoid's shell
-RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-180, 10), 'J3_upper_roll': (-180, 180),
-          'J4_elbow': (-115, 115), 'J6_wrist_pitch': (-105, 105), 'J7_tool_roll': (-180, 180)}
+RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-140, 10), 'J3_upper_roll': (-180, 180),
+          'J4_elbow': (-115, 115), 'J6_wrist_pitch': (-100, 100), 'J7_tool_roll': (-180, 180)}
 STRUCT = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-180, 25), 'J3_upper_roll': (-180, 180),
           'J4_elbow': (-150, 130), 'J6_wrist_pitch': (-130, 130), 'J7_tool_roll': (-180, 180)}
 ADJ = {frozenset(p) for p in (('base', 'turret'), ('turret', 'upper'), ('upper', 'upperd'), ('upperd', 'fore'),

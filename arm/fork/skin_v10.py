@@ -324,13 +324,16 @@ def skin_parts():
     P = P[P[:, 2] <= zs]
     r1 = max(np.hypot(P[:, 0], P[:, 1]).max(), F.J1M['d'] / 2 * 1e3 + 10) + MARGIN
     # the turret stops where the J2 seam circle starts: the upper sleeve can swing down past it
+    # v10.4: one loft, asymmetric about the arm axis. Its "top" (arm -x: up on the humanoid at rest) continues
+    # rose's shoulder line - 511 at the flank, a ~35 deg drop for 15 mm, then long and flat into the J2 puck;
+    # its "bottom" (+x, where the upper sleeve swings) narrows to the keyhole tower's neck under the seam circle.
     ztop = zs - (Rp['J2'] + GAP) - 0.5
-    st = [(zo, r1, hy2 + 4, 0.0), (ztop, r1 - 4, hy2 + 2, 0.0)]
-    tu = sleeve(st, u=(0, 0, 1), v=(1, 0, 0), w=(0, 1, 0), rc_k=0.42)
-    # v10.3: a neck over the keyhole towers, up into the J2 puck (cut by the J2 seam): no tower flank shows
     wn = F.TOWER_NECK * 1e3 + MARGIN
-    neck = sleeve([(ztop - 4.0, wn, hy2 + 2, 0.0), (zs - 40.0, wn, hy2 + 2, 0.0)], u=(0, 0, 1), v=(1, 0, 0), w=(0, 1, 0), rc_k=0.3)
-    tu = seam_cut(_tm(Manifold(_mm(tu)) + Manifold(_mm(neck))), *seam('J2'))
+    prof = [  # arm z, x_top (neg), x_bottom (pos)
+        (zo, -r1, r1), (ztop, -(r1 - 3.0), r1 - 4.0), (zo + 15.0, -(Rp['J2'] + 1.3), wn),
+        (zo + 35.0, -(Rp['J2'] + 0.8), wn), (zs, -(Rp['J2'] + 0.5), wn)]
+    st = [(z_, hy2 + (4.0 if k == 0 else 2.0), (xb - xt) / 2, (xb + xt) / 2) for k, (z_, xt, xb) in enumerate(prof)]
+    tu = seam_cut(sleeve(st, u=(0, 0, 1), v=(0, 1, 0), w=(1, 0, 0), rc_k=0.42), *seam('J2'))
     out.append(('turret', 'turret', loc(tu, 'turret'), 'skin'))
     # ---- J1: desk - a graphite drum growing out of one calm base puck; body - a flush disc on the flank
     if F.PEDESTAL:
@@ -430,6 +433,22 @@ RHO_SKIN, WALL = 1010.0, 0.0012         # PA12 (MJF), 1.2 mm wall (exterior sess
 PANELS = [  # (link, x0, x1 in mm world-zero, panel h mm, qty): 1 mm 5052 flank panels over the holder plates
     ('upper', 52.0, 149.0, 72.0, 2), ('upperd', 151.0, 245.0, 72.0, 2)]
 PANEL_T, PAD_T, RHO_PAD = 0.0006, 0.00025, 3000.0   # 0.6 mm 5052 panel on a 0.25 mm gap pad
+PANEL_FILL = 0.6      # v10.4: each panel windowed over its holder plate's own windows (40 % out; the plate isn't there either)
+WALL_THIN = {k: 0.0009 for k in ('upper', 'upperd', 'fore', 'wrist', 'puck-J4', 'puck-J6')}   # v10.4: arm sleeves + distal rings 0.9 mm (MJF PA12, ribbed)
+# v10.4 fastening, no new plate holes (FASTENING in V10.4.md): per part (link, kg, where)
+FASTEN = [
+    # sleeve halves: 2 printed C-clips per half snap over the holder plates' straight top / bottom edges
+    # (3.175 plate), + 1 N52 6x3 magnet pair on the half-to-half seam: clips 0.4 g each, magnets 0.64 g each
+    ('upper', 2 * (4 * 0.0004 + 2 * 0.00064), 0.100), ('upperd', 2 * (4 * 0.0004 + 2 * 0.00064), 0.200),
+    ('fore', 2 * (4 * 0.0004 + 2 * 0.00064), 0.400), ('wrist', 2 * (4 * 0.0004 + 2 * 0.00064), 0.575),
+    ('turret', 2 * (4 * 0.0004 + 2 * 0.00064), 0.0),
+    # ring pucks: 3 M5 x 8 Al hex standoffs per face on the straddler plate A output screws (and plate B's
+    # sleeve-flange screws), the bezel + ring screwed to them with M3 x 6: 1.1 g standoff + 0.4 g screw
+    ('turret', 6 * 0.0015, 0.0), ('fore', 6 * 0.0015, 0.300), ('wrist', 6 * 0.0012, 0.500),
+    # J1 drum (desk): 4 clips on the foot's rim; desk puck: sits under the pedestal base plate, captured
+    ('base', 4 * 0.0004, 0.0),
+    # J3 / J7 trim rings: VHB in a 0.3 mm groove, ~0
+]
 
 
 def skin_mass():
@@ -447,10 +466,12 @@ def skin_mass():
         else:
             A = m.area * 1e-6 * 0.5
         c = m.vertices.mean(0) / 1e3 + np.array(F.ORIGIN[link])
-        rows.append((link, RHO_SKIN * WALL * A, float(c[0]), nm))
+        rows.append((link, RHO_SKIN * WALL_THIN.get(nm, WALL) * A, float(c[0]), nm))
     for link, x0, x1, h, q in PANELS:
         a = (x1 - x0) * h * 1e-6 * q
-        rows.append((link, 2680 * PANEL_T * a + RHO_PAD * PAD_T * a, (x0 + x1) / 2e3, 'panels'))
+        rows.append((link, (2680 * PANEL_T + RHO_PAD * PAD_T) * a * PANEL_FILL, (x0 + x1) / 2e3, 'panels'))
+    for link, kg, x in FASTEN:
+        rows.append((link, kg, x, 'fastening'))
     return rows
 
 

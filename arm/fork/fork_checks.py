@@ -134,7 +134,7 @@ def stiffness():
         hu = 2 * F.H_UD          # v10: the distal upper arm's box is its holder plates' depth
     hf, Wf = 2 * F.R_LOBE0 + 0.016, 2 * F.Y_FORE_DIST
     Iu, Ju = section(hu, Wu)
-    If, Jf = section(hf, Wf)
+    If, Jf = section(hf, Wf, hw=max(0.0, hf - 2 * F.FLANGE_D) if F.V10 else None)
     xF = flange_x()
     m_e, m_w = moment(U), moment(U + Fo)
     F_e, F_w = m_e / (xF - U), m_w / (xF - U - Fo)

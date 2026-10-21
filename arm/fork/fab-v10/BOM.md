@@ -17,13 +17,12 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 
 | part | t mm | qty | size mm | holes + slots | g each |
 |---|---:|---:|---|---:|---:|
-| foot | 6.3 | 1 | 180 x 180 | 23 | 338 |
+| foot | 6.3 | 1 | 170 x 170 | 23 | 291 |
 | turret-disc | 3.2 | 1 | 140 x 140 | 14 | 121 |
 | turret-tower-A | 3.2 | 1 | 132 x 139 | 9 | 116 |
 | turret-tower-B | 3.2 | 1 | 132 x 139 | 2 | 115 |
 | spacer-RS04 | 3.2 | 2 | 57 x 57 | 8 | 20 |
-| pedestal-X | 3.2 | 2 | 130 x 51 | 1 | 38 |
-| pedestal-Y | 3.2 | 2 | 123 x 51 | 1 | 37 |
+| pedestal-X | 3.2 | 4 | 110 x 51 | 1 | 33 |
 | pedestal-base | 3.2 | 1 | 188 x 188 | 13 | 190 |
 | upper-A | 3.2 | 1 | 174 x 132 | 1 | 72 |
 | upper-B | 3.2 | 1 | 174 x 132 | 11 | 86 |
@@ -32,19 +31,19 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 | upperd-A | 3.2 | 1 | 216 x 132 | 6 | 86 |
 | upperd-B | 3.2 | 1 | 216 x 132 | 16 | 103 |
 | upperd-cover | 3.2 | 2 | 61 x 54 | 0 | 26 |
-| fore-A | 3.2 | 1 | 212 x 132 | 9 | 135 |
-| fore-B | 3.2 | 1 | 212 x 132 | 2 | 135 |
+| fore-A | 3.2 | 1 | 212 x 132 | 9 | 130 |
+| fore-B | 3.2 | 1 | 212 x 132 | 2 | 129 |
 | fore-end-plate | 3.2 | 1 | 79 x 52 | 9 | 29 |
 | yoke-A | 3.2 | 1 | 102 x 90 | 1 | 27 |
 | yoke-B | 3.2 | 1 | 102 x 90 | 5 | 50 |
-| wrist-A | 3.2 | 1 | 122 x 90 | 6 | 68 |
-| wrist-B | 3.2 | 1 | 122 x 90 | 1 | 68 |
+| wrist-A | 3.2 | 1 | 104 x 90 | 6 | 60 |
+| wrist-B | 3.2 | 1 | 104 x 90 | 1 | 60 |
 | wrist-end-plate | 3.2 | 1 | 69 x 52 | 9 | 26 |
 | spacer-RS02 | 3.2 | 1 | 43 x 43 | 6 | 12 |
 | tool-flange | 3.2 | 1 | 61 x 61 | 6 | 24 |
 | jaw | 3.2 | 2 | 75 x 32 | 0 | 14 |
 
-Stock, 3.2 mm: **3 sheets** of 381 x 381 mm.
+Stock, 3.2 mm: **4 sheets** of 381 x 381 mm.
 Stock, 6.3 mm: **1 sheet** of 381 x 381 mm.
 
 Covers and end plates are located by tabs in slots (10 mm tabs, slots 0.4 mm long and 0.2 mm wide

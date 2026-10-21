@@ -66,7 +66,7 @@ T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm)
 T_FOOT = 0.00635      # 1/4" foot
 R_FOOT, R_FOOT_BOLTS = (0.085, 0.070) if os.environ.get('ROSE_ARM') == 'mini' else (0.115, 0.095)
 if os.environ.get('ROSE_ARM') == 'v10':
-    R_FOOT, R_FOOT_BOLTS = 0.090, 0.076     # v10.2: the foot hides inside the desk puck / the torso flank
+    R_FOOT, R_FOOT_BOLTS = 0.085, 0.072     # v10.2: the foot hides inside the desk puck / the torso flank
 T_CV = T_PL
 T_PB = T_PL
 GAP = 0.002
@@ -89,6 +89,8 @@ J3M = RS02
 X3_CP = 0.105          # upper arm end plate (J3's back face on its far side): clear of the turret's corners
 H_UP, TABS_UP = 0.034, (-0.018, 0.018)     # proximal upper-arm plates, half height
 H_UD, TABS_UD, H_UDCV = 0.040, (-0.020, 0.020), 0.030   # distal upper arm (elbow holder) + its covers
+FLANGE_D = 0.009       # v10.4: distal plates (fore, yoke, wrist) keep 9 mm flanges over their windows (>= 1.5 t web)
+PED_WALL = 0.110      # v10.4: adapter / pedestal tube wall width (open corners, r 85 max about J1)
 TOWER_NECK = 0.034    # v10.3: turret tower neck half-width (in-plane bending of the neck adds ~0.15 mm at the flange)
 PED_H, PED_S = float(os.environ.get('ROSE_ARM_PED_H', 0.045)), 0.130   # desk pedestal under the foot: height, square tube side (0.0363 on the body: the chest adapter)
 PEDESTAL = V10 and os.environ.get('ROSE_ARM_PEDESTAL', '1') == '1'   # ROSE_ARM_PEDESTAL=0: the body build
@@ -280,13 +282,13 @@ def circle_hole(cx, r):
     return [('arc', (cx + r, 0.0), (cx - r, 0.0), (cx, 0.0), True), ('arc', (cx - r, 0.0), (cx + r, 0.0), (cx, 0.0), True)]
 
 
-def windows(L, r0, r1, keep0=0.0, keep1=0.0, t=T_PL, hmax=1.0):
+def windows(L, r0, r1, keep0=0.0, keep1=0.0, t=T_PL, hmax=1.0, flange=None):
     """One stadium window between the lobes, outside the keep radius round each lobe centre (bolt
     patterns and bores live inside it). Every web >= max(1.5 t, 4 mm)."""
     web = max(1.5 * t, 0.004)
     s0 = max(r0 * 0.55, keep0) + web + 0.002
     s1 = L - max(r1 * 0.55, keep1) - web - 0.002
-    h = min(min(r0, r1) - FLANGE, (s1 - s0) / 2, hmax)
+    h = min(min(r0, r1) - (FLANGE if flange is None else flange), (s1 - s0) / 2, hmax)
     if h >= 0.008:
         w = stadium(s0, s1, h)
         if w:
@@ -404,12 +406,12 @@ def stations():
     x_cp = x5 - J5M['L'] - T_PL                     # forearm end plate, J5 back-mounted on its far face
     if NO_J5:                                       # one end plate: forearm plates on one face, J6 holders on the other
         x5 = x_cp = W - R_LOBE6W - 0.012
-    x_ep = W + R_LOBE6W + 0.028                     # wrist end plate, J7 back-mounted on its far face
+    x_ep = W + R_LOBE6W + (0.010 if V10 else 0.028)   # wrist end plate, J7 back-mounted on its far face (v10.4: 18 mm closer)
     xt = x_ep + T_PL + J7M['L']                     # J7 output face = tool flange
     return dict(x5=x5, x_cp=x_cp, x_ep=x_ep, xt=xt)
 
 
-def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_PL, hmax=1.0):
+def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_PL, hmax=1.0, flange=None):
     """A side plate with a lobe (radius r0) on the joint at x = xc and a flat end at x = x_end, half
     height h, with 10 mm tabs standing T proud of the flat end at tabs_z - they pass through the end
     plate. Centre plane y = side*yc. Holes in the plate's own (s, z), s measured from xc toward x_end."""
@@ -429,7 +431,7 @@ def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_
     ol += [('arc', tt, tb, (0.0, 0.0), True), ('line', tb, (L, -h))]
     o = (xc, side * (yc + t / 2), z)
     return (link, 'sheet', o, (sg, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, -side * t, 0.0),
-            windows(L, r0, h, keep, 0.0, t, hmax) + list(holes))
+            windows(L, r0, h, keep, 0.0, t, hmax, flange if flange is not None else (FLANGE_D if V10 and link in ('fore', 'yoke', 'wrist') else None)) + list(holes))
 
 
 def end_plate(link, x, z, ya, yb, hz, tabs_z, holes, hy_extra=0.0):
@@ -601,8 +603,10 @@ def pedestal():
             return ('base', 'sheet', (nx * c - T / 2, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), ol, (T, 0.0, 0.0), holes)
         return ('base', 'sheet', (0.0, ny * c - T / 2, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, T, 0.0), holes)
     for s_ in (1, -1):
-        P.append(side_plate(s_, 0, S))               # x faces: full width
-        P.append(side_plate(0, s_, S - 2 * T - 0.0004))   # y faces: between them
+        # v10.4: the tube's corners are open - each wall 110 wide on the 130 square, so nothing reaches past
+        # r 85 about J1 (rose's torso corner clears r 88 for |y| 87..134); the foot and base plate close the box
+        P.append(side_plate(s_, 0, PED_WALL))
+        P.append(side_plate(0, s_, PED_WALL))
     # base plate: the foot's outline, table bolts outside the tube, slots for the tabs, cable hole
     c = S / 2 - T / 2
     slots = [rect(sx * c, tx, T + 0.0002, SLOT_L) for sx in (1, -1) for tx in tabs] + \

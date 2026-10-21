@@ -13,8 +13,8 @@ This is everything the torso needs to fit the v10.3 arm on the 1703 mm full huma
 |---|---|
 | axis | +y (lateral), through x = 0.0, z = 434.3: quad00's own shoulder-pitch axis |
 | torso side plate outer face | \|y\| 87.0, J1's mount |
-| chest adapter (the desk pedestal's tube, 41.05 mm): 4 x 1/8" 5052 plates, 130 x 130 square | \|y\| 87.0 .. 128.1. Corners reach **r 92** about the axis. This is the biggest thing inside the corner. |
-| 1/4" foot, Ø180 | \|y\| 128.1 .. 134.4, r 90 |
+| chest adapter (the desk pedestal's tube, 41.05 mm): 4 x 1/8" 5052 walls, 110 wide on a 130 square, corners open (v10.4) | \|y\| 87.0 .. 128.1. Nothing past **r 85.1** about the axis (rose clears r 88). |
+| 1/4" foot, Ø170 (v10.4) | \|y\| 128.1 .. 134.4, r 85 |
 | J1 RS04 can, Ø120 | \|y\| 134.4 .. 186.6, r 60 |
 | J1 output face = torso flank | **\|y\| 186.6**, flush with the chest cover's flank (rose's `trim-j1ring` sits here) |
 | open graphite ring on that face (the arm owns it) | OD 133 / ID 123, i.e. r 61.5 .. 66.5, 2 mm thick (\|y\| 183.6 .. 185.6, 1 mm under the flank face). The motor's black face is open to air inside it. |
@@ -22,11 +22,11 @@ This is everything the torso needs to fit the v10.3 arm on the 1703 mm full huma
 | arm skin starting at the flank (turret shell) | r 77 (x ±77 at the flank, tapering up into the J2 puck) |
 
 **Drum radius to clear inside the torso:**
-- r 92 for \|y\| 87..128 (the adapter's corners);
-- r 90 for 128..134 (the foot);
+- r 85.1 for \|y\| 87..128 (the adapter, open corners since v10.4);
+- r 85 for 128..134 (the foot, v10.4);
 - r 60 for 134..187 (the can).
 
-Rose's "R ≈ 71.5" covers the can and the open ring, but not the adapter corners and the foot. Either clear r 92 / r 90 inside the corner, or chamfer the adapter tube's corners (a 120 mm square would bring them to r 85).
+v10.4: the adapter's corners are open (walls 110 wide), so it stays within r 85.1, and the foot shrank from Ø180 to **Ø170 (r 85)**, bolts on r 72. Everything in the corner is now inside rose's r 88 (pass 2/3, |y| 87..134) with ≥ 2.9 mm to spare. Rose's pass-2 fan box (x -83..-73, |y| 112..152, z 414..454) overlapped the old Ø180 foot (r 73..90 at |y| 128..134); pass 3 has no fan.
 
 ## 2. J2 roll-stage swept envelope
 
@@ -102,6 +102,6 @@ The time is from a one-node transient: the whole RS04 at 850 J/K behind its 0.49
 - **Why the arm:** an arm-owned cap only has to clear J2's own swing. It does, by construction: the coaxial seam is r 69.5 about J2, and the cap stops where the seam circle starts.
 - **What rose shapes:** the torso's sloped top and shoulder corner, ending at the flank (|y| 186.6), with
   - ≥ 5 mm to the swept envelope (`interface/j1j2_envelope_l.stl`) everywhere outboard of the flank;
-  - inboard of the flank, ≥ 5 mm to the J1 corner contents in section 1 (r 92 / 90 / 60).
-- **Arm side, next pass:** I'll shape the turret shell's top surface to continue rose's slope at the rest pose, from the slope angle rose sends me.
+  - inboard of the flank, ≥ 5 mm to the J1 corner contents in section 1 (r 85 / 85 / 60).
+- **Arm side (done in v10.4):** the turret shell's top continues rose's crown fillet at the rest pose: z 511.3 at the flank (|y| 186.6), 508.3 at |y| 190, ≈ 504 at |y| 202, then flat at ≈ 503.5 into the J2 puck (top 502.8). Pre-lift frame.
 - **Clash check:** the arm's soft limits (`soft_limits.pose_ok(..., mount='body_l')`) already keep the arm skin ≥ 5 mm from the torso shell on rose's pass 1. See V10.3.md for the sweep.
