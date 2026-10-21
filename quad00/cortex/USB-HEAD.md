@@ -39,15 +39,27 @@ Peak draw, estimated:
   - Docked: the body supply has priority, and the pack charges from it.
   - Unplugged: the pack feeds the rail with no break; the charger handles the handover.
   - The J3011 takes its supply from the system rail through its XT30 input.
-- **⚠️ Battery voltage.** A 3S pack empties down to 9.0 V, which is right at the J3011's 9 V minimum, so it would brown out under load. Either set the pack's low cutoff to 3.3 V per cell (9.9 V; about 8 % less usable capacity) or move to 4S (12–16.8 V). **I recommend 4S:** same capacity, it's a normal Bambu-printable 21700 layout, and it runs the charger more efficiently.
+- **⚠️ Battery voltage (now settled by the datasheet: the J3011 input is 12–54 V, not 9–54 V).** A 3S pack can't feed it directly, so **the pack goes to 4S** (12.0–16.8 V; set the cutoff at 3.1 V per cell = 12.4 V). The 20 V PD input and the 48 V body supply both clear 12 V. *(Superseded reasoning follows.)* A 3S pack empties down to 9.0 V, which is right at the J3011's 9 V minimum, so it would brown out under load. Either set the pack's low cutoff to 3.3 V per cell (9.9 V; about 8 % less usable capacity) or move to 4S (12–16.8 V). **I recommend 4S:** same capacity, it's a normal Bambu-printable 21700 layout, and it runs the charger more efficiently.
 
 ## Data
+
+**J3011 ports, from Seeed's datasheet:**
+
+| Port | Role | Use in this design |
+|---|---|---|
+| J38, USB 3.2 Type-C | Host + DisplayPort | **The outside USB-C**, via a 50 mm pigtail. It can also drive an external monitor. |
+| J55, USB 2.0 JST 5-pin header | Host | **Dock USB 2.0 to the limbic board.** It's an internal header, so no USB-A pigtail is needed. |
+| J39 / J40, 2× USB 3.2 Type-A | Host, 10 Gb/s | Internal spares (for example a USB camera or an AI accelerator) |
+| J70, USB 2.0 Micro-B | Device only (recovery and flashing) | Stays internal. Flash with the floor off, or bring it to a service pad. |
+
+The carrier board is 87.8 × 56.7 mm, about the same footprint as the A603 the mini was designed around (87 × 52). It fits the existing mini bay with the board's front edge moved forward 4.7 mm; the clash test showed 23 mm free in front. The assumed 60 × 92 outline is retired.
+
 
 - **The Jetson is the USB host everywhere**, and the limbic board in the torso is a USB device. It presents a network link (CDC-NCM) plus a serial port. That keeps the Jetson simple, with no device-mode quirks, and the limbic board's MCU (STM32H7 / RP2350 class, USB 2.0 HS) handles the device side easily.
 - **The outside USB-C port** must be wired to a J3011 port that can act as host. The chief's research agent is confirming which J3011 USB-C is host and which is flash/recovery only. On Orin Nano carriers the recovery USB-C is usually the device-mode port, which is still useful for flashing over the same outside port with an internal switch (E).
 - **Internal harness:**
   - The J3011's port edge faces aft, 10–20 mm from the back wall, so a 50 mm right-angle USB-C pigtail runs to the panel-mount USB-C.
-  - USB 2.0 from a J3011 USB-A goes through an internal pigtail to the power board, then to the dock pads.
+  - USB 2.0 from the J3011's J55 header (host, JST 5-pin) goes through an internal cable to the power board, then to the dock pads.
 - **Removed:** the two T1 Ethernet PHYs and the back I/O cutout. That cutout shrinks to one USB-C plus a status LED.
 
 ### Body comms over USB 2.0 instead of T1 Ethernet
@@ -66,7 +78,7 @@ Peak draw, estimated:
 | Outside USB-C | Back face, centred, about 20 mm above the floor seam. It replaces the I/O cutout. | Same, back face |
 | Dock | Floor, unchanged: 8 pads, cones ±18, magnets, latch | Same |
 | Power board (PD + charger + diode OR) | About 45 × 40 on the floor beside the pack, where the current power board sits (`cortex-power`) | Same, about 50 × 45 |
-| Harness | Panel USB-C → 50 mm pigtail → J3011. Dock pads → power board (pins on the board's underside, no cable) → XT30 to the J3011 + USB 2.0 pigtail → J3011 USB-A | Same, with longer pigtails |
+| Harness | Panel USB-C → 50 mm pigtail → J3011. Dock pads → power board (pins on the board's underside, no cable) → XT30 to the J3011 + USB 2.0 cable → J3011 J55 header | Same, with longer pigtails |
 
 The decased J3011 sits on a carrier plate on the sled (per the BOM memo's interface rule). With a custom carrier later, the ports become board-mounted connectors and the pigtails disappear.
 
