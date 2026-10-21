@@ -280,7 +280,7 @@ CX_PY = ('cover-helmet', 'visor-', 'trim-eyering', 'trim-ear', 'trim-headpanel',
          'elec-cbat', 'cable-hcsi', 'cable-haudio', 'cable-hmic', 'cable-hhdmi', 'cable-hpower', 'cable-hdock', 'cable-heth',
          'cable-husbc', 'trim-dockplug', 'trim-dockpin', 'elec-dockplug')
 CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('cortex-ear-grilles', 'satin_black'),
-           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
+           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-glass-face', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
            ('cortex-pads', 'gold'), ('cortex-strikes', 'steel'), ('cortex-keeper', 'steel'), ('cortex-display', 'heatsink'),
            ('cortex-cams', 'pcb_green'), ('cortex-dockboard', 'pcb_green'), ('cortex-power', 'pcb_green'),
            ('cortex-battery', 'cell_pack'), ('cortex-sled', 'aluminium'), ('cortex-compute', 'pcb_green'),
