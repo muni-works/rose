@@ -1,0 +1,12 @@
+Hip_Roll        K1    -23..  90  free    -23..  90  need (-10, 40)  ok  hits: -None +None
+Hip_Pitch       K1   -172.. 127  free   -172.. 127  need (-100, 30)  ok  hits: -None +None
+Hip_Yaw         K1    -57..  57  free    -57..  57  need (-45, 45)  ok  hits: -None +None
+Knee_Pitch      K1      0.. 128  free      0.. 128  need (0, 120)  ok  hits: -None +None
+Ankle_Pitch     K1    -50..  20  free    -50..  20  need (-45, 20)  ok  hits: -None +None
+Ankle_Roll      K1    -20..  20  free    -20..  20  need (-20, 20)  ok  hits: -None +None
+Shoulder_Pitch  K1   -190..  70  free   -190..  70  need (-180, 60)  ok  hits: -None +None
+Shoulder_Roll   K1   -100..  90  free   -100..  90  need (-10, 90)  ok  hits: -None +None
+Elbow_Pitch     K1   -130.. 130  free   -130.. 130  need (-90, 90)  ok  hits: -None +None
+Elbow_Yaw       K1   -140..   0  free   -140..   0  need (-130, 0)  ok  hits: -None +None
+Head_yaw        K1    -57..  57  free    -57..  57  need (-57, 57)  ok  hits: -None +None
+Head_pitch      K1    -20..  49  free    -20..  49  need (-20, 40)  ok  hits: -None +None

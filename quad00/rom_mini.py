@@ -27,7 +27,7 @@ BODIES = {
     'wy.{t}': ['wrist-H0'],
     'ey.{t}': ['wrist-F2', 'motor-wristroll', 'arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
     'hyaw': ['neck-N', 'motor-headpitch', 'cover-neck', 'cover-headhub'],
-    'hpitch': ['trim-eyering', 'visor-eye', 'trim-ear', 'cover-headcheek', 'head-H1', 'head-dock', 'trim-headdock', 'cover-helmet', 'visor-face', 'trim-headpanel', 'cover-headbutton', 'visor-headled', 'visor-headport', 'visor-headeth', 'puck-ear'],
+    'hpitch': ['cortex-', 'dock-', 'cover-headcheek', 'head-H1', 'head-dock', 'trim-headdock', 'puck-ear'],
 }
 LEG = ['roll', 'pitch', 'yaw', 'knee', 'ankle']
 ARM = ['sp', 'sr', 'ep', 'ey', 'wr', 'wp', 'wy']
@@ -51,8 +51,8 @@ CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'tri
 
 
 def body_of(name):
-    if name.startswith(('elec-jetson', 'elec-cbat', 'elec-cx', 'cable-h', 'elec-dockplug', 'trim-dockplug', 'trim-dockpin')):
-        return 'hpitch'                                 # the cortex: Jetson, its battery, sensors + wiring ride in the head
+    if name.startswith(('cortex-', 'dock-', 'cable-h')):
+        return 'hpitch'                                 # the cortex (cortex.loon): Jetson, its battery, sensors + wiring ride in the head
     if name.startswith('cable-n'):
         return 'hyaw'
     if name.startswith('cable-t'):
