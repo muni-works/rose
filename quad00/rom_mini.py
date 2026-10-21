@@ -57,7 +57,7 @@ def body_of(name):
         return 'hyaw'
     if name.startswith('cable-t'):
         return 'torso'
-    if name.startswith('trim-j1ring'):
+    if name.startswith(('trim-j1ring', 'trim-j1grille')):
         return TOP()                                    # the J1 bezel rides the torso flank
     b = _body_of(name)
     if b and b.startswith('ey.') and name.startswith('cover-hand') and KS.WRIST() is not None:

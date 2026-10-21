@@ -425,6 +425,29 @@ def design():
             add(f'trim-j1ring.{t_}', tm(Manifold.cylinder(1.2, r_j1 + 2.0, r_j1 + 2.0, 96).translate((0, 0, -0.6))
                                         .__sub__(Manifold.cylinder(2.0, r_j1 - 3.0, r_j1 - 3.0, 96).translate((0, 0, -1.0)))
                                         .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap + 0.6), zs))))
+        # J1 cooling (Cam: B + A): J1 conducts into the chest frame through its adapter, and a 40 mm fan in each corner
+        # pulls air in through an open dot-grid ring around the J1 face, over the drum, and out a dot grid on the back
+        r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs
+        hp_, hh_ = 2.3, 2.3 * 0.866                             # the arm pucks' grid: 1.3 mm holes on a 2.3 mm hex
+        def hexpts(u0, u1, v0, v1):
+            return [((i + 0.5 * (k % 2)) * hp_, k * hh_) for k in range(int(v0 / hh_) - 1, int(v1 / hh_) + 2)
+                    for i in range(int(u0 / hp_) - 1, int(u1 / hp_) + 2)]
+        xb_ = lo[0] + 4.0                                       # the chest's back skin, near the corner
+        cuts_ = []
+        for t_, sy_ in (('l', 1.0), ('r', -1.0)):
+            yo = sy_ * (y_cap + 0.6)
+            ring_ = Manifold.cylinder(1.2, r_j1 - 4.0, r_j1 - 4.0, 128).translate((0, 0, -0.6)) - \
+                   Manifold.cylinder(2.0, r_j1 - 11.0, r_j1 - 11.0, 128).translate((0, 0, -1.0))
+            holes = [Manifold.cylinder(3.0, 0.65, 0.65, 12).translate((u, v, -1.5)) for u, v in hexpts(-r_j1, r_j1, -r_j1, r_j1)
+                     if r_j1 - 10.0 < math.hypot(u, v) < r_j1 - 5.0]
+            g = ring_ - Manifold.batch_boolean(holes, OpType.Add)
+            add(f'trim-j1grille.{t_}', tm(g.rotate((-90.0 * sy_, 0, 0)).translate((0.0, yo, zs))))   # intake: the open face
+            add(f'elec-j1fan.{t_}', trimesh.creation.box(bounds=np.array([[-r_j1 - 11.5, min(sy_ * 112.0, sy_ * 152.0), zs - 20.0],
+                                           [-r_j1 - 1.5, max(sy_ * 112.0, sy_ * 152.0), zs + 20.0]])))            # 40 x 40 x 10 fan
+            cuts_ += [Manifold.cylinder(40.0, 0.65, 0.65, 12).rotate((0, 90.0, 0)).translate((xb_ - 30.0, sy_ * (132.0 + u), zs + v))
+                      for u, v in hexpts(-17.0, 17.0, -17.0, 17.0) if abs(u) < 17.0 and abs(v) < 17.0]          # exhaust grid
+        C_ = Manifold(Mesh(vert_properties=np.asarray(chest.vertices, np.float32), tri_verts=np.asarray(chest.faces, np.uint32)))
+        chest = tm(C_ - Manifold.batch_boolean(cuts_, OpType.Add))
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
     E = KS.ELEC

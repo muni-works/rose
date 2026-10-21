@@ -1,14 +1,18 @@
-# Humanoid shoulder (J1) heat: keep it simple
+# Humanoid shoulder (J1) heat: conduction + fan
 
-Cam's call (2026-10-21): no fans and no ducts.
+Cam's call (2026-10-21, given directly; it replaces an earlier relayed "keep it simple"): **B + A**, conduction into the chest frame plus a small fan per corner, with the open-ring J1 face.
 
 ## How J1 is cooled
 
 The humanoid's J1 is the lymb v10 shoulder pitch, an RS04. It sits inside the torso corner, with its output face flush on the flank at |y| = 186.6.
 
-- **Conduction:** J1 mounts by its back face, through the 41 mm chest adapter, onto the 6.35 mm 5052 torso side plate. That's the same path the desk arm uses. Use a gap pad at the joint at most, and no added parts.
-- **Controller derate:** long holds are limited in software.
-- **Open air:** the corner is closed. The flank shows a gunmetal bezel ring around the J1 face (`trim-j1ring`).
+- **Conduction (B):** J1 mounts by its back face, through the 41 mm chest adapter, onto the 6.35 mm 5052 torso side plate, on a gap pad (about 3 W/mK).
+- **Fan (A):** a 40 × 40 × 10 mm fan in each corner (`elec-j1fan.l/r`), behind the drum, between it and the chest's back skin. It moves about 1.3 L/s.
+- **Air path:**
+  - in through an open dot-grid ring around the J1 face (`trim-j1grille`: Ø1.3 holes on a 2.3 mm hex, the same grid as the arm's pucks)
+  - across the drum
+  - out through a 34 × 34 mm dot grid on the chest's back, behind each shoulder
+- **Look:** a gunmetal bezel ring (`trim-j1ring`) frames the open face.
 
 ## Heat by pose
 
@@ -25,13 +29,12 @@ A passive vent can't shed 30 W from the corner: it would need about 18,600 mm² 
 
 ## Derate (controller)
 
+Kept as a safety net, now that the fan carries the steady state.
+
 | Item | Value |
 |---|---|
-| Continuous J1 limit | **10 W per side (about 13.5 N·m)**: arms forward unloaded, indefinitely |
-| Above 10 W | Track an I²t (winding-temperature) estimate per joint. Hold time is limited, not torque. |
-| Rated hold (23.5 N·m, about 30 W) | **about 5 min**, then ramp the torque limit down to the continuous level over 30 s and tell the planner to lower the arms or set the load down |
-| Recovery | Full hold budget back after about 10 min at ≤ 10 W |
+| With the fan running | about 1.3 L/s at ΔT 20 K carries about 30 W, so the rated arms-forward hold can be continuous. The fan curve and real flow are **TBD**. |
+| Fan failed or blocked | Fall back to 10 W per side continuous, with an I²t winding-temperature estimate above that: about 5 min at the rated 23.5 N·m, then ramp down over 30 s |
+| Monitoring | Read the fan tach. Use the RS04's own winding temperature as the I²t truth. |
 
-**Basis:** about 350 J/K of motor thermal mass with the plate's conduction. That gives a 40 K winding-temperature rise in about 8 min at 30 W. The 5 min figure keeps margin until the arm's lumped thermal model (plate-only case) replaces these numbers. Update this table when it lands.
-
-**Behaviour:** arms-forward with the rated 1.27 kg is a minutes-long pose, not a continuous one. Carrying should be done with the elbows in (lower J1 torque), or by setting the load down.
+Replace these numbers with the arm's lumped thermal model (plate + fan case) when it lands.
