@@ -20,6 +20,29 @@
 ;   dock      8 flush gold pads (2 x 4, 4 mm pitch) on a 12 x 20 pad board in the floor, pogo pins on the neck (Mill-Max
 ;             0906 class, 3 A each); 2 cone seats; 2 steel strike discs over the neck magnets; a latch keeper slot
 
+; ------------------------------------------------------------------ colorways (CMF) ----
+; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
+; two body tones (warm black, cream) and ONE family neon as the accent ("one flame"), kept small: it goes on the ear
+; grille inserts only (the exhaust grid, floor and back stay quiet). Geometry never changes with the colorway.
+;   name     shell                  accent (ear grilles)      floor (anodized Al)
+[let colorways #[
+  #["mind"    #[0.118 0.094 0.075] #[1.000 0.373 0.000] #[0.043 0.035 0.027]]   ; warm black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.118 0.094 0.075] #[0.224 1.000 0.078] #[0.043 0.035 0.027]]   ; warm black + Make green #39ff14
+  #["body"    #[0.118 0.094 0.075] #[1.000 0.125 0.322] #[0.043 0.035 0.027]]   ; warm black + Body red #ff2052
+  #["world"   #[0.910 0.882 0.824] #[0.000 0.941 1.000] #[0.627 0.553 0.439]]   ; cream + World cyan #00f0ff
+  #["power"   #[0.910 0.882 0.824] #[1.000 0.831 0.000] #[0.627 0.553 0.439]]   ; cream + Power amber #ffd400
+  #["silicon" #[0.910 0.882 0.824] #[0.627 0.553 0.439] #[0.627 0.553 0.439]]]] ; cream + Silicon tan #a08d70 (the quiet one)
+[let colorway "mind"]
+[let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
+[let cw-shell [nth cw 1]]
+[let cw-accent [nth cw 2]]
+[let cw-floor [nth cw 3]]
+[let shell-rough 0.55]                          ; satin (textured PC/ABS)
+[let accent-rough 0.35]                         ; the grille insert finish: semi-gloss
+[material "cx_shell" [nth cw-shell 0] [nth cw-shell 1] [nth cw-shell 2] 0.0 shell-rough]
+[material "cx_accent" [nth cw-accent 0] [nth cw-accent 1] [nth cw-accent 2] 0.0 accent-rough]
+[material "cx_floor" [nth cw-floor 0] [nth cw-floor 1] [nth cw-floor 2] 0.7 0.4]
+
 [material "satin_black" 0.09 0.094 0.106 0.1 0.55]
 [material "visor_glass" 0.02 0.02 0.025 0.2 0.05]
 [material "gunmetal" 0.3 0.32 0.34 0.8 0.35]
@@ -261,10 +284,10 @@
                          [translate -36.0 0.0 -6.0 [rotate 0.0 -90.0 0.0 [cylinder 4.0 3.0]]]]]     ; button, back of the neck
 
 [assembly
- #[[part "cortex-tub" cortex-tub "satin_black"]
-   [part "cortex-floor" cortex-floor "aluminium"]
-   [part "cortex-exhaust-grille" cortex-exhaust-grille "satin_black"]
-   [part "cortex-ear-grilles" cortex-ear-grilles "satin_black"]
+ #[[part "cortex-tub" cortex-tub "cx_shell"]
+   [part "cortex-floor" cortex-floor "cx_floor"]
+   [part "cortex-exhaust-grille" cortex-exhaust-grille "cx_shell"]
+   [part "cortex-ear-grilles" cortex-ear-grilles "cx_accent"]
    [part "cortex-keeper" cortex-keeper "steel"]
    [part "cortex-strikes" cortex-strikes "steel"]
    [part "cortex-pads" cortex-pads "gold"]
