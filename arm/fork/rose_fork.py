@@ -596,10 +596,10 @@ def pedestal():
     c = S / 2 - T / 2
     slots = [rect(sx * c, tx, T + 0.0002, SLOT_L) for sx in (1, -1) for tx in tabs] + \
             [rect(tx, sy * c, SLOT_L, T + 0.0002) for sy in (1, -1) for tx in tabs]
-    bolts = [circ(sx * 0.100, sy * 0.100, 0.0033) for sx in (1, -1) for sy in (1, -1)]
+    bolts = [circ(0.108 * math.cos(a), 0.108 * math.sin(a), 0.0033) for a in (0.0, math.pi / 2, math.pi, 3 * math.pi / 2)]
+    Rb = 0.122                                   # v10.1: round, under the skin's skirt
     P.append(('base', 'base', (0.0, 0.0, -H - T), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
-              [('line', (-R_FOOT, -R_FOOT), (R_FOOT, -R_FOOT)), ('line', (R_FOOT, -R_FOOT), (R_FOOT, R_FOOT)),
-               ('line', (R_FOOT, R_FOOT), (-R_FOOT, R_FOOT)), ('line', (-R_FOOT, R_FOOT), (-R_FOOT, -R_FOOT))],
+              [('arc', (Rb, 0.0), (-Rb, 0.0), (0.0, 0.0), True), ('arc', (-Rb, 0.0), (Rb, 0.0), (0.0, 0.0), True)],
               (0.0, 0.0, T), slots + bolts + [circ(0.0, 0.0, 0.040)]))
     return P
 
@@ -679,6 +679,14 @@ def cable_points(T):
         pts.append(xf(T, link, p))
     D = 2 * R_CABLE
 
+    def coil(link, x0, x1, r, zc, turns=0.75, n=14):
+        """A service loop for a roll joint: the harness wraps 3/4 turn round the cartridge (it unwinds
+        +/- 180 deg of roll without tension), starting and ending under it."""
+        for k in range(n + 1):
+            t = k / n
+            a = -math.pi / 2 + 2 * math.pi * turns * t
+            P(link, (x0 + (x1 - x0) * t, r * math.cos(a), zc + r * math.sin(a)))
+
     def crossing(holder, straddler, x, pb, cb, r_h, r_s, d_h, d_s, from_holder):
         """One pitch joint. The holder carries the motor between its plates (plate B at -pb); the
         straddler's plate B is at -cb, outside it. In the CABLE_GAP between them each leg lies flat
@@ -715,6 +723,7 @@ def cable_points(T):
         P('upper', (0.070, 0.0, z))
         P('upper', (X3_CP - 0.008, 0.0, z))
         P('upper', (X3_CP - 0.004, 0.0, z - r3))
+        coil('upper', X3_CP + T_PL + 0.006, X3_OUT - 0.006, J3M['d'] / 2 + R_CABLE + 0.0008, z)   # v10.1: J3 service loop
         P('upper', (X3_OUT - 0.004, 0.0, z - r3))
         P('upperd', (X3_OUT + 0.012, 0.0, z - r3))
         P('upperd', (X3_OUT + 0.020, 0.0, z))
@@ -732,6 +741,8 @@ def cable_points(T):
     P('yoke', (x5 + 0.010, 0.0, z - J5M['d'] / 2 - 0.006))
     crossing('yoke', 'wrist', W, WR_PB, WR_CB, J6M['d'] / 2 + 0.004, R_LOBE6W + 0.010, (-1, 0), (1, 0), from_holder=True)
     P('wrist', (x_ep - 0.008, 0.0, z - J7M['d'] / 2 - 0.006))
+    if V10:   # v10.1: J7 service loop round the cartridge
+        coil('wrist', x_ep + T_PL + 0.006, xt - 0.008, J7M['d'] / 2 + R_CABLE + 0.0008, z)
     P('wrist', (xt - 0.004, 0.0, z - J7M['d'] / 2 - 0.006))           # along under the J7 cartridge
     P('tool', (xt + 0.004 + EDU['d'] / 2, -EDU['L'] / 2 - 0.004, z - 0.010))
     return pts

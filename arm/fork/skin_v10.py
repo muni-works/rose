@@ -93,77 +93,104 @@ def link_points(link, mats=None, step=0.006):
     return np.array(P) * 1e3 - o if P else np.zeros((0, 3))
 
 
-def segments():
-    """[(name, link, mm points in that link's frame, axis, n, dome)] for v10."""
-    S = F.stations()
-    o = lambda l: np.array(F.ORIGIN[l]) * 1e3
-    def clip(P, link, x0, x1, ax=0):
-        g = P[:, ax] + o(link)[ax]
-        return P[(g >= x0 * 1e3) & (g <= x1 * 1e3)]
+def cyl(a, b, r, sections=96):
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    return trimesh.creation.cylinder(radius=r, segment=[a, b], sections=sections)
+
+
+def _tm(M):
+    g = M.to_mesh()
+    return trimesh.Trimesh(np.asarray(g.vert_properties)[:, :3], np.asarray(g.tri_verts))
+
+
+def halves(mesh, ax, pos):
+    """Split a shell at the plane coordinate[ax] = pos: (below, above)."""
+    M = Manifold(_mm(mesh))
     out = []
-    base = link_points('base')
-    g = base + o('base')
-    if F.PEDESTAL:
-        ped = base[g[:, 2] < -0.5]
-        out.append(('pedestal', 'base', ped, (0, 0, 1), 3.6, (False, False)))
-    drum = base[g[:, 2] > F.T_FOOT * 1e3 + 0.5]
-    out.append(('base', 'base', drum, (0, 0, 1), 2.0, (False, False)))
-    out.append(('turret', 'turret', link_points('turret'), (0, 0, 1), 3.0, (False, True)))
-    up = link_points('upper')
-    out.append(('upper', 'upper', clip(up, 'upper', 0.045, F.X3_OUT), (1, 0, 0), 2.6, (True, False)))
-    ud = link_points('upperd')
-    out.append(('upperd', 'upperd', clip(ud, 'upperd', F.X3_OUT, F.UPPER), (1, 0, 0), 2.6, (False, True)))
-    fo = np.concatenate([link_points('fore'), link_points('yoke') + o('yoke') - o('fore')])
-    out.append(('fore', 'fore', clip(fo, 'fore', F.UPPER, F.W), (1, 0, 0), 2.6, (True, True)))
-    wr = link_points('wrist')
-    out.append(('wrist', 'wrist', clip(wr, 'wrist', F.W, S['xt'] + F.T_PL), (1, 0, 0), 2.6, (True, False)))
+    for sgn in (-1, 1):
+        ext = [2000.0] * 3
+        ctr = [0.0, 0.0, 0.0]
+        ctr[ax] = pos + sgn * 1000.0
+        out.append(_tm(M ^ Manifold(_mm(trimesh.creation.box(extents=ext).apply_translation(ctr)))))
     return out
 
 
-def cyl(a, b, r):
-    a, b = np.asarray(a, float), np.asarray(b, float)
-    return trimesh.creation.cylinder(radius=r, segment=[a, b], sections=72)
+def skin_parts():
+    """v10.1 skin, [(name, link, mesh in the link frame (mm), material)].
 
-
-def trim_parts(shells):
-    """Pucks on the pitch axes, rings at the roll planes. [(name, link, mesh in link frame mm, mat)]"""
+    Vocabulary (quad00): every pitch joint is a graphite DRUM, coaxial, r = the joint lobe + 3.5 mm, as
+    wide as the straddler - it swallows both links' lobes, so no plate edge can show at a joint. The
+    shells run drum to drum, clipped at the joint axes (their ends live inside the drums). The upper
+    arm is ONE loft over upper + upperd, split at the J3 plane, so the parting line is continuous and the
+    two halves share their section there; a gunmetal band marks it. J1 is the same: base drum and
+    pedestal share a round section (the desk mount reads as the humanoid's shoulder drum), a gunmetal
+    band at the J1 output plane. The J7 accent ring is the one orange note.
+    """
     o = lambda l: np.array(F.ORIGIN[l]) * 1e3
-    z = F.Z_SH * 1e3
-    def half_y(names, link, x):
-        """the widest |y| of these shells near x (mm, link frame) - where the puck must stand flush."""
-        best = 0.0
-        for nm in names:
-            m, ml = shells[nm]
-            V = m.vertices + o(ml) - o(link)
-            near = np.abs(V[:, 0] + o(link)[0] - x) < 30
-            if near.any():
-                best = max(best, np.abs(V[near, 1]).max())
-        return best
-    def r_at(nm, link, x, ax=0):
-        m, ml = shells[nm]
-        V = m.vertices + o(ml)
-        near = np.abs(V[:, ax] - x) < 15
-        c = np.array([x, 0, z]) if ax == 0 else np.array([0, 0, x])
-        d = V[near] - c
-        d[:, ax] = 0
-        return np.linalg.norm(d, axis=1).max()
-    out = []
-    for nm, link, x, m, parts in (('J2', 'turret', 0.0, F.J2M, ('turret', 'upper')),
-                                   ('J4', 'fore', F.UPPER, F.J4M, ('upperd', 'fore')),
-                                   ('J6', 'wrist', F.W, F.J6M, ('fore', 'wrist'))):
-        xm = x * 1e3
-        hy = half_y(parts, link, xm) + 0.6
-        c = np.array([xm, 0, z]) - o(link)
-        out.append(('puck-' + nm, link, cyl(c - [0, hy, 0], c + [0, hy, 0], m['d'] / 2 * 1e3 * 0.78), 'puck'))
-    # roll planes: J3 (upper | upperd), J7 (wrist | tool, the accent), J1 (base | turret)
-    x3 = F.X3_OUT * 1e3
-    out.append(('ring-J3', 'upperd', band(shells['upperd'][0], 0, x3 - o('upperd')[0] + 3.0), 'trim'))
-    xt = F.stations()['xt'] * 1e3
-    c = np.array([xt, 0, z]) - o('tool')
-    out.append(('ring-J7', 'tool', cyl(c - [0.0, 0, 0], c + [4.0, 0, 0], F.J7M['d'] / 2 * 1e3 + 3.0), 'accent'))
+    Pw = lambda l, mats=None: link_points(l, mats) + o(l)
+    zs = F.Z_SH * 1e3
+    S = F.stations()
+    X3, U, Wm, xt = F.X3_OUT * 1e3, F.UPPER * 1e3, F.W * 1e3, S['xt'] * 1e3
     zo = (F.T_FOOT + F.J1M['L']) * 1e3
-    b = band(shells['base'][0], 2, zo - o('base')[2] - 3.0)
-    out.append(('ring-J1', 'turret', b.apply_translation(o('base') - o('turret')), 'trim'))
+    out = []
+    loc = lambda m, l: m.apply_translation(-o(l))
+    def xr(P, a, b):
+        return P[(P[:, 0] >= a) & (P[:, 0] <= b)]
+    # drums
+    drums = (('J2', 0.0, F.R_LOBE_SH, ('turret', 'upper'), 'turret', F.J2M),
+             ('J4', U, F.R_LOBE_EL, ('upperd', 'fore'), 'fore', F.J4M),
+             ('J6', Wm, F.R_LOBE6W, ('yoke', 'wrist'), 'wrist', F.J6M))
+    for nm, x, R, links, owner, m in drums:
+        r = R * 1e3 + 3.5
+        P = np.concatenate([Pw(l) for l in links])
+        near = P[np.hypot(P[:, 0] - x, P[:, 2] - zs) < r + 1]
+        hy = np.abs(near[:, 1]).max() + MARGIN + 1.0
+        c = np.array([x, 0.0, zs])
+        out.append(('drum-' + nm, owner, loc(cyl(c - [0, hy, 0], c + [0, hy, 0], r), owner), 'puck'))
+        rc = m['d'] / 2 * 1e3 * 0.62                      # flush hub caps, gunmetal, both faces
+        for sg in (-1, 1):
+            out.append(('cap-%s%+d' % (nm, sg), owner, loc(cyl(c + [0, sg * hy, 0], c + [0, sg * (hy + 0.8), 0], rc), owner), 'trim'))
+    cab = np.array(F.cable_points(F.fk({}))) * 1e3          # the harness rides inside the shells
+    cab = np.concatenate([cab + [0, 0, d] for d in (-F.R_CABLE * 1e3, F.R_CABLE * 1e3)])
+    # upper arm: one loft, split at J3
+    P = xr(np.concatenate([Pw('upper'), Pw('upperd'), cab]), 0.0, U)
+    arm_u = loft(P - [0, 0, 0], (1, 0, 0), n=2.6, slices=14, dome=(False, False))
+    a, b = halves(arm_u, 0, X3)
+    out += [('upper', 'upper', loc(a, 'upper'), 'skin'), ('upperd', 'upperd', loc(b, 'upperd'), 'skin')]
+    out.append(('ring-J3', 'upperd', loc(band(arm_u, 0, X3 + 2.5), 'upperd'), 'trim'))
+    # forearm (+ the bolted yoke), drum to drum
+    P = xr(np.concatenate([Pw('fore'), Pw('yoke'), cab]), U, Wm)
+    out.append(('fore', 'fore', loc(loft(P, (1, 0, 0), n=2.6, slices=12, dome=(False, False)), 'fore'), 'skin'))
+    # wrist: drum to the tool flange, J7 inside
+    P = xr(np.concatenate([Pw('wrist'), cab]), Wm, xt + F.T_PL * 1e3)
+    out.append(('wrist', 'wrist', loc(loft(P, (1, 0, 0), n=2.6, slices=10, dome=(False, False)), 'wrist'), 'skin'))
+    c = np.array([xt, 0, zs])
+    out.append(('ring-J7', 'tool', loc(cyl(c, c + [4.0, 0, 0], F.J7M['d'] / 2 * 1e3 + 3.0), 'tool'), 'accent'))
+    # turret: J1 output to the J2 axis (its top lives inside the J2 drum)
+    P = Pw('turret')
+    P = P[(P[:, 2] <= zs)]
+    out.append(('turret', 'turret', loc(loft(P, (0, 0, 1), n=3.0, slices=8, dome=(False, False)), 'turret'), 'skin'))
+    # J1: a round drum over the motor and collar; the desk pedestal below it on the same section
+    Pb = Pw('base')
+    drum = Pb[(Pb[:, 2] >= F.T_FOOT * 1e3 + 0.5) & (Pb[:, 2] <= zo)]
+    rr = np.hypot(drum[:, 0], drum[:, 1]).max() + MARGIN
+    out.append(('base', 'base', loc(cyl([0, 0, -0.5], [0, 0, zo], rr), 'base'), 'skin'))
+    out.append(('ring-J1', 'turret', loc(cyl([0, 0, zo - 1.0], [0, 0, zo + 3.0], rr + 1.0), 'turret'), 'trim'))
+    if F.PEDESTAL:
+        ph = F.PED_H * 1e3
+        rp = max(math.hypot(F.PED_S / 2, F.PED_S / 2), F.R_FOOT) * 1e3 + MARGIN   # the tube's corners and the foot, inside
+        rings = []                                                          # a flared skirt: the shoulder
+        for t, r in ((0.0, rp + 10), (0.25, rp + 6), (0.6, rp + 1), (1.0, rp)):  # drum's section meeting the desk
+            rings.append(_ring(np.array([0, 0, -ph + t * ph]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), r, r, 2.0, 96))
+        H = Manifold.hull_points(np.concatenate(rings).astype(np.float32))
+        out.append(('pedestal', 'base', loc(_tm(H), 'base'), 'skin'))
+        out.append(('ring-ped', 'base', loc(cyl([0, 0, -1.5], [0, 0, 1.5], rp + 1.0), 'base'), 'trim'))
+        out.append(('drum-ped', 'base', loc(cyl([0, 0, 1.5], [0, 0, F.T_FOOT * 1e3 + 1.0], rp), 'base'), 'puck'))
+    else:
+        # body: the chest socket. J1's drum runs in through the chest shell to the torso side plate;
+        # a gunmetal bezel sits flush on the shell (render_v10 cuts the recess in the humanoid's cover)
+        ph = F.PED_H * 1e3
+        out.append(('socket', 'base', loc(cyl([0, 0, -ph], [0, 0, 0.0], rr), 'base'), 'puck'))
     return out
 
 
@@ -193,11 +220,7 @@ _CACHE = {}
 def skin_meshes():
     key = (F.SIZE, F.UPPER, F.FORE, F.Z_SH, F.PEDESTAL, F.PED_H)
     if key not in _CACHE:
-        shells = {}
-        for name, link, P, ax, n, dome in segments():
-            shells[name] = (loft(P, ax, n=n, slices=10, dome=dome), link)
-        parts = [(nm, link, m, 'skin') for nm, (m, link) in shells.items()] + trim_parts(shells)
-        _CACHE[key] = parts
+        _CACHE[key] = skin_parts()
     return _CACHE[key]
 
 

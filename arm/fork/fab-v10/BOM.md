@@ -24,7 +24,7 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 | spacer-RS04 | 3.2 | 2 | 57 x 57 | 8 | 20 |
 | pedestal-X | 3.2 | 2 | 150 x 74 | 1 | 54 |
 | pedestal-Y | 3.2 | 2 | 143 x 74 | 1 | 52 |
-| pedestal-base | 3.2 | 1 | 230 x 230 | 13 | 404 |
+| pedestal-base | 3.2 | 1 | 244 x 244 | 13 | 352 |
 | upper-A | 3.2 | 1 | 174 x 132 | 1 | 81 |
 | upper-B | 3.2 | 1 | 174 x 132 | 11 | 96 |
 | upper-end-plate | 3.2 | 1 | 65 x 68 | 9 | 27 |
@@ -63,7 +63,7 @@ screws; a drop of retaining compound on each tab stops rattle.
 | retaining ring DIN 471-10 | 1 | sleeve end, J6 |
 | hub cap, closed cup (printed PETG, orange) | 3 | Ø40 x 12 at J2, J4; Ø32 x 10 at J6 |
 | base collar (printed PETG) | 1 | round the J1 motor on the foot |
-| flat harness: CAN pair + 48 V pair | 2.2 m | model route at zero pose is 1.27 m; +30 % for the joint loops and service |
+| flat harness: CAN pair + 48 V pair | 2.7 m | model route at zero pose is 1.65 m; +30 % for the joint loops and service |
 | XT30 (2+2) connector pairs | 7 | one per actuator, daisy chain, plus the base lead |
 
 ## Fasteners, by interface

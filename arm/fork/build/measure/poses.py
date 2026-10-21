@@ -45,6 +45,17 @@ def solve(target, pitch, roll):
     return None
 
 
+def cap_ok(q, payload=0.0):
+    """v10: reject poses over the J3 (RS02 upper-arm roll) static cap - arm/fork/pose_cap.py. q in degrees.
+    v9 has no J3, so everything passes."""
+    if not getattr(F, 'V10', False):
+        return True
+    import sys
+    sys.path.insert(0, os.path.join(HERE, '..', '..'))
+    import pose_cap
+    return pose_cap.j3_ok({k: math.radians(v) for k, v in q.items()}, payload)
+
+
 def build():
     rows, misses = [], []
     for i, (x, y, b) in enumerate(SEATS):
@@ -55,6 +66,8 @@ def build():
                 break
             q = solve(tgt, pitch, roll)
             if q is None:
+                continue
+            if not cap_ok(q):
                 continue
             got += 1
             rows.append(dict(pose=len(rows) + 1, seat=i + 1, x=tgt[0], y=tgt[1], z=tgt[2], pitch=pitch,

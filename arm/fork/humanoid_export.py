@@ -42,6 +42,44 @@ for n, m in D + C:
         continue
     k = VX.mat_of(n)
     groups.setdefault(k, []).append(m)
+# v10.1: the chest socket. J1 (RS04 + its graphite drum, r ~72.5) runs in through the chest shell to the
+# torso side plate. Cut a r = SOCKET_R recess through every cover it crosses, and put a gunmetal bezel
+# on the shell's surface round it - J1 then reads flush, like the humanoid's own shoulder drum.
+from manifold3d import Manifold, Mesh
+SOCKET_R = 75.0
+_mm = lambda t: Mesh(vert_properties=np.asarray(t.vertices, np.float32), tri_verts=np.asarray(t.faces, np.uint32))
+_tm = lambda M: trimesh.Trimesh(np.asarray(M.to_mesh().vert_properties)[:, :3], np.asarray(M.to_mesh().tri_verts))
+sockets = []
+for side in ('Left', 'Right'):
+    c = KS.upper_layout(J, side)['sr'][0]
+    s_ = 1 if side == 'Left' else -1
+    sockets.append((c, s_))
+cut_n = 0
+for i, m in enumerate(groups.get('cover', [])):
+    for c, s_ in sockets:
+        cyl = trimesh.creation.cylinder(radius=SOCKET_R, segment=[[c[0], s_ * 90.0, c[2]], [c[0], s_ * 200.0, c[2]]], sections=96)
+        if not m.bounds[0][1] - 1 < s_ * 150 < m.bounds[1][1] + 1 and not (m.bounds[0][1] < s_ * 120 < m.bounds[1][1]):
+            continue
+        try:
+            M = Manifold(_mm(m))
+            if M.status().name != 'NoError' if hasattr(M.status(), 'name') else False:
+                continue
+            r = M - Manifold(_mm(cyl))
+            if r.volume() < M.volume() - 1.0:
+                m = _tm(r)
+                cut_n += 1
+        except Exception:
+            pass
+    groups['cover'][i] = m
+for c, s_ in sockets:          # bezel where the recess meets the outermost cover
+    V = np.concatenate([mm.vertices for mm in groups.get('cover', [])])
+    near = V[(np.hypot(V[:, 0] - c[0], V[:, 2] - c[2]) < SOCKET_R + 20) & (s_ * V[:, 1] > 100) & (s_ * V[:, 1] < 200)]
+    y_out = s_ * (np.abs(near[:, 1]).max() if len(near) else 146.0)
+    bz = trimesh.creation.annulus(r_min=SOCKET_R - 2.0, r_max=SOCKET_R + 4.0, height=3.0, sections=96)
+    bz.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], [0, s_, 0]))
+    bz.apply_translation([c[0], y_out - s_ * 1.0, c[2]])
+    groups.setdefault('trim', []).append(bz)
+print('chest socket: %d cover cuts' % cut_n)
 fin = {}
 for k, ms in groups.items():
     mesh = trimesh.util.concatenate([x for x in ms if len(x.faces)])

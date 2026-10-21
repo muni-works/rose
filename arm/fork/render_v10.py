@@ -90,6 +90,18 @@ def scene_desk(work, which):
     return fn
 
 
+def scene_closeup(work):
+    keep = ('upper', 'upperd', 'fore')
+    skip = [l for l in ('base', 'turret', 'yoke', 'wrist', 'tool')]
+    q = dict(DESK_V10, J1_yaw=0, J2_sho_pitch=-20, J3_upper_roll=0, J4_elbow=70)
+    L = [arm(V10, q=q, at=[0, 0, 0.068], prefix='e', outdir=work, skin=True, tag='skin-desk', skip=skip)]
+    import rose_fork as F
+    src = photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats()
+    fn = os.path.join(work, 'closeup.loon')
+    open(fn, 'w').write(src)
+    return fn
+
+
 def body_R0(s):
     """arm frame -> body: J1 axis (arm z) lateral out, the upper arm (arm x) hanging down,
     J2 axis (arm y) fore-aft - the humanoid's shoulder pitch / roll."""
@@ -158,9 +170,10 @@ def main():
     os.makedirs(work, exist_ok=True)
     args = [a for a in sys.argv[2:] if not a.startswith('--')]
     spp = int(sys.argv[sys.argv.index('--spp') + 1]) if '--spp' in sys.argv else 256
-    args = [a for a in args if not a.isdigit()] or ['a', 'b', 'c', 'd']
+    args = [a for a in args if not a.isdigit()] or ['a', 'b', 'c', 'd', 'e']
     os.makedirs(OUT, exist_ok=True)
-    pa, pb = os.path.join(OUT, 'lymb-v10-desk.png'), os.path.join(OUT, 'lymb-v10-humanoid.png')
+    V = os.environ.get('LYMB_VER', 'v10.1')
+    pa, pb = os.path.join(OUT, 'lymb-%s-desk.png' % V), os.path.join(OUT, 'lymb-%s-humanoid.png' % V)
     if 'a' in args:
         render(scene_desk(work, 'a'), pa, -35, 22, spp, size='1600x1400')
         label(pa, 'lymb v10 on the desk', 'J1 yaw / J2 pitch / J3 upper-arm roll / J4 elbow / J6 wrist pitch / J7 tool roll   300 / 200 mm')
@@ -168,9 +181,13 @@ def main():
         render(scene_body(work), pb, -30, 12, spp, size='1200x1400', fill=0.94)
         label(pb, 'lymb v10 as the arms of the 1703 mm humanoid', 'same part: J1 = shoulder pitch, J2 = roll, J3 = upper-arm yaw, J4 = elbow')
     if 'c' in args:
-        side_by_side(pa, pb, os.path.join(OUT, 'lymb-v10-desk-and-humanoid.png'))
+        side_by_side(pa, pb, os.path.join(OUT, 'lymb-%s-desk-and-humanoid.png' % V))
+    if 'e' in args:
+        pe = os.path.join(OUT, 'lymb-%s-elbow-closeup.png' % V)
+        render(scene_closeup(work), pe, -50, 25, spp, size='1400x1100', fill=0.92)
+        label(pe, 'v10.1 elbow: graphite drum, gunmetal hub cap, the J3 parting band behind it')
     if 'd' in args:
-        pd = os.path.join(OUT, 'lymb-v9-vs-v10-desk.png')
+        pd = os.path.join(OUT, 'lymb-v9-vs-%s-desk.png' % V)
         render(scene_desk(work, 'd'), pd, -62, 18, spp, size='1800x1100')
         label(pd, 'v9 (back)  vs  v10 (front), same pose, J2 200 mm over the desk',
               'v9: forearm roll J5, 260 / 220 mm      v10: upper-arm roll J3 just past the shoulder, 300 / 200 mm, 68 mm pedestal')
