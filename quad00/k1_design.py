@@ -418,7 +418,13 @@ def design():
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
         y_cap = dict(out)['cover-shoulderyoke.la'].bounds[1][1] + 2.0   # the mini's shaping: corners just over the shoulder drums
+        zc1 = max(zc1, zs + 36.0 * Rk)                          # lymb v10: the crown clears the J1 drum (its top was 7 mm proud)
         chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk)
+        for t_, sy_ in (('l', 1.0), ('r', -1.0)):                # lymb v10's J1 output face sits flush on the flank: a gunmetal
+            r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs                    # bezel ring frames it, like the arm's pucks
+            add(f'trim-j1ring.{t_}', tm(Manifold.cylinder(1.2, r_j1 + 2.0, r_j1 + 2.0, 96).translate((0, 0, -0.6))
+                                        .__sub__(Manifold.cylinder(2.0, r_j1 - 3.0, r_j1 - 3.0, 96).translate((0, 0, -1.0)))
+                                        .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap + 0.6), zs))))
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
     E = KS.ELEC
