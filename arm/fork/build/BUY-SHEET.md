@@ -66,16 +66,16 @@ Cam buys every line himself; no agent orders.
 ## 7. Waits for v10.3 final (skin and anodize)
 | item | ext. | depends on |
 |---|---:|---|
-| Skin shells: ~12 printed parts (sleeves, turret/neck shell, desk puck base, 3 open-ring pucks with dot-grid, J3/J7 bands) (B4). JLC3DP or Xometry MJF PA12 dyed black, ~$250; or the shop printer in PETG/ASA, ~$40 | ~$40–250 | **WAIT:** v10.3 final skin STLs and fastening (not designed yet) |
-| Type II anodize, warm black, batch: all 1/8" plates + 4 panels (B2). Local anodizer, ~1 week | ~$225 | **WAIT:** cut parts first; quote after v10.3 final. The bare first article can be measured before anodizing |
-| **Waits total** | **~$265–475** | |
+| Skin (B4), per V10.3.md: 23 printed parts, ~0.37 kg PA12 (sleeve halves, turret/neck shell, J1 drum, desk puck, J2/J4/J6 open rings), MJF PA12 dyed black via JLC3DP/Xometry ~$300, or PETG/ASA in-house ~$50; J3 trim + J7 green ring in SLA ~$20; 6 bezels turned 6061 + gunmetal anodize (in-house turning, add to the anodize batch) | ~$70–320 | **WAIT:** geometry is final (v10.3, eb3c2f1) but skin fastening isn't designed yet |
+| Type II anodize batch (B2): all 1/8" plates + 4 panels (2 × 97×72, 2 × 94×72 mm, 0.6 mm) warm black, + 6 bezels gunmetal. Local anodizer, ~1 week | ~$225 | **WAIT:** cut parts first; quote after v10.3 final. The bare first article can be measured before anodizing |
+| **Waits total** | **~$295–545** | |
 
 ## Totals
 | group | ext. |
 |---|---:|
 | Order today (Amazon, McMaster, Digi-Key, igus, LCSC, optional OpenELAB) | **~$2,145** |
-| After v10.3 final (skin, anodize) + RS02 screws after measuring | **~$275–485** |
-| **All A + B + C** | **~$2,420–2,630** |
+| After skin fastening is designed (skin, anodize) + RS02 screws after measuring | **~$305–555** |
+| **All A + B + C** | **~$2,450–2,700** |
 
 **Parts ordered %** is by cost, and moves when Cam confirms each vendor:
 
