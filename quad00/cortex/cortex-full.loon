@@ -26,16 +26,17 @@
 
 ; ------------------------------------------------------------------ colorways (CMF) ----
 ; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
-; two body tones (warm black, cream) and ONE family neon as the accent ("one flame"), kept small: it goes on the ear
-; grille inserts only (the exhaust grid, floor and back stay quiet). Geometry never changes with the colorway.
-;   name     shell                  accent (ear grilles)      floor (anodized Al)
+; Cam 2026-10-21: no brown. Two body tones, black or white plastic, and ONE family neon accent, kept small: the
+; ear panels only. Release 1 is minimal: no decorative perforation; the ear panels are solid accent plates (sound
+; and the mic port use a hidden 0.8 mm gap round the panel), the exhaust is three plain slots in shell colour.
+;   name     shell                  accent (ear panels)       floor (anodized Al: black / clear)
 [let colorways #[
-  #["mind"    #[0.118 0.094 0.075] #[1.000 0.373 0.000] #[0.043 0.035 0.027]]   ; warm black + Mind orange #ff5f00 -- flagship
-  #["make"    #[0.118 0.094 0.075] #[0.224 1.000 0.078] #[0.043 0.035 0.027]]   ; warm black + Make green #39ff14
-  #["body"    #[0.118 0.094 0.075] #[1.000 0.125 0.322] #[0.043 0.035 0.027]]   ; warm black + Body red #ff2052
-  #["world"   #[0.910 0.882 0.824] #[0.000 0.941 1.000] #[0.627 0.553 0.439]]   ; cream + World cyan #00f0ff
-  #["power"   #[0.910 0.882 0.824] #[1.000 0.831 0.000] #[0.627 0.553 0.439]]   ; cream + Power amber #ffd400
-  #["silicon" #[0.910 0.882 0.824] #[0.627 0.553 0.439] #[0.627 0.553 0.439]]]] ; cream + Silicon tan #a08d70 (the quiet one)
+  #["mind"    #[0.071 0.071 0.075] #[1.000 0.373 0.000] #[0.035 0.035 0.038]]   ; black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.071 0.071 0.075] #[0.224 1.000 0.078] #[0.035 0.035 0.038]]   ; black + Make green #39ff14
+  #["body"    #[0.071 0.071 0.075] #[1.000 0.125 0.322] #[0.035 0.035 0.038]]   ; black + Body red #ff2052
+  #["world"   #[0.925 0.925 0.918] #[0.000 0.941 1.000] #[0.780 0.784 0.792]]   ; white + World cyan #00f0ff
+  #["power"   #[0.925 0.925 0.918] #[1.000 0.831 0.000] #[0.780 0.784 0.792]]   ; white + Power amber #ffd400
+  #["silicon" #[0.925 0.925 0.918] #[0.300 0.302 0.310] #[0.780 0.784 0.792]]]] ; white + graphite (the quiet one)
 [let colorway "mind"]
 [let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
 [let cw-shell [nth cw 1]]
@@ -204,8 +205,13 @@
 [let io-sec [fn [x] [sketch x 0.0 51.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 54.0 14.0 4.0]]]]   ; the reComputer Super port edge (bare board)
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
-[let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
-[let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
+[let ear-panel-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg [- gw 0.8] [- gh 0.8] [- gw 0.81]]]]]
+[let ear-panels [loft #[[ear-panel-sec [- -6.0 hw]] [ear-panel-sec [+ hw 6.0]]]]]   ; solid accent plates, 0.8 mm hidden gap all round
+[let cortex-ear-grilles [intersection ear-panels wall-band]]
+[let x-slots [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 6.0] 300.0 [- xa xr] [- zx 4.0]]
+                [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 1.0] 300.0 [- xa xr] [+ zx 1.0]]
+                       [bx -300.0 [- 0.0 [- xa xr]] [+ zx 4.0] 300.0 [- xa xr] [+ zx 6.0]]]]]   ; three 2 mm slots, no dot field
+[let cortex-exhaust-grille [difference x-slots [intersection exhaust-window wall-band]]]
 [let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 [let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]

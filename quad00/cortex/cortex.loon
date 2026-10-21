@@ -22,16 +22,17 @@
 
 ; ------------------------------------------------------------------ colorways (CMF) ----
 ; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
-; two body tones (warm black, cream) and ONE family neon as the accent ("one flame"), kept small: it goes on the ear
-; grille inserts only (the exhaust grid, floor and back stay quiet). Geometry never changes with the colorway.
-;   name     shell                  accent (ear grilles)      floor (anodized Al)
+; Cam 2026-10-21: no brown. Two body tones, black or white plastic, and ONE family neon accent, kept small: the
+; ear panels only. Release 1 is minimal: no decorative perforation; the ear panels are solid accent plates (sound
+; and the mic port use a hidden 0.8 mm gap round the panel), the exhaust is three plain slots in shell colour.
+;   name     shell                  accent (ear panels)       floor (anodized Al: black / clear)
 [let colorways #[
-  #["mind"    #[0.118 0.094 0.075] #[1.000 0.373 0.000] #[0.043 0.035 0.027]]   ; warm black + Mind orange #ff5f00 -- flagship
-  #["make"    #[0.118 0.094 0.075] #[0.224 1.000 0.078] #[0.043 0.035 0.027]]   ; warm black + Make green #39ff14
-  #["body"    #[0.118 0.094 0.075] #[1.000 0.125 0.322] #[0.043 0.035 0.027]]   ; warm black + Body red #ff2052
-  #["world"   #[0.910 0.882 0.824] #[0.000 0.941 1.000] #[0.627 0.553 0.439]]   ; cream + World cyan #00f0ff
-  #["power"   #[0.910 0.882 0.824] #[1.000 0.831 0.000] #[0.627 0.553 0.439]]   ; cream + Power amber #ffd400
-  #["silicon" #[0.910 0.882 0.824] #[0.627 0.553 0.439] #[0.627 0.553 0.439]]]] ; cream + Silicon tan #a08d70 (the quiet one)
+  #["mind"    #[0.071 0.071 0.075] #[1.000 0.373 0.000] #[0.035 0.035 0.038]]   ; black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.071 0.071 0.075] #[0.224 1.000 0.078] #[0.035 0.035 0.038]]   ; black + Make green #39ff14
+  #["body"    #[0.071 0.071 0.075] #[1.000 0.125 0.322] #[0.035 0.035 0.038]]   ; black + Body red #ff2052
+  #["world"   #[0.925 0.925 0.918] #[0.000 0.941 1.000] #[0.780 0.784 0.792]]   ; white + World cyan #00f0ff
+  #["power"   #[0.925 0.925 0.918] #[1.000 0.831 0.000] #[0.780 0.784 0.792]]   ; white + Power amber #ffd400
+  #["silicon" #[0.925 0.925 0.918] #[0.300 0.302 0.310] #[0.780 0.784 0.792]]]] ; white + graphite (the quiet one)
 [let colorway "mind"]
 [let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
 [let cw-shell [nth cw 1]]
@@ -59,12 +60,12 @@
 [let hh 120.6]                 ; height
 [let hw 81.8]                  ; half width
 [let x-face 46.0]              ; the flat face plane
-[let x-back -58.0]             ; the flat back plane (reaches past the neck: no craning)
+[let x-back -73.0]             ; the mini of record (Cam 2026-10-21): +15 mm deeper than v1 so the Waveshare IO base fits at 100+
 [let hd [/ [- x-face x-back] 2.0]]
 [let xc [- x-face hd]]
-[let rc [* 0.30 hd]]           ; plan corner radius
-[let rf [* 0.42 hd]]           ; crown round
-[let rb [* 0.24 hd]]           ; bottom round (it still sits flat)
+[let rc 15.6]           ; plan corner radius
+[let rf 21.84]           ; crown round
+[let rb 12.48]           ; bottom round (it still sits flat)
 [let zf [/ [+ rb [- hh rf]] 2.0]]               ; the face's flat band centre: the display sits on it
 [let ze [- [- hh rf] 16.0]]                     ; eye height: the top of the flat band (cam half-height 12 + 4)
 [let baseline 106.0]
@@ -200,8 +201,13 @@
 [let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
-[let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
-[let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
+[let ear-panel-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg [- gw 0.8] [- gh 0.8] [- gw 0.81]]]]]
+[let ear-panels [loft #[[ear-panel-sec [- -6.0 hw]] [ear-panel-sec [+ hw 6.0]]]]]   ; solid accent plates, 0.8 mm hidden gap all round
+[let cortex-ear-grilles [intersection ear-panels wall-band]]
+[let x-slots [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 6.0] 300.0 [- xa xr] [- zx 4.0]]
+                [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 1.0] 300.0 [- xa xr] [+ zx 1.0]]
+                       [bx -300.0 [- 0.0 [- xa xr]] [+ zx 4.0] 300.0 [- xa xr] [+ zx 6.0]]]]]   ; three 2 mm slots, no dot field
+[let cortex-exhaust-grille [difference x-slots [intersection exhaust-window wall-band]]]
 [let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 [let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
@@ -231,12 +237,23 @@
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
-[let jxa -51.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
-[let jxb 0.5]
-[let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
-                          [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
-[let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+; COMPUTE (Cam 2026-10-21): the bay takes the Waveshare JETSON-ORIN-IO-BASE (90.5 x 103) at 100+; the MVP carries a
+; decased Seeed J3011 (Mini J401, 87.8 x 56.7, M2.5 holes 81 x 49, from Seeed's STEP) on a carrier plate in the same
+; sled, port edge (the 87.8 side) aft at the I/O cutout. Swap the plate, not the sled.
+[let jxa -66.5]                                 ; plate back edge, just inside the back wall
+[let jxb [+ jxa 90.5]]                          ; the sled / plate is sized for the Waveshare
+[let jd 56.7]                                   ; J3011 board depth (x); 87.8 along y
+[let cortex-compute [union [bx [+ jxa 2.5] -43.9 zj0 [+ [+ jxa 2.5] jd] 43.9 [+ zj0 12.0]]                ; J3011 carrier + its I/O edge
+                          [bx [+ jxa 6.0] -34.8 [+ zj0 2.0] [+ jxa 51.0] 34.8 [+ zj0 8.0]]]]   ; Orin Nano on the SO-DIMM
+[let cortex-heatsink [union [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] -43.5 [+ zj0 12.0] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] 43.5 [+ zj0 28.7]]   ; stock finned heatsink 87 x 58.7 x 16.7
+                            [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] -23.4 [+ zj0 28.7] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] 23.4 [+ zj0 36.0]]]]  ; fan 47 x 47 x 7.3
+[let jcx [+ [+ jxa 2.5] [/ jd 2.0]]]          ; J3011 board centre (x)
+[let j-pilot [fn [x y] [translate [+ jcx x] y [- zj0 8.0] [cylinder-n 1.1 10.0 16]]]]   ; M2.5 self-tap pilot, 2.2 (no inserts)
+[let j-boss [fn [x y] [translate [+ jcx x] y [- zj0 6.0] [cylinder-n 3.5 4.0 24]]]]     ; 7 mm boss under the plate: 6 mm of thread
+[let cortex-plate [difference [union [j-pilot -24.5 -40.5] [union [j-pilot -24.5 40.5] [union [j-pilot 24.5 -40.5] [j-pilot 24.5 40.5]]]]
+                              [union [bx [+ jxa 8.0] -54.0 [- zj0 2.0] jxb 54.0 zj0]
+                                     [union [j-boss -24.5 -40.5] [union [j-boss -24.5 40.5] [union [j-boss 24.5 -40.5] [j-boss 24.5 40.5]]]]]]]   ; J3011 holes 49 x 81; Waveshare holes later
+[let cortex-sled [union cortex-plate [union [bx [+ jxa 8.0] -54.0 tf jxb -52.0 zj0] [bx [+ jxa 8.0] 52.0 tf jxb 54.0 zj0]]]]  ; plate + 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
