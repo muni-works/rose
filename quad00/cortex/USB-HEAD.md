@@ -15,7 +15,17 @@ So the outside of the head shows one USB-C, a dock face and no other ports. That
 
 *If Cam wants the dock to literally be USB-C* (so the head charges from any USB-C dock), it can be done with a floating, self-aligning USB-C receptacle inside the cone pair. It costs more (about +$15 E), wears out sooner, and needs the head to swap data roles (it takes power and acts as host at the same time). It's a fallback, not the pick.
 
-## Power
+## Power (Cam's picks: 4S pack + boost, pogo-pad dock)
+
+**J3011 power rail (input range 12–54 V):**
+- Three sources feed it through an ideal-diode OR. The highest voltage wins.
+  - **Dock:** the body bus, about 48 V (≤ 54 V), with an input limit and a 2 A fuse.
+  - **USB-C PD:** 20 V.
+  - **Battery:** a 4S pack (12.0–16.8 V; cutoff 3.1 V per cell = 12.4 V) through a **19 V buck-boost**, so the rail never drops below 15 V across the whole pack range. This needs a 4-switch buck-boost (TI TPS55289 / LM5176 class, about 70 W, 3.7 A out). A plain boost can't do it, because a full pack (16.8 V) is above the lowest output we'd want.
+- On the dock or on PD, the J3011 sees ≥ 20 V directly and the buck-boost idles.
+- The charger (BQ25731 class, 4S) charges from whichever input is present.
+- The 5 V / 3.3 V rails for the display, audio and cameras come off the same rail with small bucks.
+
 
 Peak draw, estimated:
 
@@ -86,17 +96,18 @@ The decased J3011 sits on a carrier plate on the sled (per the BOM memo's interf
 
 | Change | Qty 10 | Qty 100 | Qty 1k |
 |---|---:|---:|---:|
-| Power board → PD sink + 4S charger + diode OR | +5 | +3 | +2 |
+| Power board → PD sink + 4S charger + 19 V buck-boost + diode OR | +13 | +9 | +5 |
 | 3S → 4S pack (one more 21700) | +6 | +5 | +3 |
 | Remove 2× T1 Ethernet PHY + magnetics | −10 | −7 | −4 |
 | Panel USB-C + 2 internal pigtails | +10 | +7 | +3 |
 | Remove the I/O shield + cutout finish | −3 | −2 | −1 |
-| **Net change per head** | **+8** | **+6** | **+3** |
+| **Net change per head** | **+16** | **+12** | **+6** |
 
 Cost is effectively flat. The win is the industrial design (one port) and one standard way to power the head on a desk. Neck/torso side: the limbic board loses its T1 PHY (−\$5) and gains a USB device port (MCU-native, about \$0).
 
 ## Open items
 
 - The J3011's host vs. recovery USB-C ports (the chief's research agent).
-- 4S vs. a 3S cutoff: Cam's call. My pick is 4S.
-- A literal USB-C dock (fallback) or pogo pads with USB 2.0 (recommended).
+- ~~4S vs. 3S~~: decided, 4S + buck-boost (Cam).
+- ~~Dock type~~: decided, pogo pads with body DC + USB 2.0 HS (Cam).
+- **Next head CAD pass:** 4S pack envelope (mini 4S1P about 84 × 22 × 70 flat; full 4S2P), power board on the floor, back USB-C cutout replacing the I/O cutout, J3011 board 87.8 × 56.7 on a carrier plate, 8 pads remapped (VBUS ×2, GND ×2, D+, D−, detect, spare).
