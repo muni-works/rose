@@ -43,18 +43,19 @@ def _patch():
 
 
 # Body colorways (CMF, mirrors cortex/CMF.md; Cam 2026-10-21): no brown. Black or white plastic, ONE family neon,
-# gunmetal trim kept neutral. Pick with QUAD00_COLORWAY=<name> (default mind); the head's own colorway is the
+# gunmetal trim. Pick with QUAD00_COLORWAY=<name> (default release: Cam 2026-10-21 picked the WHITE v10.8 arm as the
+# release look -- white satin covers, black-anodized joint drums/caps in gunmetal rings, Make green as the one neon); the head's own colorway is the
 # [let colorway ...] in cortex/cortex.loon / cortex-full.loon -- keep the two matched.
 BLACK, WHITE = (0.071, 0.071, 0.075), (0.925, 0.925, 0.918)          # #121213, #ecece9
-COLORWAYS = {'mind': (BLACK, (1.000, 0.373, 0.000)), 'make': (BLACK, (0.224, 1.000, 0.078)),   # Mind orange #ff5f00, Make green #39ff14
+COLORWAYS = {'release': (WHITE, (0.224, 1.000, 0.078)), 'mind': (BLACK, (1.000, 0.373, 0.000)), 'make': (BLACK, (0.224, 1.000, 0.078)),   # Mind orange #ff5f00, Make green #39ff14
              'body': (BLACK, (1.000, 0.125, 0.322)), 'world': (WHITE, (0.000, 0.941, 1.000)),  # Body red #ff2052, World cyan #00f0ff
              'power': (WHITE, (1.000, 0.831, 0.000)), 'silicon': (WHITE, (0.302, 0.302, 0.310))}   # Power amber #ffd400, graphite
-COLORWAY = os.environ.get('QUAD00_COLORWAY', 'mind')
+COLORWAY = os.environ.get('QUAD00_COLORWAY', 'release')
 _tone, _neon = COLORWAYS[COLORWAY]
 SHELL = 'satin_black' if _tone is BLACK else 'satin_white'
 
 MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('accent_' + COLORWAY, *_neon, 0.0, 0.4),
-        'accent': ('accent_' + COLORWAY, *_neon, 0.0, 0.4), 'trim': ('gunmetal', 0.32, 0.32, 0.33, 0.8, 0.35),
+        'accent': ('accent_' + COLORWAY, *_neon, 0.0, 0.4), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35), 'drum': ('black_anodized', 0.071, 0.071, 0.075, 0.6, 0.4),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
         'cable': ('cable_black', 0.03, 0.03, 0.035, 0.0, 0.7), 'cxdisplay': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'cxcam': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxspk': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cxamp': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxmic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxpower': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxdock': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cxusbc': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'dockplug': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cbat': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
@@ -64,7 +65,13 @@ MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('accent_' + COLORWAY, *_ne
         'estophead': ('estop_red', 0.78, 0.04, 0.03, 0.0, 0.35), 'estopcollar': ('estop_yellow', 0.98, 0.78, 0.05, 0.0, 0.45)}
 
 
+# joint drums and end caps: black-anodized metal on every colorway (the arm's language)
+DRUMS = ('cover-hip.', 'cover-hip_', 'cover-knee', 'cover-elbow.', 'cover-elbow_', 'cover-shoulder.', 'cover-shoulder_', 'cover-headhub', 'cover-headcheek', 'trim-neckpuck.', 'trim-neckpuck_')
+
+
 def mat_of(n):
+    if n.startswith(DRUMS):
+        return 'drum'
     if n.startswith('elec-'):
         return n.split('-')[1].split('.')[0]
     if n.startswith('estop-'):

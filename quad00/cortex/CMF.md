@@ -55,12 +55,15 @@ Fluorescent pigments fade under UV over a few years. Use a UV-stabilised resin a
 
 ## Body (quad00 mini + full)
 
-The body follows the same system. Set `QUAD00_COLORWAY=<name>` when running `vcad_export.py` (default `mind`); the head's colorway is the `[let colorway ...]` in its cortex loon, so keep the two matched. The export also passes the colorway to the head's tub, floor and ear panels.
+**Release look (Cam, 2026-10-21): the white v10.8 arm.** The default body colorway is `release`: white covers, black-anodized joint drums and caps in gunmetal rings, and Make green as the one neon (the head's ear panels, plus the arm's 2 mm flange inlay). Black shell is the alternate (`mind` and others).
+
+The body follows the same system. Set `QUAD00_COLORWAY=<name>` when running `vcad_export.py` (default `release`); the head's colorway is the `[let colorway ...]` in its cortex loon, so keep the two matched. The export also passes the colorway to the head's tub, floor and ear panels.
 
 | Part | Takes |
 |---|---|
 | Covers (torso, neck, limbs, shoes' uppers) | Body tone, satin: black #121213 or white #ecece9 |
-| Trim rings, J1 bezels, neck ring and pucks | Gunmetal, neutral (0.32 0.32 0.33, no warm tint) |
+| Joint drums and end caps (hip, knee, elbow, shoulder/J1 face, head-pitch drum and caps) | Black-anodized metal #121213 (metal 0.6, rough 0.4), on every colorway |
+| Trim rings, J1 bezels, neck ring, the neck caps' 1.5 mm rings | Gunmetal (0.30 0.32 0.34, metal 0.8, rough 0.35). The neck caps sit 0.5 mm recessed inside them. |
 | Accent | The family neon. On the body it appears only on accent/puck parts, and joint caps are off, so release 1's one flame is the head's ear panels |
 
 Vents kept on the body (each has a measured thermal need; there's no decorative perforation):
@@ -69,3 +72,5 @@ Vents kept on the body (each has a measured thermal need; there's no decorative 
 - **Mini chest intake:** cut from 8 to 6 slots per side bay, which gives 12.6 cm². That's just over the ≥12 cm² that 4 CFM through the fans needs. They're low on the front, in the arms' shadow. Plain slots, not a dot field.
 - **Full J1 face opening:** the arm's open cooling ring breathes through it. See SHOULDER.md (no fans). It's covered by the inlaid gunmetal bezel.
 - The full body has no fans and no grilles. The old dot-grid J1 ring and back exhaust were already removed in 6636f43.
+
+- **Full pelvis cover:** smooth shell colour, no perforation and no parting line. Its reliefs are swept so hip roll, pitch and yaw and the waist keep their full free range (the ROM is identical with and without it). The mini keeps no cover: its hip-roll cans are the pelvis.

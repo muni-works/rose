@@ -524,7 +524,11 @@ def design():
         t = side[0].lower(); lay = KS.layout(J, side)
         collar = M_(got[f'cover-hipneck.{t}l']) + M_(got[f'cover-hipyaw.{t}l'])
         hullof = lambda m_: Manifold.hull_points(np.asarray(m_.to_mesh().vert_properties[:, :3], np.float32))   # one smooth convex cut, not a faceted scoop
-        pel = pel - hullof(sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 50)], scale=1.04))          # the thigh swings under the pelvis
+        pel = pel - hullof(sweep_union(collar, lay['pitch'][0], [((0, 1.0, 0), -110, 125)], scale=1.04))          # the thigh swings under the pelvis
+        rolled = collar + M_(got[f'cover-hip.{t}l']) + M_(dict(KS.leg(J, side))[f'chassis-hipinner.{t}l'])
+        lo_, hi_ = np.asarray(rolled.bounding_box()[:3]), np.asarray(rolled.bounding_box()[3:])
+        rolled = rolled.translate(list(-(lo_ + hi_) / 2)).scale([1.06] * 3).translate(list((lo_ + hi_) / 2))   # 6 % proud about its own middle
+        pel = pel - sweep_union(rolled, lay['roll'][0], [((1.0, 0, 0), 40, 94)], step=2.0)   # and rolls out past the walking range: free to the K1 limit
         hr_m = dict(KS.leg(J, side))[f'chassis-hipR.{t}l']
         # the hip-roll bracket crosses the gap under the pelvis: sheathe it in a gunmetal guard so no bare aluminium shows
         upper = tm(M_(hr_m) ^ Manifold.cube([400, 400, 400]).translate([-200, -200, lay['pitch'][0][2] + (m06['D'] * 0.5 if KS.V.get('leg_in') else -20.0)]))
@@ -533,13 +537,13 @@ def design():
         add(f'cover-hipguard.{t}l', guard)
         gc_ = guard.bounds.mean(0)
         brk = M_(guard).translate(list(-gc_)).scale([1.2, 1.0, 1.0]).translate(list(gc_)) + M_(hr_m)   # the bracket: an internal slot
-        pel = pel - sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)
+        pel = pel - sweep_union(brk, lay['roll'][0], [((1.0, 0, 0), -24, 92)], scale=1.03, step=2.0)
         if KS.V['name'] == 'tiny':                              # the tiny's drum rolls in too close for an arch: keep the swept cut
-            pel = pel - sweep_union(M_(got[f'cover-hip.{t}l']), lay['roll'][0], [((1.0, 0, 0), -24, 48)], scale=1.03, step=2.0)
+            pel = pel - sweep_union(M_(got[f'cover-hip.{t}l']), lay['roll'][0], [((1.0, 0, 0), -24, 92)], scale=1.03, step=2.0)
         else:
-            pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
+            pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 92), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
 
-    if KS.V['name'] not in ('mini', 'full'):                    # mini + full: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
+    if KS.V['name'] != 'mini':                                  # full and up: a smooth pelvis cover (Cam, release 1); mini: the hip-roll cans are the pelvis
         add('cover-pelvis', tm(pel))
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
@@ -584,8 +588,22 @@ def design():
     ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
                    1.48 * r_hub + 2.5, 1.34 * max(r_hub, yo_ + 3.0) + 2.5, 0.55 * r_hub + 2.5, k=12) for z_ in (z_cr - 1.0, z_cr + 1.6)]
     add('trim-neckring', hull_rings(ring_))                      # the yaw seam
-    for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
-        add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
+    for t_, sy_, yf in (('r', -1.0, y0_ - 0.6), ('l', 1.0, yo_ + 0.6)):
+        # release 1 (the white v10.8 arm's language): a black-anodized end cap, 0.5 mm recessed in a 1.5 mm gunmetal ring
+        add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf - sy_ * 0.5, hp[2]]), [0, 1.0, 0], r_hub - 6.5, 1.2))
+        pring = M_(cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2)) - M_(cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 6.5, 3.0))
+        add(f'trim-neckpuckring.{t_}', tm(pring))
+    # sleeve cheeks: a cowl concentric with the pitch axis wraps the drum's lower rim from the sleeve up to the axis, so
+    # no bare drum flank shows between sleeve and saddle; it is round about the axis, so the drum pitches clean inside it
+    r_ci, r_co = r_hub + 0.6, r_hub + 5.6
+    angb = np.radians(np.linspace(90.0, 270.0, 13))
+    lower = Manifold.hull_points(np.array([[hp[0], y_, hp[2]] for y_ in (y0_ - 0.4, yo_ + 0.4)] +
+                                          [[hp[0] + 2.0 * r_co * np.sin(a), y_, hp[2] + 2.0 * r_co * np.cos(a)]
+                                           for a in angb for y_ in (y0_ - 0.4, yo_ + 0.4)], dtype=np.float32))
+    lower = lower ^ Manifold.cube([4 * r_co, 2 * yo_ + 0.8, 2 * r_co]).translate([hp[0] - 2 * r_co, y0_ - 0.4, hp[2] - 2 * r_co])
+    cowl_s = (M_(cyl(np.array([hp[0], (y0_ + yo_) / 2, hp[2]]), [0, 1.0, 0], r_co, yo_ - y0_ + 0.8))
+              - M_(cyl(np.array([hp[0], (y0_ + yo_) / 2, hp[2]]), [0, 1.0, 0], r_ci, yo_ - y0_ + 3.0))) ^ lower
+    out[:] = [(n, tm(M_(m) + cowl_s) if n == 'cover-necksleeve' else m) for n, m in out]
     zdk = KS.DOCK_Z(J)
     # pass 2 (Cam: "the head is still not attached"): the saddle is a pedestal that meets the head floor flush across
     # most of its flat area and flares down to the pitch drum, enclosing the dock plates -- the head visibly sits on it
