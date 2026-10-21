@@ -448,7 +448,8 @@ def design():
         if Wl is None:                                          # intake grille, low front
             vy0, vy1 = E['vent_in']['y']; vz0, vz1 = E['vent_in']['z']
             for sy in (1, -1):                                   # one per side bay: the pack blocks the middle
-                for zc in np.arange(vz0 + 2.0, vz1 - 1.0, 7.0):  # 3.5 mm slots on a 7 mm pitch: 50 % open
+                for zc in np.arange(vz0 + 2.0, vz1 - 1.0, 7.0)[-6:]:   # 6 x 3.5 x 30 mm slots per bay = 12.6 cm2, just over the
+                    # 12 cm2 the 2 x 30 mm exhaust fans need for 4 CFM (was 8 per bay, 16.8 cm2); kept high, under the arm's shadow
                     cuts.append(('box', [Mc.slice(zc).bounds()[2] - 12.0, vy0 if sy > 0 else -vy1, zc - 1.75], [14.0, vy1 - vy0, 3.5]))
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back

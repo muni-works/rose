@@ -42,8 +42,19 @@ def _patch():
     return KD
 
 
-MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
-        'accent': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
+# Body colorways (CMF, mirrors cortex/CMF.md; Cam 2026-10-21): no brown. Black or white plastic, ONE family neon,
+# gunmetal trim kept neutral. Pick with QUAD00_COLORWAY=<name> (default mind); the head's own colorway is the
+# [let colorway ...] in cortex/cortex.loon / cortex-full.loon -- keep the two matched.
+BLACK, WHITE = (0.071, 0.071, 0.075), (0.925, 0.925, 0.918)          # #121213, #ecece9
+COLORWAYS = {'mind': (BLACK, (1.000, 0.373, 0.000)), 'make': (BLACK, (0.224, 1.000, 0.078)),   # Mind orange #ff5f00, Make green #39ff14
+             'body': (BLACK, (1.000, 0.125, 0.322)), 'world': (WHITE, (0.000, 0.941, 1.000)),  # Body red #ff2052, World cyan #00f0ff
+             'power': (WHITE, (1.000, 0.831, 0.000)), 'silicon': (WHITE, (0.302, 0.302, 0.310))}   # Power amber #ffd400, graphite
+COLORWAY = os.environ.get('QUAD00_COLORWAY', 'mind')
+_tone, _neon = COLORWAYS[COLORWAY]
+SHELL = 'satin_black' if _tone is BLACK else 'satin_white'
+
+MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('accent_' + COLORWAY, *_neon, 0.0, 0.4),
+        'accent': ('accent_' + COLORWAY, *_neon, 0.0, 0.4), 'trim': ('gunmetal', 0.32, 0.32, 0.33, 0.8, 0.35),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
         'cable': ('cable_black', 0.03, 0.03, 0.035, 0.0, 0.7), 'cxdisplay': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4), 'cxcam': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxspk': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cxamp': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxmic': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxpower': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'cxdock': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cxusbc': ('pcb_green', 0.05, 0.32, 0.18, 0.1, 0.45), 'dockplug': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cbat': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'battery': ('cell_pack', 0.13, 0.22, 0.42, 0.1, 0.5), 'jetson': ('heatsink', 0.55, 0.57, 0.6, 0.7, 0.4),
@@ -279,16 +290,17 @@ def body_of(n):
 CX_PY = ('cover-helmet', 'visor-', 'trim-eyering', 'trim-ear', 'trim-headpanel', 'cover-headbutton', 'elec-cx', 'elec-jetson',
          'elec-cbat', 'cable-hcsi', 'cable-haudio', 'cable-hmic', 'cable-hhdmi', 'cable-hpower', 'cable-hdock', 'cable-heth',
          'cable-husbc', 'trim-dockplug', 'trim-dockpin', 'elec-dockplug')
-CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('cortex-ear-grilles', 'satin_black'),
-           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-glass-face', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
+CX_HEAD = [('cortex-tub', 'cx_shell'), ('cortex-floor', 'cx_floor'), ('cortex-ear-grilles', 'cx_accent'),
+           ('cortex-exhaust-grille', 'cx_shell'), ('cortex-glass', 'visor_glass'), ('cortex-glass-face', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
            ('cortex-pads', 'gold'), ('cortex-strikes', 'steel'), ('cortex-keeper', 'steel'), ('cortex-display', 'heatsink'),
            ('cortex-cams', 'pcb_green'), ('cortex-dockboard', 'pcb_green'), ('cortex-power', 'pcb_green'),
            ('cortex-battery', 'cell_pack'), ('cortex-sled', 'aluminium'), ('cortex-compute', 'pcb_green'),
            ('cortex-heatsink', 'heatsink'), ('cortex-speakers', 'motor_dark'), ('cortex-mics', 'pcb_green'),
            ('cortex-amps', 'pcb_green'), ('cortex-cables', 'cable_orange')]
 CX_NECK = [('dock-face', 'gunmetal'), ('dock-pogo', 'gold'), ('dock-pogo-block', 'pcb_green'), ('dock-cones', 'steel'),
-           ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', 'satin_black')]
-CX_MATS = {'gold': (1.0, 0.78, 0.34, 1.0, 0.25), 'steel': (0.6, 0.6, 0.62, 0.9, 0.35), 'cable_orange': (1.0, 0.42, 0.05, 0.0, 0.45)}
+           ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', SHELL)]
+CX_MATS = {'cx_shell': (*_tone, 0.0, 0.55), 'cx_accent': (*_neon, 0.0, 0.35),     # the head wears the body's colorway
+           'cx_floor': ((0.06, 0.06, 0.065) if _tone is BLACK else (0.75, 0.76, 0.78)) + (0.7, 0.4), 'gold': (1.0, 0.78, 0.34, 1.0, 0.25), 'steel': (0.6, 0.6, 0.62, 0.9, 0.35), 'cable_orange': (1.0, 0.42, 0.05, 0.0, 0.45)}
 
 
 def main(variant='mini', explodes=(0.0,)):

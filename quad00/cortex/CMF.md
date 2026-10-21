@@ -52,3 +52,20 @@ All cost deltas are rough estimates; get supplier quotes before relying on them.
 | Face glass | Dead-front print | Black on every colorway | $0 |
 
 Fluorescent pigments fade under UV over a few years. Use a UV-stabilised resin and treat the ear panels as swappable. Recolouring a head is just two panels.
+
+## Body (quad00 mini + full)
+
+The body follows the same system. Set `QUAD00_COLORWAY=<name>` when running `vcad_export.py` (default `mind`); the head's colorway is the `[let colorway ...]` in its cortex loon, so keep the two matched. The export also passes the colorway to the head's tub, floor and ear panels.
+
+| Part | Takes |
+|---|---|
+| Covers (torso, neck, limbs, shoes' uppers) | Body tone, satin: black #121213 or white #ecece9 |
+| Trim rings, J1 bezels, neck ring and pucks | Gunmetal, neutral (0.32 0.32 0.33, no warm tint) |
+| Accent | The family neon. On the body it appears only on accent/puck parts, and joint caps are off, so release 1's one flame is the head's ear panels |
+
+Vents kept on the body (each has a measured thermal need; there's no decorative perforation):
+
+- **Mini chest exhaust:** 5 × 3.5 mm slots on the leaning back wall over the two 30 mm pack fans. They're on the back face, so they're hidden from the front.
+- **Mini chest intake:** cut from 8 to 6 slots per side bay, which gives 12.6 cm². That's just over the ≥12 cm² that 4 CFM through the fans needs. They're low on the front, in the arms' shadow. Plain slots, not a dot field.
+- **Full J1 face opening:** the arm's open cooling ring breathes through it. See SHOULDER.md (no fans). It's covered by the inlaid gunmetal bezel.
+- The full body has no fans and no grilles. The old dot-grid J1 ring and back exhaust were already removed in 6636f43.
