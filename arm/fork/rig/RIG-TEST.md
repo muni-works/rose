@@ -11,7 +11,7 @@ The rig is the lymb's J2/J4 joint as built: same RS04, back-mount, sleeve, bushi
 
 | # | test | command | pass |
 |---|---|---|---|
-| 1 | **Torque accuracy**: reported torque vs m·g·L | `torque`, 0.5–10 kg | within ±10 % at every load ≥ 1 kg. This sets how far `hold.py` and the gravity feed-forward in `teach.py` can be trusted |
+| 1 | **Torque accuracy**: reported torque vs m·g·L | `torque`, 0.5–10 kg (14 kg on hand for the 35 N·m tests) | within ±10 % at every load ≥ 1 kg. This sets how far `hold.py` and the gravity feed-forward in `teach.py` can be trusted |
 | 2 | **Continuous hold, the shoulder's rating**: 25 N·m is what J2 needs at the 1.27 kg straight-out rating | `heat --nm 25 --minutes 30` | 30 min, no fault, case < 80 °C (thermocouple and the motor's own reading agree within 5 °C). If it fails, the lymb's rated payload drops in proportion |
 | 3 | **Duty cycle**: work-like loading | `duty --nm 35 --on 10 --off 10 --minutes 30` | no fault; case temperature levels off below 80 °C |
 | 4 | **Heat soak, worst case**: 35 N·m continuous | `heat --nm 35 --minutes 30` | informational: time to 80 °C and where the curve flattens. Gives the thermal time constant for the derating model |

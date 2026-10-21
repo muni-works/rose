@@ -61,6 +61,9 @@ def main():
         try:
             for p in poses[a.start - 1:]:
                 tgt = '  '.join(f'{j[:6]} {float(p[j]):+6.1f}' for j in arm.JOINTS)
+                if hasattr(bus, 'hand'):          # dry run: the simulator stands in for Cam's hands
+                    bus.hand({j: float(p[j]) for j in arm.JOINTS})
+                    time.sleep(0.3)
                 input(f'pose {p["pose"]:>2} seat {p["seat"]:>2}  target {tgt}  -> seat the ball, Enter ')
                 acc = {j: [] for j in arm.JOINTS}
                 t0 = time.time()

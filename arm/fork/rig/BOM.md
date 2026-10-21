@@ -22,7 +22,7 @@ bench stand, with a 270 mm test forearm to a load bolt. Prices were researched 2
 | 11 | DIN 471 retaining ring 16 mm (pack) | McMaster: https://www.mcmaster.com/products/retaining-rings/ | ~$9 est. | 1 | $9 | 1–2 d |
 | 12 | 2020 extrusion, 4 x 300 mm + corner brackets + M5 T-nuts | Misumi / OpenBuilds / Amazon | ~$30 est. | 1 set | $30 | 1–2 d |
 | 13 | socket head screws: M4 x 10 (12), M5 x 12 (10), M8 x 70 + nut + Ø12 x 58 spacer tube | McMaster 91290A: https://www.mcmaster.com/products/screws/ | ~$15 est. | 1 lot | $15 | 1–2 d |
-| 14 | weights to 10 kg (to reach 25 N·m at 270 mm) + hanger | 1.25/2.5 kg plates + a 1" bar, Amazon | ~$50 est. | 1 | $50 | 1–2 d |
+| 14 | weights to 14 kg (25 N·m needs 9.4 kg, 35 N·m needs 13.2 kg at 270 mm) + hanger | 1.25/2.5 kg plates + a 1" bar, Amazon | ~$65 est. | 1 | $65 | 1–2 d |
 | 15 | dial indicator 0.01 mm + magnetic base | generic set, Amazon | ~$60 est. | 1 | $60 | 1–2 d |
 | 16 | K-type thermocouple + reader | Amazon | ~$15 est. | 1 | $15 | 1–2 d |
 | 17 | digital level 0.1° | Amazon | ~$25 est. | 1 | $25 | 1–2 d |

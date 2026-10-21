@@ -8,6 +8,7 @@ Any python-can interface works. On macOS the simplest is a candleLight / gs_usb 
 (interface='gs_usb'); an slcan adapter is interface='slcan', channel='/dev/tty.usbmodem...'.
 """
 import math
+import os
 import struct
 import time
 
@@ -79,4 +80,8 @@ class Motor:
 
 
 def open_bus(interface='gs_usb', channel=0, bitrate=1_000_000):
+    if os.environ.get('LYMB_SIM'):
+        import sim_bus
+        import arm
+        return sim_bus.SimBus(arm.load_map())
     return can.Bus(interface=interface, channel=channel, bitrate=bitrate)

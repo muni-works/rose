@@ -23,16 +23,25 @@ BASE_IN_PLATE = (0.125, 0.190)  # foot centre on the plate
 BALL_R = 0.003                  # Ø6 mm ball stylus
 CSK_D = 0.006                   # countersink top diameter
 BLOCK_H = 0.0508                # 2" 6061 riser; replace with its measured height
-FOOT_BC = 0.095                 # foot bolts on Ø190
+FOOT_BC = F.R_FOOT_BOLTS          # foot bolt circle radius, from the model (v9 Ø190)
 # seats in the arm frame (x, y, on_block); spread in radius and azimuth
 SEATS = [(0.16, -0.14, 0), (0.22, -0.16, 0), (0.18, 0.0, 0), (0.24, 0.0, 0), (0.16, 0.14, 0),
          (0.22, 0.16, 0), (0.20, -0.08, 1), (0.20, 0.08, 1), (0.13, -0.17, 0), (0.13, 0.17, 0)]
 CONFIGS = [(90, 0), (75, 90), (60, 180), (45, -90), (30, 0)]   # (tool pitch below horizontal deg, J7 roll deg)
 
 
+def table_z():
+    """Model z of the surface the arm stands on (v10's desk puck reaches below the foot)."""
+    import rose_arm_geom as Gm
+    return min(min(p[2] for p in Gm.prim_points(pr[:7], step=0.01)) for pr in F.build() if pr[0] == 'base')
+
+
+Z_TABLE = table_z()
+
+
 def seat_z(on_block):
-    """Ball centre height over the plate top when seated in a 90° countersink."""
-    return BALL_R * math.sqrt(2) - CSK_D / 2 + (BLOCK_H if on_block else 0.0)
+    """Ball centre height, model frame, when seated in a 90° countersink on the plate."""
+    return Z_TABLE + BALL_R * math.sqrt(2) - CSK_D / 2 + (BLOCK_H if on_block else 0.0)
 
 
 def solve(target, pitch, roll):
@@ -41,6 +50,7 @@ def solve(target, pitch, roll):
         q, ok = S.ik(F, target, pitch, seed)
         if ok:
             q['J7_tool_roll'] = roll
+            q.setdefault('J3_upper_roll', 0.0)
             return q
     return None
 

@@ -85,7 +85,7 @@ def main():
             t0 = tau0()
             p, f, w = writer('torque')
             w.writerow(['load_kg', 'model_nm', 'reported_nm', 'err_pct', 'temp'])
-            for kg in (0.5, 1, 2, 3, 4, 6, 8, 10):
+            for kg in (0.5, 1, 2, 3, 4, 6, 8, 10, 13):
                 input(f'hang {kg} kg on the hanger (total incl. hanger), Enter ')
                 hold(m, 0.0, 0.0, 3.0)
                 acc = []
@@ -111,7 +111,13 @@ def main():
                 hold(m, 0.0, 0.0, a.on, w, start)
                 hold(m, math.radians(-85), 0.0, a.off, w, start)     # hanging: near-zero torque
                 f.flush()
-            print(f'PASS hold: {a.minutes} min, no fault, case stayed under {T_LIMIT} °C   wrote {p}')
+            f.close()
+            on = [abs(float(r['tau'])) for r in csv.DictReader(open(p)) if abs(float(r['pos'])) < 0.05]
+            got = sum(on) / len(on) if on else 0.0
+            if abs(got - a.nm) > 0.1 * a.nm:
+                print(f'FAIL: joint held {got:.1f} N.m, not {a.nm} - check the load   wrote {p}')
+            else:
+                print(f'PASS hold: {a.minutes} min at {got:.1f} N.m, no fault, case under {T_LIMIT} °C   wrote {p}')
         elif a.test == 'backlash':
             p, f, w = writer('backlash')
             w.writerow(['tau_ff', 'dial_mm'])

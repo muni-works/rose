@@ -10,6 +10,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FORK = os.path.abspath(os.path.join(HERE, '..', '..'))
+os.environ.setdefault('ROSE_ARM', 'v10')     # the arm being built; ROSE_ARM= (empty) for v9
 sys.path.insert(0, FORK)
 sys.path.insert(0, os.path.join(FORK, '..'))
 import rose_fork as F            # noqa: E402
@@ -17,7 +18,8 @@ import fork_checks as C          # noqa: E402
 import scenarios as S            # noqa: E402
 
 G = 9.81
-JOINTS = ['J1_yaw', 'J2_sho_pitch', 'J4_elbow', 'J5_fore_roll', 'J6_wrist_pitch', 'J7_tool_roll']
+FIXED = {'J5_fore_roll'} if os.environ.get('ROSE_ARM') == 'v10' else set()   # v10 has no forearm roll
+JOINTS = [l[1] for l in F.LINKS if l[1] and l[1] not in FIXED]
 LINK_OF = {l[1]: l[0] for l in F.LINKS if l[1]}
 AXIS_OF = {l[1]: l[3] for l in F.LINKS if l[1]}
 ORDER = [l[0] for l in F.LINKS]
@@ -70,7 +72,10 @@ def gravity(q_rad, payload=0.0):
     return out
 
 
-def load_map(path=os.path.join(HERE, 'joints.json')):
+def load_map(path=None):
+    path = path or os.environ.get('LYMB_JOINTS') or os.path.join(HERE, 'joints.json')
+    if os.environ.get('LYMB_SIM') and not os.path.exists(path):
+        path = os.path.join(HERE, 'joints.example.json')
     with open(path) as f:
         return json.load(f)
 
