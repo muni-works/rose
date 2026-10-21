@@ -44,7 +44,10 @@ def use(name):
     """switch every builder (structure + design + rom) to a variant."""
     global T
     if name == 'mega':                                      # MOCKUP: the full's design at ~2.1 m (proportions only, no engineering)
-        V.clear(); V.update(VARIANTS['full'], scale=210.0 / 94.0, name='full', size='mega')
+        # heavy-duty human scale (Cam 2026-10-21; MEGA-SIZING.md): 1.95 m, fits doors, rana-L at knee / hip / waist pitch,
+        # RS04 + 3:1 at the ankles and arms; limb sections grow with the motors (structure is motor-driven)
+        V.clear(); V.update(VARIANTS['full'], scale=195.0 / 94.0, name='full', size='mega', big='ranaL', yaw='rs04',
+                            arm='rs04s3', ankle='rs04s3', waist='ranaL', wrist='rs06', head='rs02', pocket=(90.0, 104.0))
     elif name == 'mega25':                                  # MOCKUP: the full's design at 2.5 m (Cam: "mock up the 2.5 m version")
         V.clear(); V.update(VARIANTS['full'], scale=250.0 / 94.0, name='full', size='mega25')
     else:

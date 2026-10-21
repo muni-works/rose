@@ -323,6 +323,11 @@ MOTORS = {
     'rs02': dict(D=78.5, L=41.5, out=(24.0, 6), back=(52.0, 4), front=(73.0, 9), hole=4.5, kg=0.380, peak=17.0, cont=4.4),
     'rs06': dict(D=88.0, L=64.0, out=(36.0, 8), back=(60.0, 8), front=(82.0, 8), hole=3.4, kg=0.621, peak=36.0, cont=8.0),
     'rs04': dict(D=120.0, L=52.2, out=(36.0, 8), back=(106.0, 10), front=(106.0, 10), hole=4.5, kg=1.420, peak=120.0, cont=25.0),
+    # mega (MEGA-SIZING.md) -- ENVELOPES ONLY, not real parts yet:
+    # RS04 + a 3:1 planetary stage on its output (+38 mm long, ~+0.8 kg; 90 % stage efficiency)
+    'rs04s3': dict(D=120.0, L=90.0, out=(36.0, 8), back=(106.0, 10), front=(106.0, 10), hole=4.5, kg=2.2, peak=324.0, cont=67.0),
+    # rana-L: Cam's own high-torque class for knee / hip / waist pitch -- 450 N.m peak, 100 cont, >= 12 rad/s, ~3.2 kg (ASSUMED)
+    'ranaL': dict(D=150.0, L=95.0, out=(50.0, 8), back=(130.0, 12), front=(130.0, 12), hole=5.5, kg=3.2, peak=450.0, cont=100.0),
 }
 
 

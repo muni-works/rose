@@ -63,7 +63,7 @@ def body_of(name):
     if b and b.startswith('ey.') and name.startswith('cover-hand') and KS.WRIST() is not None:
         return 'wy.' + b.split('.')[1]                  # 7-DoF arm: the hand rides the wrist yaw
     if b == 'torso' and KS.waist_layout() is not None:
-        nm = 'motor-' + name.split('-', 1)[1] if re.match(r'^rs\d\d-', name) else name
+        nm = 'motor-' + name.split('-', 1)[1] if re.match(r'^(?:rs\d\d|rs04s3|ranaL)-', name) else name
         if nm.startswith(CHEST_PRE):
             return 'chest'                              # above the waist: the chest rides the waist pitch
     return b
@@ -75,7 +75,7 @@ def TOP():
 
 
 def _body_of(name):
-    if re.match(r'^rs\d\d-', name):                 # motors are named by model; the body map is by role
+    if re.match(r'^(?:rs\d\d|rs04s3|ranaL)-', name):                 # motors are named by model; the body map is by role
         name = 'motor-' + name.split('-', 1)[1]
     for side, t in (('', 'l'), ('', 'r')):
         for b, prefixes in BODIES.items():
