@@ -44,7 +44,7 @@
 [material "cx_floor" [nth cw-floor 0] [nth cw-floor 1] [nth cw-floor 2] 0.7 0.4]
 
 [material "satin_black" 0.09 0.094 0.106 0.1 0.55]
-[material "visor_glass" 0.02 0.02 0.025 0.2 0.05]
+[material "visor_glass" 0.02 0.02 0.025 0.0 0.35]
 [material "gunmetal" 0.3 0.32 0.34 0.8 0.35]
 [material "heatsink" 0.55 0.57 0.6 0.7 0.4]
 [material "pcb_green" 0.05 0.32 0.18 0.1 0.45]
@@ -75,14 +75,14 @@
 [let C0 1.0] [let C1 0.965926] [let C2 0.866025] [let C3 0.707107] [let C4 0.5] [let C5 0.258819] [let C6 0.0]
 
 ; a rounded-rectangle loop as line segments, in a sketch plane's (u, v): centre (cu, cv), half sizes a, b, radius r
-[let CS #[C0 C1 C2 C3 C4 C5 C6]]
+[let CS #[1.000000 0.991445 0.965926 0.923880 0.866025 0.793353 0.707107 0.608761 0.500000 0.382683 0.258819 0.130526 0.000000]]                       ; cos of 0, 7.5, ... 90 deg (sin = reversed)
 [let rr-segs [fn [cu cv a b r]
   [let ua [- [+ cu a] r]] [let ub [+ [- cu a] r]] [let va [- [+ cv b] r]] [let vb [+ [- cv b] r]]
   ; a 90-degree corner about (ox, oy): CCW from (sx*r, 0) to (0, sy*r) when fwd, else from (0, sy*r) to (sx*r, 0)
-  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 6 k]]]]]]]
-  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 6 k] k]]]]]]
+  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 12 k]]]]]]]
+  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 12 k] k]]]]]]
   [let q [fn [ox oy sx sy fwd]
-    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] #[0 1 2 3 4 5]]]]
+    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] [range 0 12]]]]
   [flatten #[
     #[[line [+ cu a] vb [+ cu a] va]] [q ua va 1.0 1.0 true]
     #[[line ua [+ cv b] ub [+ cv b]]] [q ub va -1.0 1.0 false]
@@ -103,10 +103,7 @@
   [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [- xf hdz] 0.0 [- hdz d] [- hw d] [max #[[- rc d] 2.0]]]]]]
 
 ; the quarter-round stations (rise, inset) of a round of radius r: (r(1-cos t), r(1-sin t)), t = 0..90
-[let round-st [fn [r] #[
-  #[0.0 r]
-  #[[* r [- 1.0 C1]] [* r [- 1.0 C5]]] #[[* r [- 1.0 C2]] [* r [- 1.0 C4]]] #[[* r [- 1.0 C3]] [* r [- 1.0 C3]]]
-  #[[* r [- 1.0 C4]] [* r [- 1.0 C2]]] #[[* r [- 1.0 C5]] [* r [- 1.0 C1]]] #[r 0.0]]]]
+[let round-st [fn [r] [map [fn [k] #[[* r [- 1.0 [nth CS k]]] [* r [- 1.0 [nth CS [- 12 k]]]]]] [range 0 13]]]]
 
 [let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
 
@@ -193,6 +190,10 @@
 ; dead-front: the back of the glass is printed black except an IR/visible window over each camera and the active
 ; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
 [let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
+; render workaround (vcad-render smooths shading across a flat loft cap): two crossed flat plates carry the face
+[let gr [* 0.55 [min #[sw sh]]]]
+[let cortex-glass-face [tilt [union [bx [+ xfz 0.75] [- 0.0 [- sw 0.4]] [- zf [- sh gr]] [+ xfz 0.85] [- sw 0.4] [+ zf [- sh gr]]]
+                                   [bx [+ xfz 0.75] [- 0.0 [- sw gr]] [- zf [- sh 0.4]] [+ xfz 0.85] [- sw gr] [+ zf [- sh 0.4]]]]]]
 [let face-opening [tilt [loft #[[glass-sec [- xfz 8.0] 2.0] [glass-sec [- xfz 3.0] 2.0] [glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 3.0] 0.0]]]]]
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
@@ -287,14 +288,14 @@
 [assembly
  #[[part "cortex-tub" cortex-tub "cx_shell"]
    [part "cortex-floor" cortex-floor "cx_floor"]
-   [part "desk" [translate -260.0 -340.0 -18.0 [cube 520.0 680.0 18.0]] "desk_oak"]
+   [part "desk" [translate -110.0 -150.0 -18.0 [cube 230.0 300.0 18.0]] "desk_oak"]
    [part "cortex-exhaust-grille" cortex-exhaust-grille "cx_shell"]
    [part "cortex-ear-grilles" cortex-ear-grilles "cx_accent"]
    [part "cortex-keeper" cortex-keeper "steel"]
    [part "cortex-strikes" cortex-strikes "steel"]
    [part "cortex-pads" cortex-pads "gold"]
    [part "cortex-padboard" cortex-padboard "pcb_green"]
-   [part "cortex-glass" cortex-glass "visor_glass"]
+   [part "cortex-glass" [union cortex-glass cortex-glass-face] "visor_glass"]
    [part "cortex-display" cortex-display "heatsink"]
    [part "cortex-cams" cortex-cams "pcb_green"]
    [part "cortex-dockboard" cortex-dockboard "pcb_green"]
