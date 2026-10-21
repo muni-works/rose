@@ -170,7 +170,9 @@ def scene_body2(work, pose, only=None):
     cx = H['cortex']
     cxs = ['[use cortex [%s]]' % ' '.join(n for n, _ in CORTEX)]
     for n, m in CORTEX:
-        cxs.append('[let hc_%s [translate %.3f %.3f %.3f %s]]\n[root hc_%s "%s"]' % (n.replace('-', '_'), cx[0], cx[1], cx[2], n, n.replace('-', '_'), m))
+        k = H.get('cortex_k', 1.0)       # cortex.loon is authored at the mini's head size (quad00 vcad_export: hh / 120.6)
+        body = n if abs(k - 1.0) < 1e-3 else '[scale %.4f %.4f %.4f %s]' % (k, k, k, n)
+        cxs.append('[let hc_%s [translate %.3f %.3f %.3f %s]]\n[root hc_%s "%s"]' % (n.replace('-', '_'), cx[0], cx[1], cx[2], body, n.replace('-', '_'), m))
     import rose_fork as F
     ph = body_ped_h()
     L = []
