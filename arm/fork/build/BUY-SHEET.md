@@ -63,11 +63,11 @@ Cam buys every line himself; no agent orders.
 |---|---:|---:|---|
 | RobStride CAN-to-USB debug module (A5): Motor Studio, ids, firmware | 1 | $25.09 live (sold out, preorder) | **TODAY** if wanted. Optional: the arm runs on the CANable |
 
-## 7. Waits for v10.3 final (skin and anodize)
+## 7. Skin and anodize (v10.6 shape frozen, d38ebb3)
 | item | ext. | depends on |
 |---|---:|---|
-| Skin (B4), per V10.3.md: 23 printed parts, ~0.37 kg PA12 (sleeve halves, turret/neck shell, J1 drum, desk puck, J2/J4/J6 open rings), MJF PA12 dyed black via JLC3DP/Xometry ~$300, or PETG/ASA in-house ~$50; J3 trim + J7 green ring in SLA ~$20; 6 bezels turned 6061 + gunmetal anodize (in-house turning, add to the anodize batch) | ~$70–320 | **WAIT:** geometry is final (v10.3, eb3c2f1) but skin fastening isn't designed yet |
-| Type II anodize batch (B2): all 1/8" plates + 4 panels (2 × 97×72, 2 × 94×72 mm, 0.6 mm) warm black, + 6 bezels gunmetal. Local anodizer, ~1 week | ~$225 | **WAIT:** cut parts first; quote after v10.3 final. The bare first article can be measured before anodizing |
+| Skin (B4), per V10.3.md: 23 printed parts, ~0.37 kg PA12 (sleeve halves, turret/neck shell, J1 drum, desk puck, J2/J4/J6 open rings), MJF PA12 dyed black via JLC3DP/Xometry ~$300, or PETG/ASA in-house ~$50; J3 trim + J7 green ring in SLA ~$20; 6 bezels turned 6061 + gunmetal anodize (in-house turning, add to the anodize batch) | ~$70–320 | **WAIT (short):** shape frozen in v10.6, fastening designed. Print files are in `arm/fork/skin-stl/`; the shelled, print-ready set (`skin-stl/print/`) is being exported now. Order as soon as it lands; a quote comes with it |
+| Type II anodize batch (B2): all 1/8" plates + 4 panels (2 × 97×72, 2 × 94×72 mm, 0.6 mm) warm black, + 6 bezels gunmetal. Local anodizer, ~1 week | ~$225 | **READY TO ORDER** (quote): the plate set is final (fab-v10). Send the anodizer the DXFs + panel sizes after the cut. The bare first article can be measured before anodizing |
 | **Waits total** | **~$295–545** | |
 
 ## Totals
