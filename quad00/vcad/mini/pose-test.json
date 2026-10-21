@@ -1,0 +1,8 @@
+{"durationS": 0.1, "fps": 10, "tracks": [
+ {"joint": "l_hip_pitch", "keys": [{"t": 0, "value": -45}, {"t": 0.1, "value": -45}]},
+ {"joint": "l_knee_pitch", "keys": [{"t": 0, "value": 70}, {"t": 0.1, "value": 70}]},
+ {"joint": "l_ankle_pitch", "keys": [{"t": 0, "value": -25}, {"t": 0.1, "value": -25}]},
+ {"joint": "r_shoulder_pitch", "keys": [{"t": 0, "value": -70}, {"t": 0.1, "value": -70}]},
+ {"joint": "r_elbow", "keys": [{"t": 0, "value": -80}, {"t": 0.1, "value": -80}]},
+ {"joint": "l_shoulder_roll", "keys": [{"t": 0, "value": 45}, {"t": 0.1, "value": 45}]},
+ {"joint": "head_yaw", "keys": [{"t": 0, "value": 35}, {"t": 0.1, "value": 35}]}]}
