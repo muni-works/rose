@@ -197,7 +197,7 @@ def seam_cut(m, c, ax, r, L=600.0):
     return _tm(Manifold(_mm(m)) - Manifold(_mm(cyl(np.asarray(c) - a, np.asarray(c) + a, r, 128))))
 
 
-def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5, skip=(), field=False, front=None, count_only=False):
+def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5, skip=(), field=False, front=None, count_only=False, holes_only=False):
     """The dot-grid (Rose: 1.1-1.4 mm holes on a 2.2-2.4 mm hex, only where air must pass): holes on the
     flat faces of a rounded-rectangle sleeve between x0 and x1 (mm), kept off the corner rounds.
     field=True (v10.5, rose): each face's grid sits in a rounded-rectangle field (corner 0.3 x its half
@@ -250,6 +250,8 @@ def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5, skip=(), field=False, 
     if count_only:
         return n * math.pi * (d / 2) ** 2
     holes = Manifold.batch_boolean(cyls, __import__('manifold3d').OpType.Add)
+    if holes_only:      # skin_print: the hole solids themselves (they stand 1 mm proud of the face - clean cuts)
+        return holes, n
     return _tm(Manifold(_mm(m)) - holes), n
 
 
@@ -263,6 +265,7 @@ def _frame_to(a0, a1):
 
 
 J3_OPEN = {}
+LOFTS = {}       # v10.7 print export: each sleeve's stations + seams, so skin_print.py can build true shells
 
 
 def skin_parts():
@@ -312,12 +315,17 @@ def skin_parts():
     st = []
     for s, a, b, _ in req:
         aa, bb = max(a_full * prof(s), a), max(RATIO * a_full * prof(s), b)
-        if s > X3:   # v10.6 (range wins): below J3 the side profile (fore-aft, a) keeps rose's 0.75 -> 0.72; the lateral width is the structure's own, so the elbow folds to ~+-110
-            bb = max(b, 0.8 * aa)
-        b_in = max(b + 2.0, B_IN_MIN) if s < X3 else bb    # below J3 (upperd) symmetric again: the elbow fold wants no outboard bulge
+        b_in = max(b + 2.0, B_IN_MIN)
+        if s > X3:   # v10.6 (range wins): below J3 the side profile (fore-aft, a) keeps rose's 0.75 -> 0.72; the lateral width
+            # steps in to the structure's own (the elbow folds to ~+-110) - v10.6b: over ~38 mm, a taper not a ledge,
+            # and the section at the J3 hairline itself unchanged (sections match across J3)
+            tt = min(1.0, (s - X3) / 38.0)
+            bb_r = max(b, 0.8 * aa)
+            bb, b_in = (1 - tt) * bb + tt * bb_r, (1 - tt) * b_in + tt * bb_r
         cw = max(0.0, (bb - b_in) / 2)            # fuller to the outside, held to the structure on the inside
         st.append((s, aa, bb - cw, cw))
     ua = sleeve(st, origin=(0, 0, zs))
+    LOFTS['upper'] = dict(st=st, kw=dict(origin=(0, 0, zs)), seams=[seam('J2'), seam('J4')], split=X3, front=None)
     for j in ('J2', 'J4'):
         ua = seam_cut(ua, *seam(j))
     lo = halves(ua, 0, X3 - 0.75)[0]
@@ -338,6 +346,7 @@ def skin_parts():
     req = need(P, 0, U, Wm, 5, seams=[seam('J4'), seam('J6')])
     a0, b0 = max(r[1] for r in req[:2]), max(r[2] for r in req[:2])
     fa = sleeve(taper(req, a0, b0, 0.75 * a0, 0.7 * b0), origin=(0, 0, zs))
+    LOFTS['fore'] = dict(st=taper(req, a0, b0, 0.75 * a0, 0.7 * b0), kw=dict(origin=(0, 0, zs)), seams=[seam('J4'), seam('J6')])
     for j in ('J4', 'J6'):
         fa = seam_cut(fa, *seam(j))
     out.append(('fore', 'fore', loc(fa.copy(), 'fore'), 'skin'))
@@ -345,6 +354,8 @@ def skin_parts():
     P = xr(np.concatenate([Pw('wrist'), cab]), Wm - 60, xt + 3.2)
     req = need(P, 0, Wm, xt + 3.0, 4, seams=[seam('J6')])
     wa = seam_cut(sleeve(taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), origin=(0, 0, zs)), *seam('J6'))
+    LOFTS['wrist'] = dict(st=taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), kw=dict(origin=(0, 0, zs)), seams=[seam('J6')],
+                          grid=((S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0))
     wv, nh7 = perforate(wa, (S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0, zs)   # dot-grid over the J7 can
     out.append(('wrist', 'wrist', loc(wv, 'wrist'), 'skin'))
     c = np.array([xt, 0, zs])
@@ -362,6 +373,7 @@ def skin_parts():
     Rp_near = {0.0: Rp['J2'] + GAP, U: Rp['J4'] + GAP, Wm: Rp['J6'] + GAP}
     for j, owner, ms in (('J2', 'turret', (ua,)), ('J4', 'fore', (ua, fa)), ('J6', 'wrist', (fa, wa))):
         hy = half_w_at(J[j][0], *ms)
+        LOFTS.setdefault('_rings', {})[j] = hy
         c = J[j]
         # v10.3 (thermal_v10.py): the puck is a graphite RING; the motor's own dark face is open to air behind a
         # thin gunmetal bezel - a vented (1.3 / 2.3 hex) cap here costs J2 0.2 kg of hold, an open face costs none
@@ -417,6 +429,8 @@ def skin_parts():
         prof = [(zo, -r1, r1), (ztop, -(r1 - 3.0), r1 - 4.0), (zo + 15.0, -(Rp['J2'] + 1.3), wn), (zo + 25.0, -wn, wn), (zs, -wn, wn)]
     st = [(z_, hy2 + (4.0 if k == 0 else 2.0), (xb - xt) / 2, (xb + xt) / 2) for k, (z_, xt, xb) in enumerate(prof)]
     tu = seam_cut(sleeve(st, u=(0, 0, 1), v=(0, 1, 0), w=(1, 0, 0), rc_k=0.42), *seam('J2'))
+    LOFTS['turret'] = dict(st=st, kw=dict(u=(0, 0, 1), v=(0, 1, 0), w=(1, 0, 0), rc_k=0.42), seams=[seam('J2')])
+    LOFTS['_misc'] = dict(Rp=Rp, J=J, zs=zs, zo=zo, r1=r1, X3=X3, x3a=x3a, x3b=x3b, front=front, U=U, Wm=Wm, xt=xt)
     out.append(('turret', 'turret', loc(tu, 'turret'), 'skin'))
     # ---- J1: desk - a graphite drum growing out of one calm base puck; body - a flush disc on the flank
     if F.PEDESTAL:
