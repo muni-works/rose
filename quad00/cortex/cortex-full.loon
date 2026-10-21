@@ -26,16 +26,17 @@
 
 ; ------------------------------------------------------------------ colorways (CMF) ----
 ; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
-; two body tones (warm black, cream) and ONE family neon as the accent ("one flame"), kept small: it goes on the ear
-; grille inserts only (the exhaust grid, floor and back stay quiet). Geometry never changes with the colorway.
-;   name     shell                  accent (ear grilles)      floor (anodized Al)
+; Cam 2026-10-21: no brown. Two body tones, black or white plastic, and ONE family neon accent, kept small: the
+; ear panels only. Release 1 is minimal: no decorative perforation; the ear panels are solid accent plates (sound
+; and the mic port use a hidden 0.8 mm gap round the panel), the exhaust is three plain slots in shell colour.
+;   name     shell                  accent (ear panels)       floor (anodized Al: black / clear)
 [let colorways #[
-  #["mind"    #[0.118 0.094 0.075] #[1.000 0.373 0.000] #[0.043 0.035 0.027]]   ; warm black + Mind orange #ff5f00 -- flagship
-  #["make"    #[0.118 0.094 0.075] #[0.224 1.000 0.078] #[0.043 0.035 0.027]]   ; warm black + Make green #39ff14
-  #["body"    #[0.118 0.094 0.075] #[1.000 0.125 0.322] #[0.043 0.035 0.027]]   ; warm black + Body red #ff2052
-  #["world"   #[0.910 0.882 0.824] #[0.000 0.941 1.000] #[0.627 0.553 0.439]]   ; cream + World cyan #00f0ff
-  #["power"   #[0.910 0.882 0.824] #[1.000 0.831 0.000] #[0.627 0.553 0.439]]   ; cream + Power amber #ffd400
-  #["silicon" #[0.910 0.882 0.824] #[0.627 0.553 0.439] #[0.627 0.553 0.439]]]] ; cream + Silicon tan #a08d70 (the quiet one)
+  #["mind"    #[0.071 0.071 0.075] #[1.000 0.373 0.000] #[0.035 0.035 0.038]]   ; black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.071 0.071 0.075] #[0.224 1.000 0.078] #[0.035 0.035 0.038]]   ; black + Make green #39ff14
+  #["body"    #[0.071 0.071 0.075] #[1.000 0.125 0.322] #[0.035 0.035 0.038]]   ; black + Body red #ff2052
+  #["world"   #[0.925 0.925 0.918] #[0.000 0.941 1.000] #[0.780 0.784 0.792]]   ; white + World cyan #00f0ff
+  #["power"   #[0.925 0.925 0.918] #[1.000 0.831 0.000] #[0.780 0.784 0.792]]   ; white + Power amber #ffd400
+  #["silicon" #[0.925 0.925 0.918] #[0.300 0.302 0.310] #[0.780 0.784 0.792]]]] ; white + graphite (the quiet one)
 [let colorway "mind"]
 [let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
 [let cw-shell [nth cw 1]]
@@ -145,7 +146,7 @@
 ; inside a rounded slot of half length a along u, end radius b
 [let in-pill [fn [u v a b]
   [let uu [max #[0.0 [- [abs u] [- a b]]]]]
-  [< [+ [* uu uu] [* v v]] [* [- b 0.8] [- b 0.8]]]]]
+  [< [+ [* uu uu] [* v v]] [* [- b [+ dot-r 1.4]] [- b [+ dot-r 1.4]]]]]]   ; a solid 1.4 mm rim, no partial holes
 ; union a list of solids as a balanced tree (a running fold is quadratic in the hole count)
 [let tree-union [fn [xs]
   [let n [len xs]]
@@ -155,14 +156,14 @@
            [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
 [let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
 [let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 8 8]]]
-[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]]]
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 16]]]]]
 [let ear-holes [grid-holes ear-rows dot-hole]]
 ; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
 [let zx 76.0]                                   ; exhaust grille centre, z
 [let xa 62.0]                                   ; half width (y)
 [let xr 14.0]                                   ; half height (the slot's end radius)
 [let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 29 4]]]
-[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
+[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 16]]]]]
 [let exhaust-holes [grid-holes x-rows xdot-hole]]
 ; The tub only gets plain rounded windows; the perforated grilles are separate thin inserts that fill them flush
 ; (moulds without side actions, and the tub evaluates in seconds -- the holes live in their own parts).
@@ -201,11 +202,16 @@
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
 ; can clip in if wanted)
-[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
+[let io-sec [fn [x] [sketch x 0.0 51.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 54.0 14.0 4.0]]]]   ; the reComputer Super port edge (bare board)
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
-[let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
-[let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
+[let ear-panel-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg [- gw 0.8] [- gh 0.8] [- gw 0.81]]]]]
+[let ear-panels [loft #[[ear-panel-sec [- -6.0 hw]] [ear-panel-sec [+ hw 6.0]]]]]   ; solid accent plates, 0.8 mm hidden gap all round
+[let cortex-ear-grilles [intersection ear-panels wall-band]]
+[let x-slots [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 6.0] 300.0 [- xa xr] [- zx 4.0]]
+                [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 1.0] 300.0 [- xa xr] [+ zx 1.0]]
+                       [bx -300.0 [- 0.0 [- xa xr]] [+ zx 4.0] 300.0 [- xa xr] [+ zx 6.0]]]]]   ; three 2 mm slots, no dot field
+[let cortex-exhaust-grille [difference x-slots [intersection exhaust-window wall-band]]]
 [let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 [let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
@@ -222,8 +228,9 @@
 ; inside beside them (fewer parts, one tool for the slots)
 [let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
 ; ---------------------------------------------------------------------- insides ----
-[let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
-[let cortex-display [tilt [bx [- xfz 15.2] -60.5 [- zd 44.75] [- xfz 3.2] 60.5 [+ zd 44.75]]]]   ; Waveshare 5" HDMI (H) 121 x 89.5
+[let zd [- zf 12.0]]                            ; the 7" panel sits low so the stereo cameras clear it above                            ; the screen sits a little above the face centre
+[let cortex-display [union [tilt [bx [- xfz 9.0] -82.5 [- zd 52.0] [- xfz 3.2] 82.5 [+ zd 52.0]]]       ; Cam's 7" portable panel (165 x 104 x 6 ASSUMED)
+                           [bx -38.0 -50.0 [+ 38.0 46.0] 17.0 50.0 [+ 38.0 57.0]]]]   ; its driver board, flat on the enclosure (crown space)
 [let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
                               [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 ; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
@@ -233,14 +240,29 @@
 [let cortex-dockboard [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 6.0]]]                   ; dock interface board (PD sink ctrl, T1 PHY), B2B to the pad board
 [let cortex-power [bx -70.0 -20.0 [+ tf 1.0] -40.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
 [let zb0 14.0]
-[let cortex-battery [bx -30.0 -74.0 zb0 36.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
+[let cortex-battery [bx -22.0 -74.0 zb0 44.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
 [let jxa -83.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
 [let jxb [+ jxa 52.0]]
-[let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
-                          [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
-[let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+; Cam's Seeed reComputer Super (Orin NX), OUT of its enclosure (Cam: save weight, keep the stock heatsink + fan).
+; From Cam's caliper photos (2026-10-21): mounting holes 100.2 x 100.2, board ~110 x 110 (scaled), port edge 23.6 tall
+; incl. the board. ASSUMED until measured: heatsink + fan 85 x 70 footprint, 30 above the board, centred on the module.
+[let jb-t 1.6]
+[let jbx0 -78.0]                                  ; the port edge, just inside the back wall's I/O cutout
+[let j-holes #[#[[+ jbx0 5.0] 50.1] #[[+ jbx0 5.0] -50.1] #[[+ jbx0 105.2] 50.1] #[[+ jbx0 105.2] -50.1]]]
+[let cortex-compute [union [bx jbx0 -55.0 zj0 [+ jbx0 110.0] 55.0 [+ zj0 jb-t]]                       ; the carrier
+                          [bx [- jbx0 2.0] -52.0 [+ zj0 jb-t] [+ jbx0 22.0] 52.0 [+ zj0 23.6]]]]      ; the port edge
+[let cortex-heatsink [bx [+ jbx0 25.0] -42.5 [+ zj0 jb-t] [+ jbx0 95.0] 42.5 [+ zj0 30.0]]]      ; stock heatsink + fan (ASSUMED 70 x 85 x 30)
+[let pillar [fn [x y] [bx [- x 4.0] [- y 4.0] tf [+ x 4.0] [+ y 4.0] zj0]]]
+[let insert-d 2.2]                                ; M2.5 self-tap pilot in PETG (Cam: no heat-set inserts). 8 mm pillar = 2.9 mm wall, 7 deep: M2.5 x 8 screws
+[let cortex-sled [difference [fold [bx -300.0 0.0 0.0 -299.0 1.0 1.0] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] [- zj0 6.0] [cylinder [/ insert-d 2.0] 7.0]]]] j-holes]
+  [union [union [pillar [nth [nth j-holes 0] 0] 50.1] [pillar [nth [nth j-holes 1] 0] -50.1]]        ; back pillars, under the board's port-edge holes
+         [union [union [pillar [nth [nth j-holes 2] 0] 80.0] [pillar [nth [nth j-holes 3] 0] -80.0]]   ; front legs outside the pack ...
+                [union [bx [- [nth [nth j-holes 2] 0] 5.0] -84.0 [- zj0 2.0] [+ [nth [nth j-holes 2] 0] 5.0] 84.0 zj0]   ; ... and the bridge under the front holes
+                       [union [union [bx [- [nth [nth j-holes 0] 0] 2.0] 76.0 tf [+ [nth [nth j-holes 2] 0] 5.0] 84.0 [+ tf 3.0]]     ; base frame: side rails
+                                     [bx [- [nth [nth j-holes 0] 0] 2.0] -84.0 tf [+ [nth [nth j-holes 2] 0] 5.0] -76.0 [+ tf 3.0]]]  ;   (outside the pack)
+                              [union [bx [- [nth [nth j-holes 0] 0] 2.0] 46.0 tf [+ [nth [nth j-holes 0] 0] 4.0] 84.0 [+ tf 3.0]]     ;   + stubs to the back pillars
+                                     [bx [- [nth [nth j-holes 0] 0] 2.0] -84.0 tf [+ [nth [nth j-holes 0] 0] 4.0] -46.0 [+ tf 3.0]]]]]]]]]  ; one connected part, prints flat
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)

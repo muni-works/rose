@@ -1,0 +1,58 @@
+; cortex print: FDM fit coupons. Print these first (PLA or PETG, 0.2 mm layers, 3 walls, 20% infill, no supports,
+; each coupon flat on the bed as modelled), test, then lock the tolerances in the shell files. Every coupon is a ladder:
+; the label notches on its edge (1, 2, 3 or 4 notches) mark the variant, smallest clearance first.
+
+[material "pla" 0.12 0.12 0.13 0.0 0.6]
+[let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
+[let notch [fn [x y n] [fold [bx -100.0 -100.0 -100.0 -99.0 -99.0 -99.0] [fn [acc i] [union acc [bx [+ x [* i 3.0]] [- y 0.6] -1.0 [+ x [+ [* i 3.0] 1.2]] [+ y 0.6] 10.0]]] [range 0 n]]]]
+
+; 1. heat-set insert bosses: M2.5 (carrier + sled; insert hole 3.4 / 3.6 / 3.8) and M3 (tub-to-floor; 4.0 / 4.2 / 4.4).
+;    Bosses 7.0 / 8.0 OD x 6 tall on a 3 mm plate. Press an insert in each; keep the one that holds square without cracking.
+[let boss [fn [x d od] [difference [translate x 0.0 -1.0 [cylinder [/ d 2.0] 8.0]] [union [translate x 0.0 3.0 [cylinder [/ od 2.0] 6.0]] [bx [- x 6.0] -6.0 0.0 [+ x 6.0] 6.0 3.0]]]]]
+[let coupon-inserts [difference [union [notch 2.0 -5.5 1] [notch 50.0 -5.5 2]]
+  [pipe [boss 6.0 3.4 7.0] [union [boss 18.0 3.6 7.0]] [union [boss 30.0 3.8 7.0]]
+        [union [boss 46.0 4.0 8.0]] [union [boss 60.0 4.2 8.0]] [union [boss 74.0 4.4 8.0]]]]]
+
+; 2. board-edge slot for a 1.6 mm PCB: 1.7 / 1.8 / 1.9 / 2.0 wide, 3 deep, in a 6 mm rail. Slide a carrier edge in.
+[let slot [fn [x w] [bx [- x [/ w 2.0]] -1.0 3.0 [+ x [/ w 2.0]] 31.0 9.0]]]
+[let coupon-slots [difference [pipe [slot 6.0 1.7] [union [slot 16.0 1.8]] [union [slot 26.0 1.9]] [union [slot 36.0 2.0]]
+                                    [union [notch 3.0 -0.5 4]]]
+                              [bx 0.0 0.0 0.0 42.0 30.0 9.0]]]
+
+; 3. magnet pockets for the 8 x 3 dock magnets / steel strikes: 8.1 / 8.2 / 8.3 dia, 3.1 deep (press fit vs drop fit).
+[let pocket [fn [x d] [translate x 7.0 1.0 [cylinder [/ d 2.0] 4.0]]]]
+[let coupon-magnets [difference [pipe [pocket 7.0 8.1] [union [pocket 19.0 8.2]] [union [pocket 31.0 8.3]] [union [notch 2.0 13.5 3]]]
+                                [bx 0.0 0.0 0.0 38.0 14.0 4.1]]]
+
+; 4. the dock face, full size: the floor's pad pocket, the two cone seats (cone 8 -> 3 over 6), the latch slot and the
+;    keeper relief -- exactly as cortex.loon's dock-cuts, in a 3 mm plate with the cone bosses. Test it on a printed
+;    neck dock (dock-face/dock-cones from cortex.loon) or a real one.
+[let dock-sample [difference
+  [pipe [bx -6.2 -10.2 -1.0 6.2 10.2 1.3]
+        [union [bx -2.0 -6.0 -1.0 3.0 6.0 4.0]]                               ; (latch slot, shifted to sit on this coupon)
+        [union [translate 0.0 18.0 -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 18.0 5.9 [cylinder 1.6 4.0]]]
+        [union [translate 0.0 -18.0 -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 -18.0 5.9 [cylinder 1.6 4.0]]]]
+  [union [bx -16.0 -28.0 0.0 16.0 28.0 3.0]
+         [union [translate 0.0 18.0 3.0 [cylinder 7.0 6.0]] [translate 0.0 -18.0 3.0 [cylinder 7.0 6.0]]]]]]
+
+; 5. tub-to-floor lip: the floor's 2 mm registration lip into the tub wall, at 0.15 / 0.25 / 0.35 clearance per side.
+[let lip [fn [x c] [union [bx x 0.0 0.0 [+ x 16.0] 20.0 3.0]                                        ; floor strip
+                           [bx [+ x 2.5 c] 2.5 3.0 [- [+ x 16.0] [+ 2.5 c]] 17.5 5.0]]]]        ; lip, inset by the clearance
+[let wall-ring [fn [x] [difference [bx [+ x 2.5] 2.5 0.0 [+ x 13.5] 17.5 8.0] [bx x 0.0 0.0 [+ x 16.0] 20.0 8.0]]]]
+[let coupon-lip-floor [pipe [lip 0.0 0.15] [union [lip 20.0 0.25]] [union [lip 40.0 0.35]]]]
+[let coupon-lip-wall [pipe [wall-ring 0.0] [union [wall-ring 20.0]] [union [wall-ring 40.0]]]]
+
+; 6. J401 template (Orin NX carrier, 100 x 80): lay the real board on it. Holes at the ASSUMED 86 x 58 dev-kit pattern,
+;    Ø3.2 (M3 clearance) with a Ø2.2 pilot inside to read the true centre; a ridge marks the port edge (it faces the
+;    head's back cutout). If the holes don't line up, measure the board and update j401-holes in cortex-full.loon.
+[let tpl-hole [fn [x y] [translate x y -1.0 [cylinder 1.6 4.0]]]]
+[let coupon-j401 [difference [pipe [tpl-hole 7.0 11.0] [union [tpl-hole 93.0 11.0]] [union [tpl-hole 7.0 69.0]] [union [tpl-hole 93.0 69.0]]
+                                   [union [bx 20.0 20.0 -1.0 80.0 60.0 4.0]]]                    ; light window
+                             [union [bx 0.0 0.0 0.0 100.0 80.0 1.2] [bx 0.0 -3.0 0.0 100.0 0.0 4.0]]]]   ; plate + port-edge ridge (y = 0 side)
+[root coupon-inserts "pla"]
+[root [translate 0.0 20.0 0.0 coupon-slots] "pla"]
+[root [translate 50.0 20.0 0.0 coupon-magnets] "pla"]
+[root [translate 110.0 30.0 0.0 dock-sample] "pla"]
+[root [translate 0.0 60.0 0.0 coupon-lip-floor] "pla"]
+[root [translate 0.0 90.0 0.0 coupon-lip-wall] "pla"]
+[root [translate 140.0 70.0 0.0 coupon-j401] "pla"]
