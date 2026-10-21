@@ -1,0 +1,350 @@
+; cortex -- the rose head, as its own product.
+;
+; The brain module: Jetson compute, its own battery, a face screen, stereo eyes and ears; the carrier's own I/O edge shows through a cutout in the back. It sits on any
+; rose body's neck dock and runs detached on a desk too. The dock is sealed and tool-free: drop the head on, two
+; tapered cones seat it, magnets pull it down, a hidden spring latch locks it; one button on the back of the neck
+; releases it. 8 flush gold pads carry power (20 V / 5 A) and data (1000BASE-T1 Ethernet + USB 2). (Was: USB-C /
+; 5 A) and data (USB 3). The limbic board stays in the torso, shared by every body.
+;
+; A loon module: every top-level `let` is an export; `[use cortex [...]]` from a body. Its own `root`s render it
+; standalone. Frame: the DOCK ORIGIN, the centre of the dock interface on the head's flat floor. x fore, y left,
+; z up, mm, degrees. Subject-last (vcad). loon has no trig: corner arcs use the cos/sin tables below.
+;
+; Parts (datasheet sizes; ASSUMED = confirm against a drawing):
+;   compute   NVIDIA Jetson Orin NX 16GB on Seeed A603 (87 x 52) + ATS 63 x 40 x 8 heatsink; stack 36 ASSUMED
+;   display   Waveshare 3.5in HDMI LCD (E), IPS 640x480, 76.6 x 63.6, active 70.68 x 53.36; 11 thick ASSUMED
+;   eyes      2x Arducam IMX219 (B0287 class) 25 x 24, 22-pin FFC to the A603 CSI; 13 deep ASSUMED; 106 baseline
+;   ears      2x Visaton K 28 WPC BL 28 x 5.4 + 2x MAX98357A (Adafruit 3006) + 2x SPH0645 mic (Adafruit 3421)
+;   battery   3S1P 21700 (Molicel P45B class), 11.1 V 50 Wh + 3S BMS (the A603 wants 9-20 V)
+;   power     USB-PD sink (TPS25750 class) + 3S charger / power path (BQ25713 class), 30 x 40 x 6 ASSUMED
+;   dock      8 flush gold pads (2 x 4, 4 mm pitch) on a 12 x 20 pad board in the floor, pogo pins on the neck (Mill-Max
+;             0906 class, 3 A each); 2 cone seats; 2 steel strike discs over the neck magnets; a latch keeper slot
+
+; ------------------------------------------------------------------ colorways (CMF) ----
+; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
+; two body tones (warm black, cream) and ONE family neon as the accent ("one flame"), kept small: it goes on the ear
+; grille inserts only (the exhaust grid, floor and back stay quiet). Geometry never changes with the colorway.
+;   name     shell                  accent (ear grilles)      floor (anodized Al)
+[let colorways #[
+  #["mind"    #[0.118 0.094 0.075] #[1.000 0.373 0.000] #[0.043 0.035 0.027]]   ; warm black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.118 0.094 0.075] #[0.224 1.000 0.078] #[0.043 0.035 0.027]]   ; warm black + Make green #39ff14
+  #["body"    #[0.118 0.094 0.075] #[1.000 0.125 0.322] #[0.043 0.035 0.027]]   ; warm black + Body red #ff2052
+  #["world"   #[0.910 0.882 0.824] #[0.000 0.941 1.000] #[0.627 0.553 0.439]]   ; cream + World cyan #00f0ff
+  #["power"   #[0.910 0.882 0.824] #[1.000 0.831 0.000] #[0.627 0.553 0.439]]   ; cream + Power amber #ffd400
+  #["silicon" #[0.910 0.882 0.824] #[0.627 0.553 0.439] #[0.627 0.553 0.439]]]] ; cream + Silicon tan #a08d70 (the quiet one)
+[let colorway "mind"]
+[let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
+[let cw-shell [nth cw 1]]
+[let cw-accent [nth cw 2]]
+[let cw-floor [nth cw 3]]
+[let shell-rough 0.55]                          ; satin (textured PC/ABS)
+[let accent-rough 0.35]                         ; the grille insert finish: semi-gloss
+[material "cx_shell" [nth cw-shell 0] [nth cw-shell 1] [nth cw-shell 2] 0.0 shell-rough]
+[material "cx_accent" [nth cw-accent 0] [nth cw-accent 1] [nth cw-accent 2] 0.0 accent-rough]
+[material "cx_floor" [nth cw-floor 0] [nth cw-floor 1] [nth cw-floor 2] 0.7 0.4]
+
+[material "satin_black" 0.09 0.094 0.106 0.1 0.55]
+[material "visor_glass" 0.02 0.02 0.025 0.0 0.35]
+[material "gunmetal" 0.3 0.32 0.34 0.8 0.35]
+[material "heatsink" 0.55 0.57 0.6 0.7 0.4]
+[material "pcb_green" 0.05 0.32 0.18 0.1 0.45]
+[material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
+[material "motor_dark" 0.08 0.085 0.09 0.6 0.4]
+[material "aluminium" 0.75 0.76 0.78 0.9 0.3]
+[material "gold" 1.0 0.78 0.34 1.0 0.25]
+[material "steel" 0.6 0.6 0.62 0.9 0.35]
+[material "cable_orange" 1.0 0.42 0.05 0.0 0.45]
+
+; ------------------------------------------------------------------ size (mini) ----
+[let hh 120.6]                 ; height
+[let hw 81.8]                  ; half width
+[let x-face 46.0]              ; the flat face plane
+[let x-back -73.0]             ; DEEP MINI study: +15 mm deeper to take the Waveshare JETSON-ORIN-IO-BASE (90.5 x 103)
+[let hd [/ [- x-face x-back] 2.0]]
+[let xc [- x-face hd]]
+[let rc 15.6]           ; plan corner radius
+[let rf 21.84]           ; crown round
+[let rb 12.48]           ; bottom round (it still sits flat)
+[let zf [/ [+ rb [- hh rf]] 2.0]]               ; the face's flat band centre: the display sits on it
+[let ze [- [- hh rf] 16.0]]                     ; eye height: the top of the flat band (cam half-height 12 + 4)
+[let baseline 106.0]
+
+; ------------------------------------------------------------ rounded sections ----
+; cos/sin of 0, 15, ... 90 degrees
+[let C0 1.0] [let C1 0.965926] [let C2 0.866025] [let C3 0.707107] [let C4 0.5] [let C5 0.258819] [let C6 0.0]
+
+; a rounded-rectangle loop as line segments, in a sketch plane's (u, v): centre (cu, cv), half sizes a, b, radius r
+[let CS #[1.000000 0.991445 0.965926 0.923880 0.866025 0.793353 0.707107 0.608761 0.500000 0.382683 0.258819 0.130526 0.000000]]                       ; cos of 0, 7.5, ... 90 deg (sin = reversed)
+[let rr-segs [fn [cu cv a b r]
+  [let ua [- [+ cu a] r]] [let ub [+ [- cu a] r]] [let va [- [+ cv b] r]] [let vb [+ [- cv b] r]]
+  ; a 90-degree corner about (ox, oy): CCW from (sx*r, 0) to (0, sy*r) when fwd, else from (0, sy*r) to (sx*r, 0)
+  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 12 k]]]]]]]
+  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 12 k] k]]]]]]
+  [let q [fn [ox oy sx sy fwd]
+    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] [range 0 12]]]]
+  [flatten #[
+    #[[line [+ cu a] vb [+ cu a] va]] [q ua va 1.0 1.0 true]
+    #[[line ua [+ cv b] ub [+ cv b]]] [q ub va -1.0 1.0 false]
+    #[[line [- cu a] va [- cu a] vb]] [q ub vb -1.0 -1.0 true]
+    #[[line ub [- cv b] ua [- cv b]]] [q ua vb 1.0 -1.0 false]]]]]
+
+; a horizontal section of the head at height z, inset d all round
+[let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
+; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
+; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
+[let zk 40.0]
+[let kb 38.0]
+[let xb [fn [z] [if [> z zk] [+ x-back [* kb [* [/ [- z zk] [- hh zk]] [/ [- z zk] [- hh zk]]]]] x-back]]]
+[let head-sec [fn [z d]
+  [let xf [- x-face [* rake z]]]
+  [let x-back [xb z]]
+  [let hdz [/ [- xf x-back] 2.0]]
+  [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [- xf hdz] 0.0 [- hdz d] [- hw d] [max #[[- rc d] 2.0]]]]]]
+
+; the quarter-round stations (rise, inset) of a round of radius r: (r(1-cos t), r(1-sin t)), t = 0..90
+[let round-st [fn [r] [map [fn [k] #[[* r [- 1.0 [nth CS k]]] [* r [- 1.0 [nth CS [- 12 k]]]]]] [range 0 13]]]]
+
+[let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
+
+; ----------------------------------------------------------------------- shell ----
+; Three parts. TUB: sides, top, back and the face opening, one moulding (PC/ABS, 2.5 wall), drawn down -- the side
+; vent slots need a slide each side. FLOOR: 3 mm aluminium plate, the flat desk face; it carries the dock and the whole
+; sled, and closes the tub from below (screws up into tub bosses). GLASS: dead-front cover, bonded into the opening.
+[let wall 2.5]
+[let tf 3.0]                                    ; floor plate thickness
+[let shell-solid
+  [loft [flatten #[
+    [map [fn [st] [head-sec [nth st 0] [nth st 1]]] [round-st rb]]
+    [map [fn [z] [head-sec z 0.0]] #[zk 52.0 64.0 76.0 88.0]]
+    [map [fn [st] [head-sec [- hh [nth st 0]] [nth st 1]]] [reverse [round-st rf]]]]]]]
+[let shell-inner                                ; the offset surface, wall inside
+  [loft [flatten #[
+    [map [fn [st] [head-sec [+ wall [nth st 0]] [+ wall [nth st 1]]]] [round-st [- rb wall]]]
+    [map [fn [z] [head-sec z wall]] #[zk 52.0 64.0 76.0 88.0]]
+    [map [fn [st] [head-sec [- [- hh wall] [nth st 0]] [+ wall [nth st 1]]]] [reverse [round-st [- rf wall]]]]]]]]
+[let below-floor [bx -100.0 -100.0 -1.0 100.0 100.0 tf]]
+
+; the ears: a dot grid each side, a rounded slot of 1.1 mm holes on a 2.4 mm hex pitch (laser-drilled, or moulded
+; with core pins -- no slides). A speaker behind the top of each (stereo), the mic below it.
+; Both mics sit on the same dot, so the pair is level and symmetric.
+[let gx -20.0]                                  ; grille centre, x
+[let zg 66.0]                                   ;               z
+[let gw 11.0]                                   ; half width (the slot's end radius)
+[let gh 19.0]                                   ; half height
+[let dot-p 2.2]                                 ; hex pitch
+[let dot-r 0.7]                                 ; 1.4 mm holes: ~37% open (thermal check, SPEC.md)
+[let dot-h [* dot-p 0.866]]
+; a hex grid as rows of (u, v), u along the row; ni/nk = half extents in pitches / row pairs
+[let hex-rows [fn [ni nk] [flatten #[
+  [map [fn [k] [map [fn [i] #[[* i dot-p] [* [* 2.0 k] dot-h]]] [range [- 0 ni] [+ ni 1]]]] [range [- 0 nk] [+ nk 1]]]
+  [map [fn [k] [map [fn [i] #[[* [+ i 0.5] dot-p] [* [+ [* 2.0 k] 1.0] dot-h]]] [range [- 0 ni] ni]]] [range [- 0 nk] nk]]]]]]
+; inside a rounded slot of half length a along u, end radius b
+[let in-pill [fn [u v a b]
+  [let uu [max #[0.0 [- [abs u] [- a b]]]]]
+  [< [+ [* uu uu] [* v v]] [* [- b [+ dot-r 1.4]] [- b [+ dot-r 1.4]]]]]]   ; a solid 1.4 mm rim, no partial holes
+; union a list of solids as a balanced tree (a running fold is quadratic in the hole count)
+[let tree-union [fn [xs]
+  [let n [len xs]]
+  [let h [/ n 2]]
+  [if [< n 2] [nth xs 0]
+    [union [tree-union [map [fn [i] [nth xs i]] [range 0 h]]]
+           [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
+[let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
+[let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 16]]]]]
+[let ear-holes [grid-holes ear-rows dot-hole]]
+; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
+[let zx 76.0]                                   ; exhaust grille centre, z
+[let xa 45.0]                                   ; half width (y)
+[let xr 11.0]                                   ; half height (the slot's end radius)
+[let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 21 3]]]
+[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 16]]]]]
+[let exhaust-holes [grid-holes x-rows xdot-hole]]
+; The tub only gets plain rounded windows; the perforated grilles are separate thin inserts that fill them flush
+; (moulds without side actions, and the tub evaluates in seconds -- the holes live in their own parts).
+[let ear-win-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg gw gh [- gw 0.01]]]]]
+[let ear-windows [loft #[[ear-win-sec [- -6.0 hw]] [ear-win-sec [+ hw 6.0]]]]]
+[let x-win-sec [fn [x] [sketch x 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 zx xa xr [- xr 0.01]]]]]
+[let exhaust-window [loft #[[x-win-sec [- x-back 6.0]] [x-win-sec [+ x-back 24.0]]]]]
+[let vents [union ear-windows exhaust-window]]
+[let zmic [- zg [* 8.0 dot-h]]]                  ; the mic port's dot (row -8, centre column)
+[let zm [+ zg 8.5]]                             ; speaker centre (left)
+; the dock, head side. Pads x +-3 (2 columns) by y -6..6 (4 rows): VBUS x2, GND x2, T1 P/N, USB D+/D-.
+[let pad-xy #[#[-3.0 -6.0] #[-3.0 -2.0] #[-3.0 2.0] #[-3.0 6.0] #[3.0 -6.0] #[3.0 -2.0] #[3.0 2.0] #[3.0 6.0]]]
+[let cone-y 18.0]
+[let latch-x 20.0]                              ; the keeper slot, ahead of the pads (clear of the power board)
+[let dock-cuts
+  [pipe [bx -6.2 -10.2 -1.0 6.2 10.2 1.3]                                        ; pad-board pocket, flush with the bottom
+        [union [bx -3.0 -5.0 1.0 3.0 5.0 [+ tf 1.0]]]                            ; board-to-board slot up to the dock board
+        [union [bx [- latch-x 2.0] -6.0 -1.0 [+ latch-x 3.0] 6.0 [+ tf 1.0]]]    ; latch slot
+        [union [translate 0.0 cone-y -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 cone-y 5.9 [cylinder 1.6 4.0]]]
+        [union [translate 0.0 [- 0.0 cone-y] -0.01 [cone 4.1 1.6 6.0]]] [union [translate 0.0 [- 0.0 cone-y] 5.9 [cylinder 1.6 4.0]]]
+        [union [translate 0.0 30.0 -0.01 [cylinder 4.05 1.01]]] [union [translate 0.0 -30.0 -0.01 [cylinder 4.05 1.01]]]]]   ; strike pockets
+; ------------------------------------------------------------------------ face ----
+[let xfz [- x-face [* rake zf]]]               ; the face plane at the face centre
+[let tilt [fn [s] [translate xfz 0.0 zf [rotate 0.0 -8.0 0.0 [translate [- 0.0 xfz] 0.0 [- 0.0 zf] s]]]]]
+[let sw [- [- hw rc] 3.0]]
+[let sh [* 0.33 hh]]
+[let glass-sec [fn [x d] [sketch x 0.0 zf 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [- sw d] [- sh d] [* 0.55 [min #[sw sh]]]]]]]
+; dead-front: the back of the glass is printed black except an IR/visible window over each camera and the active
+; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
+[let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
+; render workaround (vcad-render smooths shading across a flat loft cap): two crossed flat plates carry the face
+[let gr [* 0.55 [min #[sw sh]]]]
+[let cortex-glass-face [tilt [union [bx [+ xfz 0.75] [- 0.0 [- sw 0.4]] [- zf [- sh gr]] [+ xfz 0.85] [- sw 0.4] [+ zf [- sh gr]]]
+                                   [bx [+ xfz 0.75] [- 0.0 [- sw gr]] [- zf [- sh 0.4]] [+ xfz 0.85] [- sw gr] [+ zf [- sh 0.4]]]]]]
+[let face-opening [tilt [loft #[[glass-sec [- xfz 8.0] 2.0] [glass-sec [- xfz 3.0] 2.0] [glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 3.0] 0.0]]]]]
+; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
+; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
+; can clip in if wanted)
+[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
+[let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
+[let wall-band [difference shell-inner shell-solid]]
+[let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
+[let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
+[let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
+[let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
+[let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
+[let cortex-padboard [bx -6.0 -10.0 0.3 6.0 10.0 1.3]]
+[let cortex-pads [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] 0.0 [cylinder 1.25 0.3]]]] pad-xy]]
+[let cortex-strikes [union [translate 0.0 30.0 0.0 [cylinder 4.0 1.0]] [translate 0.0 -30.0 0.0 [cylinder 4.0 1.0]]]]   ; steel discs
+[let cortex-keeper [difference [bx [- latch-x 2.0] -6.0 tf [+ latch-x 3.0] 6.0 [+ tf 2.0]]
+                               [bx [- latch-x 6.0] -9.0 tf [+ latch-x 7.0] 9.0 [+ tf 1.0]]]]           ; hardened steel wear plate the hook bears on
+
+[let disc-x [fn [x y z r t] [translate x y z [rotate 0.0 90.0 0.0 [cylinder r t]]]]]       ; axis +x, from x
+[let disc-y [fn [x y z r t] [translate x y z [rotate -90.0 0.0 0.0 [cylinder r t]]]]]      ; axis +y, from y
+
+; ears: none of their own. The side vents are the grilles: speaker behind the left/right slots, the mic taped
+; inside beside them (fewer parts, one tool for the slots)
+[let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
+; ---------------------------------------------------------------------- insides ----
+[let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
+[let cortex-display [tilt [bx [- xfz 14.2] -38.3 [- zd 31.8] [- xfz 3.2] 38.3 [+ zd 31.8]]]]
+[let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
+                              [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
+; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
+; Heaviest part lowest and over the neck: the pack lies flat right above the dock, the Jetson rides over it on two
+; side brackets, fan up into the open crown. The heatsink's fins exhaust aft: a short duct carries it to the dot
+; grid on the back sweep. Intake: the ear grids (the speakers fill only their tops) and the crown.
+[let cortex-dockboard [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 6.0]]]                   ; dock interface board (PD sink ctrl, T1 PHY), B2B to the pad board
+[let cortex-power [bx -45.0 -20.0 [+ tf 1.0] -15.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
+[let zb0 14.0]
+[let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
+[let zj0 38.0]
+[let jxa -66.5]                                 ; Waveshare IO base, 90.5 deep (x) x 103 wide (y), port edge aft at the cutout
+[let jxb [+ jxa 90.5]]
+[let cortex-compute [union [bx jxa -51.5 zj0 jxb 51.5 [+ zj0 16.0]]                  ; carrier + its I/O edge (ASSUMED 16 tall)
+                          [bx [+ jxa 10.0] -35.0 [+ zj0 16.0] [+ jxa 80.0] 35.0 [+ zj0 24.0]]]]     ; Orin module on the SO-DIMM
+[let cortex-heatsink [bx [+ jxa 12.0] -34.0 [+ zj0 24.0] [+ jxa 78.0] 34.0 [+ zj0 36.0]]]     ; module fan heatsink (ASSUMED 66 x 68 x 12)
+[let cortex-sled [union [bx [+ jxa 8.0] -54.0 tf jxb -52.0 zj0] [bx [+ jxa 8.0] 52.0 tf jxb 54.0 zj0]]]  ; 2 mm Al side brackets
+[let zh0 [+ zj0 28.0]]
+[let zh1 [+ zj0 40.0]]
+; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
+[let spk [fn [y0 sy] [disc-y ear-x [if [> sy 0.0] [- y0 5.4] y0] zm 14.0 5.4]]]
+[let cortex-speakers [union [spk [- hw wall] 1.0] [spk [- 0.0 [- hw wall]] -1.0]]]
+; mic boards taped to the wall, port over the mic dot
+[let cortex-mics [union [bx [- ear-x 8.35] [- hw 4.3] [- zmic 6.35] [+ ear-x 8.35] [- hw wall] [+ zmic 6.35]]
+                        [bx [- ear-x 8.35] [- wall hw] [- zmic 6.35] [+ ear-x 8.35] [- 4.3 hw] [+ zmic 6.35]]]]
+[let cortex-amps [union [bx -5.0 [- hw 5.5] 22.0 14.4 [- hw wall] 39.8]         ; amps on the walls, ahead of the speakers
+                        [bx -5.0 [- wall hw] 22.0 14.4 [- 5.5 hw] 39.8]]]
+
+; ----------------------------------------------------------------------- wiring ----
+; Routed orthogonally (harness practice: runs along x, y, z, clipped at the turns). Round cables are square-section
+; runs of side 2r; FFC/FPC ribbons are 1 mm thick. Each clears every part but its two ends.
+[let run-x [fn [x0 x1 y z r] [bx [min #[x0 x1]] [- y r] [- z r] [max #[x0 x1]] [+ y r] [+ z r]]]]
+[let run-y [fn [y0 y1 x z r] [bx [- x r] [min #[y0 y1]] [- z r] [+ x r] [max #[y0 y1]] [+ z r]]]]
+[let run-z [fn [z0 z1 x y r] [bx [- x r] [- y r] [min #[z0 z1]] [+ x r] [+ y r] [max #[z0 z1]]]]]
+[let csi [fn [sy] [pipe [bx 18.0 [* sy 44.0] 70.0 19.0 [* sy 53.0] [- ze 6.0]]                   ; down behind the eye ...
+                        [union [bx [- jxb 6.0] [min #[[* sy 44.0] [* sy 53.0]]] 70.0 19.0 [max #[[* sy 44.0] [* sy 53.0]]] 71.0]]]]]  ; ... into the A603 side
+[let mic-run [fn [sy] [run-y [* sy 77.5] [* sy 43.5] -20.0 zmic 1.5]]]                          ; mic -> A603
+[let audio [fn [sy] [pipe [run-z zm 39.8 -4.0 [* sy 77.0] 1.5]                               ; speaker -> amp
+                          [union [run-y [* sy 76.0] [* sy 43.5] -4.0 40.5 1.5]]                  ; amp -> A603 (over the bracket)
+                          [union [mic-run sy]]]]]
+[let cortex-cables
+  [pipe [csi 1.0] [union [csi -1.0]] [union [audio 1.0]] [union [audio -1.0]]
+    [union [bx jxb -7.0 55.0 19.0 7.0 56.0]] [union [bx 18.0 -7.0 55.0 19.0 7.0 72.0]] [union [bx 18.0 -7.0 71.0 21.5 7.0 72.0]]  ; HDMI FPC
+    [union [run-x -7.0 -15.0 0.0 8.0 1.75]]                                                      ; dock VBUS -> PD sink
+    [union [run-z 10.0 zj0 -45.0 0.0 1.75]]                 ; charger -> A603 DC
+    [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
+    [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock T1 Ethernet + USB 2 -> A603
+
+; ------------------------------------------------------------------ the dock: body side ----
+; What a BODY carries, its neck's dock face at the origin (z up into the head). A desk dock is the same parts in a
+; weighted puck. Lower the head: the cones seat it (+-0.1 mm), the magnets pull it flat, the pogo pins compress onto
+; the pads, and the pawl's ramp rides through the keeper slot and snaps over the keeper. The cones take shear and
+; torsion, the pawl takes pull-off (rated, not the magnets). Push the button on the back of the neck to retract it.
+[let dock-face [difference [pipe [bx -6.2 -10.2 -1.0 6.2 10.2 1.0] [union [bx [- latch-x 2.5] -6.5 -1.0 [+ latch-x 3.5] 6.5 1.0]]]
+                           [bx -32.0 -46.0 -3.0 32.0 46.0 0.0]]]
+[let dock-pogo [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] -6.0 [cylinder 0.75 6.0]]]] pad-xy]]
+[let dock-pogo-block [bx -6.0 -10.0 -9.0 6.0 10.0 -3.0]]
+[let dock-cones [union [translate 0.0 cone-y 0.0 [cone 4.0 1.5 6.0]] [translate 0.0 [- 0.0 cone-y] 0.0 [cone 4.0 1.5 6.0]]]]
+[let dock-magnets [union [translate 0.0 30.0 -3.0 [cylinder 4.0 3.0]] [translate 0.0 -30.0 -3.0 [cylinder 4.0 3.0]]]]   ; N52 8 x 3
+[let dock-pawl [union [bx [+ latch-x 0.5] -5.0 -8.0 [+ latch-x 2.8] 5.0 [+ tf 2.5]]                ; spring-loaded blade (rests at the slot's fore edge)
+                      [bx [+ latch-x 2.8] -5.0 [+ tf 1.1] [+ latch-x 5.0] 5.0 [+ tf 2.5]]]]          ; hook lip over the keeper (deflects 2.3 aft to pass)
+[let dock-release [union [bx -36.0 -2.0 -7.0 [+ latch-x 0.5] 2.0 -5.0]                             ; push rod to the pawl
+                         [translate -36.0 0.0 -6.0 [rotate 0.0 -90.0 0.0 [cylinder 4.0 3.0]]]]]     ; button, back of the neck
+
+[assembly
+ #[[part "cortex-tub" cortex-tub "cx_shell"]
+   [part "cortex-floor" cortex-floor "cx_floor"]
+   [part "cortex-exhaust-grille" cortex-exhaust-grille "cx_shell"]
+   [part "cortex-ear-grilles" cortex-ear-grilles "cx_accent"]
+   [part "cortex-keeper" cortex-keeper "steel"]
+   [part "cortex-strikes" cortex-strikes "steel"]
+   [part "cortex-pads" cortex-pads "gold"]
+   [part "cortex-padboard" cortex-padboard "pcb_green"]
+   [part "cortex-glass" [union cortex-glass cortex-glass-face] "visor_glass"]
+   [part "cortex-display" cortex-display "heatsink"]
+   [part "cortex-cams" cortex-cams "pcb_green"]
+   [part "cortex-dockboard" cortex-dockboard "pcb_green"]
+   [part "cortex-power" cortex-power "pcb_green"]
+   [part "cortex-battery" cortex-battery "cell_pack"]
+   [part "cortex-sled" cortex-sled "aluminium"]
+   [part "cortex-compute" cortex-compute "pcb_green"]
+   [part "cortex-heatsink" cortex-heatsink "heatsink"]
+   [part "cortex-speakers" cortex-speakers "motor_dark"]
+   [part "cortex-mics" cortex-mics "pcb_green"]
+   [part "cortex-amps" cortex-amps "pcb_green"]
+   [part "cortex-cables" cortex-cables "cable_orange"]]
+ #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
+   [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
+   [instance "cortex-exhaust-grille_i" "cortex-exhaust-grille" 0.0 0.0 0.0]
+   [instance "cortex-ear-grilles_i" "cortex-ear-grilles" 0.0 0.0 0.0]
+   [instance "cortex-keeper_i" "cortex-keeper" 0.0 0.0 0.0]
+   [instance "cortex-strikes_i" "cortex-strikes" 0.0 0.0 0.0]
+   [instance "cortex-pads_i" "cortex-pads" 0.0 0.0 0.0]
+   [instance "cortex-padboard_i" "cortex-padboard" 0.0 0.0 0.0]
+   [instance "cortex-glass_i" "cortex-glass" 0.0 0.0 0.0]
+   [instance "cortex-display_i" "cortex-display" 0.0 0.0 0.0]
+   [instance "cortex-cams_i" "cortex-cams" 0.0 0.0 0.0]
+   [instance "cortex-dockboard_i" "cortex-dockboard" 0.0 0.0 0.0]
+   [instance "cortex-power_i" "cortex-power" 0.0 0.0 0.0]
+   [instance "cortex-battery_i" "cortex-battery" 0.0 0.0 0.0]
+   [instance "cortex-sled_i" "cortex-sled" 0.0 0.0 0.0]
+   [instance "cortex-compute_i" "cortex-compute" 0.0 0.0 0.0]
+   [instance "cortex-heatsink_i" "cortex-heatsink" 0.0 0.0 0.0]
+   [instance "cortex-speakers_i" "cortex-speakers" 0.0 0.0 0.0]
+   [instance "cortex-mics_i" "cortex-mics" 0.0 0.0 0.0]
+   [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
+   [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
+ #[[fixed-joint "fix_cortex-exhaust-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-exhaust-grille_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-ear-grilles" "cortex-floor_i" 0.0 0.0 0.0 "cortex-ear-grilles_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-strikes" "cortex-floor_i" 0.0 0.0 0.0 "cortex-strikes_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-pads" "cortex-floor_i" 0.0 0.0 0.0 "cortex-pads_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-padboard" "cortex-floor_i" 0.0 0.0 0.0 "cortex-padboard_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-tub" "cortex-floor_i" 0.0 0.0 0.0 "cortex-tub_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-glass" "cortex-floor_i" 0.0 0.0 0.0 "cortex-glass_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-display" "cortex-floor_i" 0.0 0.0 0.0 "cortex-display_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-cams" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cams_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-dockboard" "cortex-floor_i" 0.0 0.0 0.0 "cortex-dockboard_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-power" "cortex-floor_i" 0.0 0.0 0.0 "cortex-power_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-battery" "cortex-floor_i" 0.0 0.0 0.0 "cortex-battery_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-sled" "cortex-floor_i" 0.0 0.0 0.0 "cortex-sled_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-compute" "cortex-floor_i" 0.0 0.0 0.0 "cortex-compute_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-heatsink" "cortex-floor_i" 0.0 0.0 0.0 "cortex-heatsink_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-speakers" "cortex-floor_i" 0.0 0.0 0.0 "cortex-speakers_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-mics" "cortex-floor_i" 0.0 0.0 0.0 "cortex-mics_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-amps" "cortex-floor_i" 0.0 0.0 0.0 "cortex-amps_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-cables" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cables_i" 0.0 0.0 0.0]]
+ "cortex-floor_i"]
