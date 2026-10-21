@@ -4,14 +4,14 @@ Three variants, one design language (bent-sheet primary structure, exposed
 skeleton limbs, feet-only contact geometry):
 
   rose mini  1150 mm   Booster K1 size, MyActuator X-series      the crashable one
-  rose pro   1450 mm   MyActuator X-series, one size up          the workhorse
-  rose max   1750 mm   our own rana + torc, Jetson Thor inside   the jumper
+  rose full   1450 mm   MyActuator X-series, one size up          the workhorse
+  rose mega   1750 mm   our own rana + torc, Jetson Thor inside   the jumper
 
-Proportions are scaled from rose pro's VERIFIED 1130 mm layout (pro/rose_pro_layout.py:
+Proportions are scaled from rose full's VERIFIED 1130 mm layout (full/rose_full_layout.py:
 all clearances >= 5 mm at high sampling resolution, stands in phyz at +0.0% ground-force
 error). Scaling a verified layout is not the same as verifying the scaled one - every
 variant still has to go back through the clearance check, because actuator envelopes do
-NOT scale with the robot. That is the whole reason mini is not just pro shrunk: at 1150
+NOT scale with the robot. That is the whole reason mini is not just full shrunk: at 1150
 the X6-60 bodies are relatively larger and the hip packing gets tighter, not looser.
 
 The jump model is first-order and planar, in the same spirit as the ollie feasibility
@@ -27,7 +27,7 @@ BUS_V = 48.0
 # ---------------------------------------------------------------- actuators
 #
 # X-series: measured from vendor STEP + the X-series V4 manual (see
-# pro/rose_pro_layout.py, which verifies these envelopes against real drawings).
+# full/rose_full_layout.py, which verifies these envelopes against real drawings).
 # rana: the family ladder in ~/Developer/rana/README.md, verified through
 # calc_motor + winding_layout. Kt is MOTOR Kt; output torque is Kt * I * N * eta.
 #
@@ -85,7 +85,7 @@ def peak_power(name, r_phase=0.15):
 #
 # Joint groups: leg = hip pitch/roll/yaw + knee (4/leg), ankle = pitch/roll (2/leg),
 # arm = shoulder pitch/roll, elbow, wrist (4/arm), head = yaw/pitch.
-REF_H = 1.130          # rose pro's verified height, metres
+REF_H = 1.130          # rose full's verified height, metres
 REF_STRUCT = 3.77      # its measured bent-sheet structure mass, kg (all 40 plates)
 REF_THIGH = 0.250
 REF_SHANK = 0.250
@@ -95,30 +95,30 @@ REF_STANCE = 0.150
 # rounded to the nearest 50 mm.
 #
 #   mini 1200   Booster K1 is 1150 - same class, squarer number
-#   pro  1750   a standard adult human
-#   max  2000   a lumberjack: taller AND broader, so it carries a bulk factor too
+#   full  1750   a standard adult human
+#   mega  2000   a lumberjack: taller AND broader, so it carries a bulk factor too
 #
 # `bulk` widens stance and shoulders beyond the height scale and thickens the
 # structure with it. A lumberjack is not a tall thin person.
 VARIANT = {
     'mini': dict(h=1.200, bulk=1.00, leg='X6-60',   ankle='X4-36',   arm='X4-36',
                  head='X4-10', batt_kwh=0.30, compute=0.4, compute_name='Jetson Orin NX'),
-    'pro':  dict(h=1.750, bulk=1.00, leg='X12',     ankle='X8',      arm='X4-36',
+    'full':  dict(h=1.750, bulk=1.00, leg='X12',     ankle='X8',      arm='X4-36',
                  head='X4-10', batt_kwh=0.60, compute=0.4, compute_name='Jetson Orin NX'),
-    'max':  dict(h=2.000, bulk=1.15, leg='rana-190', ankle='rana-140', arm='rana-100',
+    'mega':  dict(h=2.000, bulk=1.15, leg='rana-190', ankle='rana-140', arm='rana-100',
                  head='rana-100', batt_kwh=1.20, compute=1.4, compute_name='Jetson AGX Thor'),
 }
 
 # 48 V pouch packs land around 180 Wh/kg at pack level once cells, BMS, case and
-# busbars are counted. Superman's 0.864 kWh is the reference point for max.
+# busbars are counted. Superman's 0.864 kWh is the reference point for mega.
 PACK_WH_PER_KG = 180.0
 
 
 def geometry(v):
-    """Scale rose pro's verified proportions to this variant's height.
+    """Scale rose full's verified proportions to this variant's height.
 
     Segment lengths follow height. Lateral spacing follows height AND bulk, which
-    is what makes max broad rather than merely tall.
+    is what makes mega broad rather than merely tall.
     """
     s, b = v['h'] / REF_H, v.get('bulk', 1.0)
     return dict(scale=s, bulk=b, thigh=REF_THIGH * s, shank=REF_SHANK * s,
@@ -170,7 +170,7 @@ def jump(v, theta_k=math.radians(90.0), tau_derate=0.70):
     """Standing vertical jump ceiling, energy-limited and power-limited.
 
     Planar, symmetric, knee-dominated. Thigh and shank are equal (they are, by
-    design - rose pro runs 1:1 after the proportions pass), so with interior knee
+    design - rose full runs 1:1 after the proportions pass), so with interior knee
     angle theta the hip-to-foot distance is z = 2L*cos(theta/2) and the vertical
     extension per knee radian is |dz/dtheta| = L*sin(theta/2).
 
@@ -218,10 +218,10 @@ def main():
     print('the rose line')
     print('=' * 74)
 
-    for name in ('mini', 'pro', 'max'):
+    for name in ('mini', 'full', 'mega'):
         v = VARIANT[name]
         g, m = geometry(v), mass(v)
-        print('\n--- rose %s --- %.0f mm, scale %.3f from pro\'s verified 1130'
+        print('\n--- rose %s --- %.0f mm, scale %.3f from full\'s verified 1130'
               % (name, v['h'] * 1000, g['scale']))
         print('  thigh / shank   %4.0f / %.0f mm     stance %3.0f mm'
               % (g['thigh'] * 1000, g['shank'] * 1000, g['stance'] * 1000))
@@ -256,9 +256,9 @@ def main():
                   % ACT[v['leg']]['tau'])
 
     print('\n' + '=' * 74)
-    print('jump feasibility - rose max, against Unitree Superman (2.0 m claimed)')
+    print('jump feasibility - rose mega, against Unitree Superman (2.0 m claimed)')
     print('=' * 74)
-    j = jump(VARIANT['max'])
+    j = jump(VARIANT['mega'])
     print('  mass %.1f kg, segment %.0f mm, COM rise over the push %.0f mm'
           % (j['m'], j['L'] * 1000, j['rise'] * 1000))
     print('  knee %.0f N.m peak, %.1f rad/s no-load output' % (j['tau'], j['w_out']))
@@ -299,7 +299,7 @@ def main():
           % (BUS_V, ACT['rana-190']['amp']))
     print('  gearing. Going up the ladder buys torque and costs speed, in exact trade.')
     print()
-    print('  Consequence for max: jump height is an ELECTRICAL spec, not a mechanical')
+    print('  Consequence for mega: jump height is an ELECTRICAL spec, not a mechanical')
     print('  one. To reach 1 m the lever is bus voltage or current, or storing energy')
     print('  in series elastics so the motors can work slowly and release fast. A')
     print('  bigger rana does nothing.')
@@ -309,11 +309,11 @@ def main():
 
 
 def clearance(scale, label, lat=1.0):
-    """Re-run pro's verified packing check on a scaled skeleton. ~30 s."""
+    """Re-run full's verified packing check on a scaled skeleton. ~30 s."""
     import itertools
     import sys
-    sys.path.insert(0, 'pro')
-    import rose_pro_layout as L
+    sys.path.insert(0, 'full')
+    import rose_full_layout as L
 
     segs = [L.seg(j) for j in L.joints(scale, lat)]
     worst = []
@@ -340,7 +340,7 @@ if __name__ == '__main__':
         print('\n' + '=' * 74)
         print('packing re-verification (actuator envelopes do NOT scale)')
         print('=' * 74)
-        for n in ('mini', 'pro', 'max'):
+        for n in ('mini', 'full', 'mega'):
             v = VARIANT[n]
             unmodelled = sorted({v[k] for k in ('leg', 'ankle', 'arm', 'head')
                                  if ACT[v[k]].get('est') or v[k].startswith('rana-1')

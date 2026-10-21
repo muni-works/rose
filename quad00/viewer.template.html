@@ -1,0 +1,423 @@
+<title>quad00 Mini Family</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one bench — a full-height turntable stage, a thin spec rail on top, a parts key floating bottom-left */
+:root {
+  --bg: #e7e9ec;        /* bench grey, cool */
+  --stage: #f2f3f5;
+  --fg: #1c2127;
+  --muted: #5f6873;
+  --line: #c9ced5;
+  --accent: #b8722e;    /* bronze, the gears */
+  --chip: #ffffffcc;
+  --display: "Archivo Narrow", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15181c; --stage: #1b1f24; --fg: #e6e8eb; --muted: #97a0ab; --line: #2e343c; --accent: #d9944f; --chip: #1f242bcc; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15181c; --stage: #1b1f24; --fg: #e6e8eb; --muted: #97a0ab; --line: #2e343c; --accent: #d9944f; --chip: #1f242bcc; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 13px; display: flex; flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px; box-sizing: border-box; gap: 10px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+.spec { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.spec b { color: var(--fg); font-weight: 500; }
+.stage { position: relative; flex: 1; min-height: 320px; border: 1px solid var(--line); border-radius: 10px; background: var(--stage); overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+canvas:active { cursor: grabbing; }
+.key { position: absolute; left: 12px; bottom: 12px; background: var(--chip); backdrop-filter: blur(6px); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px; display: grid; gap: 3px; max-width: calc(100% - 24px); }
+.key button { all: unset; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 4px; border-radius: 4px; color: var(--fg); }
+.key button:hover, .key button:focus-visible { background: color-mix(in srgb, var(--accent) 16%, transparent); outline: none; }
+.sw { width: 11px; height: 11px; border-radius: 3px; border: 1px solid #0003; flex: none; }
+.tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.tools button { font: inherit; color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.tools button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: 11px; }
+.status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+.status[hidden] { display: none; }
+@media (max-width: 520px) { .hint { display: none; } h1 { font-size: 22px; } }
+</style>
+
+<header>
+  <h1>quad00 mini family</h1>
+  <div class="spec">
+    <span><b>RobStride</b>, one per joint, <b>zero gears</b></span>
+    <span>tiny quad: <b>12</b> RS00</span>
+    <span>tiny humanoid: <b>22</b> RS00, ~<b>74 cm</b>, 10 kg</span>
+    <span>mini humanoid: <b>22</b> DoF, the K1 on our stack, ~<b>100 cm</b>, 14 kg</span>
+    <span>stock <b>3.2 mm</b></span>
+  </div>
+</header>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="3D model of the quad00 quadruped and its leg; drag to rotate, scroll or pinch to zoom"></canvas>
+  <div class="status" id="status">loading model…</div>
+  <div class="tools">
+    <button id="v-all" aria-pressed="true">All</button>
+    <button id="v-quad" aria-pressed="false">Tiny quad</button>
+    <button id="v-humanoid" aria-pressed="false">Tiny humanoid</button>
+    <button id="v-mini" aria-pressed="false">Mini humanoid</button>
+    <button id="v-k1" aria-pressed="false">Booster K1</button>
+    <button id="v-k1stack" aria-pressed="false">K1 on our stack</button>
+    <button id="covers" aria-pressed="true">Covers</button>
+    <button id="explode" aria-pressed="false">Explode</button>
+    <button id="spin" aria-pressed="true">Turntable</button>
+    <button id="reset">Reset view</button>
+  </div>
+  <div class="key" id="key" aria-label="parts"></div>
+  <div class="hint"><span id="note"></span> · grid 100 mm · pole 1 m · stair 175 mm · can 330 ml</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+const MODELS = { quad: '__QUAD_GLB_BASE64__', humanoid: '__HUMANOID_GLB_BASE64__', mini: '__MINI_GLB_BASE64__', k1: '__K1_GLB_BASE64__', k1stack: '__K1STACK_GLB_BASE64__' };
+
+const canvas = document.getElementById('c');
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.35;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xf2f4f7, 0x3a3f46, 1.1));
+const camera = new THREE.PerspectiveCamera(32, 1, 5, 5000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.9;
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(300, 600, 250);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -600, right: 600, top: 600, bottom: -600, near: 10, far: 3000 });
+scene.add(sun);
+
+// --- procedural textures: brushed grain for aluminium, fine speckle for TPU
+function canvasTex(draw, size = 512) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  return t;
+}
+const brushed = canvasTex((g, s) => {
+  g.fillStyle = '#808080'; g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 2600; i++) {
+    const y = Math.random() * s, v = 100 + Math.random() * 60;
+    g.strokeStyle = `rgba(${v},${v},${v},${0.25 + Math.random() * 0.35})`;
+    g.lineWidth = 0.5 + Math.random();
+    g.beginPath(); g.moveTo(0, y); g.lineTo(s, y + (Math.random() - 0.5) * 2); g.stroke();
+  }
+});
+brushed.repeat.set(0.006, 0.03);
+const speckle = canvasTex((g, s) => {
+  g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 9000; i++) { const v = 90 + Math.random() * 80; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
+});
+speckle.repeat.set(0.05, 0.05);
+
+const NOTES = {
+  k1stack: 'K1 teardown: the K1 skin as a ghost, our RobStrides coaxial on its joint frames -- RS06 hip pitch/roll/knee, RS02 hip yaw, 2 x RS00 ankle drive in the shank, RS00 arms + head',
+  k1: 'Booster K1 for reference: 95 cm, 19.5 kg, 22 DoF -- its own URDF + meshes (BSD-3, BoosterRobotics/booster_assets), arms lowered',
+  all: 'tiny quad, tiny humanoid, mini humanoid -- one limb module, one style, RobStride only, zero gears',
+  quad: 'tiny quad: 12 RS00; 4 limb modules, each carrying its ab/ad; body = two walls + decks',
+  humanoid: 'tiny humanoid: 19 RS00, ~65 cm with its fixed head, ~10.7 kg est., walking knee 99%; rectangular torso, head shell; no grippers (no torque left)',
+  mini: 'mini humanoid: our coaxial housings + bone links on the K1 joint layout -- a RobStride in every drum (RS06 hips/knees, RS02 hip yaw, RS00 arms/head, 2 x RS00 ankle drive in the calf)',
+};
+const MATS = {
+  aluminium: { label: 'aluminium: bent U yoke, plates', swatch: '#c3c8ce',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xd3d7dc, metalness: 0.8, roughness: 0.38, roughnessMap: brushed, envMapIntensity: 1.4 }) },
+  gear: { label: 'gear train, z17 / z17 / z17 / z34', swatch: '#b8722e',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xd09a5e, metalness: 0.9, roughness: 0.3, envMapIntensity: 1.4 }) },
+  motor: { label: 'RS00 actuators', swatch: '#2b2f36',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
+  steel: { label: 'gear shafts', swatch: '#9aa1a8',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xb4bac1, metalness: 0.9, roughness: 0.22, envMapIntensity: 1.4 }) },
+  internals: { label: 'battery, compute, power', swatch: '#3d6b4f',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x3d6b4f, metalness: 0.1, roughness: 0.55 }) },
+  body: { label: 'body shell (placeholder)', swatch: '#8fa3b5',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x8fa3b5, metalness: 0.1, roughness: 0.6, clearcoat: 0.3 }) },
+  puck: { label: 'joint caps (municipal orange)', swatch: '#ff6a13',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xff5a0a, metalness: 0.05, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
+  trim: { label: 'collars + trim (gunmetal)', swatch: '#55595f',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x4d5157, metalness: 0.85, roughness: 0.35, clearcoat: 0.2 }) },
+  visor: { label: 'visor (gloss black glass)', swatch: '#050608',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x040506, metalness: 0.2, roughness: 0.04, clearcoat: 1.0, clearcoatRoughness: 0.02, envMapIntensity: 1.6 }) },
+  sole: { label: 'rubber soles', swatch: '#1c1d20',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x2c2d30, metalness: 0, roughness: 0.92 }) },
+  accent: { label: 'accent (municipal orange)', swatch: '#ff6a13',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xff5a0a, metalness: 0.05, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }) },
+  cover: { label: 'shells (satin black)', swatch: '#1c1d20',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x17181b, metalness: 0.15, roughness: 0.48, clearcoat: 0.25, clearcoatRoughness: 0.5, sheen: 0.3, sheenColor: 0x3a3d44 }) },
+  ghost: { label: 'K1 skin (ghost)', swatch: '#cfd6e0',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xdfe6ef, metalness: 0, roughness: 0.3, transparent: true, opacity: 0.22, depthWrite: false }) },
+  k1: { label: 'Booster K1 (reference)', swatch: '#e9ebee',
+    m: new THREE.MeshPhysicalMaterial({ color: 0xeceef1, metalness: 0.05, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.25 }) },
+  tpu: { label: 'TPU ball paw', swatch: '#2f5d6e',
+    m: new THREE.MeshPhysicalMaterial({ color: 0x2e5b6b, metalness: 0, roughness: 0.85, roughnessMap: speckle, sheen: 0.4, sheenColor: 0x6fb3c7 }) },
+};
+const SKIN = new Set(['cover', 'puck', 'visor', 'sole', 'accent', 'trim']);
+const GROUP = name =>
+  /^k1ghost-/.test(name) ? 'ghost' : /^trim-/.test(name) ? 'trim' : /^cover-/.test(name) ? 'cover' : /^accent-/.test(name) ? 'accent' : /^puck-/.test(name) ? 'puck' : /^visor-/.test(name) ? 'visor' : /^sole/.test(name) ? 'sole' : /^k1-/.test(name) ? 'k1' : /^(pinion|idler)/.test(name) ? 'gear' : /^rs0\d/.test(name) ? 'motor' :
+  /^shafts/.test(name) ? 'steel' : /^paw/.test(name) ? 'tpu' : /^head/.test(name) ? 'motor' : /^chassis-body/.test(name) ? 'body' : /^int-/.test(name) ? 'internals' : 'aluminium';
+
+// leg frame (mm): X forward, Y outboard, Z up. Explode offsets per part.
+const EXPLODE = {
+  'rs00-hip': [0, 45, 0], 'thigh-outer': [0, 30, 0],
+  'rs00-knee': [0, -45, 0], 'thigh-inner': [0, -30, 0], 'pinion': [0, -15, 0],
+  'yoke': [70, 0, 0], 'rs00-abad': [100, 0, 0], 'rs06-abad': [100, 0, 0], 'rs02-abad': [100, 0, 0], 'bulkhead': [130, 0, 0], 'paw': [0, 0, -45],
+};
+
+// planar UVs on the part's two largest extents, so the brushed grain runs along the plate
+function planarUV(geo) {
+  geo.computeBoundingBox();
+  const s = new THREE.Vector3(); geo.boundingBox.getSize(s);
+  const ax = [0, 1, 2].sort((a, b) => [s.x, s.y, s.z][b] - [s.x, s.y, s.z][a]);
+  const p = geo.attributes.position, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { uv[2 * i] = p.getComponent(i, ax[0]); uv[2 * i + 1] = p.getComponent(i, ax[1]); }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+const root = new THREE.Group();
+root.rotation.x = -Math.PI / 2;                   // Z-up leg/body frame -> Y-up three
+scene.add(root);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.ShadowMaterial({ opacity: 0.18 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+scene.add(ground);
+let parts = [];
+const loaded = {};
+
+function load(which, done) {
+  if (loaded[which]) return done(loaded[which]);
+  document.getElementById('status').hidden = false;
+  const bytes = Uint8Array.from(atob(MODELS[which]), c => c.charCodeAt(0));
+  new GLTFLoader().parse(bytes.buffer, '', gltf => {
+    const list = [];
+    gltf.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const [raw, tag = ''] = (o.name || o.parent?.name || '').split('.');
+      const name = raw.replace(/_\d+$/, '');
+      if (SKIN.has(GROUP(name)) && !['puck', 'trim'].includes(GROUP(name))) {   // shells: smooth shaded (caps keep crisp edges)
+        o.geometry = BufferGeometryUtils.toCreasedNormals(o.geometry.toNonIndexed(), 0.6);   // smooth faces, crisp cut edges
+      } else {
+        o.geometry = o.geometry.toNonIndexed();          // flat facets: plates are prisms, no smoothing across edges
+        o.geometry.computeVertexNormals();
+      }
+      planarUV(o.geometry);
+      const g = GROUP(name);
+      o.material = MATS[g].m;
+      o.castShadow = o.receiveShadow = true;
+      const off = new THREE.Vector3(...(EXPLODE[name] || [0, 0, 0]));
+      if (tag.endsWith('r')) off.y *= -1;               // right-side legs are mirrored
+      o.userData = { name, group: g, home: o.position.clone(), off };
+      list.push(o);
+    });
+    gltf.scene.userData.parts = list;
+    root.add(gltf.scene);
+    loaded[which] = gltf.scene;
+    gltf.scene.userData.skinned = list.some(o => o.userData.group === 'cover');
+    gltf.scene.traverse(o => { if (o.isMesh && SKIN.has(o.userData.group)) o.visible = coversOn; });
+    applyCovers();
+    document.getElementById('status').hidden = true;
+    done(gltf.scene);
+  }, err => { document.getElementById('status').textContent = 'Could not load the model: ' + err.message; });
+}
+
+const ORDER = ['quad', 'humanoid', 'mini', 'k1'];
+const NAMES = { quad: 'tiny quad', humanoid: 'tiny humanoid', mini: 'mini humanoid', k1: 'Booster K1', k1stack: 'K1 + our motors' };
+function settle(g) {                     // stand the model on the floor (world y = 0)
+  g.position.z = 0; g.position.y = 0; root.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(g);
+  g.position.z = -b.min.y;                 // feet on y = 0
+  g.position.y = (b.min.z + b.max.z) / 2;  // centred on the z = 0 line (root maps model y -> world -z)
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(g);
+}
+function press(which) {
+  for (const k of ['all', ...Object.keys(MODELS)]) document.getElementById('v-' + k).setAttribute('aria-pressed', k === which);
+}
+function show(which) {
+  press(which);
+  document.getElementById('note').textContent = NOTES[which];
+  load(which, g => {
+    for (const [k, o] of Object.entries(loaded)) { o.visible = k === which; o.position.x = 0; }
+    parts = g.userData.parts;
+    decorate([[which, settle(g)]]); frame(g);
+  });
+}
+function showAll() {
+  press('all');
+  document.getElementById('note').textContent = NOTES.all;
+  let n = 0;
+  for (const k of ORDER) load(k, () => { if (++n === ORDER.length) layout(); });
+}
+function layout() {                      // side by side along x, 120 mm apart, centred
+  let x = 0;
+  parts = [];
+  for (const k of ORDER) {
+    const g = loaded[k];
+    g.visible = true; g.position.x = 0; root.updateMatrixWorld(true);
+    const b = settle(g);
+    g.position.x = x - b.min.x; x += b.max.x - b.min.x + 160;
+    parts.push(...g.userData.parts);
+  }
+  for (const k of ORDER) loaded[k].position.x -= (x - 160) / 2;
+  root.updateMatrixWorld(true);
+  decorate(ORDER.map(k => [k, new THREE.Box3().setFromObject(loaded[k])]));
+  frame(root);
+}
+
+// scale reference: 100 mm floor grid and a 330 ml can (66 x 115 mm)
+const grid = new THREE.GridHelper(3000, 30, 0x8a9099, 0xb9bec5);
+grid.material.transparent = true; grid.material.opacity = 0.35;
+scene.add(grid);
+const can = new THREE.Group();
+const canBody = new THREE.Mesh(new THREE.CylinderGeometry(33, 33, 115, 48),
+  new THREE.MeshPhysicalMaterial({ color: 0xc8342c, metalness: 0.7, roughness: 0.3, clearcoat: 0.6 }));
+const canTop = new THREE.Mesh(new THREE.CylinderGeometry(27, 33, 6, 48),
+  new THREE.MeshPhysicalMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.25 }));
+canBody.position.y = 57.5; canTop.position.y = 118; canBody.castShadow = canTop.castShadow = true;
+can.add(canBody, canTop);
+scene.add(can);
+
+// size comparisons: a height tag over each robot, a 1 m pole, a 175 mm stair step, the can
+const refs = new THREE.Group(); scene.add(refs);
+function tag(text, at, h = 34) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  x.font = '600 44px ui-monospace, Menlo, monospace';
+  c.width = Math.ceil(x.measureText(text).width) + 32; c.height = 64;
+  x.font = '600 44px ui-monospace, Menlo, monospace';
+  x.fillStyle = 'rgba(20,22,26,0.72)'; x.beginPath(); x.roundRect(0, 0, c.width, c.height, 14); x.fill();
+  x.fillStyle = '#e8ebef'; x.textBaseline = 'middle'; x.fillText(text, 16, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false }));
+  s.scale.set(h * c.width / c.height, h, 1); s.position.copy(at); s.renderOrder = 10;
+  return s;
+}
+const MAT_A = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.6 });
+const MAT_B = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.6 });
+function decorate(list) {
+  refs.clear();
+  let x0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const [k, b] of list) {
+    const h = b.max.y - b.min.y;
+    refs.add(tag(`${NAMES[k]} · ${(h / 10).toFixed(0)} cm`, new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 40, (b.min.z + b.max.z) / 2)));
+    x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z1 = Math.max(z1, b.max.z);
+  }
+  // 1 m pole, 100 mm bands, left of the row
+  const pole = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(14, 100, 14), i % 2 ? MAT_B : MAT_A);
+    m.position.y = 50 + 100 * i; m.castShadow = true; pole.add(m);
+  }
+  pole.add(tag('1 m', new THREE.Vector3(0, 1040, 0), 30));
+  pole.add(tag('50 cm', new THREE.Vector3(-70, 500, 0), 24));
+  pole.position.set(x0 - 140, 0, 0);
+  refs.add(pole);
+  // a standard stair step, 175 rise x 280 run, right of the row
+  const step = new THREE.Mesh(new THREE.BoxGeometry(280, 175, 300), MAT_A);
+  step.position.set(x1 + 400, 87.5, 0); step.castShadow = step.receiveShadow = true;
+  refs.add(step, tag('stair 175', new THREE.Vector3(x1 + 400, 215, 0), 26));
+}
+
+// review hook: frame one loaded model from a direction (x right, y up, z toward the viewer), refs hidden
+window.__view = (which, dir = [0.35, 0.25, 1], fill = 1.0, covers = true) => {
+  const g = loaded[which]; if (!g) return 'not loaded';
+  for (const [k, o] of Object.entries(loaded)) o.visible = k === which;
+  refs.visible = false; coversOn = covers; applyCovers?.();
+  controls.autoRotate = false;
+  const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
+  controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(...dir).normalize().multiplyScalar(r * 0.95 / fill));
+  return 'ok';
+};
+function frame(obj) {
+  const box = new THREE.Box3().setFromObject(obj);
+  ground.position.y = box.min.y;
+  const view = box.clone().union(new THREE.Box3().setFromObject(refs));   // keep the size references in frame
+  grid.position.y = box.min.y + 0.5;
+  can.position.set(box.max.x + 90, box.min.y, 0);
+  const c = view.getCenter(new THREE.Vector3()), r = view.getSize(new THREE.Vector3()).length();
+  home = { target: c.clone(), pos: c.clone().add(new THREE.Vector3(0.35, 0.3, 1.0).multiplyScalar(r * 1.05)) };
+  controls.target.copy(home.target); camera.position.copy(home.pos);
+}
+
+let home = null, exploded = 0, explodeTarget = 0, focus = null;
+buildKey();
+for (const k of Object.keys(MODELS)) document.getElementById('v-' + k).onclick = () => show(k);
+document.getElementById('v-all').onclick = showAll;
+showAll();
+function buildKey() {
+  const key = document.getElementById('key');
+  for (const [g, { label, swatch }] of Object.entries(MATS)) {
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="sw" style="background:${swatch}"></span>${label}`;
+    b.addEventListener('mouseenter', () => focus = g);
+    b.addEventListener('focus', () => focus = g);
+    b.addEventListener('mouseleave', () => focus = null);
+    b.addEventListener('blur', () => focus = null);
+    key.append(b);
+  }
+}
+
+const bExplode = document.getElementById('explode'), bSpin = document.getElementById('spin');
+let coversOn = true;
+const bCovers = document.getElementById('covers');
+const ANODIZED = new THREE.MeshPhysicalMaterial({ color: 0x34373d, metalness: 0.6, roughness: 0.42, clearcoat: 0.3 });
+function applyCovers() {
+  for (const g of Object.values(loaded)) g.traverse(o => {
+    if (!o.isMesh) return;
+    if (SKIN.has(o.userData.group)) o.visible = coversOn;
+    // with the skin on, whatever structure still shows is dark anodized: part of the graphite joint language
+    if (o.userData.group === 'aluminium' && g.userData.skinned) o.material = coversOn ? ANODIZED : MATS.aluminium.m;
+  });
+}
+bCovers.onclick = () => { coversOn = !coversOn; bCovers.setAttribute('aria-pressed', coversOn); applyCovers(); };
+bExplode.onclick = () => { explodeTarget = explodeTarget ? 0 : 1; bExplode.setAttribute('aria-pressed', !!explodeTarget); };
+bSpin.onclick = () => { controls.autoRotate = !controls.autoRotate; bSpin.setAttribute('aria-pressed', controls.autoRotate); };
+document.getElementById('reset').onclick = () => { if (home) { controls.target.copy(home.target); camera.position.copy(home.pos); } };
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.autoRotate = false; bSpin.setAttribute('aria-pressed', 'false'); }
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+renderer.setAnimationLoop(() => {
+  exploded += (explodeTarget - exploded) * 0.12;
+  for (const o of parts) {
+    const u = o.userData;
+    o.position.copy(u.home).addScaledVector(u.off, exploded);
+  }
+  for (const [g, { m }] of Object.entries(MATS)) {
+    const dim = !!focus && focus !== g;
+    const base = m.userData.base ?? (m.userData.base = m.transparent ? m.opacity : 1);   // ghosts keep their own opacity
+    const tr = dim || base < 1;
+    if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; }
+    m.opacity = dim ? Math.min(0.18, base) : base;
+    m.depthWrite = !tr;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
