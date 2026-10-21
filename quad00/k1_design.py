@@ -571,6 +571,23 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     x0_, y0d, x1_, y1d = CX.dock_cutout((hp[0], 0.0, 0.0))
     add('trim-headdock', cut_shell(hull_rings(dock), [('box', [x0_, y0d, KS.DOCK_Z(J) - 3.0], [x1_ - x0_, y1d - y0d, KS.T + 6.0])]))   # the dock face (gunmetal), plug opening
+    # the neck, in the torso/cortex language (Cam: "work on the neck"): a soft yaw sleeve grows out of the crown and
+    # cradles the pitch drum; a gunmetal parting ring marks the yaw seam; gunmetal pucks on the drum ends are the joint;
+    # a satin saddle under the head carries the dock face (no bare plates or stalk)
+    z_cr = dict(out)['cover-chest'].bounds[1][2]                 # the chest crown
+    zb_, zt_ = z_cr - 3.0, hp[2] - 6.0
+    secs = [(zb_, 1.30, 1.18), (z_cr + 0.45 * (zt_ - z_cr), 1.12, 1.06), (zt_, 1.05, 1.03)]
+    add('cover-necksleeve', hull_rings([rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
+                                              kx * r_hub, ky * max(r_hub, yo_ + 3.0), 0.55 * r_hub, k=12) for z_, kx, ky in secs]))
+    ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
+                   1.30 * r_hub + 2.5, 1.18 * max(r_hub, yo_ + 3.0) + 2.5, 0.55 * r_hub + 2.5, k=12) for z_ in (z_cr - 1.0, z_cr + 1.6)]
+    add('trim-neckring', hull_rings(ring_))                      # the yaw seam
+    for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
+        add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
+    zdk = KS.DOCK_Z(J)
+    sad = [rrect(np.array([hp[0] - 6.0 * Rk / 1.703, 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
+                 36.0 * Rk - d_, 30.0 * Rk - d_, 18.0 * Rk - d_, k=12) for z_, d_ in ((zdk - 6.0, 3.0), (zdk - 3.0, 0.0), (zdk + KS.T - 0.5, 0.0))]
+    add('cover-dockcollar', hull_rings(sad))                     # the saddle under the head
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
