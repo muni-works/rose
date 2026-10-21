@@ -108,7 +108,7 @@ def main(vent_scale=1.0, quiet=False):
                 # panels, warm-black anodized, on a 0.5 mm gap-pad to the plates: the plates keep their own
                 # free-convection area (the panel is the same size, eta_p as bare); pad + panel add 0.15 K/W
                 G_pl = 1 / (1 / (H * ETA_P * Ap) + 0.20)   # 0.25 mm pad + 0.6 mm panel (pad ~3 W/mK)
-                G_vent = H * (PHI_CAP * ends + BARREL * (0.8 if (j == 'J2' and os.environ.get('LYMB_MOUNT') == 'body') else 1.0) * barrel) + G_pl   # v10.4: the deltoid hood covers a third of J2's dot-grid
+                G_vent = H * (PHI_CAP * ends + BARREL * (0.8 if (j == 'J2' and os.environ.get('LYMB_MOUNT') == 'body' and os.environ.get('LYMB_HOOD')) else 1.0) * barrel) + G_pl   # v10.4: the deltoid hood covers a third of J2's dot-grid
             else:   # J6: open ring, its holder plates stay enclosed under the sleeve
                 G_vent = H * (ends + BARREL * barrel) + H * PHI * FLANK * ETA_P * Ap + 1 / (1 / (H_IN * ETA_P * Ap * (1 - FLANK)) + 1 / (H * Ash))
         f = lambda G: min(1.0, math.sqrt(DT / (R_int + 1 / G) / P))

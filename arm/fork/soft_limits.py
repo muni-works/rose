@@ -33,9 +33,9 @@ TABLE = os.path.join(HERE, 'soft_limits_v10.npz')
 SPACING = 5.0          # mm, surface sampling
 GAP_MIN = SPACING + 1.0
 CLEAR = 5.0            # mm to the desk / the humanoid's shell
-RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-95, 5), 'J3_upper_roll': (-180, 180),
-          'J4_elbow': (-100, 100), 'J6_wrist_pitch': (-100, 100), 'J7_tool_roll': (-180, 180)}
-BODY_RANGES = {'J2_sho_pitch': (-75, 5)}   # v10.4: the deltoid hood (body only) stops the backswing (abduction) at 75 deg
+RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-145, 10), 'J3_upper_roll': (-180, 180),
+          'J4_elbow': (-110, 110), 'J6_wrist_pitch': (-100, 100), 'J7_tool_roll': (-180, 180)}
+BODY_RANGES = {'J2_sho_pitch': (-130, 10)}   # v10.6: no hood; the body turret's shoulder line sets J2's backswing
 STRUCT = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-180, 25), 'J3_upper_roll': (-180, 180),
           'J4_elbow': (-150, 130), 'J6_wrist_pitch': (-130, 130), 'J7_tool_roll': (-180, 180)}
 ADJ = {frozenset(p) for p in (('base', 'turret'), ('turret', 'upper'), ('upper', 'upperd'), ('upperd', 'fore'),

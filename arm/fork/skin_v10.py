@@ -304,12 +304,18 @@ def skin_parts():
         if s <= X3:
             return 1.0 + (0.75 - 1.0) * (s - s1) / (X3 - s1)
         return 0.75 + (0.72 - 0.75) * (s - X3) / (U - X3)
-    a_full = max(max(r[1] / prof(r[0]) for r in req if r[1] > 0), max(r[2] / prof(r[0]) for r in req if r[2] > 0) / 1.15)
-    B_IN = 55.0   # the sleeve's inner (torso-side, arm -z) half-extent cap: below the J2 seam the turret shell lives there
+    RATIO = float(os.environ.get('LYMB_BICEPS_RATIO', 1.3))     # v10.6 (Cam): lateral : fore-aft
+    a_full = max(max(r[1] / prof(r[0]) for r in req if r[1] > 0), max(r[2] / prof(r[0]) for r in req if r[2] > 0) / RATIO)
+    # The inner (torso-side, arm -z) face is what sweeps the turret shell as J2 swings, so it is held to the
+    # structure's own need at each station (+ 2 mm), never to the section's: the fullness goes outboard.
+    B_IN_MIN = float(os.environ.get('LYMB_BIN', 0.0))
     st = []
     for s, a, b, _ in req:
-        aa, bb = max(a_full * prof(s), a), max(1.15 * a_full * prof(s), b)
-        cw = max(0.0, (bb - B_IN) / 2)            # fuller to the outside, held at B_IN on the inside
+        aa, bb = max(a_full * prof(s), a), max(RATIO * a_full * prof(s), b)
+        if s > X3:   # v10.6 (range wins): below J3 the side profile (fore-aft, a) keeps rose's 0.75 -> 0.72; the lateral width is the structure's own, so the elbow folds to ~+-110
+            bb = max(b, 0.8 * aa)
+        b_in = max(b + 2.0, B_IN_MIN) if s < X3 else bb    # below J3 (upperd) symmetric again: the elbow fold wants no outboard bulge
+        cw = max(0.0, (bb - b_in) / 2)            # fuller to the outside, held to the structure on the inside
         st.append((s, aa, bb - cw, cw))
     ua = sleeve(st, origin=(0, 0, zs))
     for j in ('J2', 'J4'):
@@ -373,7 +379,8 @@ def skin_parts():
                 a0 = c + d_ * (ri - 1.0) + [0, yy, 0]
                 a1 = c + d_ * (Rp[j] + 1.0) + [0, yy, 0]
                 holes.append(Manifold.cylinder(float(np.linalg.norm(a1 - a0)), 0.65, 0.65, 8).transform(_frame_to(a0, a1)))
-        ring = ring - Manifold.batch_boolean(holes, __import__('manifold3d').OpType.Add)
+        if os.environ.get('LYMB_PUCK_HOLES', '1') == '1':   # export_skin_stl turns this off: the ring's dot-grid is specified in PARTS.md, not meshed
+            ring = ring - Manifold.batch_boolean(holes, __import__('manifold3d').OpType.Add)
         out.append(('puck-' + j, owner, loc(_tm(ring), owner), 'puck'))
         for sg in (-1, 1):
             bz = Manifold(_mm(cyl(c + [0, sg * (hy - 0.5), 0], c + [0, sg * (hy + 0.4), 0], ri + BEZEL[j], 128))) - \
@@ -387,8 +394,8 @@ def skin_parts():
     hood = (Manifold(_mm(cyl(cJ - [0, hyJ, 0], cJ + [0, hyJ, 0], Rp['J2'] + 3.0, 128)))
             - Manifold(_mm(cyl(cJ - [0, hyJ + 1, 0], cJ + [0, hyJ + 1, 0], Rp['J2'] + 0.5, 128))))
     hood = hood ^ Manifold(_mm(trimesh.creation.box(extents=[200.0, 400.0, 400.0]).apply_translation(
-        [cJ[0] - 100.0 - Rp['J2'] * 0.5, 0.0, cJ[2]])))
-    if not F.PEDESTAL:   # body only: on the desk the arm needs J2's full backswing (the hood stops it at -75)
+        [cJ[0] - 100.0 - Rp['J2'] * float(os.environ.get('LYMB_HOOD', 0.5)), 0.0, cJ[2]])))
+    if not F.PEDESTAL and os.environ.get('LYMB_HOOD'):   # v10.6: off by default - range wins (the hood held J2's backswing to -25..-75 on the humanoid); the ring is the hand-off
         out.append(('hood-J2', 'turret', loc(_tm(hood), 'turret'), 'skin'))
     # ---- turret / shoulder: J1 output up to the J2 axis, as wide as the J2 puck, its top inside the puck
     hy2 = half_w(ua)
@@ -403,7 +410,11 @@ def skin_parts():
     wn = F.TOWER_NECK * 1e3 + MARGIN
     prof = [  # arm z, x_top (neg), x_bottom (pos)
         (zo, -r1, r1), (ztop, -(r1 - 3.0), r1 - 4.0), (zo + 15.0, -(Rp['J2'] + 1.3), wn),
-        (zo + 35.0, -(Rp['J2'] + 0.8), wn), (zs, -(Rp['J2'] + 0.5), wn)]
+        (zo + 35.0, -(Rp['J2'] + 0.8), wn), (zs - 25.0, -50.0, wn), (zs, -36.0, wn)]   # v10.6: inside the seam circle above zs-35, so the swinging sleeve has the seam zone to itself
+    if F.PEDESTAL:   # v10.6 desk: no shoulder line to continue - the turret is the disc's skirt + the tower neck, so J2 swings back to ~-150
+        prof = [(zo, -r1, r1), (ztop, -(r1 - 3.0), r1 - 4.0), (zo + 8.0, -wn, wn), (zs, -wn, wn)]
+    else:            # v10.6 body (range wins): the shoulder line runs the first 15 mm off the flank, then the turret drops to the neck
+        prof = [(zo, -r1, r1), (ztop, -(r1 - 3.0), r1 - 4.0), (zo + 15.0, -(Rp['J2'] + 1.3), wn), (zo + 25.0, -wn, wn), (zs, -wn, wn)]
     st = [(z_, hy2 + (4.0 if k == 0 else 2.0), (xb - xt) / 2, (xb + xt) / 2) for k, (z_, xt, xb) in enumerate(prof)]
     tu = seam_cut(sleeve(st, u=(0, 0, 1), v=(0, 1, 0), w=(1, 0, 0), rc_k=0.42), *seam('J2'))
     out.append(('turret', 'turret', loc(tu, 'turret'), 'skin'))
