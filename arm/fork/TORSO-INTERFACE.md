@@ -87,6 +87,8 @@ Conduction runs from J1's back face through the foot (0.10 K/W contact), the 41 
 
 The time is from a one-node transient: the whole RS04 at 850 J/K behind its 0.49 K/W winding resistance. The winding alone heats faster, so treat these times as upper bounds.
 
+**Design of record (Cam, 2026-10-21): no fans in the torso.** J1 is cooled by the open-ring face plus side-plate conduction, with a controller derate above the ring-only 1.56 kg arms-forward hold. The fan rows above are for reference only.
+
 **Conclusion: J1 needs no fan.** With the open ring face that v10.3 already has, the arm holds the rated arms-forward load indefinitely.
 - J2 (1.27 kg), not J1, is the limit.
 - Plate-only conduction alone is marginal: steady at rose's 23.5 N·m, about 2 h at the skinned 24.7 N·m.
