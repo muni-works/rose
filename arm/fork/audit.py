@@ -154,10 +154,14 @@ def poses():
             if t0 <= t <= t1:
                 s = (t - t0) / (t1 - t0)
                 s = s * s * (3 - 2 * s)
-                out.append(('video %.1fs' % t, {j: math.radians(a[j] + (b[j] - a[j]) * s) for j in a}))
+                q = {j: math.radians(a[j] + (b[j] - a[j]) * s) for j in a}
+                if F.V10:      # v10: the roll the video exercises is the upper arm's
+                    q['J3_upper_roll'] = q.pop('J5_fore_roll')
+                out.append(('video %.1fs' % t, q))
                 break
-    for j, lo, hi in (('J2_sho_pitch', -180, 40), ('J4_elbow', -105, 105), ('J6_wrist_pitch', -120, 120),
-                      ('J5_fore_roll', -180, 180), ('J7_tool_roll', -180, 180)):
+    # v10: the short turret stops J2 at +20 (down)
+    for j, lo, hi in (('J2_sho_pitch', -180, 20 if F.V10 else 40), ('J4_elbow', -105, 105), ('J6_wrist_pitch', -120, 120),
+                      ('J3_upper_roll' if F.V10 else 'J5_fore_roll', -180, 180), ('J7_tool_roll', -180, 180)):
         for d in range(lo, hi + 1, 10):
             out.append(('%s %d' % (j, d), {j: math.radians(d)}))
     return out

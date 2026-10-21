@@ -31,7 +31,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from pro.rose_pro_layout import cloud   # noqa: E402
+from full.rose_full_layout import cloud   # noqa: E402  (main renamed pro -> full)
 
 G = 9.81
 PAYLOAD = 2.5          # kg at the flange, full reach - reBot's number, matched
