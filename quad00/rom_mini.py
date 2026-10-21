@@ -57,6 +57,10 @@ def body_of(name):
         return 'hyaw'
     if name.startswith('cable-t'):
         return 'torso'
+    if name.startswith(('cover-necksleeve', 'trim-neckring', 'trim-neckpuck')):
+        return 'hyaw'                                   # the neck rides the head yaw
+    if name.startswith('cover-dockcollar'):
+        return 'hpitch'
     if name.startswith(('trim-j1ring', 'trim-j1grille')):
         return TOP()                                    # the J1 bezel rides the torso flank
     b = _body_of(name)
