@@ -64,6 +64,14 @@ Peak draw, estimated:
 
 The carrier board is 87.8 × 56.7 mm, about the same footprint as the A603 the mini was designed around (87 × 52). It fits the existing mini bay with the board's front edge moved forward 4.7 mm; the clash test showed 23 mm free in front. The assumed 60 × 92 outline is retired.
 
+**Measured from Seeed's STEP (`J40 Mini-asm.stp`, from `reComputer_Mini_3D.7z`):**
+- Carrier PCB 87.8 × 56.7 × 1.6 mm.
+- **Mounting holes: 4× Ø2.7 (M2.5) on an 81.0 × 49.0 mm rectangle** (5.5 mm in from the port-side corner datum). The sled's carrier plate takes M2.5 heat-set inserts (coupon sizes 3.4 / 3.6 / 3.8).
+- **Heatsink:** finned aluminium, 87.0 × 58.7 × 16.7 mm, covering the whole board.
+- **Fan:** 46.8 × 46.7 × 7.3 mm, on top of the heatsink.
+- **Total stack:** about 36–38 mm above the bottom of the board; the 42 mm enclosure, less its walls, sets the upper limit. That leaves about 11–13 mm of headroom in the mini (the limit there is 49 mm).
+- The SO-DIMM Orin Nano module is 69.6 × 45.
+
 
 - **The Jetson is the USB host everywhere**, and the limbic board in the torso is a USB device. It presents a network link (CDC-NCM) plus a serial port. That keeps the Jetson simple, with no device-mode quirks, and the limbic board's MCU (STM32H7 / RP2350 class, USB 2.0 HS) handles the device side easily.
 - **The outside USB-C port** must be wired to a J3011 port that can act as host. The chief's research agent is confirming which J3011 USB-C is host and which is flash/recovery only. On Orin Nano carriers the recovery USB-C is usually the device-mode port, which is still useful for flashing over the same outside port with an internal switch (E).
