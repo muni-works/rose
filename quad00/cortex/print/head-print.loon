@@ -4,7 +4,7 @@
 ; Print orientation is noted per part; export each [root] to its own STL (make_print.sh).
 [use cortex [head-sec wall tf rb cortex-tub cortex-floor cortex-sled cortex-glass cortex-glass-face cortex-ear-grilles cortex-exhaust-grille cortex-keeper]]
 [material "pla" 0.12 0.12 0.13 0.0 0.6]
-[let c 0.25]                                     ; lip clearance per side: update from coupon-lip (0.15 / 0.25 / 0.35)
+[let c 0.15]                                     ; lip clearance per side: "medium-rare" (Cam), one step tighter than the 0.25 middle
 ; the tub's inner wall curls in along the bottom round: at the floor line it is inset d0 (wall + the round's sagitta)
 [let rr [- rb wall]]
 [let d0 [+ wall [- rr [sqrt [- [* rr rr] [* [- [+ wall rr] tf] [- [+ wall rr] tf]]]]]]]

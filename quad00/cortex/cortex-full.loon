@@ -248,7 +248,7 @@
                           [bx [- jbx0 2.0] -52.0 [+ zj0 jb-t] [+ jbx0 22.0] 52.0 [+ zj0 23.6]]]]      ; the port edge
 [let cortex-heatsink [bx [+ jbx0 25.0] -42.5 [+ zj0 jb-t] [+ jbx0 95.0] 42.5 [+ zj0 30.0]]]      ; stock heatsink + fan (ASSUMED 70 x 85 x 30)
 [let pillar [fn [x y] [bx [- x 4.0] [- y 4.0] tf [+ x 4.0] [+ y 4.0] zj0]]]
-[let insert-d 3.6]                                ; M2.5 heat-set (coupon); the board's holes take M2.5 / M3 (check)
+[let insert-d 2.2]                                ; M2.5 self-tap pilot in PETG (Cam: no heat-set inserts). 8 mm pillar = 2.9 mm wall, 7 deep: M2.5 x 8 screws
 [let cortex-sled [difference [fold [bx -300.0 0.0 0.0 -299.0 1.0 1.0] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] [- zj0 6.0] [cylinder [/ insert-d 2.0] 7.0]]]] j-holes]
   [union [union [pillar [nth [nth j-holes 0] 0] 50.1] [pillar [nth [nth j-holes 1] 0] -50.1]]        ; back pillars, under the board's port-edge holes
          [union [union [pillar [nth [nth j-holes 2] 0] 80.0] [pillar [nth [nth j-holes 3] 0] -80.0]]   ; front legs outside the pack ...
