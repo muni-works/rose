@@ -1,0 +1,21 @@
+lymb exterior clash check, full arm: 12 covers x 43 structural solids, pitch step 15 deg, rolls 45 deg
+
+== covers vs other links' structure, and vs each other (483 pairs, full range; only poses the bare structure itself reaches without a collision count) ==
+  cover-structure wrist hub +y           <-> base base #0                   8.3 mm at {'J2_sho_pitch': -180, 'J4_elbow': -115, 'J5_fore_roll': 45, 'J6_wrist_pitch': 30}   (bare structure gap there 1.6 mm)
+  cover-structure wrist hub -y           <-> base base #0                   8.3 mm at {'J2_sho_pitch': -180, 'J4_elbow': -115, 'J5_fore_roll': -135, 'J6_wrist_pitch': -30}   (bare structure gap there 1.6 mm)
+  cover-structure fore cheek +y          <-> base base #0                   2.0 mm at {'J2_sho_pitch': 40, 'J4_elbow': 95}   (bare structure gap there 1.5 mm)
+  cover-structure fore cheek -y          <-> base base #0                   2.0 mm at {'J2_sho_pitch': 40, 'J4_elbow': 95}   (bare structure gap there 1.5 mm)
+
+== covers vs their own link at the zero pose (material only; the hollow may hold caps and bolts) ==
+  none
+
+== covers vs the harness (every joint swept alone at 5 deg + the motion video) ==
+  none
+
+== joint range with covers (each joint alone, 1 deg, to the limits) ==
+  J1_yaw          limits -180 ..  180   covers stop it at never .. never 
+  J2_sho_pitch    limits -180 ..   40   covers stop it at never .. never 
+  J4_elbow        limits -115 ..  115   covers stop it at never .. never 
+  J5_fore_roll    limits -180 ..  180   covers stop it at never .. never 
+  J6_wrist_pitch  limits -120 ..  120   covers stop it at never .. never 
+  J7_tool_roll    limits -180 ..  180   covers stop it at never .. never 

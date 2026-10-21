@@ -14,6 +14,8 @@ python3 arm/fork/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed worl
 
 ![fork v9](render/fork-v9-lines.png)
 
+**Exterior proposal (not approved):** [exterior/](exterior/README.md) dresses this structure in the cortex / quad00 language (covers only, no structural change).
+
 ## The idea
 
 **Every pitch joint is a fork.** The parent holds the motor's stator ring

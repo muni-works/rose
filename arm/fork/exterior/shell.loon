@@ -1,0 +1,94 @@
+; lymb exterior -- the cortex / quad00 design language for the fork arm, as loon functions.
+;
+; Three parts and nothing else:
+;   PAD     a rounded cup: one calm flat face, a generous round all the way round it, open at the back,
+;           standing a hair off a plate it covers. Drum covers, cheek fairings and motor shrouds are all pads.
+;   INSERT  a flush perforated dot-grid insert: a plain slab that fills a plain window, the holes in their own
+;           part (the cortex tub trick -- the shell evaluates in seconds, each insert caches on its own).
+;   TURNED  the same pad language for round parts about an axis: the drum and the motor sleeves, revolved from a
+;           (radius, height) profile the caller gives (cheap: one revolve, no booleans).
+;   RING    the one small neon accent.
+;
+; Every shape is a CONVEX CCW loop of (x, y) points (mm), its outward normal +z. The loops come from the arm model (rose_fork.py) for each size, so the same three functions dress
+; mini, full and mega. Offsets are vertex-normal miters (exact for dense convex loops). Subject-last (vcad).
+
+; cos/sin of 0, 15, ... 90 degrees (loon has no trig)
+[let xC0 1.0] [let xC1 0.965926] [let xC2 0.866025] [let xC3 0.707107] [let xC4 0.5] [let xC5 0.258819] [let xC6 0.0]
+; the quarter-round stations (rise, inset) of a round of radius r: (r(1-cos t), r(1-sin t)), t = 0..90
+[let x-round-st [fn [r] #[
+  #[0.0 r]
+  #[[* r [- 1.0 xC1]] [* r [- 1.0 xC5]]] #[[* r [- 1.0 xC2]] [* r [- 1.0 xC4]]] #[[* r [- 1.0 xC3]] [* r [- 1.0 xC3]]]
+  #[[* r [- 1.0 xC4]] [* r [- 1.0 xC2]]] #[[* r [- 1.0 xC5]] [* r [- 1.0 xC1]]] #[r 0.0]]]]
+
+; a convex CCW loop shrunk by d (grown when d < 0): each vertex moves along its miter
+[let x-inset [fn [pts d]
+  [let n [len pts]]
+  [let nrm [fn [a b] [[fn [] [let du [- [nth b 0] [nth a 0]]] [let dv [- [nth b 1] [nth a 1]]] [let l [sqrt [+ [* du du] [* dv dv]]]]
+                              #[[/ [- 0.0 dv] l] [/ du l]]]]]]
+  [map [fn [i]
+    [let p [nth pts i]]
+    [let a [nrm [nth pts [% [+ i [- n 1]] n]] p]]
+    [let b [nrm p [nth pts [% [+ i 1] n]]]]
+    [let k [/ d [+ 1.0 [+ [* [nth a 0] [nth b 0]] [* [nth a 1] [nth b 1]]]]]]
+    #[[+ [nth p 0] [* k [+ [nth a 0] [nth b 0]]]] [+ [nth p 1] [* k [+ [nth a 1] [nth b 1]]]]]] [range 0 n]]]]
+
+[let x-segs [fn [pts]
+  [let n [len pts]]
+  [map [fn [i] [line [nth [nth pts i] 0] [nth [nth pts i] 1] [nth [nth pts [% [+ i 1] n]] 0] [nth [nth pts [% [+ i 1] n]] 1]]] [range 0 n]]]]
+
+; Everything is built in the CANONICAL frame -- loop in (x, y), normal +z -- and the caller places it with one rigid
+; [translate [rotate]] (so the renderer's shape cache hits across poses). A section of loop pts inset d at height w:
+[let x-sec [fn [pts w d] [sketch 0.0 0.0 w 1.0 0.0 0.0 0.0 1.0 0.0 [x-segs [x-inset pts d]]]]]
+; the solid under a loop: straight from w0 to h - r, then a quarter round to a flat face at h
+[let x-rounded [fn [pts w0 h r d]
+  [loft [flatten #[
+    #[[x-sec pts w0 d]]
+    [map [fn [st] [x-sec pts [- h [nth st 0]] [+ d [nth st 1]]]] [reverse [x-round-st r]]]]]]]]
+
+; PAD: depth h, face round r, wall t. Open toward z = 0.
+[let x-pad [fn [pts h r t]
+  [difference [x-rounded pts -1.0 [- h t] [max #[[- r t] 0.6]] t] [x-rounded pts 0.0 h r 0.0]]]]
+; a pad with a round bore through its face at (cu, cv) -- for a motor nose or an output flange
+[let x-pad-bored [fn [pts h r t cu cv rb]
+  [difference [translate cu cv -1.0 [cylinder-n rb [+ h 2.0] 48]] [x-pad pts h r t]]]]
+
+; a CCW circle loop, 48 points (the 15-degree table, halved by midpoints)
+[let xCS #[xC0 xC1 xC2 xC3 xC4 xC5 xC6]]
+[let x-circle [fn [cu cv r]
+  [let q [fn [k] [if [< k 7] #[[nth xCS k] [nth xCS [- 6 k]]] [if [< k 13] #[[- 0.0 [nth xCS [- 12 k]]] [nth xCS [- k 6]]]
+                 [if [< k 19] #[[- 0.0 [nth xCS [- k 12]]] [- 0.0 [nth xCS [- 18 k]]]] #[[nth xCS [- 24 k]] [- 0.0 [nth xCS [- k 18]]]]]]]]]
+  [flatten [map [fn [k] [[fn [] [let a [q k]] [let b [q [+ k 1]]]
+                          [let mx [+ [nth a 0] [nth b 0]]] [let my [+ [nth a 1] [nth b 1]]] [let ml [sqrt [+ [* mx mx] [* my my]]]]
+                          #[#[[+ cu [* r [nth a 0]]] [+ cv [* r [nth a 1]]]] #[[+ cu [/ [* r mx] ml]] [+ cv [/ [* r my] ml]]]]]]]
+                [range 0 24]]]]]
+
+; INSERT: a slab of loop pts, thickness th along n from w0, minus a hex dot grid (pitch p, hole radius rh) kept inside
+; the pill field (centre cu cv, half length a along u, end radius b). ni, nk: grid half extents (pitches, row
+; pairs) -- integers from the caller, loon has no floor.
+[let x-tree-union [fn [xs]
+  [let n [len xs]] [let h [/ n 2]]
+  [if [< n 2] [nth xs 0]
+    [union [x-tree-union [map [fn [i] [nth xs i]] [range 0 h]]] [x-tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
+[let x-in-pill [fn [u v a b] [[fn [] [let uu [max #[0.0 [- [abs u] [- a b]]]]] [< [+ [* uu uu] [* v v]] [* b b]]]]]]
+[let x-hex [fn [p ni nk] [[fn [] [let h [* p 0.866025]] [flatten #[
+  [flatten [map [fn [k] [map [fn [i] #[[* i p] [* [* 2.0 k] h]]] [range [- 0 ni] [+ ni 1]]]] [range [- 0 nk] [+ nk 1]]]]
+  [flatten [map [fn [k] [map [fn [i] #[[* [+ i 0.5] p] [* [+ [* 2.0 k] 1.0] h]]] [range [- 0 ni] ni]]] [range [- 0 nk] nk]]]]]]]]]
+; ports: #[#[u v r] ...] round pass-throughs (a harness crossing) that the dots keep clear of.
+[let x-insert [fn [pts w0 th p rh cu cv a b ni nk ports]
+  [let clear [fn [q] [[fn [] [let u [+ cu [nth q 0]]] [let v [+ cv [nth q 1]]]
+    [< [len [filter [fn [pt] [[fn [] [let du [- u [nth pt 0]]] [let dv [- v [nth pt 1]]]
+                                      [< [+ [* du du] [* dv dv]] [* [+ [nth pt 2] p] [+ [nth pt 2] p]]]]]] ports]] 1]]]]]
+  [let dots [filter [fn [q] [if [x-in-pill [nth q 0] [nth q 1] a b] [clear q] false]] [x-hex p ni nk]]]
+  [let hole [fn [q] [translate [+ cu [nth q 0]] [+ cv [nth q 1]] [- w0 1.0] [cylinder-n rh [+ th 2.0] 8]]]]
+  [let port [fn [pt] [translate [nth pt 0] [nth pt 1] [- w0 1.0] [cylinder-n [nth pt 2] [+ th 2.0] 24]]]]
+  [let slab [extrude 0.0 0.0 th [x-sec pts w0 0.0]]]
+  [let cuts [flatten #[[map hole dots] [map port ports]]]]
+  [if [< [len cuts] 1] slab [difference [x-tree-union cuts] slab]]]]
+
+; TURNED: revolve a closed (radius, height) profile about +z
+[let x-turned [fn [prof]
+  [revolve 0.0 0.0 0.0 0.0 0.0 1.0 360.0 [sketch 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [x-segs prof]]]]]
+
+; RING: the accent, an annulus r0..r1 of thickness th along z from w0
+[let x-ring [fn [r0 r1 w0 th]
+  [difference [translate 0.0 0.0 [- w0 1.0] [cylinder-n r0 [+ th 2.0] 48]] [translate 0.0 0.0 w0 [cylinder-n r1 th 48]]]]]
