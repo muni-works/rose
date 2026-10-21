@@ -134,7 +134,7 @@ def body_ped_h():
 
 DESK_POSES = {
     'ready': DESK_V10,
-    'pick': dict(J1_yaw=20, J2_sho_pitch=-5, J3_upper_roll=0, J4_elbow=115, J6_wrist_pitch=-75, J7_tool_roll=0),
+    'pick': dict(J1_yaw=20, J2_sho_pitch=-50, J3_upper_roll=0, J4_elbow=100, J6_wrist_pitch=40, J7_tool_roll=0),   # jaws 2 mm over the desk, pose_ok
     'high': dict(J1_yaw=-40, J2_sho_pitch=-105, J3_upper_roll=0, J4_elbow=35, J6_wrist_pitch=40, J7_tool_roll=0),
 }
 
@@ -222,25 +222,25 @@ def main():
     only = [a for a in sys.argv[2:] if not a.startswith('--') and not a.isdigit()]
     want = lambda k: not only or k in only
     os.makedirs(OUT, exist_ok=True)
-    V = 'v10.2'
+    V = os.environ.get('LYMB_VER', 'v10.3')
     P = lambda n: os.path.join(OUT, 'lymb-%s-%s.png' % (V, n))
     sub = 'warm black #1e1813, graphite pucks, gunmetal caps, Make green at the wrist'
     for v, (az, el) in VIEWS.items():
         if want('desk-' + v):
             render(scene_desk2(work, 'ready'), P('desk-' + v), az, el, spp, size='1400x1200')
-            label(P('desk-' + v), 'lymb v10.2 on the desk (%s)' % v, sub)
+            label(P('desk-' + v), 'lymb %s ' % V + 'on the desk (%s)' % v, sub)
     for pose in ('pick', 'high'):
         if want('desk-' + pose):
             render(scene_desk2(work, pose), P('desk-' + pose), -35, 20, spp, size='1400x1200')
-            label(P('desk-' + pose), 'lymb v10.2 on the desk: %s' % pose, sub)
+            label(P('desk-' + pose), 'lymb %s ' % V + 'on the desk: %s' % pose, sub)
     for v, (az, el) in BVIEWS.items():
         if want('humanoid-' + v):
             render(scene_body2(work, 'rest'), P('humanoid-' + v), az, el, spp, size='1100x1500', fill=0.94)
-            label(P('humanoid-' + v), 'lymb v10.2 as the arms of the 1703 mm humanoid (%s)' % v, 'same part as the desk arm; J1 flush in the torso corner, cortex head (Make)')
+            label(P('humanoid-' + v), 'lymb %s ' % V + 'as the arms of the 1703 mm humanoid (%s)' % v, 'same part as the desk arm; J1 flush in the torso corner, cortex head (Make)')
     for pose in ('reach', 'carry'):
         if want('humanoid-' + pose):
             render(scene_body2(work, pose), P('humanoid-' + pose), -30, 10, spp, size='1100x1500', fill=0.94)
-            label(P('humanoid-' + pose), 'lymb v10.2 on the humanoid: %s' % pose)
+            label(P('humanoid-' + pose), 'lymb %s ' % V + 'on the humanoid: %s' % pose)
     for pose, az in (('j1+90', -60), ('j1-90', -60)):
         if want('shoulder-' + pose):
             pp = P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm'))
@@ -249,10 +249,10 @@ def main():
             im = Image.open(pp)
             W_, H_ = im.size
             im.crop((int(0.22 * W_), int(0.08 * H_), int(0.78 * W_), int(0.46 * H_))).save(pp)   # the left shoulder
-            label(P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm')), 'lymb v10.2 shoulder, J1 = %s deg' % pose[2:])
+            label(P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm')), 'lymb %s ' % V + 'shoulder, J1 = %s deg' % pose[2:])
     if want('elbow'):
         render(scene_closeup(work), P('elbow-closeup'), -50, 25, spp, size='1400x1100', fill=0.92)
-        label(P('elbow-closeup'), 'lymb v10.2 elbow: flush graphite puck, gunmetal hub cap, 1 mm coaxial parting gap; J3 ring behind')
+        label(P('elbow-closeup'), 'lymb %s ' % V + 'elbow: flush graphite puck, gunmetal hub cap, 1 mm coaxial parting gap; J3 ring behind')
     if want('sbs'):
         side_by_side(P('desk-34'), P('humanoid-34'), P('desk-and-humanoid'))
 

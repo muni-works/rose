@@ -23,7 +23,7 @@ import fork_checks as C
 from rose_arm_geom import mv, sub, cross, dot, I3
 
 G = 9.81
-MARGIN = 0.8                       # run the RS02 at 80 % of its (estimated) continuous rating
+MARGIN = 0.78                      # v10.3: the skin derates J3 by ~20 % (thermal_v10.py): 3.43 N.m sits under the derated 3.50
 CAP = F.RATING[id(F.J3M)][1] * MARGIN
 OUTBOARD = ('upperd', 'fore', 'yoke', 'wrist', 'tool', 'harness')
 

@@ -89,6 +89,7 @@ J3M = RS02
 X3_CP = 0.105          # upper arm end plate (J3's back face on its far side): clear of the turret's corners
 H_UP, TABS_UP = 0.034, (-0.018, 0.018)     # proximal upper-arm plates, half height
 H_UD, TABS_UD, H_UDCV = 0.040, (-0.020, 0.020), 0.030   # distal upper arm (elbow holder) + its covers
+TOWER_NECK = 0.034    # v10.3: turret tower neck half-width (in-plane bending of the neck adds ~0.15 mm at the flange)
 PED_H, PED_S = float(os.environ.get('ROSE_ARM_PED_H', 0.045)), 0.130   # desk pedestal under the foot: height, square tube side (0.0363 on the body: the chest adapter)
 PEDESTAL = V10 and os.environ.get('ROSE_ARM_PEDESTAL', '1') == '1'   # ROSE_ARM_PEDESTAL=0: the body build
 if V10:
@@ -463,6 +464,8 @@ def build():
     ks = rd / 0.070                                 # turret features scale with the disc (1.0 on the full arm)
     tx_max = math.sqrt((rd - 1.5 * T - 0.0005) ** 2 - (SH_CA + T) ** 2) - TAB_L / 2 - 0.001   # slot corners keep a rim web
     tower_tabs_x = (-min(0.040 * ks, tx_max), min(0.040 * ks, tx_max))
+    if V10:
+        tower_tabs_x = (-0.022, 0.022)            # v10.3: on the keyhole tower's neck
     disc_holes = pattern(0.0, 0.0, J1M['out']) + [circ(0.0, 0.045 * ks, 0.012 * ks), circ(0.0, -0.045 * ks, 0.012 * ks)]
     for side, yc in ((1, SH_CA), (-1, SH_CB)):
         for tx in tower_tabs_x:
@@ -474,12 +477,16 @@ def build():
         ol = tower(R_LOBE_SH, 2 * rd, h_t)
         # tabs down into the disc
         fl, fr = (-rd, -h_t), (rd, -h_t)
+        if V10:   # v10.3 keyhole tower: the lobe disc on a straight neck, every edge inside the J2 puck or the turret shell
+            zk = -math.sqrt(R_LOBE_SH ** 2 - TOWER_NECK ** 2)
+            fl, fr = (-TOWER_NECK, -h_t), (TOWER_NECK, -h_t)
+            ol = [None, ('line', fr, (TOWER_NECK, zk)), ('arc', (TOWER_NECK, zk), (-TOWER_NECK, zk), (0.0, 0.0), True), ('line', (-TOWER_NECK, zk), fl)]
         tabs = []
         for tx in tower_tabs_x:
             tabs += [(tx - TAB_L / 2, -h_t), (tx - TAB_L / 2, -h_t - T), (tx + TAB_L / 2, -h_t - T), (tx + TAB_L / 2, -h_t)]
         pts = [fl] + tabs + [fr]
         ol = [('line', pts[i], pts[i + 1]) for i in range(len(pts) - 1)] + ol[1:]
-        holes = [stadium(-0.030 * ks, 0.030 * ks, 0.016 * ks)]
+        holes = [stadium(-0.030 * ks, 0.030 * ks, 0.016 * ks) if not V10 else stadium(-0.014, 0.014, 0.010)]
         dz = 0.105 * h_t / 0.138425                 # tower window: 105 mm below the axis on the full arm
         if V10:                                     # short turret: centred between the J2 output pattern and the foot
             dz = (h_t + 0.024) / 2

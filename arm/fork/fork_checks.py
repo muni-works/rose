@@ -147,6 +147,10 @@ def stiffness():
         th_u += th_p
         d_u += th_p * (U - F.X3_CP / 2)
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)
+    if F.V10:   # v10.3: the keyhole tower's neck bends in its own plane under the J2 moment
+        h_t = F.Z_SH - (F.T_FOOT + F.J1M['L'] + F.T_PL)
+        I_n = 2 * F.T_PL * (2 * F.TOWER_NECK) ** 3 / 12
+        sag += moment(0.0) * h_t / (E * I_n) * xF
     # twist: wrist pitched 90 puts the hand's moment into the forearm as torque; elbow at 90 the same for the upper arm
     twist = m_w * Fo / (Gs * Jf) * (xF - U - Fo) + m_e * U / (Gs * Ju) * (xF - U) * 0.0 + \
         moment(U, 0) * 0 + (m_e * U / (Gs * Ju)) * (xF - U)

@@ -36,6 +36,7 @@ SKIN_MATS = '\n'.join([
     '[material "puck" 0.06 0.062 0.066 0.6 0.38]',         # graphite
     '[material "trim" 0.30 0.32 0.34 0.85 0.32]',          # gunmetal
     '[material "accent" 0.224 1.0 0.078 0.0 0.4]',         # Make green #39ff14 - the one neon, at the wrist
+    '[material "vent" 0.008 0.007 0.006 0.0 0.8]',         # dot-grid band (1.3 mm on 2.3 hex), drawn as a matte dead-front
 ]) + '\n'
 
 
@@ -233,6 +234,8 @@ def skin_parts():
     hi = halves(ua, 0, X3 + 0.75)[1]
     out += [('upper', 'upper', loc(lo, 'upper'), 'skin'), ('upperd', 'upperd', loc(hi, 'upperd'), 'skin')]
     out.append(('ring-J3', 'upperd', loc(band(ua, 0, X3, width=1.5, grow=-0.6), 'upperd'), 'trim'))
+    x3c = (F.X3_CP + F.T_PL) * 1e3 + F.J3M['L'] * 1e3 / 2
+    out.append(('vent-J3', 'upper', loc(band(ua, 0, x3c, width=F.J3M['L'] * 1e3 - 8.0, grow=0.3), 'upper'), 'vent'))   # dot-grid band over the J3 can
     # ---- forearm: slimmer than the upper arm, tapering to the wrist
     P = xr(np.concatenate([Pw('fore'), Pw('yoke'), cab]), U - 80, Wm + 60)
     req = need(P, 0, U, Wm, 5, seams=[seam('J4'), seam('J6')])
@@ -240,22 +243,31 @@ def skin_parts():
     fa = sleeve(taper(req, a0, b0, 0.75 * a0, 0.7 * b0), origin=(0, 0, zs))
     for j in ('J4', 'J6'):
         fa = seam_cut(fa, *seam(j))
-    out.append(('fore', 'fore', loc(fa, 'fore'), 'skin'))
+    out.append(('fore', 'fore', loc(fa.copy(), 'fore'), 'skin'))
     # ---- wrist: J6 to the tool flange; the one neon ring at J7
     P = xr(np.concatenate([Pw('wrist'), cab]), Wm - 60, xt + 3.2)
     req = need(P, 0, Wm, xt + 3.0, 4, seams=[seam('J6')])
     wa = seam_cut(sleeve(taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), origin=(0, 0, zs)), *seam('J6'))
-    out.append(('wrist', 'wrist', loc(wa, 'wrist'), 'skin'))
+    out.append(('wrist', 'wrist', loc(wa.copy(), 'wrist'), 'skin'))
     c = np.array([xt, 0, zs])
+    x7c = (S['x_ep'] + F.T_PL) * 1e3 + F.J7M['L'] * 1e3 / 2
+    out.append(('vent-J7', 'wrist', loc(band(wa, 0, x7c, width=F.J7M['L'] * 1e3 - 10.0, grow=0.3), 'wrist'), 'vent'))   # dot-grid band over J7
     out.append(('ring-J7', 'wrist', loc(band(wa, 0, xt - 3.0, width=2.0, grow=0.4), 'wrist'), 'accent'))   # flush in the sleeve's own section
     # ---- pucks, flush with the widest sleeve that meets them, flush gunmetal hub caps
     half_w = lambda *ms: max(np.abs(m.vertices[:, 1]).max() for m in ms)
     for j, owner, ms in (('J2', 'turret', (ua,)), ('J4', 'fore', (ua, fa)), ('J6', 'wrist', (fa, wa))):
         hy = half_w(*ms)
         c = J[j]
-        out.append(('puck-' + j, owner, loc(cyl(c - [0, hy, 0], c + [0, hy, 0], Rp[j], 128), owner), 'puck'))
+        # v10.3 (thermal_v10.py): the puck is a graphite RING; the motor's own dark face is open to air behind a
+        # thin gunmetal bezel - a vented (1.3 / 2.3 hex) cap here costs J2 0.2 kg of hold, an open face costs none
+        m_ = {'J2': F.J2M, 'J4': F.J4M, 'J6': F.J6M}[j]
+        ri = m_['d'] / 2 * 1e3 + 1.5
+        ring = Manifold(_mm(cyl(c - [0, hy, 0], c + [0, hy, 0], Rp[j], 128))) - Manifold(_mm(cyl(c - [0, hy + 1, 0], c + [0, hy + 1, 0], ri, 128)))
+        out.append(('puck-' + j, owner, loc(_tm(ring), owner), 'puck'))
         for sg in (-1, 1):
-            out.append(('cap-%s%+d' % (j, sg), owner, loc(cyl(c + [0, sg * hy, 0], c + [0, sg * (hy + 0.4), 0], Rp[j] * 0.55, 96), owner), 'trim'))
+            bz = Manifold(_mm(cyl(c + [0, sg * (hy - 0.5), 0], c + [0, sg * (hy + 0.4), 0], ri + 3.0, 128))) - \
+                Manifold(_mm(cyl(c + [0, sg * (hy - 1.0), 0], c + [0, sg * (hy + 1.0), 0], ri, 128)))
+            out.append(('cap-%s%+d' % (j, sg), owner, loc(_tm(bz), owner), 'trim'))
     # ---- turret / shoulder: J1 output up to the J2 axis, as wide as the J2 puck, its top inside the puck
     hy2 = half_w(ua)
     P = Pw('turret')
@@ -265,6 +277,10 @@ def skin_parts():
     ztop = zs - (Rp['J2'] + GAP) - 0.5
     st = [(zo, r1, hy2 + 4, 0.0), (ztop, r1 - 4, hy2 + 2, 0.0)]
     tu = sleeve(st, u=(0, 0, 1), v=(1, 0, 0), w=(0, 1, 0), rc_k=0.42)
+    # v10.3: a neck over the keyhole towers, up into the J2 puck (cut by the J2 seam): no tower flank shows
+    wn = F.TOWER_NECK * 1e3 + MARGIN
+    neck = sleeve([(ztop - 4.0, wn, hy2 + 2, 0.0), (zs - 40.0, wn, hy2 + 2, 0.0)], u=(0, 0, 1), v=(1, 0, 0), w=(0, 1, 0), rc_k=0.3)
+    tu = seam_cut(_tm(Manifold(_mm(tu)) + Manifold(_mm(neck))), *seam('J2'))
     out.append(('turret', 'turret', loc(tu, 'turret'), 'skin'))
     # ---- J1: desk - a graphite drum growing out of one calm base puck; body - a flush disc on the flank
     if F.PEDESTAL:

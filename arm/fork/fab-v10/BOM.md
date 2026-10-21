@@ -19,8 +19,8 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 |---|---:|---:|---|---:|---:|
 | foot | 6.3 | 1 | 180 x 180 | 23 | 338 |
 | turret-disc | 3.2 | 1 | 140 x 140 | 14 | 121 |
-| turret-tower-A | 3.2 | 1 | 140 x 139 | 9 | 124 |
-| turret-tower-B | 3.2 | 1 | 140 x 139 | 2 | 124 |
+| turret-tower-A | 3.2 | 1 | 132 x 139 | 9 | 116 |
+| turret-tower-B | 3.2 | 1 | 132 x 139 | 2 | 115 |
 | spacer-RS04 | 3.2 | 2 | 57 x 57 | 8 | 20 |
 | pedestal-X | 3.2 | 2 | 130 x 51 | 1 | 38 |
 | pedestal-Y | 3.2 | 2 | 123 x 51 | 1 | 37 |
