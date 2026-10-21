@@ -66,12 +66,14 @@ MATS = {'cover': (SHELL, *_tone, 0.1, 0.55), 'puck': ('black_anodized', 0.071, 0
 
 
 # joint drums and end caps: black-anodized metal on every colorway (the arm's language)
-DRUMS = ('cover-hip.', 'cover-hip_', 'cover-knee', 'cover-elbow.', 'cover-elbow_', 'cover-shoulder.', 'cover-shoulder_', 'cover-headhub', 'cover-headcheek', 'trim-neckpuck.', 'trim-neckpuck_')
+DRUMS = ('cover-hip.', 'cover-hip_', 'cover-knee', 'cover-elbow.', 'cover-elbow_', 'cover-shoulder.', 'cover-shoulder_', 'cover-headhub', 'cover-headcheek', 'trim-neckpuck.', 'trim-neckpuck_', 'cover-waistrollcap')
 
 
 def mat_of(n):
     if n.startswith(DRUMS):
         return 'drum'
+    if n.startswith('cover-waistrollring'):
+        return 'trim'
     if n.startswith('elec-'):
         return n.split('-')[1].split('.')[0]
     if n.startswith('estop-'):

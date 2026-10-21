@@ -506,6 +506,10 @@ def design():
         z_d = KS.Z_D0() + KS.T + 1.0                              # on the pelvis top, clear of the deck
         add('cover-waist', cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d))          # yaw drum (yaw stage), up to the roll axis
         add('cover-waistroll', cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # roll barrel (roll stage)
+        rr_, Lr_ = mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)   # its ends read like every other joint: black cap, gunmetal ring
+        add('cover-waistrollcap', trimesh.util.concatenate([cyl(rc_ + np.array([s_ * (Lr_ / 2 + 0.35), 0, 0]), [1.0, 0, 0], rr_ - 4.0, 0.7) for s_ in (-1, 1)]))
+        add('cover-waistrollring', tm(Manifold.batch_boolean([M_(cyl(rc_ + np.array([s_ * (Lr_ / 2 + 0.6), 0, 0]), [1.0, 0, 0], rr_ - 2.5, 1.2))
+                                                              - M_(cyl(rc_ + np.array([s_ * (Lr_ / 2 + 0.6), 0, 0]), [1.0, 0, 0], rr_ - 4.0, 3.0)) for s_ in (-1, 1)], OpType.Add)))
         hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 10.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
             sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
         add('trim-waisthub', tm(hub))                         # gunmetal pitch hub (chest): carries the chest mount
@@ -553,6 +557,15 @@ def design():
         rft = 10.0 * Rk                                     # the chest's soft top edge: a fillet, not a lid
         prs += [bring(bz1 - rft * (1 - math.sin(th)), rft * (1 - math.cos(th))) for th in np.linspace(0, np.pi / 2, 7)]
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
+        if KS.waist_layout() is not None:                       # full and up (release 1): one soft lofted shell like the torso and
+            hx_, xc_ = (bx1 - bx0) / 2, (bx0 + bx1) / 2         # neck sleeve -- widest over the hips, tapering up into the waist drum
+            sec = lambda z_, ay, ax_, rr: rrect(np.array([xc_, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), ay, ax_, rr, k=16)
+            secs_ = [sec(bz0 + 2.0, by - 0.55 * rfb, hx_ - 10.0, 0.42 * min(by, hx_)),
+                     sec(rl[2] - 0.35 * rfb, by, hx_, 0.48 * min(by, hx_)),
+                     sec(rl[2] + 0.45 * (bz1 - rl[2]), 0.62 * by + 0.38 * (wd + 4.0), hx_ - 2.0, 0.6 * min(by, hx_)),
+                     sec(bz1, wd + 4.0, min(hx_, wd + 4.0), 0.85 * (wd + 4.0))]
+            pel = hull_rings(secs_)
+            pel = pel if isinstance(pel, Manifold) else M_(pel)
     got = dict(out)
     for side in ('Left', 'Right'):
         t = side[0].lower(); lay = KS.layout(J, side)
@@ -576,8 +589,10 @@ def design():
         if KS.V['name'] != 'tiny':                              # the leg: one clean arch per side about the roll axis, annular
             sw_r = sw_r ^ M_bb(pel)                             # (outside the hidden roll can, so the shell stays whole)
             if not sw_r.is_empty():
-                pel = pel - (arch_cut(sw_r, lay['roll'][0], 0, rmin=m06['D'] / 2 + 7.0))
-            sw_b = sw_b ^ M_bb(pel)
+                skin = Manifold.cube([1e3, 1e3, 1e3]).translate([-500, -500, pel.bounding_box()[5] - 1e3 - 10.0])   # keep the top skin whole
+                pel = pel - (arch_cut(sw_r, lay['roll'][0], 0, rmin=m06['D'] / 2 + 7.0) ^ skin)
+            bb_ = pel.bounding_box()
+            sw_b = sw_b ^ M_bb(pel) ^ Manifold.cube([1e3, 1e3, 1e3]).translate([-500, -500, bb_[5] - 1e3 - 22.0])   # the top skin stays whole: no groove
             pel = pel - (arch_cut(sw_b, lay['roll'][0], 0) if not sw_b.is_empty() else Manifold())   # a clean sector slot, not facets
         else:
             pel = pel - sw_r - sw_b
