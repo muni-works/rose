@@ -597,7 +597,15 @@ def design():
     sad = [rrect(np.array([hp[0], 0, z_lo]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 0.95 * r_hub, 0.80 * r_hub, 0.45 * r_hub, k=14)] + \
           [rrect(np.array([xt_, 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), at_ - d_, top_b - d_, 0.45 * top_a - d_, k=14)
            for z_, d_ in ((zhf - 4.0, 4.0), (zhf, 0.0))]
-    add('cover-dockcollar', hull_rings(sad))                     # the pedestal the head seats on
+    # cheeks (Cam: "zero daylight at every pitch"): a cowl concentric with the pitch axis wraps the drum crown by 5 mm,
+    # so it rides the drum at every pitch; +-40 deg keeps it above the yaw sleeve even at full pitch (49 deg)
+    r_in, r_out, ycw = r_hub + 0.6, r_hub + 5.6, min(0.80 * r_hub, yo_ - 1.0)
+    ang = np.radians(np.linspace(-40.0, 40.0, 9))
+    wedge = Manifold.hull_points(np.array([[hp[0], y_, hp[2]] for y_ in (-ycw, ycw)] +
+                                          [[hp[0] + 2.0 * r_out * np.sin(a), y_, hp[2] + 2.0 * r_out * np.cos(a)]
+                                           for a in ang for y_ in (-ycw, ycw)], dtype=np.float32))
+    cowl = M_(cyl(np.array([hp[0], 0, hp[2]]), [0, 1.0, 0], r_out, 2 * ycw)) - M_(cyl(np.array([hp[0], 0, hp[2]]), [0, 1.0, 0], r_in, 2 * ycw + 2.0))
+    add('cover-dockcollar', tm(M_(hull_rings(sad)) + (cowl ^ wedge)))   # the pedestal the head seats on, plus its cheeks
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
