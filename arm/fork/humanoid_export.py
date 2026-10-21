@@ -37,11 +37,20 @@ groups = {}
 import math
 HEAD_PITCH = float(os.environ.get('HEAD_PITCH', 35.0))   # rose: eyes down by the neck, ~35 deg at rest
 pitched = []
-HEAD_PARTS = set()   # v10.2: the old cube head goes; the cortex (quad00/cortex/cortex.loon) sits on the dock
+HEAD_PARTS = set()
+import re as _re
+_fl = os.path.join(Q, 'vcad', 'full', 'full.loon')
+FULL_PARTS = set(_re.findall(r'\[part "([^"]+)"', open(_fl).read())) if os.path.exists(_fl) else set()   # quad00's own export: the truth for what the body wears   # v10.2: the old cube head goes; the cortex (quad00/cortex/cortex.loon) sits on the dock
 dropped = []
 for n, m in D + C:
     tag = n.rpartition('.')[2] if '.' in n else ''
-    if tag in ('la', 'ra') or n.split('.')[0] in HEAD_PARTS or n.startswith(('head-', 'cortex-', 'visor-', 'cover-helmet', 'cover-head', 'trim-eye', 'trim-ear', 'trim-head')):
+    # v10.8: the head parts to drop are exactly the old helmet head's - everything quad00's own full.loon keeps (the
+    # neck sleeve, the saddle cheeks cover-headcheek / cover-headhub, head-H1, head-dock) stays. v10.2-v10.7 dropped
+    # 'cover-head*' / 'head-*' too, which took rose's neck pass-2 cheeks off and left the bare pitch drum showing.
+    old_head = n.startswith(('cortex-', 'visor-', 'cover-helmet', 'cover-headbutton', 'trim-eye', 'trim-ear', 'trim-headpanel'))
+    if FULL_PARTS:
+        old_head = old_head or (n.split('.')[0].startswith(('head', 'cover-head', 'trim-head', 'visor')) and n.replace('.', '_') not in FULL_PARTS)
+    if tag in ('la', 'ra') or n.split('.')[0] in HEAD_PARTS or old_head:
         dropped.append(n)
         continue
     k = VX.mat_of(n)
