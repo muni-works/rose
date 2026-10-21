@@ -65,6 +65,8 @@ EDU = dict(d=0.046, L=0.044, kg=0.242)
 T_PL = 0.003175       # every plate, cover, disc and bridge: one 1/8" (3.175 mm) 5052 stock - SendCutSend and local supply
 T_FOOT = 0.00635      # 1/4" foot
 R_FOOT, R_FOOT_BOLTS = (0.085, 0.070) if os.environ.get('ROSE_ARM') == 'mini' else (0.115, 0.095)
+if os.environ.get('ROSE_ARM') == 'v10':
+    R_FOOT, R_FOOT_BOLTS = 0.090, 0.076     # v10.2: the foot hides inside the desk puck / the torso flank
 T_CV = T_PL
 T_PB = T_PL
 GAP = 0.002
@@ -86,8 +88,8 @@ V10 = SIZE == 'v10'
 J3M = RS02
 X3_CP = 0.105          # upper arm end plate (J3's back face on its far side): clear of the turret's corners
 H_UP, TABS_UP = 0.034, (-0.018, 0.018)     # proximal upper-arm plates, half height
-H_UD, TABS_UD, H_UDCV = 0.050, (-0.025, 0.025), 0.040   # distal upper arm (elbow holder) + its covers
-PED_H, PED_S = float(os.environ.get('ROSE_ARM_PED_H', 0.068)), 0.150   # desk pedestal under the foot: height, square tube side (0.0363 on the body: the chest adapter)
+H_UD, TABS_UD, H_UDCV = 0.040, (-0.020, 0.020), 0.030   # distal upper arm (elbow holder) + its covers
+PED_H, PED_S = float(os.environ.get('ROSE_ARM_PED_H', 0.045)), 0.130   # desk pedestal under the foot: height, square tube side (0.0363 on the body: the chest adapter)
 PEDESTAL = V10 and os.environ.get('ROSE_ARM_PEDESTAL', '1') == '1'   # ROSE_ARM_PEDESTAL=0: the body build
 if V10:
     Z_SH, UPPER, FORE = 0.132, 0.300, 0.200
@@ -415,6 +417,8 @@ def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_
     d = math.hypot(L, h)
     ph = math.atan2(h, L) + math.acos(min(1.0, r0 / d))
     tt = (r0 * math.cos(ph), r0 * math.sin(ph))
+    if V10 and h < r0:   # v10.2 keyhole: the lobe is a full disc on a straight neck - the plate tapers to the joint, not flares
+        tt = (math.sqrt(r0 * r0 - h * h), h)
     tb = (tt[0], -tt[1])
     pts = [(L, -h)]
     for tz in sorted(tabs_z):
@@ -596,8 +600,8 @@ def pedestal():
     c = S / 2 - T / 2
     slots = [rect(sx * c, tx, T + 0.0002, SLOT_L) for sx in (1, -1) for tx in tabs] + \
             [rect(tx, sy * c, SLOT_L, T + 0.0002) for sy in (1, -1) for tx in tabs]
-    bolts = [circ(0.108 * math.cos(a), 0.108 * math.sin(a), 0.0033) for a in (0.0, math.pi / 2, math.pi, 3 * math.pi / 2)]
-    Rb = 0.122                                   # v10.1: round, under the skin's skirt
+    bolts = [circ(0.084 * math.cos(a), 0.084 * math.sin(a), 0.0033) for a in (0.0, math.pi / 2, math.pi, 3 * math.pi / 2)]
+    Rb = 0.094                                   # v10.2: round, inside the desk puck
     P.append(('base', 'base', (0.0, 0.0, -H - T), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
               [('arc', (Rb, 0.0), (-Rb, 0.0), (0.0, 0.0), True), ('arc', (-Rb, 0.0), (Rb, 0.0), (0.0, 0.0), True)],
               (0.0, 0.0, T), slots + bolts + [circ(0.0, 0.0, 0.040)]))
@@ -723,9 +727,10 @@ def cable_points(T):
         P('upper', (0.070, 0.0, z))
         P('upper', (X3_CP - 0.008, 0.0, z))
         P('upper', (X3_CP - 0.004, 0.0, z - r3))
-        coil('upper', X3_CP + T_PL + 0.006, X3_OUT - 0.006, J3M['d'] / 2 + R_CABLE + 0.0008, z)   # v10.1: J3 service loop
-        P('upper', (X3_OUT - 0.004, 0.0, z - r3))
-        P('upperd', (X3_OUT + 0.012, 0.0, z - r3))
+        # v10.2: the loop wraps the cartridge (fixed to the stator side) and hands over to the rotor side only
+        # PAST the bridge, where the roll's chord can sweep through the axis without meeting a motor
+        coil('upper', X3_CP + T_PL + 0.006, X3_OUT + T_PL + 0.003, J3M['d'] / 2 + R_CABLE + 0.0025, z)
+        P('upperd', (X3_OUT + T_PL + 0.010, 0.0, z - r3 + 0.004))
         P('upperd', (X3_OUT + 0.020, 0.0, z))
         P('upperd', (UPPER - 0.090, 0.0, z))
     else:
@@ -742,8 +747,9 @@ def cable_points(T):
     crossing('yoke', 'wrist', W, WR_PB, WR_CB, J6M['d'] / 2 + 0.004, R_LOBE6W + 0.010, (-1, 0), (1, 0), from_holder=True)
     P('wrist', (x_ep - 0.008, 0.0, z - J7M['d'] / 2 - 0.006))
     if V10:   # v10.1: J7 service loop round the cartridge
-        coil('wrist', x_ep + T_PL + 0.006, xt - 0.008, J7M['d'] / 2 + R_CABLE + 0.0008, z)
-    P('wrist', (xt - 0.004, 0.0, z - J7M['d'] / 2 - 0.006))           # along under the J7 cartridge
+        coil('wrist', x_ep + T_PL + 0.006, xt + T_PL + 0.001, J7M['d'] / 2 + 0.002 + R_CABLE + 0.0008, z)   # outside the tool flange too   # hands over past the flange
+    else:
+        P('wrist', (xt - 0.004, 0.0, z - J7M['d'] / 2 - 0.006))           # along under the J7 cartridge
     P('tool', (xt + 0.004 + EDU['d'] / 2, -EDU['L'] / 2 - 0.004, z - 0.010))
     return pts
 
@@ -763,7 +769,7 @@ MATERIALS = ('[material "actuator" 0.09 0.09 0.10 0.6 0.5]\n[material "sheet" 0.
              '[material "cassette" 0.90 0.55 0.15 0.9 0.3]\n[material "collar" 0.20 0.21 0.22 0.85 0.45]\n[material "collar_turn" 0.84 0.85 0.86 0.9 0.32]\n[material "cable" 0.95 0.40 0.10 0.0 0.6]\n')
 
 
-def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=()):
+def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=(), cable=True):
     """The posed arm as loon. The base frame is placed by rotation R0 then offset at (m); prefix keeps
     names unique when several arms share one scene; header=False leaves out the comment and
     materials; skip is a set of (link, mat) or link names to leave out (e.g. the foot when mounted)."""
@@ -789,7 +795,7 @@ def world_loon(q, at=(0.0, 0.0, 0.0), prefix='', header=True, R0=I3, skip=()):
         body = place_loon(R, t, body)
         L.append('[let %sp%d %s]' % (prefix, i, body))
         roots.append('[root %sp%d "%s"]' % (prefix, i, mat))
-    cp, pts = cable_prims(T)
+    cp, pts = cable_prims(T) if cable else ([], [])
     for i, p in enumerate(cp):
         link, mat, o, u, v, ol, vec = p[:7]
         L.append('[let %sc%d %s]' % (prefix, i, prim_loon(p)))

@@ -211,6 +211,31 @@ def fold(joint, lo, hi, step=5):
     return a, b, first_hit
 
 
+def cable_roll_clearance(step=10):
+    """v10: the harness against the roll cartridges (J3, J7) across the full +/-180 deg of roll. The cable's
+    surface to the motor's can (a cylinder in the stator link's frame); min over all segments and angles."""
+    out = {}
+    S = F.stations()
+    for j, link, m, x0, x1 in (('J3_upper_roll', 'upper', F.J3M, F.X3_CP + F.T_PL, F.X3_OUT),
+                               ('J7_tool_roll', 'wrist', F.J7M, S['x_ep'] + F.T_PL, S['xt'])):
+        worst = (1.0, None)
+        for a in range(-180, 181, step):
+            T = F.fk({j: math.radians(a)})
+            R, t = T[link]
+            o = F.ORIGIN[link]
+            pts = F.cable_points(T)
+            loc = [add(tuple(sum(R[k][i] * (p[k] - t[k]) for k in range(3)) for i in range(3)), o) for p in pts]
+            for p, q in zip(loc, loc[1:]):
+                for s in range(11):
+                    c = tuple(p[i] + (q[i] - p[i]) * s / 10 for i in range(3))
+                    if x0 - 0.001 <= c[0] <= x1 + 0.001:
+                        d = math.hypot(c[1], c[2] - F.Z_SH) - m['d'] / 2 - F.R_CABLE
+                        if d < worst[0]:
+                            worst = (d, a)
+        out[j] = worst
+    return out
+
+
 def main():
     by = {}
     for l, m, x in masses():
@@ -236,6 +261,9 @@ def main():
     print('  with gripper v2 (%.0f g, jaw tips at %.0f mm): ' % (GRIP_V2_KG * 1e3, flange_x() * 1e3) + ', '.join('%s %.2f kg' % kv for kv in h.items()))
     GRIPPER[0] = 'model'
 
+    if F.V10:
+        for j, (d, a) in cable_roll_clearance().items():
+            print('  harness vs %s cartridge over +/-180 deg roll: min clearance %.1f mm (at %s deg)' % (j, d * 1e3, a))
     sag, tw, secs = stiffness()
     print('\nflange deflection from structure: %.2f mm sag, %.2f mm twist   (budget 0.5 / 0.5)' % (sag * 1e3, tw * 1e3))
     print('\njoint ranges: run audit.py - the old surface-distance fold check here missed buried overlaps')

@@ -17,34 +17,34 @@ the motor's blind thread. Depths marked "assumed" are not on the RS02 drawing; m
 
 | part | t mm | qty | size mm | holes + slots | g each |
 |---|---:|---:|---|---:|---:|
-| foot | 6.3 | 1 | 230 x 230 | 23 | 612 |
+| foot | 6.3 | 1 | 180 x 180 | 23 | 338 |
 | turret-disc | 3.2 | 1 | 140 x 140 | 14 | 121 |
 | turret-tower-A | 3.2 | 1 | 140 x 139 | 9 | 124 |
 | turret-tower-B | 3.2 | 1 | 140 x 139 | 2 | 124 |
 | spacer-RS04 | 3.2 | 2 | 57 x 57 | 8 | 20 |
-| pedestal-X | 3.2 | 2 | 150 x 74 | 1 | 54 |
-| pedestal-Y | 3.2 | 2 | 143 x 74 | 1 | 52 |
-| pedestal-base | 3.2 | 1 | 244 x 244 | 13 | 352 |
-| upper-A | 3.2 | 1 | 174 x 132 | 1 | 81 |
-| upper-B | 3.2 | 1 | 174 x 132 | 11 | 96 |
+| pedestal-X | 3.2 | 2 | 130 x 51 | 1 | 38 |
+| pedestal-Y | 3.2 | 2 | 123 x 51 | 1 | 37 |
+| pedestal-base | 3.2 | 1 | 188 x 188 | 13 | 190 |
+| upper-A | 3.2 | 1 | 174 x 132 | 1 | 72 |
+| upper-B | 3.2 | 1 | 174 x 132 | 11 | 86 |
 | upper-end-plate | 3.2 | 1 | 65 x 68 | 9 | 27 |
-| upperd-bridge | 3.2 | 1 | 65 x 100 | 10 | 53 |
-| upperd-A | 3.2 | 1 | 216 x 132 | 5 | 134 |
-| upperd-B | 3.2 | 1 | 216 x 132 | 15 | 148 |
+| upperd-bridge | 3.2 | 1 | 65 x 80 | 10 | 42 |
+| upperd-A | 3.2 | 1 | 216 x 132 | 6 | 86 |
+| upperd-B | 3.2 | 1 | 216 x 132 | 16 | 103 |
 | upperd-cover | 3.2 | 2 | 61 x 54 | 0 | 26 |
-| fore-A | 3.2 | 1 | 212 x 132 | 9 | 157 |
-| fore-B | 3.2 | 1 | 212 x 132 | 2 | 157 |
+| fore-A | 3.2 | 1 | 212 x 132 | 9 | 135 |
+| fore-B | 3.2 | 1 | 212 x 132 | 2 | 135 |
 | fore-end-plate | 3.2 | 1 | 79 x 52 | 9 | 29 |
-| yoke-A | 3.2 | 1 | 103 x 90 | 1 | 29 |
-| yoke-B | 3.2 | 1 | 103 x 90 | 5 | 52 |
-| wrist-A | 3.2 | 1 | 122 x 90 | 6 | 73 |
-| wrist-B | 3.2 | 1 | 122 x 90 | 1 | 72 |
+| yoke-A | 3.2 | 1 | 102 x 90 | 1 | 27 |
+| yoke-B | 3.2 | 1 | 102 x 90 | 5 | 50 |
+| wrist-A | 3.2 | 1 | 122 x 90 | 6 | 68 |
+| wrist-B | 3.2 | 1 | 122 x 90 | 1 | 68 |
 | wrist-end-plate | 3.2 | 1 | 69 x 52 | 9 | 26 |
 | spacer-RS02 | 3.2 | 1 | 43 x 43 | 6 | 12 |
 | tool-flange | 3.2 | 1 | 61 x 61 | 6 | 24 |
 | jaw | 3.2 | 2 | 75 x 32 | 0 | 14 |
 
-Stock, 3.2 mm: **4 sheets** of 381 x 381 mm.
+Stock, 3.2 mm: **3 sheets** of 381 x 381 mm.
 Stock, 6.3 mm: **1 sheet** of 381 x 381 mm.
 
 Covers and end plates are located by tabs in slots (10 mm tabs, slots 0.4 mm long and 0.2 mm wide
@@ -63,7 +63,7 @@ screws; a drop of retaining compound on each tab stops rattle.
 | retaining ring DIN 471-10 | 1 | sleeve end, J6 |
 | hub cap, closed cup (printed PETG, orange) | 3 | Ø40 x 12 at J2, J4; Ø32 x 10 at J6 |
 | base collar (printed PETG) | 1 | round the J1 motor on the foot |
-| flat harness: CAN pair + 48 V pair | 2.7 m | model route at zero pose is 1.65 m; +30 % for the joint loops and service |
+| flat harness: CAN pair + 48 V pair | 2.6 m | model route at zero pose is 1.56 m; +30 % for the joint loops and service |
 | XT30 (2+2) connector pairs | 7 | one per actuator, daisy chain, plus the base lead |
 
 ## Fasteners, by interface

@@ -91,14 +91,13 @@ def scene_desk(work, which):
 
 
 def scene_closeup(work):
-    keep = ('upper', 'upperd', 'fore')
-    skip = [l for l in ('base', 'turret', 'yoke', 'wrist', 'tool')]
+    """The elbow alone (upper arm, elbow puck, forearm), skinned, cable inside and not drawn."""
+    skip = ['base', 'turret', 'yoke', 'wrist', 'tool', 'cable']
     q = dict(DESK_V10, J1_yaw=0, J2_sho_pitch=-20, J3_upper_roll=0, J4_elbow=70)
-    L = [arm(V10, q=q, at=[0, 0, 0.068], prefix='e', outdir=work, skin=True, tag='skin-desk', skip=skip)]
+    L = [arm(V10, q=q, at=[0, 0, 0.045], prefix='e', outdir=work, skin=True, tag='skin-desk', skip=skip)]
     import rose_fork as F
-    src = photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats()
     fn = os.path.join(work, 'closeup.loon')
-    open(fn, 'w').write(src)
+    open(fn, 'w').write(photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats())
     return fn
 
 
@@ -110,33 +109,80 @@ def body_R0(s):
     return [[ex[i], ey[i], ez[i]] for i in range(3)]
 
 
-BODY_Q = {1: dict(J1_yaw=-12, J2_sho_pitch=-6, J3_upper_roll=90, J4_elbow=-40, J6_wrist_pitch=-15, J7_tool_roll=0),
-          -1: dict(J1_yaw=10, J2_sho_pitch=6, J3_upper_roll=-90, J4_elbow=-40, J6_wrist_pitch=-15, J7_tool_roll=0)}
+# humanoid poses, per side (s = +1 left, -1 right); J1 = shoulder pitch (- = forward), J2 = roll
+BODY_POSES = {
+    'rest': {1: dict(J1_yaw=-8, J2_sho_pitch=-4, J3_upper_roll=90, J4_elbow=-25, J6_wrist_pitch=-10),
+             -1: dict(J1_yaw=8, J2_sho_pitch=-4, J3_upper_roll=-90, J4_elbow=-25, J6_wrist_pitch=-10)},
+    'reach': {1: dict(J1_yaw=-75, J2_sho_pitch=-4, J3_upper_roll=90, J4_elbow=-15, J6_wrist_pitch=-10),
+              -1: dict(J1_yaw=75, J2_sho_pitch=-4, J3_upper_roll=-90, J4_elbow=-15, J6_wrist_pitch=-10)},
+    'carry': {1: dict(J1_yaw=-20, J2_sho_pitch=-6, J3_upper_roll=90, J4_elbow=-95, J6_wrist_pitch=0),
+              -1: dict(J1_yaw=20, J2_sho_pitch=-6, J3_upper_roll=-90, J4_elbow=-95, J6_wrist_pitch=0)},
+    'j1+90': {1: dict(J1_yaw=-90, J2_sho_pitch=-4, J3_upper_roll=90, J4_elbow=0),
+              -1: dict(J1_yaw=-90, J2_sho_pitch=-4, J3_upper_roll=-90, J4_elbow=0)},
+    'j1-90': {1: dict(J1_yaw=90, J2_sho_pitch=-4, J3_upper_roll=90, J4_elbow=0),
+              -1: dict(J1_yaw=90, J2_sho_pitch=-4, J3_upper_roll=-90, J4_elbow=0)},
+}
+FLANK_Y = 0.1866      # quad00 full: the chest cover's flank at shoulder height (|y|, m) - J1's face sits flush on it
+SIDE_PLATE_Y = 0.087  # torso side plate outer face
 
 
-def scene_body(work):
-    """(b) two v10 arms on the full humanoid. The J1 back face bolts to the torso side plate through a
-    chest adapter (the desk pedestal's tube, 36 mm), so the J2 axis lands on the humanoid's shoulder-roll
-    axis (|y| = 255)."""
+def body_ped_h():
+    """Chest adapter height: J1's output face lands on the flank."""
+    import rose_fork as F
+    return FLANK_Y - SIDE_PLATE_Y - F.T_FOOT - F.J1M['L']
+
+
+DESK_POSES = {
+    'ready': DESK_V10,
+    'pick': dict(J1_yaw=20, J2_sho_pitch=-5, J3_upper_roll=0, J4_elbow=115, J6_wrist_pitch=-75, J7_tool_roll=0),
+    'high': dict(J1_yaw=-40, J2_sho_pitch=-105, J3_upper_roll=0, J4_elbow=35, J6_wrist_pitch=40, J7_tool_roll=0),
+}
+
+
+def scene_desk2(work, pose):
+    L = [arm(V10, q=DESK_POSES[pose], at=[0, 0, 0.045], prefix='a', outdir=work, skin=True, tag='skin-desk')]
+    import rose_fork as F
+    desk = '[let dk [translate -330 -420 -30 [cube 900 840 30]]]\n[root dk "desk"]\n'
+    fn = os.path.join(work, 'desk-%s.loon' % pose)
+    open(fn, 'w').write(photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats() + DESK_MATS + desk)
+    return fn
+
+
+CORTEX = [('cortex-tub', 'cx_shell'), ('cortex-ear-grilles', 'accent'), ('cortex-exhaust-grille', 'cx_shell'),
+          ('cortex-glass', 'cx_glass'), ('cortex-floor', 'cx_floor')]
+CX_MATS = ('[material "cx_shell" 0.016 0.012 0.009 0.0 0.45]\n[material "cx_glass" 0.01 0.01 0.012 0.2 0.05]\n'
+           '[material "cx_floor" 0.043 0.035 0.027 0.8 0.4]\n')
+
+
+def scene_body2(work, pose, only=None):
+    """Two v10.2 arms on the quad00 full humanoid, the cortex (Make colorway) on the neck dock.
+    J1 sinks into the torso's top corner through the chest adapter until its face is flush with the
+    flank; J2 then sits at |y| ~ 260 (the humanoid's own shoulder roll is at 255)."""
     H = json.load(open(os.path.join(work, 'hum', 'hum.json')))
-    hum = []
-    mats = {}
+    hum, mats = [], {}
     for k, v in H['finishes'].items():
+        v = list(v)
+        if v[0] == 'satin_black':
+            v[1:] = [0.016, 0.012, 0.009, 0.0, 0.45]      # the body tone: warm black #1e1813
         mats[v[0]] = v
         hum.append('[let h_%s [import-mesh-scaled 0.001 0.001 0.001 "hum/hum_%s.stl"]]\n[root h_%s "%s"]' % (k, k, k, v[0]))
     hm = '\n'.join('[material "%s" %s %s %s %s %s]' % tuple(v) for v in mats.values()) + '\n'
-    import importlib
-    L = []
-    z_sh = 0.132
-    for s, t in ((1, 'l'), (-1, 'r')):
-        sr = [c / 1e3 for c in H['sr'][t]]
-        R0 = body_R0(s)
-        at = [sr[i] - R0[i][2] * z_sh for i in range(3)]     # arm (0, 0, Z_SH) on the shoulder-roll axis
-        L.append(arm(dict(V10, ROSE_ARM_PED_H='0.0363'), q=BODY_Q[s], at=at, R0=R0, prefix='b' + t, outdir=work,
-                     skin=True, tag='skin-body', skip=[['base', 'base'], 'pedestal']))
+    cx = H['cortex']
+    cxs = ['[use cortex [%s]]' % ' '.join(n for n, _ in CORTEX)]
+    for n, m in CORTEX:
+        cxs.append('[let hc_%s [translate %.3f %.3f %.3f %s]]\n[root hc_%s "%s"]' % (n.replace('-', '_'), cx[0], cx[1], cx[2], n, n.replace('-', '_'), m))
     import rose_fork as F
-    src = photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats() + hm + '\n'.join(hum) + '\n'
-    fn = os.path.join(work, 'body.loon')
+    ph = body_ped_h()
+    L = []
+    for s, t in ((1, 'l'), (-1, 'r')):
+        if only and t != only:
+            continue
+        sr = [c / 1e3 for c in H['sr'][t]]
+        at = [sr[0], s * (SIDE_PLATE_Y + ph), sr[2]]
+        L.append(arm(dict(V10, ROSE_ARM_PED_H='%.5f' % ph, ROSE_ARM_PEDESTAL='0'), q=BODY_POSES[pose][s], at=at, R0=body_R0(s),
+                     prefix='b' + t, outdir=work, skin=True, tag='skin-body', skip=[['base', 'base']]))
+    src = photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats() + hm + CX_MATS + '\n'.join(cxs) + '\n' + '\n'.join(hum) + '\n'
+    fn = os.path.join(work, 'body-%s.loon' % pose)
     open(fn, 'w').write(src)
     return fn
 
@@ -165,32 +211,50 @@ def side_by_side(a, b, out):
     im.save(out)
 
 
+VIEWS = {'34': (-35, 20), 'front': (0, 8), 'side': (-90, 8)}
+BVIEWS = {'34': (-30, 10), 'front': (0, 4), 'side': (-90, 4)}
+
+
 def main():
     work = os.path.abspath(sys.argv[1])
     os.makedirs(work, exist_ok=True)
-    args = [a for a in sys.argv[2:] if not a.startswith('--')]
     spp = int(sys.argv[sys.argv.index('--spp') + 1]) if '--spp' in sys.argv else 256
-    args = [a for a in args if not a.isdigit()] or ['a', 'b', 'c', 'd', 'e']
+    only = [a for a in sys.argv[2:] if not a.startswith('--') and not a.isdigit()]
+    want = lambda k: not only or k in only
     os.makedirs(OUT, exist_ok=True)
-    V = os.environ.get('LYMB_VER', 'v10.1')
-    pa, pb = os.path.join(OUT, 'lymb-%s-desk.png' % V), os.path.join(OUT, 'lymb-%s-humanoid.png' % V)
-    if 'a' in args:
-        render(scene_desk(work, 'a'), pa, -35, 22, spp, size='1600x1400')
-        label(pa, 'lymb v10 on the desk', 'J1 yaw / J2 pitch / J3 upper-arm roll / J4 elbow / J6 wrist pitch / J7 tool roll   300 / 200 mm')
-    if 'b' in args:
-        render(scene_body(work), pb, -30, 12, spp, size='1200x1400', fill=0.94)
-        label(pb, 'lymb v10 as the arms of the 1703 mm humanoid', 'same part: J1 = shoulder pitch, J2 = roll, J3 = upper-arm yaw, J4 = elbow')
-    if 'c' in args:
-        side_by_side(pa, pb, os.path.join(OUT, 'lymb-%s-desk-and-humanoid.png' % V))
-    if 'e' in args:
-        pe = os.path.join(OUT, 'lymb-%s-elbow-closeup.png' % V)
-        render(scene_closeup(work), pe, -50, 25, spp, size='1400x1100', fill=0.92)
-        label(pe, 'v10.1 elbow: graphite drum, gunmetal hub cap, the J3 parting band behind it')
-    if 'd' in args:
-        pd = os.path.join(OUT, 'lymb-v9-vs-%s-desk.png' % V)
-        render(scene_desk(work, 'd'), pd, -62, 18, spp, size='1800x1100')
-        label(pd, 'v9 (back)  vs  v10 (front), same pose, J2 200 mm over the desk',
-              'v9: forearm roll J5, 260 / 220 mm      v10: upper-arm roll J3 just past the shoulder, 300 / 200 mm, 68 mm pedestal')
+    V = 'v10.2'
+    P = lambda n: os.path.join(OUT, 'lymb-%s-%s.png' % (V, n))
+    sub = 'warm black #1e1813, graphite pucks, gunmetal caps, Make green at the wrist'
+    for v, (az, el) in VIEWS.items():
+        if want('desk-' + v):
+            render(scene_desk2(work, 'ready'), P('desk-' + v), az, el, spp, size='1400x1200')
+            label(P('desk-' + v), 'lymb v10.2 on the desk (%s)' % v, sub)
+    for pose in ('pick', 'high'):
+        if want('desk-' + pose):
+            render(scene_desk2(work, pose), P('desk-' + pose), -35, 20, spp, size='1400x1200')
+            label(P('desk-' + pose), 'lymb v10.2 on the desk: %s' % pose, sub)
+    for v, (az, el) in BVIEWS.items():
+        if want('humanoid-' + v):
+            render(scene_body2(work, 'rest'), P('humanoid-' + v), az, el, spp, size='1100x1500', fill=0.94)
+            label(P('humanoid-' + v), 'lymb v10.2 as the arms of the 1703 mm humanoid (%s)' % v, 'same part as the desk arm; J1 flush in the torso corner, cortex head (Make)')
+    for pose in ('reach', 'carry'):
+        if want('humanoid-' + pose):
+            render(scene_body2(work, pose), P('humanoid-' + pose), -30, 10, spp, size='1100x1500', fill=0.94)
+            label(P('humanoid-' + pose), 'lymb v10.2 on the humanoid: %s' % pose)
+    for pose, az in (('j1+90', -60), ('j1-90', -60)):
+        if want('shoulder-' + pose):
+            pp = P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm'))
+            render(scene_body2(work, pose, only='l'), pp, az, 12, spp, size='2400x2400', fill=0.94)
+            from PIL import Image
+            im = Image.open(pp)
+            W_, H_ = im.size
+            im.crop((int(0.22 * W_), int(0.08 * H_), int(0.78 * W_), int(0.46 * H_))).save(pp)   # the left shoulder
+            label(P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm')), 'lymb v10.2 shoulder, J1 = %s deg' % pose[2:])
+    if want('elbow'):
+        render(scene_closeup(work), P('elbow-closeup'), -50, 25, spp, size='1400x1100', fill=0.92)
+        label(P('elbow-closeup'), 'lymb v10.2 elbow: flush graphite puck, gunmetal hub cap, 1 mm coaxial parting gap; J3 ring behind')
+    if want('sbs'):
+        side_by_side(P('desk-34'), P('humanoid-34'), P('desk-and-humanoid'))
 
 
 if __name__ == '__main__':

@@ -34,10 +34,11 @@ D = KD.design()
 C = KD.structure(D)
 z0 = -min(m.bounds[0][2] for _, m in D)
 groups = {}
+HEAD_PARTS = set()   # v10.2: the old cube head goes; the cortex (quad00/cortex/cortex.loon) sits on the dock
 dropped = []
 for n, m in D + C:
     tag = n.rpartition('.')[2] if '.' in n else ''
-    if tag in ('la', 'ra'):
+    if tag in ('la', 'ra') or n.split('.')[0] in HEAD_PARTS or n.startswith(('head-', 'cortex-', 'visor-', 'cover-helmet', 'cover-head', 'trim-eye', 'trim-ear', 'trim-head')):
         dropped.append(n)
         continue
     k = VX.mat_of(n)
@@ -55,7 +56,7 @@ for side in ('Left', 'Right'):
     s_ = 1 if side == 'Left' else -1
     sockets.append((c, s_))
 cut_n = 0
-for i, m in enumerate(groups.get('cover', [])):
+for i, m in enumerate(groups.get('cover', []) if os.environ.get('CHEST_SOCKET') else []):
     for c, s_ in sockets:
         cyl = trimesh.creation.cylinder(radius=SOCKET_R, segment=[[c[0], s_ * 90.0, c[2]], [c[0], s_ * 200.0, c[2]]], sections=96)
         if not m.bounds[0][1] - 1 < s_ * 150 < m.bounds[1][1] + 1 and not (m.bounds[0][1] < s_ * 120 < m.bounds[1][1]):
@@ -71,7 +72,7 @@ for i, m in enumerate(groups.get('cover', [])):
         except Exception:
             pass
     groups['cover'][i] = m
-for c, s_ in sockets:          # bezel where the recess meets the outermost cover
+for c, s_ in (sockets if os.environ.get('CHEST_SOCKET') else []):          # bezel where the recess meets the outermost cover
     V = np.concatenate([mm.vertices for mm in groups.get('cover', [])])
     near = V[(np.hypot(V[:, 0] - c[0], V[:, 2] - c[2]) < SOCKET_R + 20) & (s_ * V[:, 1] > 100) & (s_ * V[:, 1] < 200)]
     y_out = s_ * (np.abs(near[:, 1]).max() if len(near) else 146.0)
@@ -93,7 +94,8 @@ for side, t in (('Left', 'l'), ('Right', 'r')):
     sp = P['sp'][0]
 m = KS.ARM()
 side_plate = abs(KS.upper_layout(J, 'Left')['sp'][0][1]) - m['L'] / 2 - KS.G     # sp stator back face = side plate outer face
-json.dump(dict(finishes=fin, sr=sr, z0=float(z0), side_plate_y=float(side_plate), dropped=dropped,
+HF = KS.head_frame(J, M)
+json.dump(dict(cortex=[float(HF['ox']), float(HF['oy']), float(HF['zb'] + z0)], cortex_R=float(HF['R']), finishes=fin, sr=sr, z0=float(z0), side_plate_y=float(side_plate), dropped=dropped,
                sp=(KS.upper_layout(J, 'Left')['sp'][0] + np.array([0, 0, z0])).tolist(),
                ey=(KS.upper_layout(J, 'Left')['ey'][0] + np.array([0, 0, z0])).tolist()),
           open(os.path.join(OUT, 'hum.json'), 'w'), indent=1)
