@@ -1,5 +1,7 @@
 # Rose fork v9 "lymb" - ORDER (one arm), prices researched 2026-10-20
 
+> **PARKED (2026-10-20): do not order. The design is not approved yet; see [DESIGN-REVIEW.md](DESIGN-REVIEW.md).**
+
 Nothing was bought, carted or signed in. Public pages only. Many retailer pages (McMaster, TME, Jameco, Zoro, Digi-Key) blocked fetches (JS/403), so lines marked UNCONFIRMED are estimates or search-snippet figures, not live-checked prices. Re-verify before ordering.
 
 ## 1. Order today (longest lead time first)
