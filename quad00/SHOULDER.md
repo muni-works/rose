@@ -9,10 +9,12 @@ The humanoid's J1 is the lymb v10 shoulder pitch, an RS04. It sits inside the to
 - **Conduction (B):** J1 mounts by its back face, through the 41 mm chest adapter, onto the 6.35 mm 5052 torso side plate, on a gap pad (about 3 W/mK).
 - **Fan (A):** a 40 × 40 × 10 mm fan in each corner (`elec-j1fan.l/r`), behind the drum, between it and the chest's back skin. It moves about 1.3 L/s.
 - **Air path:**
-  - in through an open dot-grid ring around the J1 face (`trim-j1grille`: Ø1.3 holes on a 2.3 mm hex, the same grid as the arm's pucks)
-  - across the drum
+  - in through the arm's open graphite ring on the J1 face (OD 133 / ID 123, arm-owned), which breathes through a Ø135 opening in the flank
+  - across the can
   - out through a 34 × 34 mm dot grid on the chest's back, behind each shoulder
-- **Look:** a gunmetal bezel ring (`trim-j1ring`) frames the open face.
+- **Look:** a gunmetal bezel ring (`trim-j1ring`, r 68.5–73.5) is inlaid flush in the flank around the opening.
+- **Corner (lymb v10.3 interface):** the flank sits at |y| 186.6. The crown and the armpit flare clear r 88 about the J1 axis, for J1's 120 mm-square chest adapter (corners at r 85) plus a 3 mm gap.
+- **Arm's thermal model (lumped, 2026-10-21):** with the plate plus the open ring, J1 holds 26.9 N·m continuously, i.e. 1.56 kg arms-forward indefinitely. With the fan added it's 33.1 N·m. The fan is margin, not a need; the J2 joint stays the limit.
 
 ## Heat by pose
 

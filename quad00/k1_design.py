@@ -175,11 +175,11 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_t
     return hull_rings(rings)
 
 
-def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
+def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
     """the sleek one-piece torso (head language): near-vertical sides that funnel out late to the shoulder line,
     big plan radii and a head-style crown fillet. Piecewise hulls, so the concave flanks survive (export lofts the rings)."""
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
-    zf = zs - 40.0 * Rk                                         # the armpit: the flare ends at the shoulder drum's bottom edge
+    zf = zs - max(40.0 * Rk, r_corner)                         # the armpit: the flare ends at the shoulder drum's bottom edge
     def sec(z):
         zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
@@ -418,13 +418,15 @@ def design():
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
         y_cap = dict(out)['cover-shoulderyoke.la'].bounds[1][1] + 2.0   # the mini's shaping: corners just over the shoulder drums
-        zc1 = max(zc1, zs + 36.0 * Rk)                          # lymb v10: the crown clears the J1 drum (its top was 7 mm proud)
-        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk)
+        y_cap = 186.6                                           # lymb v10.3 interface: J1's output face = the flank
+        r_corner = 85.0 + 3.0                                   # lymb v10.3: J1 + its chest adapter (120 sq, corners r 85) + skin gap
+        zc1 = max(zc1, zs + 36.0 * Rk, zs + r_corner - 10.0 * Rk)  # the crown clears it (crown = zc1 + 10)
+        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk, r_corner)
         for t_, sy_ in (('l', 1.0), ('r', -1.0)):                # lymb v10's J1 output face sits flush on the flank: a gunmetal
             r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs                    # bezel ring frames it, like the arm's pucks
             add(f'trim-j1ring.{t_}', tm(Manifold.cylinder(1.2, r_j1 + 2.0, r_j1 + 2.0, 96).translate((0, 0, -0.6))
                                         .__sub__(Manifold.cylinder(2.0, r_j1 - 3.0, r_j1 - 3.0, 96).translate((0, 0, -1.0)))
-                                        .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap + 0.6), zs))))
+                                        .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap - 0.6), zs))))   # inlaid flush
         # J1 cooling (Cam: B + A): J1 conducts into the chest frame through its adapter, and a 40 mm fan in each corner
         # pulls air in through an open dot-grid ring around the J1 face, over the drum, and out a dot grid on the back
         r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs
@@ -436,16 +438,14 @@ def design():
         cuts_ = []
         for t_, sy_ in (('l', 1.0), ('r', -1.0)):
             yo = sy_ * (y_cap + 0.6)
-            ring_ = Manifold.cylinder(1.2, r_j1 - 4.0, r_j1 - 4.0, 128).translate((0, 0, -0.6)) - \
-                   Manifold.cylinder(2.0, r_j1 - 11.0, r_j1 - 11.0, 128).translate((0, 0, -1.0))
-            holes = [Manifold.cylinder(3.0, 0.65, 0.65, 12).translate((u, v, -1.5)) for u, v in hexpts(-r_j1, r_j1, -r_j1, r_j1)
-                     if r_j1 - 10.0 < math.hypot(u, v) < r_j1 - 5.0]
-            g = ring_ - Manifold.batch_boolean(holes, OpType.Add)
-            add(f'trim-j1grille.{t_}', tm(g.rotate((-90.0 * sy_, 0, 0)).translate((0.0, yo, zs))))   # intake: the open face
             add(f'elec-j1fan.{t_}', trimesh.creation.box(bounds=np.array([[-r_j1 - 11.5, min(sy_ * 112.0, sy_ * 152.0), zs - 20.0],
                                            [-r_j1 - 1.5, max(sy_ * 112.0, sy_ * 152.0), zs + 20.0]])))            # 40 x 40 x 10 fan
             cuts_ += [Manifold.cylinder(40.0, 0.65, 0.65, 12).rotate((0, 90.0, 0)).translate((xb_ - 30.0, sy_ * (132.0 + u), zs + v))
                       for u, v in hexpts(-17.0, 17.0, -17.0, 17.0) if abs(u) < 17.0 and abs(v) < 17.0]          # exhaust grid
+            cuts_.append(Manifold.cylinder(1.3, r_j1 + 2.05, r_j1 + 2.05, 128).rotate((-90.0 * sy_, 0, 0))      # the bezel's inlay pocket
+                         .translate((0.0, sy_ * (y_cap - 1.25), zs)))
+            cuts_.append(Manifold.cylinder(54.0, 67.5, 67.5, 128).rotate((-90.0 * sy_, 0, 0))               # the J1 face opening: the arm's
+                         .translate((0.0, sy_ * (y_cap - 53.0), zs)))                                          # open ring breathes through it
         C_ = Manifold(Mesh(vert_properties=np.asarray(chest.vertices, np.float32), tri_verts=np.asarray(chest.faces, np.uint32)))
         chest = tm(C_ - Manifold.batch_boolean(cuts_, OpType.Add))
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
