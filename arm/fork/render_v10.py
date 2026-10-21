@@ -170,9 +170,15 @@ def scene_body2(work, pose, only=None):
     cx = H['cortex']
     cxs = ['[use cortex [%s]]' % ' '.join(n for n, _ in CORTEX)]
     for n, m in CORTEX:
-        k = H.get('cortex_k', 1.0)       # cortex.loon is authored at the mini's head size (quad00 vcad_export: hh / 120.6)
+        k = H.get('cortex_k', 1.0)       # 1.0: cortex-full.loon (copied in as cortex.loon); else the mini head scaled hh / 120.6
         body = n if abs(k - 1.0) < 1e-3 else '[scale %.4f %.4f %.4f %s]' % (k, k, k, n)
-        cxs.append('[let hc_%s [translate %.3f %.3f %.3f %s]]\n[root hc_%s "%s"]' % (n.replace('-', '_'), cx[0], cx[1], cx[2], body, n.replace('-', '_'), m))
+        hp, pitch = H.get('head_pitch'), float(os.environ.get('HEAD_PITCH', 35.0))   # rose: eyes down by the neck, ~35 deg
+        if hp and pitch:
+            body = '[translate %.3f %.3f %.3f [rotate 0 %.2f 0 [translate %.3f %.3f %.3f %s]]]' % (
+                hp[0], hp[1], hp[2], -pitch, cx[0] - hp[0], cx[1] - hp[1], cx[2] - hp[2], body)
+            cxs.append('[let hc_%s %s]\n[root hc_%s "%s"]' % (n.replace('-', '_'), body, n.replace('-', '_'), m))
+        else:
+            cxs.append('[let hc_%s [translate %.3f %.3f %.3f %s]]\n[root hc_%s "%s"]' % (n.replace('-', '_'), cx[0], cx[1], cx[2], body, n.replace('-', '_'), m))
     import rose_fork as F
     ph = body_ped_h()
     L = []
@@ -181,7 +187,7 @@ def scene_body2(work, pose, only=None):
             continue
         sr = [c / 1e3 for c in H['sp']]   # v10.3: J1 on the humanoid's shoulder-pitch axis (x, z of quad00's sp; rose's torso v103)
         at = [sr[0], s * (SIDE_PLATE_Y + ph), sr[2]]
-        L.append(arm(dict(V10, ROSE_ARM_PED_H='%.5f' % ph, ROSE_ARM_PEDESTAL='0'), q=BODY_POSES[pose][s], at=at, R0=body_R0(s),
+        L.append(arm(dict(V10, ROSE_ARM_PED_H='%.5f' % ph, ROSE_ARM_PEDESTAL='0', ROSE_ARM_SIDE=t), q=BODY_POSES[pose][s], at=at, R0=body_R0(s),
                      prefix='b' + t, outdir=work, skin=True, tag='skin-body', skip=[['base', 'base']]))
     src = photo(F.MATERIALS + '\n' + '\n'.join(L)) + skin_mats() + hm + CX_MATS + '\n'.join(cxs) + '\n' + '\n'.join(hum) + '\n'
     fn = os.path.join(work, 'body-%s.loon' % pose)

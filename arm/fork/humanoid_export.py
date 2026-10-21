@@ -95,7 +95,8 @@ for side, t in (('Left', 'l'), ('Right', 'r')):
 m = KS.ARM()
 side_plate = abs(KS.upper_layout(J, 'Left')['sp'][0][1]) - m['L'] / 2 - KS.G     # sp stator back face = side plate outer face
 HF = KS.head_frame(J, M)
-json.dump(dict(cortex=[float(HF['ox']), float(HF['oy']), float(HF['zb'] + z0)], cortex_R=float(HF['R']), cortex_k=float(HF['hh'] / 120.6), finishes=fin, sr=sr, z0=float(z0), side_plate_y=float(side_plate), dropped=dropped,
+json.dump(dict(cortex=[float(HF['ox']), float(HF['oy']), float(HF['zb'] + z0)], cortex_R=float(HF['R']), cortex_k=1.0 if os.path.exists(os.path.join(Q, 'cortex', 'cortex-full.loon')) else float(HF['hh'] / 120.6),
+               head_pitch=(KS.head_layout(J)['pitch'][0] + np.array([0, 0, z0])).tolist(), finishes=fin, sr=sr, z0=float(z0), side_plate_y=float(side_plate), dropped=dropped,
                sp=(KS.upper_layout(J, 'Left')['sp'][0] + np.array([0, 0, z0])).tolist(),
                ey=(KS.upper_layout(J, 'Left')['ey'][0] + np.array([0, 0, z0])).tolist()),
           open(os.path.join(OUT, 'hum.json'), 'w'), indent=1)

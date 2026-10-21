@@ -197,22 +197,47 @@ def seam_cut(m, c, ax, r, L=600.0):
     return _tm(Manifold(_mm(m)) - Manifold(_mm(cyl(np.asarray(c) - a, np.asarray(c) + a, r, 128))))
 
 
-def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5):
+def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5, skip=(), field=False, front=None, count_only=False):
     """The dot-grid (Rose: 1.1-1.4 mm holes on a 2.2-2.4 mm hex, only where air must pass): holes on the
-    four flat faces of a rounded-rectangle sleeve between x0 and x1 (mm), kept off the corner rounds.
-    The sleeve stands in for a 2 mm wall, so the holes are drawn 2.5 mm deep."""
+    flat faces of a rounded-rectangle sleeve between x0 and x1 (mm), kept off the corner rounds.
+    field=True (v10.5, rose): each face's grid sits in a rounded-rectangle field (corner 0.3 x its half
+    height), edges parallel to the sleeve's; on the +-z (side) faces the field stops short of the `front`
+    face (15 deg of the corner round + 3 mm) so the 3/4 silhouette edge stays solid.
+    The sleeve stands in for a 2 mm wall, so the holes are drawn 2.5 mm deep into a dark cavity."""
     V = m.vertices
     sel = V[(V[:, 0] > x0) & (V[:, 0] < x1)]
     a, b = np.abs(sel[:, 1]).max(), np.abs(sel[:, 2] - zc).max()
     rc = RC * min(a, b)
-    cyls = []
+    cyls, n = [], 0
     for face, half, other in ((1, a, b), (2, b, a)):     # +-y faces span z, +-z faces span y
         lim = other - rc - 1.5
-        rows = np.arange(-lim, lim + 1e-6, pitch * math.sqrt(3) / 2)
-        for i, u in enumerate(rows):
-            off = (pitch / 2) * (i % 2)
-            for x in np.arange(x0 + 2 + off, x1 - 2, pitch):
-                for sg in (-1, 1):
+        for sg in (-1, 1):
+            if (face, sg) in skip:      # a face left clean, e.g. (1, -1) = the -y face
+                continue
+            u0, u1 = -lim, lim
+            if field and face == 2 and front is not None:     # side faces: pull back from the front edge
+                pull = rc * math.sin(math.radians(15)) + 3.0
+                if front[1] < 0:
+                    u0 += pull
+                else:
+                    u1 -= pull
+            fx0, fx1 = x0 + 2, x1 - 2
+            hu, hx = (u1 - u0) / 2, (fx1 - fx0) / 2
+            uc, xc = (u0 + u1) / 2, (fx0 + fx1) / 2
+            rf = RC * min(hu, hx)
+            rows = np.arange(u0, u1 + 1e-6, pitch * math.sqrt(3) / 2)
+            for i, u in enumerate(rows):
+                off = (pitch / 2) * (i % 2)
+                for x in np.arange(fx0 + off, fx1 + 1e-6, pitch):
+                    if field:   # inside the rounded-rectangle field, a full hole radius in from its edge
+                        dx, du = abs(x - xc) - (hx - rf), abs(u - uc) - (hu - rf)
+                        if dx > 0 and du > 0 and math.hypot(dx, du) > rf - d / 2:
+                            continue
+                        if abs(x - xc) > hx - d / 2 or abs(u - uc) > hu - d / 2:
+                            continue
+                    n += 1
+                    if count_only:
+                        continue
                     c = np.array([x, 0.0, zc])
                     if face == 1:
                         c[1], c[2] = sg * half, zc + u
@@ -222,8 +247,10 @@ def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5):
                         a0, a1 = c - [0, 0, sg * depth], c + [0, 0, sg * 1.0]
                     cyls.append(Manifold.cylinder(float(np.linalg.norm(a1 - a0)), d / 2, d / 2, 8)
                                 .transform(_frame_to(a0, a1)))
+    if count_only:
+        return n * math.pi * (d / 2) ** 2
     holes = Manifold.batch_boolean(cyls, __import__('manifold3d').OpType.Add)
-    return _tm(Manifold(_mm(m)) - holes), len(cyls)
+    return _tm(Manifold(_mm(m)) - holes), n
 
 
 def _frame_to(a0, a1):
@@ -233,6 +260,9 @@ def _frame_to(a0, a1):
     x /= np.linalg.norm(x)
     y = np.cross(z, x)
     return np.column_stack([x, y, z, a0]).astype(np.float32)
+
+
+J3_OPEN = {}
 
 
 def skin_parts():
@@ -256,25 +286,47 @@ def skin_parts():
     cab = np.concatenate([cab + [0, 0, d] for d in (-F.R_CABLE * 1e3, F.R_CABLE * 1e3)])
     for xj in (0.0, F.UPPER * 1e3, F.W * 1e3):     # the joint crossings live under the pucks
         cab = cab[np.hypot(cab[:, 0] - xj, cab[:, 2] - zs) > 85.0]
-    Rp = {'J2': F.R_LOBE_SH * 1e3 + 2.5, 'J4': F.R_LOBE_EL * 1e3 + 2.5, 'J6': F.R_LOBE6W * 1e3 + 2.5}
+    Rp = {'J2': F.R_LOBE_SH * 1e3 + 2.5, 'J4': F.R_LOBE_EL * 1e3 + 1.0, 'J6': F.R_LOBE6W * 1e3 + 2.5}   # v10.4 taper: J2 137, J4 126, J6 96 OD
+    BEZEL = {'J2': 3.0, 'J4': 2.0, 'J6': 1.5}
     J = {'J2': np.array([0.0, 0, zs]), 'J4': np.array([U, 0, zs]), 'J6': np.array([Wm, 0, zs])}
     seam = lambda j: (J[j], 1, Rp[j] + GAP)
     out = []
     xr = lambda P, a, b: P[(P[:, 0] >= a) & (P[:, 0] <= b)]
     # ---- upper arm: widest at the deltoid (over J2 / J3), ~0.7 at the elbow
     P = xr(np.concatenate([Pw('upper'), Pw('upperd'), cab]), -80, U + 80)
-    req = need(P, 0, 0.0, U, 6, seams=[seam('J2'), seam('J4')])
-    a_max = max(r[1] for r in req)
-    b_max = max(r[2] for r in req)
-    ua = sleeve(taper(req, a_max, b_max, 0.7 * a_max, 0.7 * b_max), origin=(0, 0, zs))
+    # v10.5 (rose's biceps): section 1.15 wide (lateral = arm z) : 1 deep (fore-aft = arm y), corner 0.3;
+    # fullest 27 % down from J2, straight to 0.75 at the J3 seam, holding 0.72 to the elbow ring
+    req = need(P, 0, 0.0, U, 13, seams=[seam('J2'), seam('J4')])
+    def prof(s):
+        s1 = 0.27 * U
+        if s <= s1:
+            return 1.0
+        if s <= X3:
+            return 1.0 + (0.75 - 1.0) * (s - s1) / (X3 - s1)
+        return 0.75 + (0.72 - 0.75) * (s - X3) / (U - X3)
+    a_full = max(max(r[1] / prof(r[0]) for r in req if r[1] > 0), max(r[2] / prof(r[0]) for r in req if r[2] > 0) / 1.15)
+    B_IN = 55.0   # the sleeve's inner (torso-side, arm -z) half-extent cap: below the J2 seam the turret shell lives there
+    st = []
+    for s, a, b, _ in req:
+        aa, bb = max(a_full * prof(s), a), max(1.15 * a_full * prof(s), b)
+        cw = max(0.0, (bb - B_IN) / 2)            # fuller to the outside, held at B_IN on the inside
+        st.append((s, aa, bb - cw, cw))
+    ua = sleeve(st, origin=(0, 0, zs))
     for j in ('J2', 'J4'):
         ua = seam_cut(ua, *seam(j))
     lo = halves(ua, 0, X3 - 0.75)[0]
     hi = halves(ua, 0, X3 + 0.75)[1]
     x3a, x3b = (F.X3_CP + F.T_PL) * 1e3 + 4.0, X3 - 4.0
-    lo, nh3 = perforate(lo, x3a, x3b, zs)          # dot-grid over the J3 can (thermal_v10: the 'band' path)
+    # v10.5: J3's dot-grid on every face but the front - inner, outer, back - at the denser 1.4 / 2.2 hex (37 % open):
+    # ~0.95 of the old four-face 29 % grid's open area, so J3 stays at ~20 % derate (thermal_v10 J3_GRID 0.95).
+    # Front = body +x: arm -y on the left arm, +y on the right (ROSE_ARM_SIDE).
+    front = (1, -1) if os.environ.get('ROSE_ARM_SIDE', 'l') == 'l' else (1, 1)
+    J3_OPEN['ref'] = perforate(lo, x3a, x3b, zs, count_only=True)          # v10.3: 4 faces, 1.3 / 2.3, no field
+    J3_OPEN['v105'] = perforate(lo, x3a, x3b, zs, d=1.4, pitch=2.2, skip=(front,), field=True, front=front, count_only=True)
+    lo, nh3 = perforate(lo, x3a, x3b, zs, d=1.4, pitch=2.2, skip=(front,), field=True, front=front)
     out += [('upper', 'upper', loc(lo, 'upper'), 'skin'), ('upperd', 'upperd', loc(hi, 'upperd'), 'skin')]
-    out.append(('ring-J3', 'upperd', loc(band(ua, 0, X3, width=1.5, grow=-0.6), 'upperd'), 'trim'))
+    # v10.5: J3 is a 1.5 mm dark parting line with a 0.8 mm gunmetal hairline inset 0.6 mm (catches light only grazing)
+    out.append(('ring-J3', 'upperd', loc(band(ua, 0, X3, width=0.8, grow=-0.6), 'upperd'), 'trim'))
     # ---- forearm: slimmer than the upper arm, tapering to the wrist
     P = xr(np.concatenate([Pw('fore'), Pw('yoke'), cab]), U - 80, Wm + 60)
     req = need(P, 0, U, Wm, 5, seams=[seam('J4'), seam('J6')])
@@ -293,8 +345,17 @@ def skin_parts():
     out.append(('ring-J7', 'wrist', loc(band(wa, 0, xt - 3.0, width=2.0, grow=0.4), 'wrist'), 'accent'))   # flush in the sleeve's own section
     # ---- pucks, flush with the widest sleeve that meets them, flush gunmetal hub caps
     half_w = lambda *ms: max(np.abs(m.vertices[:, 1]).max() for m in ms)
+    def half_w_at(x0, *ms):   # v10.5: the sleeves' width where they meet this joint (within 30 mm of the seam)
+        best = 0.0
+        for m in ms:
+            V = m.vertices
+            near = np.abs(np.hypot(V[:, 0] - x0, V[:, 2] - zs) - (Rp_near.get(x0, 70.0))) < 30.0
+            if near.any():
+                best = max(best, np.abs(V[near, 1]).max())
+        return best
+    Rp_near = {0.0: Rp['J2'] + GAP, U: Rp['J4'] + GAP, Wm: Rp['J6'] + GAP}
     for j, owner, ms in (('J2', 'turret', (ua,)), ('J4', 'fore', (ua, fa)), ('J6', 'wrist', (fa, wa))):
-        hy = half_w(*ms)
+        hy = half_w_at(J[j][0], *ms)
         c = J[j]
         # v10.3 (thermal_v10.py): the puck is a graphite RING; the motor's own dark face is open to air behind a
         # thin gunmetal bezel - a vented (1.3 / 2.3 hex) cap here costs J2 0.2 kg of hold, an open face costs none
@@ -315,9 +376,20 @@ def skin_parts():
         ring = ring - Manifold.batch_boolean(holes, __import__('manifold3d').OpType.Add)
         out.append(('puck-' + j, owner, loc(_tm(ring), owner), 'puck'))
         for sg in (-1, 1):
-            bz = Manifold(_mm(cyl(c + [0, sg * (hy - 0.5), 0], c + [0, sg * (hy + 0.4), 0], ri + 3.0, 128))) - \
+            bz = Manifold(_mm(cyl(c + [0, sg * (hy - 0.5), 0], c + [0, sg * (hy + 0.4), 0], ri + BEZEL[j], 128))) - \
                 Manifold(_mm(cyl(c + [0, sg * (hy - 1.0), 0], c + [0, sg * (hy + 1.0), 0], ri, 128)))
             out.append(('cap-%s%+d' % (j, sg), owner, loc(_tm(bz), owner), 'trim'))
+    # v10.4 deltoid hood: the turret's shell carries on over the top third of the J2 ring (arm -x: up on the
+    # humanoid, the shoulder line), 2.5 mm proud of the ring, so the shoulder grows out of rose's crown and less
+    # drum shows from the front. It covers a third of J2's dot-grid (thermal_v10: J2 barrel 1.0 -> 0.8).
+    hyJ = half_w(ua) + 1.0
+    cJ = J['J2']
+    hood = (Manifold(_mm(cyl(cJ - [0, hyJ, 0], cJ + [0, hyJ, 0], Rp['J2'] + 3.0, 128)))
+            - Manifold(_mm(cyl(cJ - [0, hyJ + 1, 0], cJ + [0, hyJ + 1, 0], Rp['J2'] + 0.5, 128))))
+    hood = hood ^ Manifold(_mm(trimesh.creation.box(extents=[200.0, 400.0, 400.0]).apply_translation(
+        [cJ[0] - 100.0 - Rp['J2'] * 0.5, 0.0, cJ[2]])))
+    if not F.PEDESTAL:   # body only: on the desk the arm needs J2's full backswing (the hood stops it at -75)
+        out.append(('hood-J2', 'turret', loc(_tm(hood), 'turret'), 'skin'))
     # ---- turret / shoulder: J1 output up to the J2 axis, as wide as the J2 puck, its top inside the puck
     hy2 = half_w(ua)
     P = Pw('turret')
@@ -376,7 +448,7 @@ _CACHE = {}
 
 
 def skin_meshes():
-    key = (F.SIZE, F.UPPER, F.FORE, F.Z_SH, F.PEDESTAL, F.PED_H)
+    key = (F.SIZE, F.UPPER, F.FORE, F.Z_SH, F.PEDESTAL, F.PED_H, os.environ.get('ROSE_ARM_SIDE', 'l'))
     if key not in _CACHE:
         _CACHE[key] = skin_parts()
     return _CACHE[key]

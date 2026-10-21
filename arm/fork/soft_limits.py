@@ -33,8 +33,9 @@ TABLE = os.path.join(HERE, 'soft_limits_v10.npz')
 SPACING = 5.0          # mm, surface sampling
 GAP_MIN = SPACING + 1.0
 CLEAR = 5.0            # mm to the desk / the humanoid's shell
-RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-140, 10), 'J3_upper_roll': (-180, 180),
-          'J4_elbow': (-115, 115), 'J6_wrist_pitch': (-100, 100), 'J7_tool_roll': (-180, 180)}
+RANGES = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-95, 5), 'J3_upper_roll': (-180, 180),
+          'J4_elbow': (-100, 100), 'J6_wrist_pitch': (-100, 100), 'J7_tool_roll': (-180, 180)}
+BODY_RANGES = {'J2_sho_pitch': (-75, 5)}   # v10.4: the deltoid hood (body only) stops the backswing (abduction) at 75 deg
 STRUCT = {'J1_yaw': (-180, 180), 'J2_sho_pitch': (-180, 25), 'J3_upper_roll': (-180, 180),
           'J4_elbow': (-150, 130), 'J6_wrist_pitch': (-130, 130), 'J7_tool_roll': (-180, 180)}
 ADJ = {frozenset(p) for p in (('base', 'turret'), ('turret', 'upper'), ('upper', 'upperd'), ('upperd', 'fore'),
@@ -78,7 +79,8 @@ def _min_dist(A, B):
 def why(q, payload=0.0, mount='desk'):
     """None if the pose is accepted, else the first reason it is not."""
     deg = {j: math.degrees(q.get(j, 0.0)) for j in RANGES}
-    for j, (lo, hi) in RANGES.items():
+    rng = dict(RANGES, **(BODY_RANGES if mount != 'desk' else {}))
+    for j, (lo, hi) in rng.items():
         if not lo - 1e-6 <= deg[j] <= hi + 1e-6:
             return 'range %s %.0f' % (j, deg[j])
     import pose_cap

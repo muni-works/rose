@@ -40,6 +40,7 @@ H, ETA_REF, ETA_P, H_IN, PHI, DT = 10.0, 0.7, 0.5, 5.0, 0.5, 95.0
 MANUAL = {'RS04': (40.0, 27.0, 0.16, 0.345), 'RS02': (7.0, 7.0, 0.55, 0.150), 'RS00': (5.0, 4.7, 1.5, 0.150)}
 FLANK = float(os.environ.get('LYMB_FLANK', 0.0))
 BARREL = float(os.environ.get('LYMB_BARREL', 1.0))   # v10.3: open annulus + a dot-grid round the ring's circumference
+J3_GRID = float(os.environ.get('LYMB_J3_GRID', 0.95))   # J3's grid open area vs the old 4-face 29 % grid: v10.5 = 3 faces (front clean) at 1.4 / 2.2 hex (37 %) = 0.75 x 37 / 29 = 0.95
 PHI_CAP = float(os.environ.get('LYMB_PHI_CAP', 1.0))   # 1.0: open motor faces behind a bezel (v10.3); 0.5: perforated 1.3 / 2.3 hex caps
 ALPANEL = os.environ.get('LYMB_ALPANEL', '1') == '1'
 OPEN = os.environ.get('LYMB_OPEN_DRUM', '1') == '1'
@@ -63,6 +64,12 @@ def sheet_area(pred):
 
 def main(vent_scale=1.0, quiet=False):
     parts = {nm: m for nm, l, m, _ in S.skin_meshes()}
+    global J3_GRID
+    if 'LYMB_J3_GRID' not in os.environ and S.J3_OPEN.get('ref'):
+        J3_GRID = S.J3_OPEN['v105'] / S.J3_OPEN['ref']      # the v10.5 field's open area vs the v10.3 grid's
+        if not quiet:
+            print('J3 grid: %.0f mm2 open (v10.5 fields, 1.4 / 2.2, 3 faces) vs %.0f mm2 (v10.3, 1.3 / 2.3, 4 faces): x %.2f'
+                  % (S.J3_OPEN['v105'], S.J3_OPEN['ref'], J3_GRID))
     A = lambda nm, k=1.0: parts[nm].area * 1e-6 * k if nm in parts else 0.0
     is_end = lambda p: abs(p[6][0]) > 1e-6          # extruded along x: an end plate / bridge / flange
     S_ = F.stations()
@@ -87,7 +94,7 @@ def main(vent_scale=1.0, quiet=False):
         G_vent = G_skin + H * PHI * A_vent
         if vented == 'band':
             # roll cartridges: a dot-grid band in the sleeve right over the can (the barrel sees air at PHI)
-            G_vent = G_skin + H * PHI * math.pi * m['d'] * m['L']
+            G_vent = G_skin + H * PHI * math.pi * m['d'] * m['L'] * (J3_GRID if j == 'J3' else 1.0)   # v10.5: J3's grid on the inner face + back half only
         if vented is True and OPEN:
             # open drum: the puck is a graphite RING round the can, both motor end faces open to air (the
             # motor's own dark face is the puck's face) and the 8.5 mm annulus round the can open at both
@@ -101,7 +108,7 @@ def main(vent_scale=1.0, quiet=False):
                 # panels, warm-black anodized, on a 0.5 mm gap-pad to the plates: the plates keep their own
                 # free-convection area (the panel is the same size, eta_p as bare); pad + panel add 0.15 K/W
                 G_pl = 1 / (1 / (H * ETA_P * Ap) + 0.20)   # 0.25 mm pad + 0.6 mm panel (pad ~3 W/mK)
-                G_vent = H * (PHI_CAP * ends + BARREL * barrel) + G_pl
+                G_vent = H * (PHI_CAP * ends + BARREL * (0.8 if (j == 'J2' and os.environ.get('LYMB_MOUNT') == 'body') else 1.0) * barrel) + G_pl   # v10.4: the deltoid hood covers a third of J2's dot-grid
             else:   # J6: open ring, its holder plates stay enclosed under the sleeve
                 G_vent = H * (ends + BARREL * barrel) + H * PHI * FLANK * ETA_P * Ap + 1 / (1 / (H_IN * ETA_P * Ap * (1 - FLANK)) + 1 / (H * Ash))
         f = lambda G: min(1.0, math.sqrt(DT / (R_int + 1 / G) / P))

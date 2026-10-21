@@ -110,6 +110,8 @@ W = UPPER + FORE      # wrist centre x
 R_LOBE6 = RS06['d'] / 2 + 0.006
 R_LOBE_SH = J2M['d'] / 2 + 0.006     # shoulder lobe
 R_LOBE_EL = J4M['d'] / 2 + 0.006     # elbow lobe
+if V10:
+    R_LOBE_EL = J4M['d'] / 2 + 0.002  # v10.4: a slimmer elbow lobe (back-pattern web 6.75 mm) so the J4 ring reads smaller than J2's
 R_LOBE0 = RS00['d'] / 2 + 0.006
 R_LOBE5 = J5M['d'] / 2 + 0.006       # forearm tip round the J5 roll motor
 R_LOBE6W = J6M['d'] / 2 + 0.006      # wrist-pitch lobe
