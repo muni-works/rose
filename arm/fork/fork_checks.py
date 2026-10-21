@@ -44,6 +44,11 @@ def masses():
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
     rows.append(('harness', 0.20, 0.35 * F.W / 0.48))   # spread along the arm; 0.35 m on the full arm
+    if F.V10 and os.environ.get('ROSE_ARM_BARE') != '1':    # v10.3: the skin, Al flank panels and gap pad (skin_v10.py --mass)
+        import json
+        f = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'skin_mass_v10.json')
+        if os.path.exists(f):
+            rows += [(l, kg, x) for l, kg, x in json.load(open(f))]
     import fab
     for name, where, qty, m, sp, bush, ring, bore in fab.SLEEVES:
         kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
@@ -81,17 +86,27 @@ def moment(x0, payload=PAYLOAD):
     return G * (sum(m * (x - x0) for l, m, x in _rows() if l in MOVING and x > x0) + payload * (flange_x() - x0))
 
 
+def derate(j):
+    """v10.3: the skin's thermal derating of joint j's continuous rating (thermal_v10.py writes
+    thermal_v10.json; design of record = open-ring pucks + Al flank panels). 1.0 for v9 / no table."""
+    if not F.V10:
+        return 1.0
+    import json
+    f = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'thermal_v10.json')
+    return json.load(open(f)).get(j, 1.0) if os.path.exists(f) else 1.0
+
+
 def holds():
     """{joint: kg held straight out, continuously} for the current GRIPPER. J3 (v10 upper-arm roll) and
     J1 (when it is the humanoid's shoulder pitch) are the worst pose: the load's lever about their axis."""
     R = lambda m: F.RATING[id(m)][1] * (2 if (m is F.J2M and F.TWIN_SH) else 1)
     out = {}
     for j, x0, m in (('J2', 0.0, F.J2M), ('J4', F.UPPER, F.J4M), ('J6', F.W, F.J6M)):
-        out[j] = (R(m) - moment(x0, 0.0)) / (G * (flange_x() - x0))
+        out[j] = (R(m) * derate(j) - moment(x0, 0.0)) / (G * (flange_x() - x0))
     if F.V10:
         # J3 rolls the elbow: with the upper arm level and the forearm swung out level to the side, the
         # forearm + hand moment about the upper-arm axis is exactly the elbow's load
-        out['J3'] = (F.RATING[id(F.J3M)][1] - moment(F.UPPER, 0.0)) / (G * (flange_x() - F.UPPER))
+        out['J3'] = (F.RATING[id(F.J3M)][1] * derate('J3') - moment(F.UPPER, 0.0)) / (G * (flange_x() - F.UPPER))
         out['J1 body'] = out['J2']     # J1 as the humanoid's shoulder pitch: the whole arm, same lever as J2
     return out
 
@@ -255,7 +270,7 @@ def main():
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
     for name, x0, stall in (('J2', 0.0, R(F.J2M, 'J2')[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
-        free = stall - moment(x0, 0.0)
+        free = stall * derate(name) - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
     if F.V10:
         h = holds()

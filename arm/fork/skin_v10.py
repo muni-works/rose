@@ -36,7 +36,8 @@ SKIN_MATS = '\n'.join([
     '[material "puck" 0.06 0.062 0.066 0.6 0.38]',         # graphite
     '[material "trim" 0.30 0.32 0.34 0.85 0.32]',          # gunmetal
     '[material "accent" 0.224 1.0 0.078 0.0 0.4]',         # Make green #39ff14 - the one neon, at the wrist
-    '[material "vent" 0.008 0.007 0.006 0.0 0.8]',         # dot-grid band (1.3 mm on 2.3 hex), drawn as a matte dead-front
+    '[material "sheet_dark" 0.02 0.02 0.022 0.8 0.35]',    # 5052 plate, black anodized (shows only inside the ring pucks)
+    '[material "cable_dark" 0.02 0.02 0.02 0.0 0.7]',      # black silicone harness
 ]) + '\n'
 
 
@@ -196,6 +197,44 @@ def seam_cut(m, c, ax, r, L=600.0):
     return _tm(Manifold(_mm(m)) - Manifold(_mm(cyl(np.asarray(c) - a, np.asarray(c) + a, r, 128))))
 
 
+def perforate(m, x0, x1, zc, d=1.3, pitch=2.3, depth=2.5):
+    """The dot-grid (Rose: 1.1-1.4 mm holes on a 2.2-2.4 mm hex, only where air must pass): holes on the
+    four flat faces of a rounded-rectangle sleeve between x0 and x1 (mm), kept off the corner rounds.
+    The sleeve stands in for a 2 mm wall, so the holes are drawn 2.5 mm deep."""
+    V = m.vertices
+    sel = V[(V[:, 0] > x0) & (V[:, 0] < x1)]
+    a, b = np.abs(sel[:, 1]).max(), np.abs(sel[:, 2] - zc).max()
+    rc = RC * min(a, b)
+    cyls = []
+    for face, half, other in ((1, a, b), (2, b, a)):     # +-y faces span z, +-z faces span y
+        lim = other - rc - 1.5
+        rows = np.arange(-lim, lim + 1e-6, pitch * math.sqrt(3) / 2)
+        for i, u in enumerate(rows):
+            off = (pitch / 2) * (i % 2)
+            for x in np.arange(x0 + 2 + off, x1 - 2, pitch):
+                for sg in (-1, 1):
+                    c = np.array([x, 0.0, zc])
+                    if face == 1:
+                        c[1], c[2] = sg * half, zc + u
+                        a0, a1 = c - [0, sg * depth, 0], c + [0, sg * 1.0, 0]
+                    else:
+                        c[2], c[1] = zc + sg * half, u
+                        a0, a1 = c - [0, 0, sg * depth], c + [0, 0, sg * 1.0]
+                    cyls.append(Manifold.cylinder(float(np.linalg.norm(a1 - a0)), d / 2, d / 2, 8)
+                                .transform(_frame_to(a0, a1)))
+    holes = Manifold.batch_boolean(cyls, __import__('manifold3d').OpType.Add)
+    return _tm(Manifold(_mm(m)) - holes), len(cyls)
+
+
+def _frame_to(a0, a1):
+    """4x3 affine taking the +z unit cylinder at the origin to the segment a0 -> a1."""
+    z = (a1 - a0) / np.linalg.norm(a1 - a0)
+    x = np.cross(z, [1.0, 0, 0]) if abs(z[0]) < 0.9 else np.cross(z, [0, 1.0, 0])
+    x /= np.linalg.norm(x)
+    y = np.cross(z, x)
+    return np.column_stack([x, y, z, a0]).astype(np.float32)
+
+
 def skin_parts():
     """v10.2 (Rose's language): limbs are graphite pucks + slim tapered sleeves, no pods.
 
@@ -232,10 +271,10 @@ def skin_parts():
         ua = seam_cut(ua, *seam(j))
     lo = halves(ua, 0, X3 - 0.75)[0]
     hi = halves(ua, 0, X3 + 0.75)[1]
+    x3a, x3b = (F.X3_CP + F.T_PL) * 1e3 + 4.0, X3 - 4.0
+    lo, nh3 = perforate(lo, x3a, x3b, zs)          # dot-grid over the J3 can (thermal_v10: the 'band' path)
     out += [('upper', 'upper', loc(lo, 'upper'), 'skin'), ('upperd', 'upperd', loc(hi, 'upperd'), 'skin')]
     out.append(('ring-J3', 'upperd', loc(band(ua, 0, X3, width=1.5, grow=-0.6), 'upperd'), 'trim'))
-    x3c = (F.X3_CP + F.T_PL) * 1e3 + F.J3M['L'] * 1e3 / 2
-    out.append(('vent-J3', 'upper', loc(band(ua, 0, x3c, width=F.J3M['L'] * 1e3 - 8.0, grow=0.3), 'upper'), 'vent'))   # dot-grid band over the J3 can
     # ---- forearm: slimmer than the upper arm, tapering to the wrist
     P = xr(np.concatenate([Pw('fore'), Pw('yoke'), cab]), U - 80, Wm + 60)
     req = need(P, 0, U, Wm, 5, seams=[seam('J4'), seam('J6')])
@@ -248,10 +287,9 @@ def skin_parts():
     P = xr(np.concatenate([Pw('wrist'), cab]), Wm - 60, xt + 3.2)
     req = need(P, 0, Wm, xt + 3.0, 4, seams=[seam('J6')])
     wa = seam_cut(sleeve(taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), origin=(0, 0, zs)), *seam('J6'))
-    out.append(('wrist', 'wrist', loc(wa.copy(), 'wrist'), 'skin'))
+    wv, nh7 = perforate(wa, (S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0, zs)   # dot-grid over the J7 can
+    out.append(('wrist', 'wrist', loc(wv, 'wrist'), 'skin'))
     c = np.array([xt, 0, zs])
-    x7c = (S['x_ep'] + F.T_PL) * 1e3 + F.J7M['L'] * 1e3 / 2
-    out.append(('vent-J7', 'wrist', loc(band(wa, 0, x7c, width=F.J7M['L'] * 1e3 - 10.0, grow=0.3), 'wrist'), 'vent'))   # dot-grid band over J7
     out.append(('ring-J7', 'wrist', loc(band(wa, 0, xt - 3.0, width=2.0, grow=0.4), 'wrist'), 'accent'))   # flush in the sleeve's own section
     # ---- pucks, flush with the widest sleeve that meets them, flush gunmetal hub caps
     half_w = lambda *ms: max(np.abs(m.vertices[:, 1]).max() for m in ms)
@@ -263,6 +301,18 @@ def skin_parts():
         m_ = {'J2': F.J2M, 'J4': F.J4M, 'J6': F.J6M}[j]
         ri = m_['d'] / 2 * 1e3 + 1.5
         ring = Manifold(_mm(cyl(c - [0, hy, 0], c + [0, hy, 0], Rp[j], 128))) - Manifold(_mm(cyl(c - [0, hy + 1, 0], c + [0, hy + 1, 0], ri, 128)))
+        # dot-grid round the ring's circumference (thermal_v10 BARREL = 1: the can's barrel sees air)
+        holes = []
+        rows = np.arange(-hy + 4.0, hy - 4.0 + 1e-6, 2.3 * math.sqrt(3) / 2)
+        n_ = int(2 * math.pi * Rp[j] / 2.3)
+        for i, yy in enumerate(rows):
+            for k in range(n_):
+                th = 2 * math.pi * (k + 0.5 * (i % 2)) / n_
+                d_ = np.array([math.cos(th), 0.0, math.sin(th)])
+                a0 = c + d_ * (ri - 1.0) + [0, yy, 0]
+                a1 = c + d_ * (Rp[j] + 1.0) + [0, yy, 0]
+                holes.append(Manifold.cylinder(float(np.linalg.norm(a1 - a0)), 0.65, 0.65, 8).transform(_frame_to(a0, a1)))
+        ring = ring - Manifold.batch_boolean(holes, __import__('manifold3d').OpType.Add)
         out.append(('puck-' + j, owner, loc(_tm(ring), owner), 'puck'))
         for sg in (-1, 1):
             bz = Manifold(_mm(cyl(c + [0, sg * (hy - 0.5), 0], c + [0, sg * (hy + 0.4), 0], ri + 3.0, 128))) - \
@@ -291,10 +341,11 @@ def skin_parts():
         base = trimesh.creation.revolve(np.array(prof), sections=128)
         out.append(('desk-puck', 'base', loc(base, 'base'), 'skin'))
     else:
-        rj = F.J1M['d'] / 2 * 1e3 + 6
-        out.append(('flank-J1', 'base', loc(cyl([0, 0, zo - 3.0], [0, 0, zo - GAP], rj, 128), 'base'), 'puck'))
-        ring = Manifold(_mm(cyl([0, 0, zo - 3.0], [0, 0, zo - GAP], rj + 3.0, 128))) - Manifold(_mm(cyl([0, 0, zo - 4], [0, 0, zo], rj + 0.6, 128)))
-        out.append(('flank-ring', 'base', loc(_tm(ring), 'base'), 'trim'))
+        # body: J1's face flush on the torso flank as an OPEN graphite ring (r 61.5..66.5, 3 mm deep), the motor's
+        # own face open to air inside it; rose's torso owns the gunmetal bezel round it (trim-j1ring, |y| 186.6)
+        rj = F.J1M['d'] / 2 * 1e3 + 6.5
+        ring = Manifold(_mm(cyl([0, 0, zo - 3.0], [0, 0, zo - GAP], rj, 128))) - Manifold(_mm(cyl([0, 0, zo - 4], [0, 0, zo], F.J1M['d'] / 2 * 1e3 + 1.5, 128)))
+        out.append(('flank-J1', 'base', loc(_tm(ring), 'base'), 'puck'))
     return out
 
 
@@ -346,6 +397,9 @@ def frag(q, at=(0.0, 0.0, 0.0), R0=Gm.I3, prefix='a', outdir='.', skin=True, ski
     src = F.world_loon(q, at=at, prefix=prefix, header=False, R0=R0, skip=sk, cable='cable' not in skip)
     if not skin:
         return src
+    # v10.3: with the skin on, the plates show only inside the open ring pucks: black-anodized there, and
+    # the harness (silicone, black) reads as part of the joint, not an orange accent
+    src = src.replace('"sheet"]', '"sheet_dark"]').replace('"cable"]', '"cable_dark"]')
     tag = stl_tag or ('skin-%s' % F.SIZE)
     T0 = F.fk(q)
     T = {k: (Gm.mm_(R0, Rk), Gm.add(Gm.mv(R0, tk), at)) for k, (Rk, tk) in T0.items()}
@@ -371,7 +425,44 @@ def frag(q, at=(0.0, 0.0, 0.0), R0=Gm.I3, prefix='a', outdir='.', skin=True, ski
 
 _WRITTEN = {}
 
+# v10.3 skin and panel masses, for fork_checks (written to skin_mass_v10.json)
+RHO_SKIN, WALL = 1010.0, 0.0012         # PA12 (MJF), 1.2 mm wall (exterior session's skin rule; CMF's 2 mm is the moulded PC/ABS limit)
+PANELS = [  # (link, x0, x1 in mm world-zero, panel h mm, qty): 1 mm 5052 flank panels over the holder plates
+    ('upper', 52.0, 149.0, 72.0, 2), ('upperd', 151.0, 245.0, 72.0, 2)]
+PANEL_T, PAD_T, RHO_PAD = 0.0006, 0.00025, 3000.0   # 0.6 mm 5052 panel on a 0.25 mm gap pad
+
+
+def skin_mass():
+    """[(link, kg, x_m)] for the skin (2 mm wall over each part's outer area) + Al panels + gap pad."""
+    rows = []
+    for nm, link, m, mat in skin_meshes():
+        if nm.startswith('puck'):   # ring: outer barrel + two end annuli (7 mm deep), before its dot-grid
+            R_, W_ = m.extents[0] / 2, m.extents[1]
+            A = (2 * math.pi * R_ * W_ + 2 * math.pi * (R_ ** 2 - (R_ - 7.0) ** 2)) * 1e-6
+        elif mat in ('skin', 'vent'):
+            A = m.convex_hull.area * 0.85 * 1e-6   # outer area only (hull: the dot-grid's hole walls don't count)
+        elif nm.startswith('ring-'):   # a trim strip: perimeter x width (the stand-in is the sleeve's whole section)
+            sec = m.area * 0.5
+            A = 4 * math.sqrt(sec) * min(m.extents) * 1e-6
+        else:
+            A = m.area * 1e-6 * 0.5
+        c = m.vertices.mean(0) / 1e3 + np.array(F.ORIGIN[link])
+        rows.append((link, RHO_SKIN * WALL * A, float(c[0]), nm))
+    for link, x0, x1, h, q in PANELS:
+        a = (x1 - x0) * h * 1e-6 * q
+        rows.append((link, 2680 * PANEL_T * a + RHO_PAD * PAD_T * a, (x0 + x1) / 2e3, 'panels'))
+    return rows
+
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '--mass':
+        import json
+        R = skin_mass()
+        json.dump([r[:3] for r in R], open(os.path.join(HERE, 'skin_mass_v10.json'), 'w'), indent=1)
+        print('skin + panels: %.2f kg' % sum(r[1] for r in R))
+        for r in R:
+            print('  %-8s %-10s %5.0f g at x %.0f mm' % (r[0], r[3], r[1] * 1e3, r[2] * 1e3))
+        sys.exit()
     d = sys.argv[1] if len(sys.argv) > 1 else '.'
     for nm, link, m, mat in skin_meshes():
         print('%-10s %-7s %6d faces  %s  extents %s' % (nm, link, len(m.faces), mat, np.round(m.extents, 1)))

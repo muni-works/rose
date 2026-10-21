@@ -138,7 +138,8 @@ def sample(m, spacing=SPACING):
         return np.zeros((0, 3))
     n = max(64, int(m.area / (spacing * spacing) * 2.0))
     P, _ = trimesh.sample.sample_surface(m, n, seed=1)
-    return np.vstack([P, m.vertices])
+    V = m.vertices if len(m.vertices) < 5000 else m.convex_hull.vertices     # the dot-grids' hole vertices add nothing
+    return np.vstack([P, V])
 
 
 def build(hum_dir=None):
@@ -168,7 +169,7 @@ def build(hum_dir=None):
         J = json.load(open(os.path.join(hum_dir, 'hum.json')))
         ph = RV.body_ped_h()
         for s, t in ((1, 'l'), (-1, 'r')):
-            sr = [c / 1e3 for c in J['sr'][t]]
+            sr = [c / 1e3 for c in J['sp']]   # J1 on the humanoid's shoulder-pitch axis
             out['body_at_' + t] = np.array([sr[0], s * (RV.SIDE_PLATE_Y + ph), sr[2]])
     else:
         out['humanoid'] = np.zeros((0, 3), np.float32)

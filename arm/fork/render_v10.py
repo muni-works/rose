@@ -177,7 +177,7 @@ def scene_body2(work, pose, only=None):
     for s, t in ((1, 'l'), (-1, 'r')):
         if only and t != only:
             continue
-        sr = [c / 1e3 for c in H['sr'][t]]
+        sr = [c / 1e3 for c in H['sp']]   # v10.3: J1 on the humanoid's shoulder-pitch axis (x, z of quad00's sp; rose's torso v103)
         at = [sr[0], s * (SIDE_PLATE_Y + ph), sr[2]]
         L.append(arm(dict(V10, ROSE_ARM_PED_H='%.5f' % ph, ROSE_ARM_PEDESTAL='0'), q=BODY_POSES[pose][s], at=at, R0=body_R0(s),
                      prefix='b' + t, outdir=work, skin=True, tag='skin-body', skip=[['base', 'base']]))

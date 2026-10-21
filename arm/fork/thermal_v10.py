@@ -38,8 +38,8 @@ import skin_v10 as S
 
 H, ETA_REF, ETA_P, H_IN, PHI, DT = 10.0, 0.7, 0.5, 5.0, 0.5, 95.0
 MANUAL = {'RS04': (40.0, 27.0, 0.16, 0.345), 'RS02': (7.0, 7.0, 0.55, 0.150), 'RS00': (5.0, 4.7, 1.5, 0.150)}
-FLANK = float(os.environ.get('LYMB_FLANK', 0.6))
-BARREL = float(os.environ.get('LYMB_BARREL', 0.6))
+FLANK = float(os.environ.get('LYMB_FLANK', 0.0))
+BARREL = float(os.environ.get('LYMB_BARREL', 1.0))   # v10.3: open annulus + a dot-grid round the ring's circumference
 PHI_CAP = float(os.environ.get('LYMB_PHI_CAP', 1.0))   # 1.0: open motor faces behind a bezel (v10.3); 0.5: perforated 1.3 / 2.3 hex caps
 ALPANEL = os.environ.get('LYMB_ALPANEL', '1') == '1'
 OPEN = os.environ.get('LYMB_OPEN_DRUM', '1') == '1'
@@ -96,13 +96,13 @@ def main(vent_scale=1.0, quiet=False):
             barrel = math.pi * m['d'] * m['L']
             # + dot-grid panels on both sleeve flanks over the holder plates (FLANK of the plate area
             #   sees air through 29 %-open panels, taken at PHI of free convection)
-            if ALPANEL:
+            if ALPANEL and j in ('J2', 'J4'):   # panels over the J2 / J4 holder plates only (the upper arm)
                 # v10.3 choice: the sleeve's flat front/back faces over the holder plates are 1 mm 5052
                 # panels, warm-black anodized, on a 0.5 mm gap-pad to the plates: the plates keep their own
                 # free-convection area (the panel is the same size, eta_p as bare); pad + panel add 0.15 K/W
-                G_pl = 1 / (1 / (H * ETA_P * Ap) + 0.15)
+                G_pl = 1 / (1 / (H * ETA_P * Ap) + 0.20)   # 0.25 mm pad + 0.6 mm panel (pad ~3 W/mK)
                 G_vent = H * (PHI_CAP * ends + BARREL * barrel) + G_pl
-            else:
+            else:   # J6: open ring, its holder plates stay enclosed under the sleeve
                 G_vent = H * (ends + BARREL * barrel) + H * PHI * FLANK * ETA_P * Ap + 1 / (1 / (H_IN * ETA_P * Ap * (1 - FLANK)) + 1 / (H * Ash))
         f = lambda G: min(1.0, math.sqrt(DT / (R_int + 1 / G) / P))
         fb, fs, fv = f(G_bare), f(G_skin), f(G_vent)
@@ -121,8 +121,81 @@ def j2_hold(f_ratio):
     return (st - C.moment(0.0, 0.0)) / (C.G * (C.flange_x()))
 
 
+def j1_body(verbose=True):
+    """J1 on the humanoid, inside rose's torso corner (claude/quad00-torso-v103). Lumped, steady state +
+    one-node transient. ASSUMPTIONS (all mine, to be checked on the elbow rig's heat test):
+      J1 = RS04: R_int 0.49 K/W (backed out above), Kt 2.1 N.m/A_rms, R_line 0.16 ohm -> P = 0.24 I_rms^2;
+         winding limit 120 C, ambient 25 C (95 K).
+      (B) conduction, built in: J1 back face -> 1/4" foot (contact 0.10 K/W) -> 41 mm adapter tube, 4 x 1/8" 5052
+         plates 130 wide (R = L / k A, k 138 W/mK) -> torso side plate (6.35 mm 5052, 26 600 mm2 a face) + half
+         of each deck it carries (35 200 / 15 300 mm2): 0.051 m2 a face, both faces, fin efficiency 0.6 ->
+         enclosed chest air (h_in 5 W/m2K) -> this side's half of the chest shell (0.20 m2, h 10). No other
+         heat in the chest is counted (the cortex is in the head; the limbic board, battery are NOT added).
+      the corner: J1's can (barrel + back face) -> enclosed corner air (h_in 5) -> the same chest shell path.
+      (open ring) J1's output end: the annulus between the can (r 60) and the graphite ring (r 66.5) open to
+         the room, h 10 on 2 x the annulus (both walls); the output face itself conducts into the turret disc +
+         towers (0.020 m2 a face of 5052, efficiency 0.5) which sit under the turret skin (h_in 5 inside, its
+         0.034 m2 outside at h 10).
+      (fan) 1.3 L/s of 25 C air ducted along J1's barrel: annular duct 10 mm deep round the r 60 can ->
+         v 0.34 m/s, h = 10 + 3.9 sqrt(v / 0.05) = 20 W/m2K on barrel + back face (0.031 m2); air-side limit
+         m cp = 1.57 W/K, so G_fan = m cp (1 - exp(-h A / m cp)).
+      transient: one node, the whole RS04 (1.42 kg, c 600 J/kgK -> 850 J/K) behind R_int; the winding's own
+         ~0.3 kg of copper heats faster, so the time is an UPPER bound.
+    """
+    H_, HI, k = 10.0, 5.0, 138.0
+    P_r, R_ref, R_int = motor_numbers('RS04')
+    m = F.J1M
+    A_can = math.pi * m['d'] * m['L'] + math.pi * (m['d'] / 2) ** 2
+    shell = 1 / (H_ * 0.20)
+    # (B) plate path
+    R_tube = 0.041 / (k * 4 * 0.130 * 0.003175)
+    A_fr = 2 * 0.051 * 0.6
+    R_plate = 0.10 + R_tube + 1 / (HI * A_fr) + shell
+    # the corner: can -> enclosed air -> shell (shares the shell: taken in parallel, conservative-ish)
+    R_corner = 1 / (HI * A_can) + shell
+    # open ring at the output end + the turret's metal under its skin
+    ann = math.pi * (0.0665 ** 2 - 0.060 ** 2)
+    G_ring = H_ * 2 * ann + 1 / (1 / (HI * 0.5 * 2 * 0.020) + 1 / (H_ * 0.034))
+    # fan
+    mcp, h_f = 1.2e-3 * 1.3 * 1005, 10 + 3.9 * math.sqrt(0.34 / 0.05)
+    G_fan = mcp * (1 - math.exp(-h_f * 0.031 / mcp))
+    cases = {'plate only (B)': 1 / R_plate + 1 / R_corner,
+             'plate + open ring': 1 / R_plate + 1 / R_corner + G_ring,
+             'plate + fan 1.3 L/s': 1 / R_plate + G_fan + 1 / R_corner,
+             'plate + open ring + fan': 1 / R_plate + G_fan + 1 / R_corner + G_ring}
+    T_hold = 23.5          # rose's arms-forward rated hold (1.27 kg); C.moment(0, 1.27) gives the same
+    M0 = C.moment(0.0, 0.0)
+    out = {}
+    for nm, G in cases.items():
+        R = R_int + 1 / G
+        P_max = DT / R
+        T_cont = 2.1 * math.sqrt(P_max / 0.24)
+        kg = (T_cont - M0) / (C.G * C.flange_x())
+        P_h = 0.24 * (T_hold / 2.1) ** 2
+        Css = 1.42 * 600
+        if P_h * R <= DT:
+            t_lim = float('inf')
+        else:
+            t_lim = -Css * R * math.log(1 - DT / (P_h * R))
+        T2 = C.moment(0.0, 1.27)       # the arm model's own arms-forward torque at 1.27 kg (skin mass included)
+        P2 = 0.24 * (T2 / 2.1) ** 2
+        t2 = float('inf') if P2 * R <= DT else -Css * R * math.log(1 - DT / (P2 * R))
+        out[nm] = (1 / G, T_cont, kg, P_h, t_lim, T2, t2)
+    if verbose:
+        print('\nJ1 on the humanoid (torso corner), RS04: holding %.1f N.m dissipates %.0f W' % (T_hold, 0.24 * (T_hold / 2.1) ** 2))
+        T2 = list(out.values())[0][5]
+        print('%-26s %8s %10s %12s %16s %16s' % ('case', 'R c-a K/W', 'T_cont N.m', 'hold kg fwd', 't@23.5 N.m', 't@%.1f N.m' % T2))
+        f_ = lambda tl: 'never (steady)' if tl == float('inf') else '%.0f min' % (tl / 60)
+        for nm, (Rca, Tc, kg, Ph, tl, T2, t2) in out.items():
+            print('%-26s %8.2f %10.1f %12.2f %16s %16s' % (nm, Rca, Tc, kg, f_(tl), f_(t2)))
+    return out
+
+
 if __name__ == '__main__':
     fo = main()
+    j1_body()
+    import json
+    json.dump({j: round(fv / fb, 3) for j, (fb, fs, fv) in fo.items()}, open(os.path.join(HERE, 'thermal_v10.json'), 'w'), indent=1)
     fb, fs, fv = fo['J2']
     print('\nJ2 hold, model jaws: bare %.2f kg; skinned, no vents %.2f kg; vented %.2f kg   (skin derating = f_config / f_bare)'
           % (j2_hold(1.0), j2_hold(fs / fb), j2_hold(fv / fb)))
