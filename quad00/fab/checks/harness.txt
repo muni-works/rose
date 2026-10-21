@@ -1,0 +1,10 @@
+at rest
+  cable-hcortex   clear
+  cable-hspine    clear
+  cable-nspine    clear
+  cable-tspine    clear
+spine over head pitch -20..40 and yaw -57..57
+  cable-tspine runs inside / through cover-chest: fab/make.py cuts the hole in the printed skin
+  Head_pitch service loop: worst gap 36 mm -> cut the loop 46 mm
+  Head_yaw service loop: worst gap 35 mm -> cut the loop 46 mm
+harness: PASS

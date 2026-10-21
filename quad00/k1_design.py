@@ -534,13 +534,12 @@ def design():
     if KS.V['name'] != 'mini':                                  # round neck base, coaxial with the yaw: chest dome up into the neck
         yz0 = zc1 + 2.0
         add('trim-neckbase', cyl(np.array([Hl['yaw'][0][0], 0, (yz0 + nz0 + 4) / 2]), [0, 0, 1.0], max(31.5, KS.HEAD()['D'] / 2 + 1.5), nz0 + 4 - yz0))
-    # the cortex head is its own product (cortex.py): its skin comes from there; the neck keeps the pitch drum + dock trim
-    import cortex as CX
+    # the cortex head is its own product (cortex/cortex.loon): its skin comes from there; the neck keeps the pitch drum + dock trim
     hp = KS.head_layout(J)['pitch'][0]; Rk = KS.R()
     HF = KS.head_frame(J, M)
     hh, hw = HF['hh'], HF['hw']
     hc = np.array([HF['x_face'] - HF['hd'], 0.0, HF['zb'] + hh / 2])
-    for n_, m_ in CX.shell(HF):
+    for n_, m_ in KS.cx_parts(KS.CX_SHELL, (HF['ox'], HF['oy'], HF['zb']), KS.cx_scale(HF)):
         add(n_, m_)
     m_h = KS.HEAD()
     r_hub, yo_ = max(33.0, m_h['D'] / 2 + 4.5), m_h['L'] / 2 + KS.G + KS.T + 1.0
@@ -550,8 +549,9 @@ def design():
     yd = m_h['L'] / 2 + KS.G + KS.T
     dock = [rrect(np.array([hp[0], 0, KS.DOCK_Z(J) + dz_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), yd + 3.0, 37.0 * Rk, 8.0, k=10)
             for dz_ in (-1.0, KS.T + 0.4)]
-    x0_, y0d, x1_, y1d = CX.dock_cutout((hp[0], 0.0, 0.0))
-    add('trim-headdock', cut_shell(hull_rings(dock), [('box', [x0_, y0d, KS.DOCK_Z(J) - 3.0], [x1_ - x0_, y1d - y0d, KS.T + 6.0])]))   # the dock face (gunmetal), plug opening
+    win = [('box', [hp[0] + a, b, KS.DOCK_Z(J) - 3.0], [c - a, d - b, KS.T + 6.0]) for a, b, c, d in KS.DOCK_WIN]
+    win += [('box', [hp[0] + x - r, y - r, KS.DOCK_Z(J) - 3.0], [2 * r, 2 * r, KS.T + 6.0]) for x, y, r in KS.DOCK_HOLES]
+    add('trim-headdock', cut_shell(hull_rings(dock), win))   # the dock face (gunmetal): pogo + latch windows, cone studs (magnets pull through the skin)
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):
@@ -583,7 +583,7 @@ def structure(out=None):
     out = out or design()
     S = Manifold.batch_boolean([Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
                                 for n, m in out if n.split('-')[0] in ('cover', 'puck', 'trim', 'accent')], OpType.Add)
-    return [(n, m if (n.startswith(('rs', 'elec', 'node', 'cover-baffle')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch', 'pelvis-deck', 'cable-'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
+    return [(n, m if (n.startswith(('rs', 'elec', 'node', 'cover-baffle', 'cortex-', 'dock-')) or 'hipR' in n or 'elbowE2' in n or 'yokeP2' in n or n.startswith(('waist-', 'wrist-', 'torso-rail', 'torso-latch', 'pelvis-deck', 'cable-'))) else clip(m, S)) for n, m in KS.structure()]   # these span a joint's parting gap
 
 
 def model():

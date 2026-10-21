@@ -2,7 +2,7 @@
 
 The cortex is the rose robot's head, sold as its own product. It contains the Jetson, its own battery, the face, eyes and ears. It sits on any rose body's neck dock, or works standalone on a desk.
 
-The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here match that file. **TBD** means not decided yet; nothing is invented.
+The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here match that file. Open numbers point at the bench list, [`fab/MEASURE.md`](../fab/MEASURE.md); nothing is invented.
 
 ## Requirements
 
@@ -11,8 +11,8 @@ The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here ma
 | Compute | NVIDIA Jetson Orin NX 16 GB on Seeed A603 carrier (87 × 52) | The carrier's I/O edge shows through the back cutout. Any carrier with a back I/O edge in the same envelope fits. |
 | Compute power, design point | **25 W** (the module's MAXN mode) | MAXN SUPER (JetPack 6.2, about 40 W) is **not** supported by this shell. See the thermal section. |
 | Other loads | display about 2 W, amps up to 2 × 1 W, cameras and mics under 1 W | Estimates. |
-| Max fan-inlet air temperature | about 40 °C at 25 W in a 25 °C room | From the airflow calculation below. The heatsink's rating at that inlet temperature is **TBD** (needs the ATS datasheet). |
-| Max operating temperature (module / Tj) | **TBD** | Take from the NVIDIA Orin NX thermal design guide. |
+| Max fan-inlet air temperature | about 40 °C at 25 W in a 25 °C room | From the airflow calculation below. The heatsink's rating at that inlet temperature: bench, [MEASURE.md](../fab/MEASURE.md) #1. |
+| Max operating temperature (module / Tj) | bench, [MEASURE.md](../fab/MEASURE.md) #2 | The limit comes from the NVIDIA Orin NX thermal design guide. |
 | Display | Waveshare 3.5" HDMI (E), IPS 640 × 480 | The eyes are drawn on this screen. |
 | Cameras | 2 × IMX219, 106 mm baseline, behind the dead-front glass | Each sees through a clear window in the glass's black print. |
 | Speakers | 2 × Visaton K 28 WPC BL (Ø28, 8 Ω, 1 W) with 2 × MAX98357A | Stereo, one behind the top of each ear grid. |
@@ -23,11 +23,11 @@ The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here ma
 | Desk power | The desk dock puck (same pads), or the carrier's DC jack through the back cutout | No USB-C on the shell. |
 | Ports | The carrier's own (USB, Ethernet, DC, power button) through the back cutout | No panel of the head's own. |
 | Size | about 164 W × 104 D × 121 H mm; the face leans back 8° | |
-| Total mass | **TBD** | Battery about 0.21 kg; everything else is unweighed. |
+| Total mass | bench, [MEASURE.md](../fab/MEASURE.md) #4 | Battery about 0.21 kg; everything else is unweighed. |
 
 ## Thermal check (first-order)
 
-**Airflow path:** the heatsink's top fan pulls air from the open crown and blows it out through the aft fins. Those fins sit 3 mm from the exhaust grid, closed off by a foam gasket. Air comes in through the back I/O cutout and the open parts of the ear grids. The fan's flow direction is **ASSUMED** and needs the ATS datasheet.
+**Airflow path:** the heatsink's top fan pulls air from the open crown and blows it out through the aft fins. Those fins sit 3 mm from the exhaust grid, closed off by a foam gasket. Air comes in through the back I/O cutout and the open parts of the ear grids. The fan's flow direction is **ASSUMED**; checked on the bench ([MEASURE.md](../fab/MEASURE.md) #1).
 
 **Required airflow:** heat removed by air is P = ρ·cp·Q·ΔT. With ρ = 1.16 kg/m³ and cp = 1007 J/kg·K:
 
@@ -45,11 +45,11 @@ The design source is [`cortex.loon`](cortex.loon), at mini size. Numbers here ma
 | Exhaust (back dot grid) | 69 holes × Ø1.1 = **66 mm²** | 417 holes × Ø1.4 = **642 mm²** |
 | Ear grids, per side | 129 × Ø1.1 = 123 mm² | 161 × Ø1.4 = 248 mm² |
 | Ear grids, open after the speaker and mic blank theirs (both sides) | | **40 mm²** (the speaker covers 100 holes, the mic 48) |
-| Back I/O cutout (84 × 22) | | about 650 mm², **ASSUMED** 35% open around the connectors |
+| Back I/O cutout (84 × 22) | | about 650 mm², **ASSUMED** 35% open around the connectors ([MEASURE.md](../fab/MEASURE.md) #6) |
 
 **Result:**
 - **Before: fail.** 25 W through 66 mm² needs about 21 m/s, about 700 Pa. No fan that fits the Orin NX heatsink can do that.
-- **After: pass at 25 W.** About 3 CFM at about 15 Pa, which is within a small axial fan's curve (fan curve **TBD**). Fan inlet is about 15 K over room temperature.
+- **After: pass at 25 W.** About 3 CFM at about 15 Pa, which is within a small axial fan's curve (fan curve: [MEASURE.md](../fab/MEASURE.md) #1; real 25 W run: #2). Fan inlet is about 15 K over room temperature.
 - **40 W (MAXN SUPER): marginal, not supported.** It needs about 40–90 Pa. Cap the module at 25 W in software.
 
 **Change made:**
@@ -87,7 +87,7 @@ Order of assembly: build the sled on the floor plate, connect the two tub harnes
 |---|---|---|
 | Floor plate to tub | Tub bosses at the four bottom corners | 4 × M3 countersunk from below into heat-set inserts. *Bosses not modelled yet.* |
 | Sled brackets (2 mm Al, folded foot) to floor | Clinch nuts in the floor | 2 × M2.5 per bracket |
-| Carrier (A603) to brackets | Top flanges of the brackets | 4 × M2.5 standoffs. *Hole pattern TBD from the A603 drawing.* |
+| Carrier (A603) to brackets | Top flanges of the brackets | 4 × M2.5 standoffs. *Hole pattern: [MEASURE.md](../fab/MEASURE.md) #5.* |
 | Heatsink to module | Its own spring screws | Supplied with the heatsink |
 | Battery | Formed Al strap over the pack, onto the brackets | 2 × M2.5. Foam pad under it. |
 | Pad board | Pocketed flush in the floor bottom, bonded; B2B up through the floor to the dock board | Adhesive + 2 × M1.6 |
@@ -100,7 +100,7 @@ Order of assembly: build the sled on the floor plate, connect the two tub harnes
 | Amps and mics | VHB on the wall. Each mic has a gasket ring around its port dot. | None |
 | Heatsink-to-grid gasket | 3 mm foam frame | None |
 | Tub-side wiring (face, ears) to sled | 2 × JST-GH harness connectors, 60 mm service loop | None |
-| Head to body | Cones take shear and twist; magnets pull it flat; spring pawl locks it (pull-off rated by the pawl, TBD N); button on the back of the neck releases | None (tool-free) |
+| Head to body | Cones take shear and twist; magnets pull it flat (OPEN: at y ±30 they overhang the neck's dock plate, ±29.7, and trim, ±32.7); spring pawl locks it (pull-off rated by the pawl: [MEASURE.md](../fab/MEASURE.md) #3); button on the back of the neck releases | None (tool-free) |
 
 ## Exterior: frozen
 

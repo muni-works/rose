@@ -1,0 +1,49 @@
+part,body,material,pieces,split axis,piece sizes mm,fits P1S
+cover-hip_ll,roll.l,PETG satin black,2,x,93 x 90 x 48 / 93 x 90 x 48,yes
+cover-hipyaw_ll,pitch.l,PETG satin black,2,x,85 x 42 x 42 / 85 x 44 x 42,yes
+cover-hipneck_ll,pitch.l,PETG satin black,2,x,83 x 41 x 14 / 83 x 41 x 14,yes
+cover-knee_ll,yaw.l,PETG satin black,2,x,98 x 96 x 48 / 98 x 96 x 48,yes
+trim-yawring_ll,yaw.l,PETG gunmetal grey,1,-,81 x 80 x 4,yes
+cover-calf_ll,knee.l,PETG satin black,2,x,225 x 69 x 46 / 225 x 69 x 46,yes
+cover-thigh_ll,yaw.l,PETG satin black,2,x,98 x 86 x 41 / 98 x 86 x 41,yes
+trim-ankle_ll,knee.l,PETG gunmetal grey,2,x,77 x 41 x 20 / 77 x 41 x 20,yes
+cover-shoe_ll,ankle.l,PETG satin black,2,y,201 x 43 x 32 / 201 x 43 x 33,yes
+cover-shoulder_la,sp.l,PETG satin black,0,x,,EMPTY: the motor fills the form -- needs a designed cover
+trim-upperarm_la,sr.l,PETG gunmetal grey,2,x,71 x 69 x 34 / 71 x 69 x 34,yes
+cover-elbow_la,ep.l,PETG satin black,2,z,65 x 65 x 33 / 65 x 65 x 33,yes
+cover-upperarm_la,sr.l,PETG satin black,2,y,62 x 41 x 28 / 62 x 41 x 28,yes
+cover-forearm_la,ey.l,PETG satin black,2,x,133 x 56 x 29 / 133 x 56 x 29,yes
+cover-elbowfork_la,ep.l,PETG satin black,2,x,72 x 66 x 31 / 72 x 66 x 31,yes
+cover-hand_la,ey.l,PETG satin black,1,-,67 x 44 x 26,yes
+trim-wrist_la,ey.l,PETG gunmetal grey,1,-,30 x 30 x 5,yes
+cover-shoulderyoke_la,sp.l,PETG satin black,0,x,,EMPTY: the motor fills the form -- needs a designed cover
+cover-deltoid_la,sr.l,PETG satin black,2,y,73 x 71 x 36 / 73 x 71 x 35,yes
+cover-hip_rl,roll.r,PETG satin black,2,x,93 x 90 x 48 / 93 x 90 x 48,yes
+cover-hipyaw_rl,pitch.r,PETG satin black,2,x,85 x 42 x 42 / 85 x 44 x 42,yes
+cover-hipneck_rl,pitch.r,PETG satin black,2,x,83 x 41 x 14 / 83 x 41 x 14,yes
+cover-knee_rl,yaw.r,PETG satin black,2,x,98 x 96 x 48 / 98 x 96 x 48,yes
+trim-yawring_rl,yaw.r,PETG gunmetal grey,1,-,81 x 80 x 4,yes
+cover-calf_rl,knee.r,PETG satin black,2,x,225 x 69 x 46 / 225 x 69 x 46,yes
+cover-thigh_rl,yaw.r,PETG satin black,2,x,98 x 86 x 41 / 98 x 86 x 41,yes
+trim-ankle_rl,knee.r,PETG gunmetal grey,2,x,77 x 41 x 20 / 77 x 41 x 20,yes
+cover-shoe_rl,ankle.r,PETG satin black,2,y,201 x 43 x 33 / 201 x 43 x 32,yes
+cover-shoulder_ra,sp.r,PETG satin black,0,x,,EMPTY: the motor fills the form -- needs a designed cover
+trim-upperarm_ra,sr.r,PETG gunmetal grey,2,x,71 x 69 x 34 / 71 x 69 x 34,yes
+cover-elbow_ra,ep.r,PETG satin black,2,z,65 x 65 x 33 / 65 x 65 x 33,yes
+cover-upperarm_ra,sr.r,PETG satin black,2,y,62 x 41 x 28 / 62 x 41 x 28,yes
+cover-forearm_ra,ey.r,PETG satin black,2,x,133 x 56 x 29 / 133 x 56 x 29,yes
+cover-elbowfork_ra,ep.r,PETG satin black,2,x,72 x 66 x 31 / 72 x 66 x 31,yes
+cover-hand_ra,ey.r,PETG satin black,1,-,67 x 44 x 26,yes
+trim-wrist_ra,ey.r,PETG gunmetal grey,1,-,30 x 30 x 5,yes
+cover-shoulderyoke_ra,sp.r,PETG satin black,0,x,,EMPTY: the motor fills the form -- needs a designed cover
+cover-deltoid_ra,sr.r,PETG satin black,2,y,73 x 71 x 35 / 73 x 71 x 36,yes
+cover-chest,torso,PETG satin black,4,x,135 x 230 x 73 (x4),yes (halves split again at y = 0)
+cover-pack,torso,PETG satin black,2,y,148 x 98 x 39 / 148 x 98 x 39,yes
+cover-hipguard_ll,roll.l,PETG satin black,1,-,78 x 66 x 7,yes
+cover-hipguard_rl,roll.r,PETG satin black,1,-,78 x 66 x 7,yes
+cover-neck,hyaw,PETG satin black,0,-,,EMPTY: the motor fills the form -- needs a designed cover
+cover-headhub,hyaw,PETG satin black,2,y,66 x 54 x 28 / 66 x 54 x 28,yes
+cover-headcheek,hpitch,PETG satin black,1,-,66 x 54 x 5,yes
+trim-headdock,hpitch,PETG gunmetal grey,1,-,74 x 65 x 5,yes
+sole_ll,ankle.l,TPU 95A,1,-,201 x 88 x 7,yes
+sole_rl,ankle.r,TPU 95A,1,-,201 x 88 x 7,yes

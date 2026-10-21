@@ -274,11 +274,9 @@ def body_of(n):
     return b
 
 
-# The cortex head is its own product, authored in loon (cortex/cortex.loon). The robot file [use]s it: the Python
-# cortex parts (cortex.py, kept only as collision proxies for the ROM / harness checks) are skipped here.
-CX_PY = ('cover-helmet', 'visor-', 'trim-eyering', 'trim-ear', 'trim-headpanel', 'cover-headbutton', 'elec-cx', 'elec-jetson',
-         'elec-cbat', 'cable-hcsi', 'cable-haudio', 'cable-hmic', 'cable-hhdmi', 'cable-hpower', 'cable-hdock', 'cable-heth',
-         'cable-husbc', 'trim-dockplug', 'trim-dockpin', 'elec-dockplug')
+# The cortex head is its own product, authored in loon (cortex/cortex.loon). The robot file [use]s it: the STL proxies
+# the Python checks load (k1_structure.cx_parts: cortex-*, dock-*, cable-hcortex) are skipped here.
+CX_PY = ('cortex-', 'dock-', 'cable-hcortex')
 CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('cortex-ear-grilles', 'satin_black'),
            ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
            ('cortex-pads', 'gold'), ('cortex-strikes', 'steel'), ('cortex-keeper', 'steel'), ('cortex-display', 'heatsink'),

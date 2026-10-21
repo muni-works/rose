@@ -1,0 +1,44 @@
+group,item,part / spec,qty,unit USD,ext USD,source,price status,notes
+actuators,RobStride RS06 (hip pitch + hip roll + knee),RS06 36 N.m peak,6,,,"Robotics Center / OpenELAB (RobStride dealers)",NOT PRICED,bolt patterns in quad.py MOTORS are ASSUMED: check against the RS06 drawing before cutting
+actuators,RobStride RS02 (hip yaw),RS02 17 N.m peak,2,174.99,349.98,https://openelab.com/products/robstride02-qdd-joint-motor-module,"seen 2026-10-20 (arm ORDER.md), preorder 10-20 working days",
+actuators,"RobStride RS00 (ankle x4, shoulder pitch/roll + elbow pitch/yaw x8, head yaw + pitch)",RS00 14 N.m peak,14,151.99,2127.86,https://openelab.com/products/robstride00-qdd-joint-motor-module,"seen 2026-10-20 (arm ORDER.md), motor-only variant sold out, preorder",
+actuators,RobStride USB-CAN adapter (bench bring-up),TB-ROBSTRIDE-Debug,1,25.09,25.09,https://openelab.com/products/robstride-can-to-usb-debugging,UNCONFIRMED stock,
+frame,5052-H32 aluminium sheet 1/8 in (3.2 mm),cut to 4 sheets of 390 x 390 (plates/sheet-1..4.dxf),4,,,McMaster / OnlineMetals (24 x 48 in sheet = 6 blanks),"est. one 24 x 48 sheet ~$115 (arm ORDER.md, UNCONFIRMED)",the model's 3.0 mm torso rails + latch are cut from the same 3.2 stock
+frame,M3 x 8 socket head cap screw,motor-to-plate: RS06 8 out + 8 back; RS00 6 out + 4 back,236,,,McMaster 91290A / Bolt Depot,est.,"buy 300 (spares); Loctite 243"
+frame,M4 x 8 socket head cap screw,motor-to-plate: RS02 6 out + 4 back,20,,,McMaster 91290A / Bolt Depot,est.,buy 30
+frame,End mill 1/8 in single-flute O-flute,for the 5052 plates,2,25.05,50.10,see arm ORDER.md line 29,UNCONFIRMED,the nest leaves 8 mm webs
+shells,PETG satin black filament 1 kg,cover-* skins (shells/),3,22.00,66.00,Polymaker / Overture,est.,"~2.4 kg of skins: see shells/shells.csv; 2 mm wall = 5 perimeters, 15% gyroid where thicker"
+shells,PETG grey filament 1 kg,trim-* parts (shells/),1,22.00,22.00,Polymaker / Overture,est.,
+shells,TPU 95A filament 1 kg,soles (shells/sole_*.stl),1,30.00,30.00,Polymaker / Overture,est.,
+shells,M3 brass heat-set inserts + M3 x 6 button head,shell halves to each other / to plate edges (place at assembly),60,,,McMaster 94180A / Amazon kit,est.,"v1: CA + inserts where the halves overlap a plate; no bosses are modelled"
+body electronics,Battery cells Molicel P50B 21700,12S2P pack (432 Wh) in the torso bay,24,,,"18650batterystore / IMRbatteries",NOT PRICED,pack case (PA12) + BQ76952 monitor: limbic package (rose branch claude/limbic-spec)
+body electronics,Limbic board,110 x 88 custom PCB (motor CAN buses + power),1,,,limbic package (claude/limbic-spec),NOT IN THIS PACKAGE,
+body electronics,Pack blind-mate dock + brake resistor,torso dock + brake (28 x 50 x 20),1,,,limbic package (claude/limbic-spec),NOT IN THIS PACKAGE,brake resistor size TBD there
+body electronics,30 mm exhaust fan 12 V,30 x 30 x 10,2,,,Noctua NF-A3x10 class,est.,
+body electronics,ELRS 2.4 GHz receiver (wireless e-stop),RP1 / RP2 class,1,,,any FPV shop,est.,
+body electronics,Foot contact node (STM32G0 + FSR),20 x 15 x 6,2,,,limbic package (claude/limbic-spec),NOT IN THIS PACKAGE,
+cortex compute,NVIDIA Jetson Orin NX 16 GB module,,1,,,Seeed / Arrow / Digi-Key,NOT PRICED,run at 25 W (MAXN); MAXN SUPER is not supported by the shell (SPEC.md)
+cortex compute,Seeed A603 carrier,87 x 52,1,,,Seeed Studio,NOT PRICED,"mount hole pattern TBD from the A603 drawing (SPEC.md); sled brackets are printed blanks, drill at assembly"
+cortex compute,ATS Orin NX fan heatsink (ATS-NVA-3281 class),63 x 40 x 8,1,,,ATS / Digi-Key,NOT PRICED,fan curve is a bench item (MEASURE.md)
+cortex face,Waveshare 3.5 in HDMI LCD (E),IPS 640 x 480,1,,,Waveshare,NOT PRICED,
+cortex face,Arducam IMX219 camera (B0287 class),22-pin FFC to the A603,2,,,Arducam,NOT PRICED,
+cortex face,Front glass,"laser-cut 3 mm smoked acrylic, fab/cortex/glass.dxf (v1; production = dead-front printed glass)",1,,,Ponoko / SendCutSend / local laser,est.,mask the back with black vinyl except the screen and the two camera windows
+cortex ears,Visaton K 28 WPC BL speaker 8 ohm 1 W,D28 x 5.4,2,,,Visaton dealers,NOT PRICED,
+cortex ears,Adafruit 3006 MAX98357A I2S amp,,2,5.95,11.90,adafruit.com,est.,
+cortex ears,Adafruit 3421 SPH0645LM4H I2S mic,,2,6.95,13.90,adafruit.com,est.,"A603 I2S header not confirmed (CORTEX.md): fallback is a USB audio codec"
+cortex power,Molicel P45B 21700 + 3S BMS,3S1P 11.1 V 50 Wh,3,,,18650batterystore,NOT PRICED,
+cortex power,USB-PD sink + 3S charger / power path,TPS25750 + BQ25713 class (30 x 40 x 6 ASSUMED),1,,,custom or eval board,NOT PRICED,
+cortex dock (head),Pad board,12 x 20 x 1.0 PCB ENIG: 8 pads D2.5 at 4 mm pitch (2 x 4),1,,,JLCPCB / OSH Park,est.,pinout: VBUS x2 GND x2 T1 P/N USB D+/D-
+cortex dock (head),Dock interface board,14 x 20 PCB: 1000BASE-T1 PHY + B2B to the pad board,1,,,JLCPCB,NOT DESIGNED,electrical design belongs to the limbic package
+cortex dock (head),Strike disc,"steel D8 x 1, press-fit in the floor",2,,,McMaster washer / disc,est.,
+cortex dock (head),Latch keeper,"hardened steel 13 x 18 x 1 with a 5 x 12 slot (fab/cortex/cortex-keeper.step)",1,,,laser-cut 1 mm spring steel,est.,
+cortex dock (neck),Pogo pins,"Mill-Max 0906 class, 3 A, D1.5 tip, 6 mm",8,,,Mill-Max / Digi-Key,NOT PRICED,
+cortex dock (neck),Pogo block,printed or PCB carrier 12 x 20 x 6 (fab/cortex: dock-pogo-block in cortex/stl),1,,,print,,
+cortex dock (neck),Alignment cone,"steel, D8 -> D3 x 6, M3 stud (turned) -- or print PA-CF for v1",2,,,lathe / print,est.,
+cortex dock (neck),N52 magnet D8 x 3,,2,,,K&J Magnetics D52-N52 class,est.,OPEN: their y +-30 overhangs the neck dock plate (MEASURE.md / README)
+cortex dock (neck),Latch pawl + release rod + button,printed PA-CF (fab/cortex/dock-pawl + dock-release),1,,,print,,"pawl spring: compression spring D4 x 8, ~0.5 N/mm (pick on the bench, MEASURE.md)"
+cortex hardware,M3 x 8 countersunk + M3 heat-set insert,floor plate to tub,4,,,McMaster,est.,tub bosses not modelled: melt inserts at the 4 bottom corners
+cortex hardware,M2.5 / M2 screws + nylon standoffs kit,"sled, carrier, display, cameras, face frame, boards",1,,,Amazon kit,est.,
+cortex hardware,3M VHB 0.5 mm + 3 mm foam gasket + JST-GH harness kit,glass bond / heatsink-to-grille gasket / tub harnesses,1,,,Amazon / Digi-Key,est.,
+cortex shell,PETG satin black filament,"tub, floor, grilles, sled (fab/cortex)",0,,,,,(from the shells' spools)
+cable,Spine cable,"2 x 20 AWG power + 1 x shielded twisted pair (T1) + USB 2 pair, D6; pogo block to limbic: 66 + 3 + 117 mm runs + two 46 mm service loops = 0.28 m; cut 0.4 m",1,,,igus chainflex / silicone multicore,est.,service loops from harness_check.py

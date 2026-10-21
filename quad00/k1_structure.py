@@ -11,7 +11,7 @@ Packaging on the K1's joint axes with our motors:
              the shin;
   ankle      2 x RS00 in the shin box (lateral axes), rods to the foot (as the K1 does from its shank).
 """
-import math
+import math, os
 import numpy as np, trimesh
 from manifold3d import Manifold, CrossSection, FillRule, OpType
 import leg as L
@@ -460,58 +460,108 @@ def head(J):
     zd = DOCK_Z(J)
     Hh = L.unary_union([L.circle(hp[0], hp[2], m['out'][0] + 30), Rr(hp[0] - 22 * R(), hp[2], hp[0] + 22 * R(), zd, 6)]).difference(holes(m, 'out', (hp[0], hp[2])))
     out.append(('head-H1', plate(Hh, 'xz', m['L'] / 2 + G)))
-    # the dock: the cortex head (Jetson + its own battery) lifts off this plate and can live on a desk; flat bottom
+    # the dock: the cortex head (Jetson + its own battery) lifts off this plate and can live on a desk; flat bottom.
+    # This plate IS the dock face of cortex.loon (dock-face): pogo window, latch window, cone studs.
     yd = m['L'] / 2 + G + T
     dk = Rr(hp[0] - 34 * R(), -yd, hp[0] + 34 * R(), yd, 8)
-    import cortex as CX                                              # the dock: a floating USB-C plug + 2 alignment pins (cortex.DOCK)
-    x0, y0, x1, y1 = CX.dock_cutout((hp[0], 0.0, zd + T))
-    dk = dk.difference(Rr(x0, y0, x1, y1, 1.0))
-    out.append(('head-dock', plate(dk, 'xy', zd)))
-    out += CX.dock_body((hp[0], 0.0, zd + T), T)
+    out.append(('head-dock', plate(dock_cut(dk, hp[0]), 'xy', zd)))
+    out += cx_parts(CX_NECK, (hp[0], 0.0, zd + T))
     return out
+
+
+# ---- the cortex head. cortex/cortex.loon owns the product; cortex/export.sh writes one STL per part to cortex/stl,
+# and the body loads those as its head proxies (ROM sweeps, harness check). Frame: the DOCK ORIGIN, the centre of the
+# head's flat floor; x fore, y left, z up.
+CX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex')
+CX_SIZE = dict(x_face=46.0, x_back=-58.0, hh=120.6, hw=81.8)      # cortex.loon x-face, x-back, hh, hw (mini)
+CX_SHELL = ('tub', 'glass', 'ear-grilles', 'exhaust-grille', 'floor')
+CX_INSIDE = ('padboard', 'pads', 'strikes', 'keeper', 'display', 'cams', 'dockboard', 'power', 'battery', 'sled',
+             'compute', 'heatsink', 'speakers', 'mics', 'amps')
+CX_NECK = ('dock-pogo', 'dock-pogo-block', 'dock-cones', 'dock-magnets', 'dock-pawl', 'dock-release')   # dock-face = head-dock plate
+DOCK_UNDER = 12.0          # free depth kept under the dock face, over the pitch drum (pogo block + release rod reach 9)
+DOCK_WIN = [(-6.2, -10.2, 6.2, 10.2), (17.5, -6.5, 23.5, 6.5)]  # dock-face windows (dock origin): pogo block, latch pawl
+DOCK_HOLES = [(0.0, 18.0, 1.6), (0.0, -18.0, 1.6)]               # M3 cone studs. OPEN: cortex.loon's magnets (y +-30, D8)
+                                                                  # overhang this plate (y +-29.7) and its trim (+-32.7)
+_CX = {}
+
+
+def cx_mesh(name):
+    if name not in _CX:
+        m = trimesh.load(os.path.join(CX_DIR, 'stl', name + '.stl'), force='mesh')
+        if m.bounds[0][0] < -99.0:                                  # drop a fold's seed cube (pads, pogo pins: x -100)
+            m = trimesh.util.concatenate([c for c in m.split(only_watertight=False) if c.bounds[1][0] > -99.0])
+        _CX[name] = m
+    return _CX[name]
+
+
+def cx_parts(names, origin, scale=(1.0, 1.0, 1.0)):
+    """cortex.loon parts (cortex/stl) placed at a dock origin; scale fits the mini-size head to another frame."""
+    out = []
+    for n in names:
+        m = cx_mesh(n if n.startswith('dock-') else 'cortex-' + n).copy()
+        m.apply_scale(scale)
+        m.apply_translation(origin)
+        out.append((n if n.startswith('dock-') else 'cortex-' + n, m))
+    return out
+
+
+def cx_scale(HF):
+    """the head's per-axis scale against cortex.loon's mini size (1 on the mini)."""
+    k = (HF['hd'] * 2 / (CX_SIZE['x_face'] - CX_SIZE['x_back']), HF['hw'] / CX_SIZE['hw'], HF['hh'] / CX_SIZE['hh'])
+    return tuple(1.0 if abs(v - 1.0) < 1e-3 else v for v in k)          # the mini's head is cortex.loon's size to 0.05 mm
+
+
+def dock_cut(profile, x0):
+    """cut the dock face's windows and holes (cortex.loon dock-face) out of a profile, dock origin at (x0, 0)."""
+    for a, b, c, d in DOCK_WIN:
+        profile = profile.difference(Rr(x0 + a, b, x0 + c, d, 1.0))
+    for x, y, r in DOCK_HOLES:
+        profile = profile.difference(L.circle(x0 + x, y, r))
+    return profile
 
 
 def DOCK_Z(J):
     """the neck's dock plate (top of the head-pitch stage): the cortex head's flat bottom sits on it."""
-    import cortex as CX
     hp = head_layout(J)['pitch'][0]
-    r_drum = max(33.0, HEAD()['D'] / 2 + 4.5)                      # the floating USB-C plug lives under the dock face, over the drum
-    return hp[2] + r_drum + CX.DOCK['plug']['size'][2] + 2.0
+    r_drum = max(33.0, HEAD()['D'] / 2 + 4.5)                      # the pogo block + latch live under the dock face, over the drum
+    return hp[2] + r_drum + DOCK_UNDER + 2.0
 
 
 def head_frame(J, M):
-    """the cortex head's frame on this body: its dock origin sits on the neck's dock face (cortex.py owns the product)."""
-    import cortex as CX
+    """the cortex head's frame on this body: its dock origin sits on the neck's dock face."""
     hlo, hhi = M['Head_2'].bounds
     hp = head_layout(J)['pitch'][0]
-    return CX.frame((hp[0], 0.0, DOCK_Z(J) + T + 0.5), (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96, R())
+    ox, oy, oz = hp[0], 0.0, DOCK_Z(J) + T + 0.5
+    hh, hw, Rk = (hhi[2] - hlo[2]) * 0.62, (hhi[1] - hlo[1]) / 2 * 0.96, R()
+    x_face, x_back = ox + CX_SIZE['x_face'] * Rk, ox + CX_SIZE['x_back'] * Rk
+    hd = (x_face - x_back) / 2
+    return dict(ox=ox, oy=oy, zb=oz, hh=hh, hw=hw, hd=hd, x_face=x_face, x_back=x_back, R=Rk,
+                rc_p=0.30 * min(hw, hd), rf=0.42 * min(hw, hd), rb=0.24 * min(hw, hd))
 
 
 def cortex(J, M):
-    """the cortex's insides on this body (mini): cortex.py lays them out in the head frame."""
+    """the cortex's insides on this body (mini), from cortex.loon."""
     if V['name'] != 'mini':
         return []
-    import cortex as CX
-    return CX.insides(head_frame(J, M))
+    HF = head_frame(J, M)
+    return cx_parts(CX_INSIDE, (HF['ox'], HF['oy'], HF['zb']), cx_scale(HF))
 
 
 def harness(J, M):
-    """the cortex + spine wiring (mini): head internals, the dock run down the neck, through the yaw service loop into the
-    chest, through the right side plate (a 10 mm pass-through), to the limbic board's top edge."""
+    """the cortex + spine wiring (mini): the head's own looms (cortex.loon cortex-cables), the spine from the pogo
+    block down behind the pitch drum, through the yaw service loop into the chest, through the right side plate
+    (a 10 mm pass-through), to the limbic board's top edge."""
     if V['name'] != 'mini':
         return []
-    import cortex as CX
-    out = CX.wiring(head_frame(J, M))
-    # the spine: dock (head) -> behind the pitch drum -> into the chest past the yaw -> side plate pass-through -> limbic board
+    HF = head_frame(J, M)
+    out = [('cable-hcortex', cx_parts(['cables'], (HF['ox'], HF['oy'], HF['zb']), cx_scale(HF))[0][1])]
     H = head_layout(J); hp, hy = H['pitch'][0], H['yaw'][0]
     r_drum = max(33.0, HEAD()['D'] / 2 + 4.5)
     xs = hp[0] - r_drum - 4.0                                       # just behind the pitch drum
-    zd = DOCK_Z(J)
-    pz_ = CX.DOCK['plug']['size'][2]                                # from the floating USB-C plug under the dock face
-    px_ = CX.DOCK['plug']['size'][0]
-    out.append(cable('cable-hspine', [[hp[0] - px_ / 2 + 1.0, 0, zd - pz_ / 2], [xs, 0, zd - pz_ / 2], [xs, 0, hp[2] + 8.0]], r=3.0))    # off the plug's back face, down behind the drum; the pitch flex loop is the gap below
-    out.append(cable('cable-nspine', [[xs, 0, hp[2] - 8.0], [xs, 0, hy[2] + 48.0]], r=3.0))                                         # rides the neck (yaw)
-    E = ELEC; brd = None
+    zf = DOCK_Z(J) - 4.5                                            # under the dock trim, out of the pogo block's back
+    ys = -8.0                                                       # beside the release rod and button (y +-4)
+    out.append(cable('cable-hspine', [[hp[0] - 6.0 + 1.0, ys, zf], [xs, ys, zf], [xs, ys, hp[2] + 8.0]], r=3.0))    # off the pogo block's back, down behind the drum; the pitch flex loop is the gap below
+    out.append(cable('cable-nspine', [[xs, 0, hp[2] - 8.0], [xs, 0, hy[2] + 48.0]], r=3.0))                         # rides the neck (yaw)
     xh, zh = PASS_THROUGH()
     out.append(cable('cable-tspine', [[xs, 0, hy[2] + 40], [xs - 7, -10, zh + 5], [xh, -25, zh], [xh, -50, zh - 2], [xh, -52, 167.0]], r=3.0))   # the yaw service loop lives at the top of this run
     return out
