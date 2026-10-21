@@ -141,7 +141,7 @@
 ; inside a rounded slot of half length a along u, end radius b
 [let in-pill [fn [u v a b]
   [let uu [max #[0.0 [- [abs u] [- a b]]]]]
-  [< [+ [* uu uu] [* v v]] [* [- b 0.8] [- b 0.8]]]]]
+  [< [+ [* uu uu] [* v v]] [* [- b [+ dot-r 1.4]] [- b [+ dot-r 1.4]]]]]]   ; a solid 1.4 mm rim, no partial holes
 ; union a list of solids as a balanced tree (a running fold is quadratic in the hole count)
 [let tree-union [fn [xs]
   [let n [len xs]]
@@ -151,14 +151,14 @@
            [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
 [let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
 [let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
-[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]]]
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 16]]]]]
 [let ear-holes [grid-holes ear-rows dot-hole]]
 ; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
 [let zx 76.0]                                   ; exhaust grille centre, z
 [let xa 45.0]                                   ; half width (y)
 [let xr 11.0]                                   ; half height (the slot's end radius)
 [let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 21 3]]]
-[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
+[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 16]]]]]
 [let exhaust-holes [grid-holes x-rows xdot-hole]]
 ; The tub only gets plain rounded windows; the perforated grilles are separate thin inserts that fill them flush
 ; (moulds without side actions, and the tub evaluates in seconds -- the holes live in their own parts).

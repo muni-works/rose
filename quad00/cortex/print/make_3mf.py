@@ -61,11 +61,17 @@ write(f'3mf/cortex-{tag}-2-floor.3mf', place([('floor', L(f'stl/cortex-{tag}-flo
     dict(PETG, wall_loops='4', sparse_infill_density='30%', enable_support='0'))]))
 write(f'3mf/cortex-{tag}-3-sled.3mf', place([('sled', L(f'stl/cortex-{tag}-sled.stl'),             # pillars up (too big to share the floor's plate)
     dict(PETG, wall_loops='4', sparse_infill_density='40%', enable_support='0'))]))
-ears = L(f'stl/cortex-{tag}-ear-grilles.stl').split(only_watertight=False)
-ears = sorted(ears, key=lambda m: m.centroid[1])                    # right (-y) then left (+y)
+E = L(f'stl/cortex-{tag}-ear-grilles.stl')                          # both ears in one STL; split by side, not connectivity
+side = lambda sgn: E.submesh([np.where(np.sign(E.triangles_center[:, 1]) == sgn)[0]], append=True)
+ears = [side(-1), side(1)]                                          # right (-y) then left (+y)
 write(f'3mf/cortex-{tag}-4-grilles.3mf', place([
     ('ear-grille-r', rot(ears[0], -90, [1, 0, 0]), FINE),             # inner face down
     ('ear-grille-l', rot(ears[-1], 90, [1, 0, 0]), FINE),
     ('exhaust-grille', rot(L(f'stl/cortex-{tag}-exhaust-grille.stl'), 90, [0, 1, 0]), FINE)]))
-write(f'3mf/cortex-{tag}-5-glass.3mf', place([('glass', rot(L(f'stl/cortex-{tag}-glass.stl'), 90, [0, 1, 0]),   # face down; smoke PETG
+def face_down(m):
+    """lay the largest outward (+x) planar face on the bed: the glass face has an 8 deg rake."""
+    m = m.copy(); n = m.face_normals; a = m.area_faces; k = n[:, 0] > 0.5
+    v = (n[k] * a[k, None]).sum(0); v /= np.linalg.norm(v)
+    m.apply_transform(trimesh.geometry.align_vectors(v, [0, 0, -1])); return m
+write(f'3mf/cortex-{tag}-5-glass.3mf', place([('glass', face_down(L(f'stl/cortex-{tag}-glass.stl')),   # face down; smoke PETG
     dict(PETG, layer_height='0.12', wall_loops='2', sparse_infill_density='100%', enable_support='0'))]))
