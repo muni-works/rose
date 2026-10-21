@@ -150,8 +150,10 @@ def scene_desk2(work, pose):
 
 CORTEX = [('cortex-tub', 'cx_shell'), ('cortex-ear-grilles', 'accent'), ('cortex-exhaust-grille', 'cx_shell'),
           ('cortex-glass', 'cx_glass'), ('cortex-floor', 'cx_floor')]
-CX_MATS = ('[material "cx_shell" 0.016 0.012 0.009 0.0 0.45]\n[material "cx_glass" 0.01 0.01 0.012 0.2 0.05]\n'
-           '[material "cx_floor" 0.043 0.035 0.027 0.8 0.4]\n')
+CW = os.environ.get('LYMB_CW', 'black')   # v10.8 colourways (rose's CMF, no brown): 'black', or 'white' links with black joints
+TONE = [0.925, 0.925, 0.918] if CW == 'white' else [0.071, 0.071, 0.075]
+CX_MATS = ('[material "cx_shell" %.3f %.3f %.3f 0.0 0.55]\n[material "cx_glass" 0.01 0.01 0.012 0.2 0.05]\n' % tuple(TONE) +
+           ('[material "cx_floor" 0.780 0.784 0.792 0.7 0.4]\n' if CW == 'white' else '[material "cx_floor" 0.035 0.035 0.038 0.7 0.4]\n'))
 
 
 def scene_body2(work, pose, only=None):
@@ -163,7 +165,7 @@ def scene_body2(work, pose, only=None):
     for k, v in H['finishes'].items():
         v = list(v)
         if v[0] == 'satin_black':
-            v[1:] = [0.016, 0.012, 0.009, 0.0, 0.45]      # the body tone: warm black #1e1813
+            v[1:] = TONE + [0.0, 0.55]                    # v10.8: the body tone, black #121213 / white #ECECE9
         mats[v[0]] = v
         hum.append('[let h_%s [import-mesh-scaled 0.001 0.001 0.001 "hum/hum_%s.stl"]]\n[root h_%s "%s"]' % (k, k, k, v[0]))
     hm = '\n'.join('[material "%s" %s %s %s %s %s]' % tuple(v) for v in mats.values()) + '\n'
@@ -232,7 +234,8 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     V = os.environ.get('LYMB_VER', 'v10.3')
     P = lambda n: os.path.join(OUT, 'lymb-%s-%s.png' % (V, n))
-    sub = 'warm black #1e1813, graphite pucks, gunmetal caps, Make green at the wrist'
+    sub = ('white #ECECE9 links, black joints: black-anodized 6061 drums, gunmetal rings, Make green at the tool flange' if CW == 'white'
+           else 'black #121213, black-anodized 6061 drums, gunmetal rings, Make green at the tool flange')
     for v, (az, el) in VIEWS.items():
         if want('desk-' + v):
             render(scene_desk2(work, 'ready'), P('desk-' + v), az, el, spp, size='1400x1200')
@@ -258,6 +261,15 @@ def main():
             W_, H_ = im.size
             im.crop((int(0.22 * W_), int(0.08 * H_), int(0.78 * W_), int(0.46 * H_))).save(pp)   # the left shoulder
             label(P('shoulder-%s' % pose.replace('+', 'p').replace('-', 'm')), 'lymb %s ' % V + 'shoulder, J1 = %s deg' % pose[2:])
+    if want('neck'):   # v10.8: the neck close-up, to set against rose's pass2-neck-closeup-pitch35.png
+        pp = P('neck-closeup')
+        render(scene_body2(work, 'rest'), pp, float(os.environ.get('NECK_AZ', -60)), 8, spp, size='2400x3200', fill=0.94)
+        from PIL import Image
+        im = Image.open(pp)
+        W_, H_ = im.size
+        cr = [float(x) for x in os.environ.get('NECK_CROP', '0.32,0.0,0.68,0.24').split(',')]
+        im.crop((int(cr[0] * W_), int(cr[1] * H_), int(cr[2] * W_), int(cr[3] * H_))).save(pp)
+        label(pp, 'lymb %s neck (quad00 pass-2/3: sleeve, saddle cheeks, collar; cortex-full at 35 deg)' % V)
     if want('elbow'):
         render(scene_closeup(work), P('elbow-closeup'), -50, 25, spp, size='1400x1100', fill=0.92)
         label(P('elbow-closeup'), 'lymb %s ' % V + 'elbow: flush graphite puck, gunmetal hub cap, 1 mm coaxial parting gap; J3 ring behind')

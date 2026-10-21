@@ -44,6 +44,9 @@ J3_GRID = float(os.environ.get('LYMB_J3_GRID', 0.95))   # J3's grid open area vs
 PHI_CAP = float(os.environ.get('LYMB_PHI_CAP', 1.0))   # 1.0: open motor faces behind a bezel (v10.3); 0.5: perforated 1.3 / 2.3 hex caps
 ALPANEL = os.environ.get('LYMB_ALPANEL', '1') == '1'
 OPEN = os.environ.get('LYMB_OPEN_DRUM', '1') == '1'
+V108 = os.environ.get('LYMB_V108', '1') == '1'   # v10.8 (Cam: no perforations): Al drums + J3 band, nothing open
+J3BAND = float(os.environ.get('LYMB_J3BAND', 1.0))   # v10.8: wrap fraction of the J3 can under its 6061 band
+CAPS_ONLY = tuple(x for x in os.environ.get('LYMB_CAPS_ONLY', 'J4,J6').split(',') if x)   # v10.8: drums with Al caps only (mass)
 VENT_OPEN = (math.pi / 4 * 1.3 ** 2) / (math.sqrt(3) / 2 * 2.3 ** 2)
 
 
@@ -111,6 +114,29 @@ def main(vent_scale=1.0, quiet=False):
                 G_vent = H * (PHI_CAP * ends + BARREL * (0.8 if (j == 'J2' and os.environ.get('LYMB_MOUNT') == 'body' and os.environ.get('LYMB_HOOD')) else 1.0) * barrel) + G_pl   # v10.4: the deltoid hood covers a third of J2's dot-grid
             else:   # J6: open ring, its holder plates stay enclosed under the sleeve
                 G_vent = H * (ends + BARREL * barrel) + H * PHI * FLANK * ETA_P * Ap + 1 / (1 / (H_IN * ETA_P * Ap * (1 - FLANK)) + 1 / (H * Ash))
+        if V108 and vented == 'band':
+            # v10.8: no grids. J7 = sealed sleeve. J3 = a 1 mm 6061 band over J3BAND of the can's barrel on a 0.25 mm
+            # gap pad (3 W/mK), its two flanges screwed to the upper / upperd end plates (contact 0.3 K/W a side, in
+            # parallel); the plates (both faces, eta_p) then reach air through the sleeve (h_in 5 -> shell)
+            G_vent = G_skin
+            if j == 'J3' and J3BAND > 0:
+                A_b = J3BAND * math.pi * m['d'] * m['L']
+                R_pad = 0.25e-3 / (3.0 * A_b)
+                R_pl = 1 / (H_IN * ETA_P * Ap) + 1 / (H * Ash)
+                if os.environ.get('LYMB_J3PANEL'):   # the plates' outer faces on Al panels in the sleeve (like J2 / J4)
+                    R_pl = 1 / (H * ETA_P * Ap) + 0.20
+                G_vent = G_skin + 1 / (R_pad + 0.15 + R_pl)
+        if (V108 or os.environ.get('LYMB_ALDRUM')) and vented is True:
+            # v10.8 candidate (Cam: no perforations): the joint drum + its solid caps turned from 6061 and bonded to the
+            # motor can with a gap pad, so the visible drum IS the heat sink (h on its whole outer area, + pad 0.15 K/W);
+            # the holder plates keep the Al-panel path (J2 / J4) or stay enclosed (J6)
+            hy_ = S.LOFTS.get('_rings', {}).get(j, 45.0) * 1e-3
+            A_dr = 2 * math.pi * Rp * 1e-3 * 2 * hy_ + 2 * math.pi * (Rp * 1e-3) ** 2
+            if j in CAPS_ONLY:   # v10.8: only the two solid caps are 6061 (on the motor end faces); the barrel stays PA12
+                A_dr = 2 * math.pi * (Rp * 1e-3) ** 2
+            G_dr = 1 / (1 / (H * A_dr) + 0.15)
+            G_pl = 1 / (1 / (H * ETA_P * Ap) + 0.20) if j in ('J2', 'J4') else 1 / (1 / (H_IN * ETA_P * Ap) + 1 / (H * Ash))
+            G_vent = G_dr + G_pl
         f = lambda G: min(1.0, math.sqrt(DT / (R_int + 1 / G) / P))
         fb, fs, fv = f(G_bare), f(G_skin), f(G_vent)
         f_out[j] = (fb, fs, fv)
@@ -202,7 +228,7 @@ if __name__ == '__main__':
     fo = main()
     j1_body()
     import json
-    json.dump({j: round(fv / fb, 3) for j, (fb, fs, fv) in fo.items()}, open(os.path.join(HERE, 'thermal_v10.json'), 'w'), indent=1)
+    json.dump({j: round(min(1.0, fv / fb), 3) for j, (fb, fs, fv) in fo.items()}, open(os.path.join(HERE, 'thermal_v10.json'), 'w'), indent=1)
     fb, fs, fv = fo['J2']
     print('\nJ2 hold, model jaws: bare %.2f kg; skinned, no vents %.2f kg; vented %.2f kg   (skin derating = f_config / f_bare)'
           % (j2_hold(1.0), j2_hold(fs / fb), j2_hold(fv / fb)))

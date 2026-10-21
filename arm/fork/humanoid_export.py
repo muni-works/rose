@@ -54,9 +54,9 @@ for n, m in D + C:
         dropped.append(n)
         continue
     k = VX.mat_of(n)
-    if HEAD_PITCH and VX.body_of(n) == 'hpitch':     # rose's rest pose: everything on the head-pitch body pitched down
+    if HEAD_PITCH and VX.body_of(n) == 'hpitch':     # rose's rest pose: everything on the head-pitch body pitched down (v10.8: -35 in trimesh = the cortex's +35 in vcad)
         hp = KS.head_layout(J)['pitch'][0]
-        m = m.copy().apply_transform(trimesh.transformations.rotation_matrix(math.radians(HEAD_PITCH), [0, 1, 0], hp))
+        m = m.copy().apply_transform(trimesh.transformations.rotation_matrix(math.radians(-HEAD_PITCH), [0, 1, 0], hp))
         pitched.append(n)
     groups.setdefault(k, []).append(m)
 # v10.1: the chest socket. J1 (RS04 + its graphite drum, r ~72.5) runs in through the chest shell to the

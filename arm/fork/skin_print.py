@@ -139,6 +139,8 @@ def ring(j, owner, wall):
     Rp, c = misc['Rp'][j], np.asarray(misc['J'][j], float)
     m = {'J2': F.J2M, 'J4': F.J4M, 'J6': F.J6M}[j]
     hy = S.LOFTS['_rings'][j]
+    if S.V108:
+        hy = hy - 1.5          # v10.8: the barrel stops inside the 1.5 mm gunmetal rings
     tube = M(cyl(c - [0, hy, 0], c + [0, hy, 0], Rp, 160)) - M(cyl(c - [0, hy + 1, 0], c + [0, hy + 1, 0], Rp - wall, 160))
     holes = []
     rows = np.arange(-hy + 4.0, hy - 4.0 + 1e-6, 2.3 * math.sqrt(3) / 2)
@@ -168,6 +170,8 @@ def ring(j, owner, wall):
             pad = M(cyl(c + d_ * r_s + [0, yf - 1.25, 0], c + d_ * r_s + [0, yf + 1.25, 0], dh / 2 * 1e3 + 3.0, 32))
             spokes.append((sp + pad) - hole)
     tube = tube + Manifold.batch_boolean(spokes, OpType.Add)
+    if S.V108:
+        return tube, 0         # v10.8: sealed, no dot-grid
     tube = tube - Manifold.batch_boolean(holes, OpType.Add)     # the grid last, so no hole edge lands on a spoke face
     return tube, len(holes)
 
@@ -206,8 +210,11 @@ def build(tag='', only=None):
     misc = S.LOFTS['_misc']
     zs, X3 = misc['zs'], misc['X3']
     rows = []
-    PA, PT, PU, GA = ('MJF PA12, dyed warm black, vapour-smoothed satin', 'MJF PA12, dyed graphite',
+    PA, PT, PU, GA = ('MJF PA12, dyed black #121213 (or white #ECECE9 on the white arm), vapour-smoothed satin', 'MJF PA12, dyed graphite',
                       'turned 6061, gunmetal anodize', 'SLA, Make green #39ff14')
+    if S.V108:
+        PT = 'MJF PA12, dyed black #121213 (joints are black on both colourways), vapour-smoothed satin'
+    PD = 'turned 6061, black anodize satin, on a 0.25 mm gap pad to the motor (NOT printed)'
     want = lambda p: only is None or p in only
     # upper arm: one shell, J3 grid, split at J3 (1.5 mm), halves
     if want('upper'):
@@ -215,7 +222,8 @@ def build(tag='', only=None):
         EPS_FOR[0] = S._EPS['upper']
         L = S.LOFTS['upper']
         outer_tm = _tm(outer)
-        sh, nh = grid(sh, outer_tm, misc['x3a'], misc['x3b'], zs, d=1.4, pitch=2.2, skip=(misc['front'],), field=True, front=misc['front'])
+        if not S.V108:   # v10.8: no J3 grid (the 6061 band under the sleeve cools J3)
+            sh, nh = grid(sh, outer_tm, misc['x3a'], misc['x3b'], zs, d=1.4, pitch=2.2, skip=(misc['front'],), field=True, front=misc['front'])
         pieces = {'upper': sh ^ box([-2000, -2000, -2000], [X3 - 0.75, 2000, 2000]), 'upperd': sh ^ box([X3 + 0.75, -2000, -2000], [2000, 2000, 2000])}
         for nm, piece in pieces.items():
             xs = np.asarray(piece.to_mesh().vert_properties)[:, 0]
@@ -230,7 +238,7 @@ def build(tag='', only=None):
             continue
         sh, outer = shell(nm, wall)
         EPS_FOR[0] = S._EPS[nm]
-        if gridspec:
+        if gridspec and not S.V108:
             g0, g1 = S.LOFTS['wrist']['grid']
             sh, _ = grid(sh, _tm(outer), g0, g1, zs)
         V = np.asarray(sh.to_mesh().vert_properties)[:, :3]
@@ -247,10 +255,16 @@ def build(tag='', only=None):
     # rings + bezels
     if want('rings'):
         for j, owner, wall in (('J2', 'turret', 1.2), ('J4', 'fore', 0.9), ('J6', 'wrist', 0.9)):
+            if S.V108 and j not in S.CAPS_ONLY:
+                continue        # v10.8: the J2 drum is turned 6061 (BOM), not printed
             r, nh = ring(j, owner, wall)
             export('puck-%s' % j, owner, r, rows, wall, 'puck', PT, fmt='3mf')
             rows[-1]['holes'] = nh
         for nm, link, m, mat in S.skin_meshes():
+            if nm.startswith('disc-'):
+                export(nm, link, M(m).translate(tuple(np.array(F.ORIGIN[link]) * 1e3)), rows, 1.2, 'drum', PD)
+            if nm.startswith('puck-') and S.V108 and nm[5:] not in S.CAPS_ONLY:   # the 6061 drum barrel: 1.0 mm wall + the spiders
+                export(nm, link, ring(nm[5:], link, 1.0)[0], rows, 1.0, 'drum', PD)
             if nm.startswith('cap-'):
                 export(nm, link, M(m).translate(tuple(np.array(F.ORIGIN[link]) * 1e3)), rows, 0.9, 'trim', PU)
     # J1 drum / desk puck / body face ring

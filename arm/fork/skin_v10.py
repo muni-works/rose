@@ -31,11 +31,15 @@ import rose_fork as F
 import rose_arm_geom as Gm
 
 MARGIN = 2.5          # mm, shell standoff (quad00 skin.MARGIN)
+CW = os.environ.get('LYMB_CW', 'black')   # v10.8 colourways (rose): 'black' = all black; 'white' = white links, black joints
+_LINK = '0.925 0.925 0.918' if CW == 'white' else '0.071 0.071 0.075'
 SKIN_MATS = '\n'.join([
-    '[material "skin" 0.016 0.012 0.009 0.0 0.45]',       # warm black #1e1813 (sRGB -> linear), satin (cortex CMF)
-    '[material "puck" 0.06 0.062 0.066 0.6 0.38]',         # graphite
-    '[material "trim" 0.30 0.32 0.34 0.85 0.32]',          # gunmetal
-    '[material "accent" 0.224 1.0 0.078 0.0 0.4]',         # Make green #39ff14 - the one neon, at the wrist
+    '[material "skin" %s 0.0 0.55]' % _LINK,               # v10.8: black #121213 / white #ECECE9 (linear), satin - no brown
+    '[material "joint" 0.071 0.071 0.075 0.0 0.55]',       # v10.8: joints are black on both colourways
+    '[material "drum" 0.071 0.071 0.075 0.6 0.4]',         # v10.8: 6061, black anodized satin (the heat-sinking drums + caps)
+    '[material "puck" 0.06 0.062 0.066 0.6 0.38]',         # graphite (v10.7 and the body J1 ring)
+    '[material "trim" 0.30 0.32 0.34 0.8 0.35]',           # gunmetal
+    '[material "accent" 0.224 1.0 0.078 0.0 0.35]',        # Make green #39ff14 - the one accent, the tool-flange inlay
     '[material "sheet_dark" 0.02 0.02 0.022 0.8 0.35]',    # 5052 plate, black anodized (shows only inside the ring pucks)
     '[material "cable_dark" 0.02 0.02 0.02 0.0 0.7]',      # black silicone harness
 ]) + '\n'
@@ -337,7 +341,8 @@ def skin_parts():
     front = (1, -1) if os.environ.get('ROSE_ARM_SIDE', 'l') == 'l' else (1, 1)
     J3_OPEN['ref'] = perforate(lo, x3a, x3b, zs, count_only=True)          # v10.3: 4 faces, 1.3 / 2.3, no field
     J3_OPEN['v105'] = perforate(lo, x3a, x3b, zs, d=1.4, pitch=2.2, skip=(front,), field=True, front=front, count_only=True)
-    lo, nh3 = perforate(lo, x3a, x3b, zs, d=1.4, pitch=2.2, skip=(front,), field=True, front=front)
+    if not V108:   # v10.8 (Cam): no perforations - J3 cools through a 6061 band under the sleeve (thermal_v10)
+        lo, nh3 = perforate(lo, x3a, x3b, zs, d=1.4, pitch=2.2, skip=(front,), field=True, front=front)
     out += [('upper', 'upper', loc(lo, 'upper'), 'skin'), ('upperd', 'upperd', loc(hi, 'upperd'), 'skin')]
     # v10.5: J3 is a 1.5 mm dark parting line with a 0.8 mm gunmetal hairline inset 0.6 mm (catches light only grazing)
     out.append(('ring-J3', 'upperd', loc(band(ua, 0, X3, width=0.8, grow=-0.6), 'upperd'), 'trim'))
@@ -356,7 +361,7 @@ def skin_parts():
     wa = seam_cut(sleeve(taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), origin=(0, 0, zs)), *seam('J6'))
     LOFTS['wrist'] = dict(st=taper(req, req[1][1], req[1][2], req[-1][1], req[-1][2]), kw=dict(origin=(0, 0, zs)), seams=[seam('J6')],
                           grid=((S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0))
-    wv, nh7 = perforate(wa, (S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0, zs)   # dot-grid over the J7 can
+    wv = wa.copy() if V108 else perforate(wa, (S['x_ep'] + F.T_PL) * 1e3 + 4.0, S['xt'] * 1e3 - 8.0, zs)[0]   # v10.8: sealed
     out.append(('wrist', 'wrist', loc(wv, 'wrist'), 'skin'))
     c = np.array([xt, 0, zs])
     out.append(('ring-J7', 'wrist', loc(band(wa, 0, xt - 3.0, width=2.0, grow=0.4), 'wrist'), 'accent'))   # flush in the sleeve's own section
@@ -391,6 +396,21 @@ def skin_parts():
                 a0 = c + d_ * (ri - 1.0) + [0, yy, 0]
                 a1 = c + d_ * (Rp[j] + 1.0) + [0, yy, 0]
                 holes.append(Manifold.cylinder(float(np.linalg.norm(a1 - a0)), 0.65, 0.65, 8).transform(_frame_to(a0, a1)))
+        if V108:
+            # v10.8 (rose: "rings are the joints, caps are quiet"): a closed drum - barrel + a flush solid cap disc
+            # recessed 0.5 mm inside a 1.5 mm gunmetal ring at each face. J2: all 6061 black anodized (the drum is
+            # the heat sink); J4 / J6: 6061 caps on the motor faces, PA12 barrel in the joint black (CAPS_ONLY)
+            rg = 1.5
+            bar = Manifold(_mm(cyl(c - [0, hy - rg, 0], c + [0, hy - rg, 0], Rp[j], 128)))
+            capd = Manifold(_mm(cyl(c - [0, hy - 0.5, 0], c + [0, hy - 0.5, 0], Rp[j] - rg, 128)))
+            out.append(('puck-' + j, owner, loc(_tm(bar), owner), 'joint' if j in CAPS_ONLY else 'drum'))
+            for sg in (-1, 1):
+                cp = Manifold(_mm(cyl(c + [0, sg * (hy - rg - 0.01), 0], c + [0, sg * (hy - 0.5), 0], Rp[j] - rg, 128)))
+                out.append(('disc-%s%+d' % (j, sg), owner, loc(_tm(cp), owner), 'drum'))
+                gr = Manifold(_mm(cyl(c + [0, sg * (hy - rg - 0.01), 0], c + [0, sg * hy, 0], Rp[j], 128))) - \
+                    Manifold(_mm(cyl(c + [0, sg * (hy - rg - 1), 0], c + [0, sg * (hy + 1), 0], Rp[j] - rg, 128)))
+                out.append(('cap-%s%+d' % (j, sg), owner, loc(_tm(gr), owner), 'trim'))
+            continue
         if os.environ.get('LYMB_PUCK_HOLES', '1') == '1':   # export_skin_stl turns this off: the ring's dot-grid is specified in PARTS.md, not meshed
             ring = ring - Manifold.batch_boolean(holes, __import__('manifold3d').OpType.Add)
         out.append(('puck-' + j, owner, loc(_tm(ring), owner), 'puck'))
@@ -526,6 +546,8 @@ def frag(q, at=(0.0, 0.0, 0.0), R0=Gm.I3, prefix='a', outdir='.', skin=True, ski
 _WRITTEN = {}
 
 # v10.3 skin and panel masses, for fork_checks (written to skin_mass_v10.json)
+V108 = os.environ.get('LYMB_V108', '1') == '1'   # v10.8: Al drums + J3 band, no perforations, solid caps
+CAPS_ONLY = tuple(x for x in os.environ.get('LYMB_CAPS_ONLY', 'J4,J6').split(',') if x)
 RHO_SKIN, WALL = 1010.0, 0.0012         # PA12 (MJF), 1.2 mm wall (exterior session's skin rule; CMF's 2 mm is the moulded PC/ABS limit)
 PANELS = [  # (link, x0, x1 in mm world-zero, panel h mm, qty): 1 mm 5052 flank panels over the holder plates
     ('upper', 52.0, 149.0, 72.0, 2), ('upperd', 151.0, 245.0, 72.0, 2)]
@@ -552,6 +574,18 @@ def skin_mass():
     """[(link, kg, x_m)] for the skin (2 mm wall over each part's outer area) + Al panels + gap pad."""
     rows = []
     for nm, link, m, mat in skin_meshes():
+        if nm.startswith('disc-'):   # v10.8: counted in its drum's 6061 mass
+            continue
+        if nm.startswith('puck') and V108:
+            # v10.8: the drum is turned 6061 (1.0 mm barrel + two 1.2 mm solid caps), black anodized, on a 0.25 mm
+            # gap pad round the can (pad on the barrel only)
+            R_, W_ = m.extents[0] / 2e3, m.extents[1] / 1e3
+            kg = 2700 * (2 * math.pi * R_ * W_ * 0.0010 + 2 * math.pi * R_ ** 2 * 0.0012) + 3000 * 0.00025 * 2 * math.pi * (R_ - 0.008) * W_
+            if nm[5:] in CAPS_ONLY:   # Al caps on the motor faces (pad 0.25 mm), the barrel stays a PA12 ring
+                kg = 2700 * 2 * math.pi * R_ ** 2 * 0.0012 + 3000 * 0.00025 * 2 * math.pi * (R_ - 0.008) ** 2 + RHO_SKIN * 0.0009 * 2 * math.pi * R_ * W_
+            c = m.vertices.mean(0) / 1e3 + np.array(F.ORIGIN[link])
+            rows.append((link, kg, float(c[0]), nm))
+            continue
         if nm.startswith('puck'):   # ring: outer barrel + two end annuli (7 mm deep), before its dot-grid
             R_, W_ = m.extents[0] / 2, m.extents[1]
             A = (2 * math.pi * R_ * W_ + 2 * math.pi * (R_ ** 2 - (R_ - 7.0) ** 2)) * 1e-6
@@ -567,6 +601,10 @@ def skin_mass():
     for link, x0, x1, h, q in PANELS:
         a = (x1 - x0) * h * 1e-6 * q
         rows.append((link, (2680 * PANEL_T + RHO_PAD * PAD_T) * a * PANEL_FILL, (x0 + x1) / 2e3, 'panels'))
+    if V108:   # J3: 1 mm 6061 band over the RS02 can + two 12 mm flanges to the end plates, 0.25 mm pad, 6 M3
+        m3 = F.J3M
+        kg = 2700 * 0.001 * (math.pi * m3['d'] * m3['L'] + 4 * 0.012 * m3['L']) + 3000 * 0.00025 * math.pi * m3['d'] * m3['L'] + 6 * 0.0008
+        rows.append(('upperd', kg, 0.150, 'j3-band'))   # the J3 cartridge at the upper / upperd split
     for link, kg, x in FASTEN:
         rows.append((link, kg, x, 'fastening'))
     return rows
