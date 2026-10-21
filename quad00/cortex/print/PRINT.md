@@ -34,18 +34,29 @@ Regenerate the STLs with `./make_print.sh head-print-full.loon full` (or with no
 - Mesh repair: Bambu Studio may offer to repair the tub, floor and exhaust grille (a few open edges from the booleans). Accept it.
 - Assembly: the floor drops into the tub. Tape it, or use M3 screws once the insert size is locked (bosses come in the next pass).
 
-## 3. Jetson / J401: what's modelled and what isn't
+## 3. Jetson: the bare reComputer Super carrier
 
-The full head carries the J401 (100 × 80) on four sled pillars, at z 38 above the 3S2P pack. Its port edge faces the back cutout, which is about 94 × 20 mm. The module and fan heatsink sit above it and blow up into the crown. Closest point of the board stack to the tub: 2.3 mm.
+Cam's call: take the board out of its enclosure to save weight, and keep the stock heatsink and fan. The full head carries:
 
-**Assumed, check on the template and the desk:**
-- The hole pattern: 86 × 58 (dev kit), M2.5/M3
-- Port-block height (16 mm) and depth from the edge (24 mm)
-- The module and fan-heatsink footprint (60 × 70) and height (32 mm above the board)
-- Which J401 it is: the 100 × 80 carrier (modelled) or the 115 × 115 Robotics J401, which needs a remodel but still fits only the full head
-- Display thickness, camera depth and FPC exits
+**Measured from Cam's caliper photos (2026-10-21):**
+- Mounting holes 100.2 × 100.2 mm
+- Port edge (DC, 2× RJ45 over USB, a stacked USB pair, HDMI, USB-C) 23.6 mm tall including the board
 
-**Known small issue:** one sled pillar touches the tub's curled-in bottom by about 0.5 mm. The print's flex absorbs it; it gets fixed with the measured hole pattern.
+**Estimated:**
+- Board about 110 × 110 mm (scaled from the photo)
+
+**Assumed, measure and send:**
+- The stock heatsink and fan: about 70 × 85 footprint, 30 mm above the board. The design has 30 mm of headroom to the crown and 16 mm to the display, so a wrong guess won't break the print.
+- Hole diameter (M2.5 or M3). The sled has M2.5 heat-set holes; re-drill if the board takes M3.
+
+**How it sits:**
+- The board lies on the sled (two back pillars plus a bridge on legs over the 3S2P pack) at z 38.
+- The port edge faces a 108 × 28 mm back cutout.
+- The 7" panel's driver board lies flat above the heatsink in the crown.
+
+**Airflow:** the fan pulls from the crown; intake is through the ear grids. The heatsink exhausts toward the back grid.
+
+**Margins:** board to wall 7.5 mm, board to display 27 mm, heatsink to display 16 mm. One sled pillar foot meets the tub's bottom curl over a sliver of about 12 mm³, which print tolerance absorbs.
 
 ## 4. What to check on the desk
 

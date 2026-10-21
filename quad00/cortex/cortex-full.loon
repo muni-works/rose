@@ -201,7 +201,7 @@
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
 ; can clip in if wanted)
-[let io-sec [fn [x] [sketch x 0.0 63.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 52.0 23.0 4.0]]]]   ; the reComputer Super rear I/O column
+[let io-sec [fn [x] [sketch x 0.0 51.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 54.0 14.0 4.0]]]]   ; the reComputer Super port edge (bare board)
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
 [let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
@@ -224,7 +224,7 @@
 ; ---------------------------------------------------------------------- insides ----
 [let zd [- zf 12.0]]                            ; the 7" panel sits low so the stereo cameras clear it above                            ; the screen sits a little above the face centre
 [let cortex-display [union [tilt [bx [- xfz 9.0] -82.5 [- zd 52.0] [- xfz 3.2] 82.5 [+ zd 52.0]]]       ; Cam's 7" portable panel (165 x 104 x 6 ASSUMED)
-                           [bx -38.0 -50.0 105.5 17.0 50.0 116.5]]]   ; its driver board, flat on the enclosure (crown space)
+                           [bx -38.0 -50.0 [+ 38.0 46.0] 17.0 50.0 [+ 38.0 57.0]]]]   ; its driver board, flat on the enclosure (crown space)
 [let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
                               [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 ; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
@@ -238,15 +238,21 @@
 [let zj0 38.0]
 [let jxa -83.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
 [let jxb [+ jxa 52.0]]
-; Cam's Seeed reComputer Super (Orin NX), kept IN its aluminium enclosure for the fit print (the enclosure is the
-; heatsink): 130 x 120 x 66 ASSUMED (Super series listing), rear I/O column facing the back cutout. Product: the bare
-; carrier comes out of the enclosure later.
-[let cortex-compute [bx -78.0 -65.0 zj0 42.0 65.0 [+ zj0 66.0]]]
-[let cortex-heatsink [bx -78.0 -65.0 [+ zj0 63.0] 42.0 65.0 [+ zj0 66.0]]]    ; (the enclosure's finned top)
+; Cam's Seeed reComputer Super (Orin NX), OUT of its enclosure (Cam: save weight, keep the stock heatsink + fan).
+; From Cam's caliper photos (2026-10-21): mounting holes 100.2 x 100.2, board ~110 x 110 (scaled), port edge 23.6 tall
+; incl. the board. ASSUMED until measured: heatsink + fan 85 x 70 footprint, 30 above the board, centred on the module.
+[let jb-t 1.6]
+[let jbx0 -78.0]                                  ; the port edge, just inside the back wall's I/O cutout
+[let j-holes #[#[[+ jbx0 5.0] 50.1] #[[+ jbx0 5.0] -50.1] #[[+ jbx0 105.2] 50.1] #[[+ jbx0 105.2] -50.1]]]
+[let cortex-compute [union [bx jbx0 -55.0 zj0 [+ jbx0 110.0] 55.0 [+ zj0 jb-t]]                       ; the carrier
+                          [bx [- jbx0 2.0] -52.0 [+ zj0 jb-t] [+ jbx0 22.0] 52.0 [+ zj0 23.6]]]]      ; the port edge
+[let cortex-heatsink [bx [+ jbx0 25.0] -42.5 [+ zj0 jb-t] [+ jbx0 95.0] 42.5 [+ zj0 30.0]]]      ; stock heatsink + fan (ASSUMED 70 x 85 x 30)
 [let pillar [fn [x y] [bx [- x 4.0] [- y 4.0] tf [+ x 4.0] [+ y 4.0] zj0]]]
-[let cortex-sled [union [union [pillar -72.0 60.0] [pillar -72.0 -60.0]]                          ; back pillars
-                       [union [union [pillar 30.0 80.0] [pillar 30.0 -80.0]]                       ; front legs outside the pack
-                              [bx 26.0 -84.0 [- zj0 2.0] 34.0 84.0 zj0]]]]                          ; the bridge under the enclosure's front
+[let insert-d 3.6]                                ; M2.5 heat-set (coupon); the board's holes take M2.5 / M3 (check)
+[let cortex-sled [difference [fold [bx -300.0 0.0 0.0 -299.0 1.0 1.0] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] [- zj0 6.0] [cylinder [/ insert-d 2.0] 7.0]]]] j-holes]
+  [union [union [pillar [nth [nth j-holes 0] 0] 50.1] [pillar [nth [nth j-holes 1] 0] -50.1]]        ; back pillars, under the board's port-edge holes
+         [union [union [pillar [nth [nth j-holes 2] 0] 80.0] [pillar [nth [nth j-holes 3] 0] -80.0]]   ; front legs outside the pack ...
+                [bx [- [nth [nth j-holes 2] 0] 5.0] -84.0 [- zj0 2.0] [+ [nth [nth j-holes 2] 0] 5.0] 84.0 zj0]]]]]   ; ... and the bridge under the front holes
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
