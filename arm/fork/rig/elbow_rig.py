@@ -34,13 +34,13 @@ SLEEVE_STEP_D = 90.0              # sleeve locating step; parent B's centre hole
 M3, M4, M5, M8 = 3.4, 4.5, 5.5, 8.5   # clearance holes
 
 # ---- rig choices
-T = 3.0                           # plates, 5052
+T = 3.175                         # plates, 5052
 AXIS_H = 200.0                    # bench to joint axis
 FOOT_W = 180.0
 R_LOBE = MOTOR_D / 2 + 6.0
 ARM_L = 270.0                     # joint axis to load point (RS04 lobe; fits the 4040 bed with margin)
 R_TIP = 34.0
-SPACER_D, SPACER_T = 48.0, 3.0   # on the output flange, through parent plate A's bore
+SPACER_D, SPACER_T = 48.0, 3.175   # on the output flange, through parent plate A's bore
 SLEEVE_D = 16.0                   # sleeve spigot; child plate B rides a flanged bushing on it
 BUSH_OD = 18.0                    # igus GFM-1618 style: ID 16 / OD 18 / flange 24
 WIN_H, WIN_FLANGE = 30.0, 20.0
@@ -122,9 +122,9 @@ def spacer_disc():
 
 
 PARTS = {
-    'parent_A': (parent_A, 3.0, 1), 'parent_B': (parent_B, 3.0, 1),
-    'child_A': (lambda: child('A'), 3.0, 1), 'child_B': (lambda: child('B'), 3.0, 1),
-    'spacer_disc': (spacer_disc, 3.0, 1),
+    'parent_A': (parent_A, T, 1), 'parent_B': (parent_B, T, 1),
+    'child_A': (lambda: child('A'), T, 1), 'child_B': (lambda: child('B'), T, 1),
+    'spacer_disc': (spacer_disc, T, 1),
 }
 
 
