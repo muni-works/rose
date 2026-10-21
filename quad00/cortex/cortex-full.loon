@@ -201,7 +201,7 @@
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
 ; can clip in if wanted)
-[let io-sec [fn [x] [sketch x 0.0 48.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 47.0 10.0 4.0]]]]   ; the J401 port edge
+[let io-sec [fn [x] [sketch x 0.0 63.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 52.0 23.0 4.0]]]]   ; the reComputer Super rear I/O column
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
 [let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
@@ -222,8 +222,9 @@
 ; inside beside them (fewer parts, one tool for the slots)
 [let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
 ; ---------------------------------------------------------------------- insides ----
-[let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
-[let cortex-display [tilt [bx [- xfz 15.2] -60.5 [- zd 44.75] [- xfz 3.2] 60.5 [+ zd 44.75]]]]   ; Waveshare 5" HDMI (H) 121 x 89.5
+[let zd [- zf 12.0]]                            ; the 7" panel sits low so the stereo cameras clear it above                            ; the screen sits a little above the face centre
+[let cortex-display [union [tilt [bx [- xfz 9.0] -82.5 [- zd 52.0] [- xfz 3.2] 82.5 [+ zd 52.0]]]       ; Cam's 7" portable panel (165 x 104 x 6 ASSUMED)
+                           [bx -38.0 -50.0 105.5 17.0 50.0 116.5]]]   ; its driver board, flat on the enclosure (crown space)
 [let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
                               [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 ; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
@@ -233,23 +234,19 @@
 [let cortex-dockboard [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 6.0]]]                   ; dock interface board (PD sink ctrl, T1 PHY), B2B to the pad board
 [let cortex-power [bx -70.0 -20.0 [+ tf 1.0] -40.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
 [let zb0 14.0]
-[let cortex-battery [bx -8.0 -74.0 zb0 58.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
+[let cortex-battery [bx -22.0 -74.0 zb0 44.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
 [let jxa -83.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
 [let jxb [+ jxa 52.0]]
-; Seeed reComputer J401 carrier (Orin NX 16GB): 100 x 80 board (the Orin Nano dev-kit footprint), ports on one long
-; edge facing the back cutout. ASSUMED until checked on the template coupon: hole pattern 86 x 58 (dev kit), port block
-; 16 mm tall and 24 mm deep from the edge, module + fan heatsink 60 x 70 footprint, 32 mm above the board.
-[let jb-t 1.6]
-[let j401-holes #[#[[+ jxa 11.0] 43.0] #[[+ jxa 11.0] -43.0] #[[+ jxa 69.0] 43.0] #[[+ jxa 69.0] -43.0]]]
-[let cortex-compute [union [bx jxa -50.0 zj0 [+ jxa 80.0] 50.0 [+ zj0 jb-t]]                         ; the board
-                          [union [bx [- jxa 2.0] -45.0 [+ zj0 jb-t] [+ jxa 22.0] 45.0 [+ zj0 17.6]]   ; USB / RJ45 / USB-C / DC block
-                                 [bx [+ jxa 18.0] -35.0 [+ zj0 jb-t] [+ jxa 78.0] 35.0 [+ zj0 20.0]]]]]  ; SO-DIMM + module
-[let cortex-heatsink [bx [+ jxa 22.0] -32.0 [+ zj0 20.0] [+ jxa 74.0] 32.0 [+ zj0 34.0]]]     ; fan heatsink, blows up into the crown
-[let pillar [fn [q] [bx [- [nth q 0] 4.0] [- [nth q 1] 4.0] tf [+ [nth q 0] 4.0] [+ [nth q 1] 4.0] zj0]]]   ; one pillar per board hole
-[let insert-d 3.6]                                ; M2.5 heat-set: from the insert coupon (3.4 / 3.6 / 3.8)
-[let cortex-sled [difference [fold [bx -300.0 0.0 0.0 -299.0 1.0 1.0] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] [- zj0 6.0] [cylinder [/ insert-d 2.0] 7.0]]]] j401-holes]
-                             [fold [pillar [nth j401-holes 0]] [fn [acc q] [union acc [pillar q]]] j401-holes]]]   ; four pillars, insert holes on top
+; Cam's Seeed reComputer Super (Orin NX), kept IN its aluminium enclosure for the fit print (the enclosure is the
+; heatsink): 130 x 120 x 66 ASSUMED (Super series listing), rear I/O column facing the back cutout. Product: the bare
+; carrier comes out of the enclosure later.
+[let cortex-compute [bx -78.0 -65.0 zj0 42.0 65.0 [+ zj0 66.0]]]
+[let cortex-heatsink [bx -78.0 -65.0 [+ zj0 63.0] 42.0 65.0 [+ zj0 66.0]]]    ; (the enclosure's finned top)
+[let pillar [fn [x y] [bx [- x 4.0] [- y 4.0] tf [+ x 4.0] [+ y 4.0] zj0]]]
+[let cortex-sled [union [union [pillar -72.0 60.0] [pillar -72.0 -60.0]]                          ; back pillars
+                       [union [union [pillar 30.0 80.0] [pillar 30.0 -80.0]]                       ; front legs outside the pack
+                              [bx 26.0 -84.0 [- zj0 2.0] 34.0 84.0 zj0]]]]                          ; the bridge under the enclosure's front
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
