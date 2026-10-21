@@ -63,19 +63,25 @@ Cam buys every line himself; no agent orders.
 |---|---:|---:|---|
 | RobStride CAN-to-USB debug module (A5): Motor Studio, ids, firmware | 1 | $25.09 live (sold out, preorder) | **TODAY** if wanted. Optional: the arm runs on the CANable |
 
-## 7. Skin and anodize (v10.6 shape frozen, d38ebb3)
-| item | ext. | depends on |
+## 7. Skin, machined drums, anodize (v10.8 white = release look, shape frozen at 448ab4b)
+| item | ext. | when |
 |---|---:|---|
-| Skin (B4): 23 print-ready parts, `arm/fork/skin-stl/print/` (watertight; rings as 3MF with the dot-grid meshed), 329 cm³ MJF PA12 dyed black: JLC3DP or Xometry, upload the folder (account needed for a quote). Plus 6 bezels turned in-house from 6061 (gunmetal anodize, in the B2 batch) and 2 SLA trims (J3 hairline, J7 green) ~$20 | ~$132 est. (329 cm³ × $0.40) + ~$20 | **READY TO ORDER** (v10.7, 01a78c1) |
-| Type II anodize batch (B2): all 1/8" plates + 4 panels (2 × 97×72, 2 × 94×72 mm, 0.6 mm) warm black, + 6 bezels gunmetal. Local anodizer, ~1 week | ~$225 | **READY TO ORDER** (quote): the plate set is final (fab-v10). Send the anodizer the DXFs + panel sizes after the cut. The bare first article can be measured before anodizing |
-| **Waits total** | **~$295–545** | |
+| Skin (B4): 34 print-ready parts in `arm/fork/skin-stl/print/` (watertight, no holes), 291 cm³ MJF PA12, **dyed/painted white #ECECE9** (MJF is grey natively: order "dyed white" if offered, else vapour-smooth + white satin paint in-house), JLC3DP or Xometry (account needed for a quote) | ~$116 est. + ~$40 finish | **READY TO ORDER** |
+| 2 SLA trims: J3 hairline ring + J7 Make-green inlay (#39FF14) | ~$20 est. | **READY TO ORDER** |
+| J2 drum barrel: 6061, OD 137 × ID 119, 1.0 mm wall, outsourced CNC turning, black anodize | $90–140 est. | **READY TO ORDER** (quote; drawing from `arm/fork/V10.8.md`) |
+| Cap discs: 0.050" 5052, Ø134 (J2) ×2, Ø123 (J4) ×2, Ø92 (J6) ×2, laser-cut (SendCutSend), black anodize | $50–90 est. | **READY TO ORDER** |
+| J3 band: 0.040" 5052 blank 247 × 42 mm with two 12 mm flanges, laser-cut + bent (SendCutSend), rolled in-house | ~$15 est. | **READY TO ORDER** |
+| 6 gunmetal bezel rings, 1.5 mm, turned in-house from 6061 | (stock in A10) | in-house |
+| Gap pad, 0.25 mm ~3 W/mK, 200 × 200 mm (already B3 on Digi-Key) | — | (B3) |
+| Type II anodize batch (B2): all 1/8" plates + 4 panels + cap discs + J3 band **black**, bezels gunmetal; J2 drum anodized by its turner | ~$225 est. | **READY TO ORDER** (quote after the plates are cut) |
+| **Section 7 total** | **~$560–650** | |
 
 ## Totals
 | group | ext. |
 |---|---:|
 | Order today (Amazon, McMaster, Digi-Key, igus, LCSC, optional OpenELAB) | **~$2,145** |
-| After skin fastening is designed (skin, anodize) + RS02 screws after measuring | **~$305–555** |
-| **All A + B + C** | **~$2,450–2,700** |
+| Section 7 (skin, machined drums, anodize) | **~$560–650** |
+| **All A + B + C** | **~$2,705–2,795** |
 
 **Parts ordered %** is by cost, and moves when Cam confirms each vendor:
 
