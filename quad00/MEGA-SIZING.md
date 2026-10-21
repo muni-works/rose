@@ -48,17 +48,17 @@ Actuator choice uses vendor RobStride peak/continuous torque (in `quad.py`) plus
 
 ## Rebuilt (2026-10-21)
 
-The mega variant (\`k1_structure.use('mega')\`) is now **1.95 m**, built on the new actuator envelopes in \`quad.py\`. These are **envelopes only, not real parts**:
+The mega variant (`k1_structure.use('mega')`) is now **1.95 m**, built on the new actuator envelopes in `quad.py`. These are **envelopes only, not real parts**:
 - **rana-L** (Ø150 × 95, 450 N·m peak, 3.2 kg) at the hip pitch, hip roll and knee (the "big" slot) and the waist.
 - **RS04 + 3:1** (Ø120 × 90, 324 N·m peak) at the ankles and arms.
 - RS04 at the hip yaw, RS06 at the wrist.
 
-Limb sections grow with the motors; the structure is motor-driven. Render: \`renders/mega/mega-195-34.png\`.
+Limb sections grow with the motors; the structure is motor-driven. Render: `renders/mega/mega-195-34.png`.
 
 **Range-of-motion sweep (5° steps):** everything meets its need. The exception is **Shoulder_Roll −5° vs −10° needed** (it hits the shoulder-pitch drum), the same shortfall the full already has. Notes:
 - Head pitch is now limited by the chest at +40°, which is exactly the need.
 - Waist roll is ±20°, against a ±15° need.
 
 Open items:
-- The pelvis cover and the white release look live on the body branch (\`claude/quad00-body-release1\`). Mega picks them up when that merges.
-- The single \`waist\` motor slot puts rana-L on waist yaw and roll too, which is oversized: RS04+2:1 would do. Splitting the slot is a follow-up.
+- The pelvis cover and the white release look live on the body branch (`claude/quad00-body-release1`). Mega picks them up when that merges.
+- The single `waist` motor slot puts rana-L on waist yaw and roll too, which is oversized: RS04+2:1 would do. Splitting the slot is a follow-up.
