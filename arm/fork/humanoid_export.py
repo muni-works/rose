@@ -34,6 +34,9 @@ D = KD.design()
 C = KD.structure(D)
 z0 = -min(m.bounds[0][2] for _, m in D)
 groups = {}
+import math
+HEAD_PITCH = float(os.environ.get('HEAD_PITCH', 35.0))   # rose: eyes down by the neck, ~35 deg at rest
+pitched = []
 HEAD_PARTS = set()   # v10.2: the old cube head goes; the cortex (quad00/cortex/cortex.loon) sits on the dock
 dropped = []
 for n, m in D + C:
@@ -42,6 +45,10 @@ for n, m in D + C:
         dropped.append(n)
         continue
     k = VX.mat_of(n)
+    if HEAD_PITCH and VX.body_of(n) == 'hpitch':     # rose's rest pose: everything on the head-pitch body pitched down
+        hp = KS.head_layout(J)['pitch'][0]
+        m = m.copy().apply_transform(trimesh.transformations.rotation_matrix(math.radians(HEAD_PITCH), [0, 1, 0], hp))
+        pitched.append(n)
     groups.setdefault(k, []).append(m)
 # v10.1: the chest socket. J1 (RS04 + its graphite drum, r ~72.5) runs in through the chest shell to the
 # torso side plate. Cut a r = SOCKET_R recess through every cover it crosses, and put a gunmetal bezel
@@ -100,4 +107,5 @@ json.dump(dict(cortex=[float(HF['ox']), float(HF['oy']), float(HF['zb'] + z0)], 
                sp=(KS.upper_layout(J, 'Left')['sp'][0] + np.array([0, 0, z0])).tolist(),
                ey=(KS.upper_layout(J, 'Left')['ey'][0] + np.array([0, 0, z0])).tolist()),
           open(os.path.join(OUT, 'hum.json'), 'w'), indent=1)
+print('pitched with the head:', pitched)
 print('groups', {k: len(v) for k, v in groups.items()}, 'dropped', len(dropped), 'z0 %.1f' % z0, 'side plate %.1f' % side_plate)
