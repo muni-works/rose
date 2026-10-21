@@ -76,13 +76,28 @@ FORE = 0.220          # elbow to wrist centre
 Z_TURRET = 0.120      # J1 output height
 if SIZE == 'mini':
     Z_SH, UPPER, FORE, Z_TURRET = 0.150, 0.150, 0.110, 0.075
+# ROSE_ARM=v10 (2026-10-20): one arm for the desk and the H2-class humanoid. The roll moves from the
+# forearm (J5) to the upper arm (J3, an RS02 cartridge just past the shoulder): J1 yaw / J2 pitch /
+# J3 upper-arm roll / J4 elbow / J6 wrist pitch / J7 tool roll - the humanoid's shoulder pitch / roll
+# / upper-arm yaw / elbow chain when J1 is turned to a lateral axis. 300 / 200 mm. Short turret
+# (J2 axis 126 mm off the J1 back face, the least that clears the RS04 lobe over the turret disc);
+# on the desk a fixed 68 mm pedestal under the foot puts J2 back at 200 mm over the table.
+V10 = SIZE == 'v10'
+J3M = RS02
+X3_CP = 0.105          # upper arm end plate (J3's back face on its far side): clear of the turret's corners
+H_UP, TABS_UP = 0.034, (-0.018, 0.018)     # proximal upper-arm plates, half height
+H_UD, TABS_UD, H_UDCV = 0.050, (-0.025, 0.025), 0.040   # distal upper arm (elbow holder) + its covers
+PED_H, PED_S = float(os.environ.get('ROSE_ARM_PED_H', 0.068)), 0.150   # desk pedestal under the foot: height, square tube side (0.0363 on the body: the chest adapter)
+PEDESTAL = V10 and os.environ.get('ROSE_ARM_PEDESTAL', '1') == '1'   # ROSE_ARM_PEDESTAL=0: the body build
+if V10:
+    Z_SH, UPPER, FORE = 0.132, 0.300, 0.200
 if os.environ.get('ROSE_ARM_ZSH'):        # shoulder axis height over the foot (m) - shorter turret for a body mount
     Z_SH = float(os.environ['ROSE_ARM_ZSH'])
 # ROSE_ARM_TWIN_SH=1: two J2 motors back to back on a centre web in the upper arm's shoulder lobe,
 #   outputs facing out to both turret plates - the fork's bushing side becomes a second drive.
 # ROSE_ARM_NO_J5=1: no forearm roll - the J6 holder plates tab straight into the forearm's end plate (5 DOF).
 TWIN_SH = os.environ.get('ROSE_ARM_TWIN_SH') == '1'
-NO_J5 = os.environ.get('ROSE_ARM_NO_J5', '1' if SIZE == 'mini' else '0') == '1'
+NO_J5 = os.environ.get('ROSE_ARM_NO_J5', '1' if SIZE in ('mini', 'v10') else '0') == '1'
 if os.environ.get('ROSE_ARM_LEN'):         # upper,fore in mm
     UPPER, FORE = (float(v) / 1e3 for v in os.environ['ROSE_ARM_LEN'].split(','))
 JAW = 0.075 if SIZE != 'mini' else 0.050   # jaw length past the gripper motor
@@ -135,6 +150,8 @@ if J4M is not J2M and not TWIN_SH:
     EL_SPACER_T = EL_CA - T_PL / 2 - EL_OUT
 WR_PA, WR_CA, WR_PB, WR_CB, WR_OUT, WR_BACK = joint_y(J6M)   # wrist pitch: yoke holds J6, wrist straddles
 Y_FORE_DIST = J5M['d'] / 2 + GAP + T_PL / 2 + 0.0005         # forearm tip encloses the J5 roll motor
+if V10:
+    Y_FORE_DIST = EL_CA                                         # v10: no J5 - the forearm is its two straddler plates
 Y_UPPER = SH_PA
 Y_UPPER_DIST = Y_UPPER
 Y_YOKE, Y_WRIST = WR_PA, WR_CA
@@ -149,6 +166,18 @@ LINKS = [  # name, joint, parent, axis, origin
     ('wrist', 'J6_wrist_pitch', 'yoke', (0, 1, 0), (W, 0.0, Z_SH)),
     ('tool', 'J7_tool_roll', 'wrist', (1, 0, 0), (W + 0.040, 0.0, Z_SH)),
 ]
+if V10:
+    X3_OUT = X3_CP + T_PL + J3M['L']        # J3 output face = the distal upper arm's bridge plate
+    LINKS = [
+        ('base', None, None, None, (0.0, 0.0, 0.0)),
+        ('turret', 'J1_yaw', 'base', (0, 0, 1), (0.0, 0.0, Z_TURRET)),
+        ('upper', 'J2_sho_pitch', 'turret', (0, 1, 0), (0.0, 0.0, Z_SH)),
+        ('upperd', 'J3_upper_roll', 'upper', (1, 0, 0), (X3_OUT, 0.0, Z_SH)),
+        ('fore', 'J4_elbow', 'upperd', (0, 1, 0), (UPPER, 0.0, Z_SH)),
+        ('yoke', 'J5_fore_roll', 'fore', (1, 0, 0), (W - 0.070, 0.0, Z_SH)),   # bolted (NO_J5)
+        ('wrist', 'J6_wrist_pitch', 'yoke', (0, 1, 0), (W, 0.0, Z_SH)),
+        ('tool', 'J7_tool_roll', 'wrist', (1, 0, 0), (W + 0.040, 0.0, Z_SH)),
+    ]
 ORIGIN = {l[0]: l[4] for l in LINKS}
 
 
@@ -377,7 +406,7 @@ def stations():
     return dict(x5=x5, x_cp=x_cp, x_ep=x_ep, xt=xt)
 
 
-def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_PL):
+def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_PL, hmax=1.0):
     """A side plate with a lobe (radius r0) on the joint at x = xc and a flat end at x = x_end, half
     height h, with 10 mm tabs standing T proud of the flat end at tabs_z - they pass through the end
     plate. Centre plane y = side*yc. Holes in the plate's own (s, z), s measured from xc toward x_end."""
@@ -395,7 +424,7 @@ def dplate(link, xc, x_end, z, yc, side, r0, h, tabs_z, holes=(), keep=0.0, t=T_
     ol += [('arc', tt, tb, (0.0, 0.0), True), ('line', tb, (L, -h))]
     o = (xc, side * (yc + t / 2), z)
     return (link, 'sheet', o, (sg, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, -side * t, 0.0),
-            windows(L, r0, h, keep, 0.0, t) + list(holes))
+            windows(L, r0, h, keep, 0.0, t, hmax) + list(holes))
 
 
 def end_plate(link, x, z, ya, yb, hz, tabs_z, holes, hy_extra=0.0):
@@ -415,6 +444,8 @@ def build():
     # ---- base: 6 mm foot, the yaw RS04 back-mounted on it, printed cassette collar
     foot_holes = pattern(0.0, 0.0, J1M['back']) + [circ(0.0, 0.0, 0.040)] + \
         [circ(R_FOOT_BOLTS * math.cos(a), R_FOOT_BOLTS * math.sin(a), 0.0033) for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4)]
+    if PEDESTAL:
+        foot_holes += foot_slots()
     P.append(('base', 'base', (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
               [('arc', (R_FOOT, 0.0), (-R_FOOT, 0.0), (0.0, 0.0), True), ('arc', (-R_FOOT, 0.0), (R_FOOT, 0.0), (0.0, 0.0), True)],
               (0.0, 0.0, T_FOOT), foot_holes))
@@ -446,6 +477,8 @@ def build():
         ol = [('line', pts[i], pts[i + 1]) for i in range(len(pts) - 1)] + ol[1:]
         holes = [stadium(-0.030 * ks, 0.030 * ks, 0.016 * ks)]
         dz = 0.105 * h_t / 0.138425                 # tower window: 105 mm below the axis on the full arm
+        if V10:                                     # short turret: centred between the J2 output pattern and the foot
+            dz = (h_t + 0.024) / 2
         holes = [[(it[0],) + tuple((pt[0], pt[1] - dz) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in w] for w in holes]
         holes += [circ(0.0, 0.0, 0.009)] if (cb and not TWIN_SH) else pattern(0.0, 0.0, J2M['out'])
         P.append(('turret', 'sheet', (0.0, side * (yc + T / 2), z), (1, 0, 0), (0, 0, 1), ol, (0, -side * T, 0), holes))
@@ -454,6 +487,19 @@ def build():
         P.append(spacer('turret', 0.0, -SH_OUT - SPACER_T, J2M['out']))
     else:
         P += cap('turret', 0.0, -SH_CB - T / 2)
+    if V10:
+        P += (pedestal() if PEDESTAL else []) + upper_v10()
+    else:
+        P += upper_v9()
+    # ---- forearm: parallel plates straddling the elbow, flat ends tabbed through an end plate;
+    #      the J5 roll RS02 back-mounts on the end plate's far face, a cartridge like the tool roll
+    return P + distal()
+
+
+def upper_v9():
+    P = []
+    z = Z_SH
+    T = T_PL
     # ---- upper arm: constant width; the same back-mounted RS04 joint at both ends
     h_cv = R_LOBE_EL - 0.012
     xa, xb = R_LOBE_SH + MOTOR_CLEAR, UPPER - R_LOBE_EL - MOTOR_CLEAR
@@ -481,8 +527,95 @@ def build():
         P.append(disc('upper', 'sheet', -T / 2, 'y', R_LOBE_SH - 0.004, T,
                       pattern(0.0, 0.0, J2M['back']) + [circ(0.0, 0.0, 0.012)]))
     P += motor_prims('upper', J4M, 'y', UPPER, EL_BACK)
-    # ---- forearm: parallel plates straddling the elbow, flat ends tabbed through an end plate;
-    #      the J5 roll RS02 back-mounts on the end plate's far face, a cartridge like the tool roll
+    return P
+
+
+def upper_v10():
+    """v10 upper arm, two links. 'upper': the J2 holder plates (A round the nose, B on the back face)
+    run out to an end plate at X3_CP; the J3 roll RS02 back-mounts on its far face, a cartridge on
+    the arm axis. 'upperd': a bridge on the J3 output, the J4 elbow holder plates tabbed through it,
+    and two tabbed covers between them for torsion."""
+    P = []
+    z, T = Z_SH, T_PL
+    nose_bore = J2M['nose_d'] / 2 + 0.002
+    back_keep = J2M['back'][1] / 2 + J2M['back'][2]
+    P.append(dplate('upper', 0.0, X3_CP, z, SH_PA, 1, R_LOBE_SH, H_UP, TABS_UP, [circ(0.0, 0.0, nose_bore)], keep=nose_bore))
+    P.append(dplate('upper', 0.0, X3_CP, z, SH_PB, -1, R_LOBE_SH, H_UP, TABS_UP,
+                    [circ(0.0, 0.0, bhole(J2M))] + pattern(0.0, 0.0, J2M['back']), keep=back_keep))
+    P.append(end_plate('upper', X3_CP, z, SH_PA, SH_PB, H_UP, TABS_UP, pattern(0.0, 0.0, J3M['back'], math.pi / 4) + [circ(0.0, 0.0, 0.018)]))
+    P += motor_prims('upper', J2M, 'y', 0.0, SH_BACK)
+    P += motor_prims('upper', J3M, 'x', 0.0, X3_CP + T)
+    # distal: bridge on the J3 output, then the elbow holder
+    P.append(end_plate('upperd', X3_OUT, z, EL_PA, EL_PB, H_UD, TABS_UD, pattern(0.0, 0.0, J3M['out'], math.pi / 6)))
+    nose4 = J4M['nose_d'] / 2 + 0.002
+    keep4 = J4M['back'][1] / 2 + J4M['back'][2]
+    xa, xb = X3_OUT + T + MOTOR_CLEAR, UPPER - R_LOBE_EL - MOTOR_CLEAR
+    cover_tabs = (xa + 0.012, xb - 0.012)
+    slots = [rect(UPPER - tx, zc, SLOT_L, T + 0.0002) for zc in (H_UDCV - T / 2, -H_UDCV + T / 2) for tx in cover_tabs]
+    hm = H_UDCV - T - 0.0062
+    P.append(dplate('upperd', UPPER, X3_OUT + T, z, EL_PA, 1, R_LOBE_EL, H_UD, TABS_UD, [circ(0.0, 0.0, nose4)] + slots, keep=nose4, hmax=hm))
+    P.append(dplate('upperd', UPPER, X3_OUT + T, z, EL_PB, -1, R_LOBE_EL, H_UD, TABS_UD,
+                    [circ(0.0, 0.0, bhole(J4M))] + pattern(0.0, 0.0, J4M['back']) + slots, keep=keep4, hmax=hm))
+    yi = EL_PA - T / 2
+    for zs in (1, -1):
+        zc = z + zs * H_UDCV - (T if zs > 0 else 0.0)
+        ol = tabbed_rect(xa, xb, -yi, yi, cover_tabs, cover_tabs, T)
+        P.append(('upperd', 'cover', (0.0, 0.0, zc), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), ol, (0.0, 0.0, T)))
+    P += motor_prims('upperd', J4M, 'y', UPPER, EL_BACK)
+    return P
+
+
+def pedestal():
+    """Desk pedestal under the foot (v10): a square tube of four 3 mm plates, tabbed up through the
+    1/4" foot and down through a 3 mm base plate that bolts to the table. Fixed - part of 'base'.
+    Left off when the arm mounts to a body (skip=('base',) drops it with the foot)."""
+    P = []
+    T, H, S = T_PL, PED_H - T_PL, PED_S
+    tabs = (-S / 4, S / 4)
+    top, bot = -0.0, -H                      # plate body between the base plate (top face at -H) and the foot (z = 0)
+    def side_plate(nx, ny, w):
+        # outline in (s along the face, z): tabs T_FOOT up into the foot, T down into the base plate
+        pts = [(-w / 2, bot)]
+        for tx in tabs:
+            pts += [(tx - TAB_L / 2, bot), (tx - TAB_L / 2, bot - T), (tx + TAB_L / 2, bot - T), (tx + TAB_L / 2, bot)]
+        pts += [(w / 2, bot), (w / 2, top)]
+        for tx in sorted(tabs, reverse=True):
+            pts += [(tx + TAB_L / 2, top), (tx + TAB_L / 2, top + T_FOOT), (tx - TAB_L / 2, top + T_FOOT), (tx - TAB_L / 2, top)]
+        pts += [(-w / 2, top)]
+        ol = [('line', pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))]
+        win = stadium(-w / 2 + 0.022, w / 2 - 0.022, H / 2 - 0.014)
+        holes = [[(it[0],) + tuple((pt[0], pt[1] - H / 2) if isinstance(pt, tuple) else pt for pt in it[1:]) for it in win]] if win else []
+        c = S / 2 - T / 2
+        if nx:
+            return ('base', 'sheet', (nx * c - T / 2, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), ol, (T, 0.0, 0.0), holes)
+        return ('base', 'sheet', (0.0, ny * c - T / 2, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0), ol, (0.0, T, 0.0), holes)
+    for s_ in (1, -1):
+        P.append(side_plate(s_, 0, S))               # x faces: full width
+        P.append(side_plate(0, s_, S - 2 * T - 0.0004))   # y faces: between them
+    # base plate: the foot's outline, table bolts outside the tube, slots for the tabs, cable hole
+    c = S / 2 - T / 2
+    slots = [rect(sx * c, tx, T + 0.0002, SLOT_L) for sx in (1, -1) for tx in tabs] + \
+            [rect(tx, sy * c, SLOT_L, T + 0.0002) for sy in (1, -1) for tx in tabs]
+    bolts = [circ(sx * 0.100, sy * 0.100, 0.0033) for sx in (1, -1) for sy in (1, -1)]
+    P.append(('base', 'base', (0.0, 0.0, -H - T), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
+              [('line', (-R_FOOT, -R_FOOT), (R_FOOT, -R_FOOT)), ('line', (R_FOOT, -R_FOOT), (R_FOOT, R_FOOT)),
+               ('line', (R_FOOT, R_FOOT), (-R_FOOT, R_FOOT)), ('line', (-R_FOOT, R_FOOT), (-R_FOOT, -R_FOOT))],
+              (0.0, 0.0, T), slots + bolts + [circ(0.0, 0.0, 0.040)]))
+    return P
+
+
+def foot_slots():
+    """Slots in the 1/4" foot for the pedestal tabs (v10)."""
+    c = PED_S / 2 - T_PL / 2
+    tabs = (-PED_S / 4, PED_S / 4)
+    return [rect(sx * c, tx, T_PL + 0.0002, SLOT_L) for sx in (1, -1) for tx in tabs] + \
+           [rect(tx, sy * c, SLOT_L, T_PL + 0.0002) for sy in (1, -1) for tx in tabs]
+
+
+def distal():
+    """Forearm, yoke, wrist and tool (shared by v9 and v10)."""
+    P = []
+    z, T = Z_SH, T_PL
     S = stations()
     x5, x_cp, x_ep, xt = S['x5'], S['x_cp'], S['x_ep'], S['xt']
     h_f, tabs_f = (0.026, (-0.012, 0.012)) if NO_J5 else (0.036, (-0.020, 0.020))   # no J5 cartridge: only the J6 holders to carry
@@ -577,9 +710,19 @@ def cable_points(T):
     P('turret', (0.0, -SH_CB + T_PL + R_CABLE, zt + 0.012))
     # shoulder: from the turret (straddler, leg coming up from below) into the upper arm (holder)
     crossing('upper', 'turret', 0.0, SH_PB, SH_CB, J2M['d'] / 2 + 0.004, R_LOBE_SH + 0.012, (1, 0), (0, -1), from_holder=False)
-    P('upper', (0.090, 0.0, z))
-    P('upper', (UPPER - 0.090, 0.0, z))                    # the design line: down the middle of the arm
-    crossing('upper', 'fore', UPPER, EL_PB, EL_CB, J4M['d'] / 2 + 0.004, R_LOBE_EL + 0.012, (-1, 0), (1, 0), from_holder=True)
+    if V10:   # under the J3 cartridge (its cassette), then down the middle of the distal upper arm
+        r3 = J3M['d'] / 2 + 0.006
+        P('upper', (0.070, 0.0, z))
+        P('upper', (X3_CP - 0.008, 0.0, z))
+        P('upper', (X3_CP - 0.004, 0.0, z - r3))
+        P('upper', (X3_OUT - 0.004, 0.0, z - r3))
+        P('upperd', (X3_OUT + 0.012, 0.0, z - r3))
+        P('upperd', (X3_OUT + 0.020, 0.0, z))
+        P('upperd', (UPPER - 0.090, 0.0, z))
+    else:
+        P('upper', (0.090, 0.0, z))
+        P('upper', (UPPER - 0.090, 0.0, z))                    # the design line: down the middle of the arm
+    crossing('upperd' if V10 else 'upper', 'fore', UPPER, EL_PB, EL_CB, J4M['d'] / 2 + 0.004, R_LOBE_EL + 0.012, (-1, 0), (1, 0), from_holder=True)
     S = stations()
     x5, x_cp, x_ep, xt = S['x5'], S['x_cp'], S['x_ep'], S['xt']
     P('fore', (UPPER + 0.080, 0.0, z))

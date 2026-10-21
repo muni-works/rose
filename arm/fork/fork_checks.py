@@ -49,7 +49,7 @@ def masses():
         kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
         xs = [('turret', 0.0), ('upper', F.UPPER)] if name == 'RS04' else [('yoke', F.W)]
         for link, x in xs:            # J2's sleeve is on the upper arm's axis at the shoulder; J4's at the elbow
-            rows.append(('upper' if name == 'RS04' else link, kg, x))
+            rows.append(('upper' if name == 'RS04' else link, kg, x) if not (F.V10 and x == F.UPPER) else ('upperd', kg, x))
     _MASS_CACHE[key] = rows
     return rows
 
@@ -58,11 +58,42 @@ def flange_x():
     return F.flange_x()
 
 
-MOVING = ('upper', 'fore', 'yoke', 'wrist', 'tool', 'harness')
+MOVING = ('upper', 'upperd', 'fore', 'yoke', 'wrist', 'tool', 'harness')
+# Gripper v2 (485 g, jaw tips 55 mm past the model's: 786 vs 731 mm on v9) in place of the model's
+# EL05 + jaws: a lump at GRIP_V2_CX past the J7 output, the payload at its jaw tips.
+GRIP_V2_KG, GRIP_V2_REACH = 0.485, 0.055
+GRIP_V2_CX = 0.050
+GRIPPER = ['model']
+
+
+def _rows():
+    if GRIPPER[0] == 'model':
+        return masses()
+    xt = F.stations()['xt']
+    return [r for r in masses() if r[0] != 'tool'] + [('tool', GRIP_V2_KG, xt + GRIP_V2_CX)]
+
+
+def flange_x():
+    return F.flange_x() + (GRIP_V2_REACH if GRIPPER[0] == 'v2' else 0.0)
 
 
 def moment(x0, payload=PAYLOAD):
-    return G * (sum(m * (x - x0) for l, m, x in masses() if l in MOVING and x > x0) + payload * (flange_x() - x0))
+    return G * (sum(m * (x - x0) for l, m, x in _rows() if l in MOVING and x > x0) + payload * (flange_x() - x0))
+
+
+def holds():
+    """{joint: kg held straight out, continuously} for the current GRIPPER. J3 (v10 upper-arm roll) and
+    J1 (when it is the humanoid's shoulder pitch) are the worst pose: the load's lever about their axis."""
+    R = lambda m: F.RATING[id(m)][1] * (2 if (m is F.J2M and F.TWIN_SH) else 1)
+    out = {}
+    for j, x0, m in (('J2', 0.0, F.J2M), ('J4', F.UPPER, F.J4M), ('J6', F.W, F.J6M)):
+        out[j] = (R(m) - moment(x0, 0.0)) / (G * (flange_x() - x0))
+    if F.V10:
+        # J3 rolls the elbow: with the upper arm level and the forearm swung out level to the side, the
+        # forearm + hand moment about the upper-arm axis is exactly the elbow's load
+        out['J3'] = (F.RATING[id(F.J3M)][1] - moment(F.UPPER, 0.0)) / (G * (flange_x() - F.UPPER))
+        out['J1 body'] = out['J2']     # J1 as the humanoid's shoulder pitch: the whole arm, same lever as J2
+    return out
 
 
 def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
@@ -84,6 +115,8 @@ def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
 def stiffness():
     U, Fo = F.UPPER, F.FORE
     hu, Wu = 2 * F.R_LOBE_EL, 2 * F.Y_UPPER_DIST
+    if F.V10:
+        hu = 2 * F.H_UD          # v10: the distal upper arm's box is its holder plates' depth
     hf, Wf = 2 * F.R_LOBE0 + 0.016, 2 * F.Y_FORE_DIST
     Iu, Ju = section(hu, Wu)
     If, Jf = section(hf, Wf)
@@ -106,6 +139,13 @@ def stiffness():
         th_lobe += M * 2 * r_a * (1 / I_lobe - 1 / Iu) / E
     th_u += th_lobe
     d_u += th_lobe * U / 2
+    if F.V10:
+        # the proximal upper arm is two open plates (2 H_UP deep, no covers) out to the J3 end plate;
+        # J3's own bearing tilt is NOT modelled (RobStride gives no moment stiffness)
+        I_p = 2 * F.T_PL * (2 * F.H_UP) ** 3 / 12
+        th_p = moment(0.0) * F.X3_CP * (1 / I_p - 1 / Iu) / E
+        th_u += th_p
+        d_u += th_p * (U - F.X3_CP / 2)
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)
     # twist: wrist pitched 90 puts the hand's moment into the forearm as torque; elbow at 90 the same for the upper arm
     twist = m_w * Fo / (Gs * Jf) * (xF - U - Fo) + m_e * U / (Gs * Ju) * (xF - U) * 0.0 + \
@@ -188,6 +228,13 @@ def main():
     for name, x0, stall in (('J2', 0.0, R(F.J2M, 'J2')[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
         free = stall - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
+    if F.V10:
+        h = holds()
+        print('  J3 upper-arm roll (%s) holds %.2f kg, worst pose (upper arm level, forearm level out to the side)' % (F.NAME[id(F.J3M)], h['J3']))
+    GRIPPER[0] = 'v2'
+    h = holds()
+    print('  with gripper v2 (%.0f g, jaw tips at %.0f mm): ' % (GRIP_V2_KG * 1e3, flange_x() * 1e3) + ', '.join('%s %.2f kg' % kv for kv in h.items()))
+    GRIPPER[0] = 'model'
 
     sag, tw, secs = stiffness()
     print('\nflange deflection from structure: %.2f mm sag, %.2f mm twist   (budget 0.5 / 0.5)' % (sag * 1e3, tw * 1e3))
