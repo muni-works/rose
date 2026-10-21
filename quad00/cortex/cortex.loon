@@ -32,6 +32,7 @@
   #["body"    #[0.071 0.071 0.075] #[1.000 0.125 0.322] #[0.035 0.035 0.038]]   ; black + Body red #ff2052
   #["world"   #[0.925 0.925 0.918] #[0.000 0.941 1.000] #[0.780 0.784 0.792]]   ; white + World cyan #00f0ff
   #["power"   #[0.925 0.925 0.918] #[1.000 0.831 0.000] #[0.780 0.784 0.792]]   ; white + Power amber #ffd400
+  #["play"    #[0.071 0.071 0.075] #[1.000 0.239 0.722] #[0.035 0.035 0.038]]   ; black + Play pink #ff3db8
   #["silicon" #[0.925 0.925 0.918] #[0.300 0.302 0.310] #[0.780 0.784 0.792]]]] ; white + graphite (the quiet one)
 [let colorway "mind"]
 [let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
@@ -198,7 +199,7 @@
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
 ; can clip in if wanted)
-[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
+[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 48.0 11.0 4.0]]]]   ; 96 x 22: the dev kit / J3011 port edge
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
 [let ear-panel-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg [- gw 0.8] [- gh 0.8] [- gw 0.81]]]]]
@@ -237,22 +238,30 @@
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
-; COMPUTE (Cam 2026-10-21): the bay takes the Waveshare JETSON-ORIN-IO-BASE (90.5 x 103) at 100+; the MVP carries a
-; decased Seeed J3011 (Mini J401, 87.8 x 56.7, M2.5 holes 81 x 49, from Seeed's STEP) on a carrier plate in the same
-; sled, port edge (the 87.8 side) aft at the I/O cutout. Swap the plate, not the sled.
+; COMPUTE: one sled, a per-carrier plate. The bay takes the Waveshare JETSON-ORIN-IO-BASE (90.5 x 103) at 100+; the
+; desk prototype carries Cam's Orin Nano Super DEV KIT (P3768 carrier 100 x 79, kit 58.7 tall); the MVP alternative is
+; a decased Seeed J3011 (87.8 x 56.7, M2.5 holes 81 x 49 from Seeed's STEP). Port edge aft at the I/O cutout.
+[let carrier "devkit"]                          ; "devkit" | "j3011"
 [let jxa -66.5]                                 ; plate back edge, just inside the back wall
 [let jxb [+ jxa 90.5]]                          ; the sled / plate is sized for the Waveshare
-[let jd 56.7]                                   ; J3011 board depth (x); 87.8 along y
-[let cortex-compute [union [bx [+ jxa 2.5] -43.9 zj0 [+ [+ jxa 2.5] jd] 43.9 [+ zj0 12.0]]                ; J3011 carrier + its I/O edge
-                          [bx [+ jxa 6.0] -34.8 [+ zj0 2.0] [+ jxa 51.0] 34.8 [+ zj0 8.0]]]]   ; Orin Nano on the SO-DIMM
-[let cortex-heatsink [union [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] -43.5 [+ zj0 12.0] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] 43.5 [+ zj0 28.7]]   ; stock finned heatsink 87 x 58.7 x 16.7
-                            [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] -23.4 [+ zj0 28.7] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] 23.4 [+ zj0 36.0]]]]  ; fan 47 x 47 x 7.3
-[let jcx [+ [+ jxa 2.5] [/ jd 2.0]]]          ; J3011 board centre (x)
+[let dk [= carrier "devkit"]]
+[let jd [if dk 79.0 56.7]]                      ; board depth (x)
+[let jw [if dk 100.0 87.8]]                     ; board width (y), the port edge
+[let jx0 [+ jxa 1.0]]                           ; board back edge
+[let jcx [+ jx0 [/ jd 2.0]]]                    ; board centre (x)
+[let cortex-compute [union [bx jx0 [- 0.0 [/ jw 2.0]] zj0 [+ jx0 jd] [/ jw 2.0] [+ zj0 [if dk 18.0 12.0]]]       ; carrier + its I/O edge
+                          [bx [+ jx0 6.0] -34.8 [+ zj0 2.0] [+ jx0 51.0] 34.8 [+ zj0 8.0]]]]   ; Orin module on the SO-DIMM
+[let cortex-heatsink [if dk
+  [bx [+ jx0 14.0] -36.0 [+ zj0 18.0] [+ jx0 70.0] 36.0 [+ zj0 53.0]]              ; dev-kit heatsink + fan (ASSUMED 72 x 56, top 53 over the board)
+  [union [bx [- jcx 29.35] -43.5 [+ zj0 12.0] [+ jcx 29.35] 43.5 [+ zj0 28.7]]      ; J3011 stock finned heatsink 87 x 58.7 x 16.7
+         [bx [- jcx 23.4] -23.4 [+ zj0 28.7] [+ jcx 23.4] 23.4 [+ zj0 36.0]]]]]      ;   + fan 47 x 47 x 7.3
+[let hx [if dk 29.0 24.5]]                      ; half hole pitch along x: dev kit 58 ASSUMED (measure), J3011 49
+[let hy [if dk 43.0 40.5]]                      ;                 along y: dev kit 86 ASSUMED (measure), J3011 81
 [let j-pilot [fn [x y] [translate [+ jcx x] y [- zj0 8.0] [cylinder-n 1.1 10.0 16]]]]   ; M2.5 self-tap pilot, 2.2 (no inserts)
 [let j-boss [fn [x y] [translate [+ jcx x] y [- zj0 6.0] [cylinder-n 3.5 4.0 24]]]]     ; 7 mm boss under the plate: 6 mm of thread
-[let cortex-plate [difference [union [j-pilot -24.5 -40.5] [union [j-pilot -24.5 40.5] [union [j-pilot 24.5 -40.5] [j-pilot 24.5 40.5]]]]
+[let cortex-plate [difference [union [j-pilot [- 0.0 hx] [- 0.0 hy]] [union [j-pilot [- 0.0 hx] hy] [union [j-pilot hx [- 0.0 hy]] [j-pilot hx hy]]]]
                               [union [bx [+ jxa 8.0] -54.0 [- zj0 2.0] jxb 54.0 zj0]
-                                     [union [j-boss -24.5 -40.5] [union [j-boss -24.5 40.5] [union [j-boss 24.5 -40.5] [j-boss 24.5 40.5]]]]]]]   ; J3011 holes 49 x 81; Waveshare holes later
+                                     [union [j-boss [- 0.0 hx] [- 0.0 hy]] [union [j-boss [- 0.0 hx] hy] [union [j-boss hx [- 0.0 hy]] [j-boss hx hy]]]]]]]
 [let cortex-sled [union cortex-plate [union [bx [+ jxa 8.0] -54.0 tf jxb -52.0 zj0] [bx [+ jxa 8.0] 52.0 tf jxb 54.0 zj0]]]]  ; plate + 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]

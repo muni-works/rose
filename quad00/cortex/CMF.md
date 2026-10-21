@@ -32,6 +32,7 @@ Each cortex head keeps its own personality and can move between bodies, even bod
 | **Mind** (flagship) | Black | Mind orange #ff5f00 | Black | The head is the Mind. Default and release hero. |
 | **Make** | Black | Make green #39ff14 | Black | Builders: arms, fab cells |
 | **Body** | Black | Body red #ff2052 | Black | Locomotion: quads, humanoids |
+| **Play** | Black | Play pink #ff3db8 | Black | Companion and desk heads (Cam, 2026-10-21) |
 | **World** | White | World cyan #00f0ff | Clear | Field and outdoor work, people-facing |
 | **Power** | White | Power amber #ffd400 | Clear | Energy and charging roles |
 | **Silicon** | White | Graphite #4d4d4f | Clear | The quiet one: no neon |
