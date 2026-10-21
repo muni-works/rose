@@ -42,9 +42,17 @@
 [let coupon-lip-floor [pipe [lip 0.0 0.15] [union [lip 20.0 0.25]] [union [lip 40.0 0.35]]]]
 [let coupon-lip-wall [pipe [wall-ring 0.0] [union [wall-ring 20.0]] [union [wall-ring 40.0]]]]
 
+; 6. J401 template (Orin NX carrier, 100 x 80): lay the real board on it. Holes at the ASSUMED 86 x 58 dev-kit pattern,
+;    Ø3.2 (M3 clearance) with a Ø2.2 pilot inside to read the true centre; a ridge marks the port edge (it faces the
+;    head's back cutout). If the holes don't line up, measure the board and update j401-holes in cortex-full.loon.
+[let tpl-hole [fn [x y] [translate x y -1.0 [cylinder 1.6 4.0]]]]
+[let coupon-j401 [difference [pipe [tpl-hole 7.0 11.0] [union [tpl-hole 93.0 11.0]] [union [tpl-hole 7.0 69.0]] [union [tpl-hole 93.0 69.0]]
+                                   [union [bx 20.0 20.0 -1.0 80.0 60.0 4.0]]]                    ; light window
+                             [union [bx 0.0 0.0 0.0 100.0 80.0 1.2] [bx 0.0 -3.0 0.0 100.0 0.0 4.0]]]]   ; plate + port-edge ridge (y = 0 side)
 [root coupon-inserts "pla"]
 [root [translate 0.0 20.0 0.0 coupon-slots] "pla"]
 [root [translate 50.0 20.0 0.0 coupon-magnets] "pla"]
 [root [translate 110.0 30.0 0.0 dock-sample] "pla"]
 [root [translate 0.0 60.0 0.0 coupon-lip-floor] "pla"]
 [root [translate 0.0 90.0 0.0 coupon-lip-wall] "pla"]
+[root [translate 140.0 70.0 0.0 coupon-j401] "pla"]

@@ -201,7 +201,7 @@
 ; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
 ; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
 ; can clip in if wanted)
-[let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
+[let io-sec [fn [x] [sketch x 0.0 48.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 47.0 10.0 4.0]]]]   ; the J401 port edge
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
 [let wall-band [difference shell-inner shell-solid]]
 [let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
@@ -233,14 +233,23 @@
 [let cortex-dockboard [bx -7.0 -10.0 tf 7.0 10.0 [+ tf 6.0]]]                   ; dock interface board (PD sink ctrl, T1 PHY), B2B to the pad board
 [let cortex-power [bx -70.0 -20.0 [+ tf 1.0] -40.0 20.0 [+ tf 7.0]]]             ; PD sink + charger, flat on the floor
 [let zb0 14.0]
-[let cortex-battery [bx -30.0 -74.0 zb0 36.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
+[let cortex-battery [bx -8.0 -74.0 zb0 58.0 74.0 [+ zb0 22.0]]]   ; 3S2P 21700, ~100 Wh               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
 [let jxa -83.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
 [let jxb [+ jxa 52.0]]
-[let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
-                          [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
-[let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+; Seeed reComputer J401 carrier (Orin NX 16GB): 100 x 80 board (the Orin Nano dev-kit footprint), ports on one long
+; edge facing the back cutout. ASSUMED until checked on the template coupon: hole pattern 86 x 58 (dev kit), port block
+; 16 mm tall and 24 mm deep from the edge, module + fan heatsink 60 x 70 footprint, 32 mm above the board.
+[let jb-t 1.6]
+[let j401-holes #[#[[+ jxa 11.0] 43.0] #[[+ jxa 11.0] -43.0] #[[+ jxa 69.0] 43.0] #[[+ jxa 69.0] -43.0]]]
+[let cortex-compute [union [bx jxa -50.0 zj0 [+ jxa 80.0] 50.0 [+ zj0 jb-t]]                         ; the board
+                          [union [bx [- jxa 2.0] -45.0 [+ zj0 jb-t] [+ jxa 22.0] 45.0 [+ zj0 17.6]]   ; USB / RJ45 / USB-C / DC block
+                                 [bx [+ jxa 18.0] -35.0 [+ zj0 jb-t] [+ jxa 78.0] 35.0 [+ zj0 20.0]]]]]  ; SO-DIMM + module
+[let cortex-heatsink [bx [+ jxa 22.0] -32.0 [+ zj0 20.0] [+ jxa 74.0] 32.0 [+ zj0 34.0]]]     ; fan heatsink, blows up into the crown
+[let pillar [fn [q] [bx [- [nth q 0] 4.0] [- [nth q 1] 4.0] tf [+ [nth q 0] 4.0] [+ [nth q 1] 4.0] zj0]]]   ; one pillar per board hole
+[let insert-d 3.6]                                ; M2.5 heat-set: from the insert coupon (3.4 / 3.6 / 3.8)
+[let cortex-sled [difference [fold [bx -300.0 0.0 0.0 -299.0 1.0 1.0] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] [- zj0 6.0] [cylinder [/ insert-d 2.0] 7.0]]]] j401-holes]
+                             [fold [pillar [nth j401-holes 0]] [fn [acc q] [union acc [pillar q]]] j401-holes]]]   ; four pillars, insert holes on top
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
