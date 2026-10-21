@@ -427,21 +427,11 @@ def design():
             add(f'trim-j1ring.{t_}', tm(Manifold.cylinder(1.2, r_j1 + 2.0, r_j1 + 2.0, 96).translate((0, 0, -0.6))
                                         .__sub__(Manifold.cylinder(2.0, r_j1 - 3.0, r_j1 - 3.0, 96).translate((0, 0, -1.0)))
                                         .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap - 0.6), zs))))   # inlaid flush
-        # J1 cooling (Cam: B + A): J1 conducts into the chest frame through its adapter, and a 40 mm fan in each corner
-        # pulls air in through an open dot-grid ring around the J1 face, over the drum, and out a dot grid on the back
+        # J1 cooling (Cam: no fans): J1 conducts into the chest frame through its adapter (gap pad); the arm's open ring on
+        # the J1 face breathes through an opening in the flank, framed by the inlaid gunmetal bezel
         r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs
-        hp_, hh_ = 2.3, 2.3 * 0.866                             # the arm pucks' grid: 1.3 mm holes on a 2.3 mm hex
-        def hexpts(u0, u1, v0, v1):
-            return [((i + 0.5 * (k % 2)) * hp_, k * hh_) for k in range(int(v0 / hh_) - 1, int(v1 / hh_) + 2)
-                    for i in range(int(u0 / hp_) - 1, int(u1 / hp_) + 2)]
-        xb_ = lo[0] + 4.0                                       # the chest's back skin, near the corner
         cuts_ = []
         for t_, sy_ in (('l', 1.0), ('r', -1.0)):
-            yo = sy_ * (y_cap + 0.6)
-            add(f'elec-j1fan.{t_}', trimesh.creation.box(bounds=np.array([[-r_j1 - 11.5, min(sy_ * 112.0, sy_ * 152.0), zs - 20.0],
-                                           [-r_j1 - 1.5, max(sy_ * 112.0, sy_ * 152.0), zs + 20.0]])))            # 40 x 40 x 10 fan
-            cuts_ += [Manifold.cylinder(40.0, 0.65, 0.65, 12).rotate((0, 90.0, 0)).translate((xb_ - 30.0, sy_ * (132.0 + u), zs + v))
-                      for u, v in hexpts(-17.0, 17.0, -17.0, 17.0) if abs(u) < 17.0 and abs(v) < 17.0]          # exhaust grid
             cuts_.append(Manifold.cylinder(1.3, r_j1 + 2.05, r_j1 + 2.05, 128).rotate((-90.0 * sy_, 0, 0))      # the bezel's inlay pocket
                          .translate((0.0, sy_ * (y_cap - 1.25), zs)))
             cuts_.append(Manifold.cylinder(54.0, 67.5, 67.5, 128).rotate((-90.0 * sy_, 0, 0))               # the J1 face opening: the arm's

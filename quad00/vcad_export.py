@@ -42,7 +42,7 @@ def _patch():
     return KD
 
 
-MATS = {'j1fan': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4), 'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
+MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
         'accent': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
@@ -304,7 +304,7 @@ def main(variant='mini', explodes=(0.0,)):
     recs = []                                 # (part name, body, source, material, shell?, local centroid)
     used_mats = set()
     n_native = n_mesh = 0
-    has_cx = KS.VARIANT.get('cortex', variant == 'mini') if hasattr(KS, 'VARIANT') else variant == 'mini'
+    has_cx = variant in ('mini', 'full')       # the cortex head (loon), scaled to the body
     for n, m in D + C:
         if has_cx and n.startswith(CX_PY):
             continue
@@ -339,7 +339,9 @@ def main(variant='mini', explodes=(0.0,)):
         o = np.array([HF['ox'], HF['oy'], HF['zb']]) - P['hpitch']
         for nm, mk in CX_HEAD + CX_NECK:
             dz = -0.5 if nm.startswith('dock-') else 0.0
-            recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz)} {nm}]', 'cx:' + mk, False, o))
+            k_ = HF['hh'] / 120.6                   # cortex.loon is authored at the mini's head size
+            src_ = nm if abs(k_ - 1.0) < 1e-3 else f'[scale {f(k_)} {f(k_)} {f(k_)} {nm}]'
+            recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
         cx_link = os.path.join(outdir, 'cortex.loon')
         if not os.path.lexists(cx_link):
             os.symlink(os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex', 'cortex.loon'), outdir), cx_link)
