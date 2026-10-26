@@ -38,9 +38,9 @@ def screen_plane(s):
         c, n = math.cos(TILT), math.sin(TILT)
         return (xfz + c * x + n * z, y, zf - n * x + c * z)
 
-    o = tilt((xs, aw, zc + ah))                  # viewer's top-left: +y is the viewer's left (looking down -x)
-    pu = tilt((xs, -aw, zc + ah))
-    pv = tilt((xs, aw, zc - ah))
+    o = tilt((xs, -aw, zc + ah))                 # viewer's top-left: looking down -x with z up, the viewer's left is -y
+    pu = tilt((xs, aw, zc + ah))
+    pv = tilt((xs, -aw, zc - ah))
     u = tuple(b - a for a, b in zip(o, pu))
     v = tuple(b - a for a, b in zip(o, pv))
     return o, u, v, xs, zc
@@ -50,22 +50,36 @@ def f3(t):
     return " ".join(f"{x:.4f}" for x in t)
 
 
-def scene(opt, s, d):
+def meshes(size_file, d):
+    """the watertight parts at this size (print_build's manifold booleans), plus the plain proxies, as STLs in d."""
+    sys.path.insert(0, SRC)
+    import print_build as PB
+    parts, _ = PB.build_size(size_file)
+    names = {}
+    for k in ("cortex-tub-full", "cortex-floor", "cortex-ear-grilles", "cortex-exhaust-grille", "cortex-back-grille"):
+        parts[k].export(os.path.join(d, k + ".stl")); names[k] = k + ".stl"
+    for k in ("d7-glass", "d7-cams"):                # simple boxes: vcad tessellates them watertight
+        with open(os.path.join(d, k + ".loon"), "w") as f:
+            f.write(f'[use cortex [{k}]]\n[root {k} "x"]\n')
+        subprocess.run([PB.VCAD, "export", k + ".loon", k + ".stl"], cwd=d, check=True, capture_output=True)
+        names[k] = k + ".stl"
+    return names
+
+
+def scene(opt, s, d, names):
     o, u, v, xs, zc = screen_plane(s)
     aw, ah = s["d7-act-w"] / 2, s["d7-act-h"] / 2
     mats = f"""[material "satin_black" 0.035 0.037 0.042 0.0 0.42]
 [material "glass_black" 0.01 0.01 0.012 0.0 0.05]
 [material "lens" 0.0 0.0 0.0 0.0 0.08]
-[material "screen_ui" 0.01 0.01 0.012 0.0 0.15 :emissive 1.0 1.0 1.0 :emissive-strength 3.0 :emissive-map "{UI}" :map-origin {f3(o)} :map-u {f3(u)} :map-v {f3(v)}]"""
-    return f"""[use cortex [cortex-tub-full cortex-floor cortex-ear-grilles cortex-exhaust-grille cortex-back-grille d7-glass d7-cams tilt]]
+[material-emissive "screen_ui" 0.01 0.01 0.012 0.0 0.15 1.0 1.0 1.0 3.0 "{UI}" {f3(o)} {f3(u)} {f3(v)}]"""
+    mat = {"cortex-tub-full": "satin_black", "cortex-floor": "satin_black", "cortex-ear-grilles": "satin_black",
+           "cortex-exhaust-grille": "satin_black", "cortex-back-grille": "satin_black", "d7-glass": "glass_black",
+           "d7-cams": "lens"}
+    roots = "\n".join(f'[root [import-mesh-scaled 0.001 0.001 0.001 "{f}"] "{mat[k]}"]' for k, f in names.items())
+    return f"""[use cortex [tilt]]
 {mats}
-[root cortex-tub-full "satin_black"]
-[root cortex-floor "satin_black"]
-[root cortex-ear-grilles "satin_black"]
-[root cortex-exhaust-grille "satin_black"]
-[root cortex-back-grille "satin_black"]
-[root d7-glass "glass_black"]
-[root d7-cams "lens"]
+{roots}
 [root [tilt [translate {xs - 0.3:.4f} {-aw:.4f} {zc - ah:.4f} [cube 0.3 {2 * aw:.4f} {2 * ah:.4f}]]] "screen_ui"]
 """
 
@@ -76,16 +90,18 @@ def render(opt, size_file):
     shutil.copy(size_file, os.path.join(d, "size.loon"))
     shutil.copy(os.path.join(HERE, UI), d)
     s = size_of(size_file)
+    names = meshes(os.path.join(d, "size.loon"), d)
     with open(os.path.join(d, "photo.loon"), "w") as f:
-        f.write(scene(opt, s, d))
-    out = os.path.join(HERE, f"{opt}-photo.png")
-    cmd = [R, os.path.join(d, "photo.loon"), "--photoreal", "--spp", str(SPP), "--size", "1600x1100",
-           "--azimuth", "28", "--elevation", "10", "--fov", "28", "--aperture", "0.015", "--backdrop", "studio",
-           "-o", out]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode:
-        raise SystemExit(f"{opt}: {r.stderr[-800:]}")
-    print(out)
+        f.write(scene(opt, s, d, names))
+    for view, az, el in (("34", 28, 14), ("front", 0, 6)):
+        out = os.path.join(HERE, f"{opt}-photo-{view}.png")
+        cmd = [R, os.path.join(d, "photo.loon"), "--photoreal", "--spp", str(SPP), "--size", "1600x1100",
+               "--azimuth", str(az), "--elevation", str(el), "--fov", "24", "--aperture", "0.012",
+               "--backdrop", "studio", "--env", "studio", "--fill", "0.8", "-o", out]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode:
+            raise SystemExit(f"{opt}: {r.stderr[-800:]}")
+    print(opt)
     shutil.rmtree(d)
 
 

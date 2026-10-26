@@ -1,0 +1,397 @@
+diff -ruN vcad-orig/crates/vcad-ir/src/lib.rs vcad/crates/vcad-ir/src/lib.rs
+--- vcad-orig/crates/vcad-ir/src/lib.rs	2026-10-26 10:45:08
++++ vcad/crates/vcad-ir/src/lib.rs	2026-10-26 10:52:06
+@@ -1622,6 +1622,61 @@
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     #[cfg_attr(feature = "ts-rs", ts(optional))]
+     pub anisotropy: Option<f64>,
++    /// Constant emissive colour as `[r, g, b]` in linear 0.0..1.0. Emitted
++    /// radiance is `emissive * emissive_strength`, modulated per hit by
++    /// [`emissive_map`](Self::emissive_map) when one is set. Honoured by
++    /// the photoreal path tracer; the drafting views ignore it.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive: Option<[f64; 3]>,
++    /// Multiplier on the emissive colour (default 1.0). Values above 1 make
++    /// a screen read as *lit* rather than merely pale.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive_strength: Option<f64>,
++    /// Path to an emissive image (PNG) — a UI screenshot lighting a display,
++    /// rendered as part of the product shot. Resolved relative to the source
++    /// `.loon` file's directory like `import-mesh` paths.
++    ///
++    /// Sampled by a world-space planar projection (see
++    /// [`emissive_map_origin`](Self::emissive_map_origin)), so emission does
++    /// not depend on UVs of tessellated meshes.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive_map: Option<String>,
++    /// World-space position of image pixel (0,0) — the **top-left** corner.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive_map_origin: Option<[f64; 3]>,
++    /// World-space vector spanning the image's full **width**: the top edge
++    /// runs from the origin to `origin + u`.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive_map_u: Option<[f64; 3]>,
++    /// World-space vector spanning the image's full **height**: the left
++    /// edge runs from the origin to `origin + v`. Image y runs *down* from
++    /// pixel (0,0), so on a face in the XY plane shown upright to a camera
++    /// looking along +Y, `u` runs along +X and `v` along −Y.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[cfg_attr(feature = "ts-rs", ts(optional))]
++    pub emissive_map_v: Option<[f64; 3]>,
++}
++
++impl MaterialDef {
++    /// Constant emitted radiance `[r, g, b]`, or `None` when the material
++    /// does not emit (or needs the per-hit map lookup to answer).
++    ///
++    /// A material with an [`emissive_map`](Self::emissive_map) is textured
++    /// per hit and cannot be reduced to a single constant — this answers
++    /// `None` for it rather than pretending.
++    pub fn emissive_constant(&self) -> Option<[f64; 3]> {
++        if self.emissive.is_none() && self.emissive_strength.is_none() {
++            return None;
++        }
++        let c = self.emissive.unwrap_or([1.0, 1.0, 1.0]);
++        let s = self.emissive_strength.unwrap_or(1.0);
++        Some([c[0] * s, c[1] * s, c[2] * s])
++    }
+ }
+ 
+ /// An entry in the scene — a root node with an assigned material.
+diff -ruN vcad-orig/crates/vcad-kernel-raytrace/src/gpu/buffers.rs vcad/crates/vcad-kernel-raytrace/src/gpu/buffers.rs
+--- vcad-orig/crates/vcad-kernel-raytrace/src/gpu/buffers.rs	2026-10-26 10:45:08
++++ vcad/crates/vcad-kernel-raytrace/src/gpu/buffers.rs	2026-10-26 11:15:08
+@@ -281,6 +281,7 @@
+             ior: self.ior,
+             anisotropy: self.anisotropy,
+             emissive: [0.0; 3],
++            emissive_map: None,
+         }
+     }
+ }
+diff -ruN vcad-orig/crates/vcad-kernel-raytrace/src/pathtrace.rs vcad/crates/vcad-kernel-raytrace/src/pathtrace.rs
+--- vcad-orig/crates/vcad-kernel-raytrace/src/pathtrace.rs	2026-10-26 10:45:08
++++ vcad/crates/vcad-kernel-raytrace/src/pathtrace.rs	2026-10-26 11:18:18
+@@ -64,10 +64,63 @@
+     pub clearcoat_roughness: f32,
+     /// Dielectric index of refraction, drives the base specular reflectance.
+     pub ior: f32,
+-    /// Linear emissive radiance.
++    /// Linear emissive radiance (a multiplier on the map's texel when `emissive_map` is set).
+     pub emissive: [f32; 3],
++    /// Optional emissive image, planar-mapped in world space (a lit screen). Loaded once per render and
++    /// leaked, so `Pbr` stays `Copy`.
++    pub emissive_map: Option<&'static EmissiveMap>,
+ }
+ 
++/// An emissive image projected onto the world along a plane: texel (0,0), the image's top-left, sits at
++/// `origin`; the image's full width runs along `u`, its full height (image y, downward) along `v`.
++#[derive(Debug, PartialEq)]
++pub struct EmissiveMap {
++    pub width: usize,
++    pub height: usize,
++    /// Linear RGB, row-major from the top-left.
++    pub texels: Vec<[f32; 3]>,
++    pub origin: [f64; 3],
++    pub u: [f64; 3],
++    pub v: [f64; 3],
++}
++
++impl EmissiveMap {
++    /// The (bilinear) texel under world point `p`, or `None` outside the image.
++    pub fn sample(&self, p: [f64; 3]) -> Option<[f32; 3]> {
++        let d = [p[0] - self.origin[0], p[1] - self.origin[1], p[2] - self.origin[2]];
++        let dot = |a: [f64; 3], b: [f64; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
++        let (uu, vv) = (dot(self.u, self.u), dot(self.v, self.v));
++        if uu <= 0.0 || vv <= 0.0 || self.width == 0 || self.height == 0 {
++            return None;
++        }
++        let (s, t) = (dot(d, self.u) / uu, dot(d, self.v) / vv);
++        if !(0.0..=1.0).contains(&s) || !(0.0..=1.0).contains(&t) {
++            return None;
++        }
++        let x = (s * self.width as f64 - 0.5).clamp(0.0, (self.width - 1) as f64);
++        let y = (t * self.height as f64 - 0.5).clamp(0.0, (self.height - 1) as f64);
++        let (x0, y0) = (x.floor() as usize, y.floor() as usize);
++        let (x1, y1) = ((x0 + 1).min(self.width - 1), (y0 + 1).min(self.height - 1));
++        let (fx, fy) = ((x - x0 as f64) as f32, (y - y0 as f64) as f32);
++        let px = |xx: usize, yy: usize| self.texels[yy * self.width + xx];
++        let lerp = |a: [f32; 3], b: [f32; 3], k: f32| [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
++        Some(lerp(lerp(px(x0, y0), px(x1, y0), fx), lerp(px(x0, y1), px(x1, y1), fx), fy))
++    }
++}
++
++impl Pbr {
++    /// Emitted radiance at world point `p`.
++    pub fn emission_at(&self, p: [f64; 3]) -> [f32; 3] {
++        match self.emissive_map {
++            None => self.emissive,
++            Some(m) => match m.sample(p) {
++                Some(t) => [t[0] * self.emissive[0], t[1] * self.emissive[1], t[2] * self.emissive[2]],
++                None => [0.0; 3],
++            },
++        }
++    }
++}
++
+ impl Default for Pbr {
+     fn default() -> Self {
+         Self {
+@@ -79,6 +132,7 @@
+             clearcoat_roughness: 0.1,
+             ior: 1.5,
+             emissive: [0.0; 3],
++            emissive_map: None,
+         }
+     }
+ }
+@@ -265,11 +319,31 @@
+             clearcoat,
+             clearcoat_roughness: 0.08,
+             ior,
+-            emissive: [0.0; 3],
++            emissive: emissive_of(mat),
++            // the image itself is attached by the renderer (it owns image decoding): `with_emissive_map`
++            emissive_map: None,
+         }
+     }
++
++    /// This material with an emissive image attached.
++    pub fn with_emissive_map(mut self, map: &'static EmissiveMap) -> Self {
++        self.emissive_map = Some(map);
++        self
++    }
+ }
+ 
++/// Emitted radiance multiplier from the IR: `emissive * emissive_strength`; with only a map, the map at full
++/// strength; nothing set, no emission.
++fn emissive_of(mat: Option<&vcad_ir::MaterialDef>) -> [f32; 3] {
++    let Some(m) = mat else { return [0.0; 3] };
++    if m.emissive.is_none() && m.emissive_strength.is_none() && m.emissive_map.is_none() {
++        return [0.0; 3];
++    }
++    let c = m.emissive.unwrap_or([1.0, 1.0, 1.0]);
++    let k = m.emissive_strength.unwrap_or(1.0);
++    [(c[0] * k) as f32, (c[1] * k) as f32, (c[2] * k) as f32]
++}
++
+ // ─── lights & environment ─────────────────────────────────────────────────
+ 
+ /// A rectangular area light ("softbox"), emitting from its front face only.
+@@ -1715,7 +1789,7 @@
+                     break;
+                 }
+ 
+-                l = add3(l, mul3(throughput, material.emissive));
++                l = add3(l, mul3(throughput, material.emission_at([point.x, point.y, point.z])));
+ 
+                 // Next-event estimation: explicit lights, plus the
+                 // environment when it is importance-sampled.
+@@ -2223,6 +2297,28 @@
+ 
+ #[cfg(test)]
+ mod tests {
++    #[test]
++    fn emissive_map_samples_top_left_at_origin() {
++        // 2x2: red top-left, green top-right, blue bottom-left, white bottom-right
++        let map = EmissiveMap {
++            width: 2,
++            height: 2,
++            texels: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 1.0, 1.0]],
++            origin: [0.0, -50.0, 60.0],
++            u: [0.0, 100.0, 0.0],
++            v: [0.0, 0.0, -60.0],
++        };
++        assert_eq!(map.sample([0.0, -49.0, 59.0]), Some([1.0, 0.0, 0.0]));     // near the origin: top-left
++        assert_eq!(map.sample([0.0, 49.0, 59.0]), Some([0.0, 1.0, 0.0]));      // along u: top-right
++        assert_eq!(map.sample([0.0, -49.0, 1.0]), Some([0.0, 0.0, 1.0]));      // along v: bottom-left
++        assert_eq!(map.sample([0.0, 60.0, 30.0]), None);                       // outside
++        let leaked: &'static EmissiveMap = Box::leak(Box::new(map));
++        let m = Pbr { emissive: [2.0, 2.0, 2.0], ..Default::default() }.with_emissive_map(leaked);
++        assert_eq!(m.emission_at([0.0, 49.0, 59.0]), [0.0, 2.0, 0.0]);
++        assert_eq!(m.emission_at([0.0, 0.0, 200.0]), [0.0; 3]);
++        assert_eq!(Pbr::default().emission_at([0.0; 3]), [0.0; 3]);
++    }
++
+     use super::*;
+     use vcad_kernel_primitives::make_cube;
+ 
+diff -ruN vcad-orig/crates/vcad-loon/src/convert.rs vcad/crates/vcad-loon/src/convert.rs
+--- vcad-orig/crates/vcad-loon/src/convert.rs	2026-10-26 10:45:08
++++ vcad/crates/vcad-loon/src/convert.rs	2026-10-26 11:18:18
+@@ -44,6 +44,10 @@
+             });
+         }
+         // Material definition (standalone)
++        Value::Adt(tag, fields) if tag == "MaterialE" && fields.len() == 20 => {
++            let mat = ctx.emissive_material(fields)?;
++            ctx.doc.materials.insert(mat.name.clone(), mat);
++        }
+         Value::Adt(tag, fields) if tag == "Material" && fields.len() == 6 => {
+             let name = ctx.str_val(&fields[0])?;
+             let r = ctx.f64_val(&fields[1])?;
+@@ -131,6 +135,10 @@
+                 visible: None,
+             });
+         }
++        Value::Adt(tag, fields) if tag == "MaterialE" && fields.len() == 20 => {
++            let mat = ctx.emissive_material(fields)?;
++            ctx.doc.materials.insert(mat.name.clone(), mat);
++        }
+         Value::Adt(tag, fields) if tag == "Material" && fields.len() == 6 => {
+             let name = ctx.str_val(&fields[0])?;
+             let r = ctx.f64_val(&fields[1])?;
+@@ -701,6 +709,28 @@
+ 
+     /// Resolve an import path against the source file's directory, so a model
+     /// can name its vendor geometry relative to itself.
++    /// `[material-emissive ...]` (the `MaterialE` ADT, 20 fields) -> a MaterialDef with emission and an
++    /// optional planar-mapped emissive image. See lib.loon.
++    fn emissive_material(&self, f: &[Value]) -> Result<MaterialDef, String> {
++        let n = |i: usize| self.f64_val(&f[i]);
++        let v3 = |i: usize| -> Result<[f64; 3], String> { Ok([n(i)?, n(i + 1)?, n(i + 2)?]) };
++        let map_raw = self.str_val(&f[10])?;
++        let map = if map_raw.trim().is_empty() { None } else { Some(self.import_path("material-emissive", &f[10])?) };
++        Ok(MaterialDef {
++            name: self.str_val(&f[0])?,
++            color: v3(1)?,
++            metallic: n(4)?,
++            roughness: n(5)?,
++            emissive: Some(v3(6)?),
++            emissive_strength: Some(n(9)?),
++            emissive_map_origin: map.as_ref().map(|_| v3(11)).transpose()?,
++            emissive_map_u: map.as_ref().map(|_| v3(14)).transpose()?,
++            emissive_map_v: map.as_ref().map(|_| v3(17)).transpose()?,
++            emissive_map: map,
++            ..Default::default()
++        })
++    }
++
+     fn import_path(&self, tag: &str, v: &Value) -> Result<String, String> {
+         let raw = self.str_val(v)?;
+         if raw.trim().is_empty() {
+@@ -2011,6 +2041,34 @@
+         assert_eq!(doc.materials.len(), 2); // steel + default
+         assert!(doc.materials.contains_key("steel"));
+         assert_eq!(doc.roots.len(), 1);
++    }
++
++    #[test]
++    fn emissive_material_with_map() {
++        let mut fields = vec![s("screen"), f(0.01), f(0.02), f(0.03), f(0.0), f(0.2), f(1.0), f(0.9), f(0.8), f(3.0), s("ui.png")];
++        fields.extend([10.0, -50.0, 60.0, 0.0, 100.0, 0.0, 0.0, 0.0, -60.0].map(f));
++        let mat = adt("MaterialE", fields);
++        let doc = value_to_document(&Value::Vec(vec![mat].into())).unwrap();
++        let m = &doc.materials["screen"];
++        assert_eq!(m.color, [0.01, 0.02, 0.03]);
++        assert_eq!(m.emissive, Some([1.0, 0.9, 0.8]));
++        assert_eq!(m.emissive_strength, Some(3.0));
++        assert_eq!(m.emissive_map.as_deref(), Some("ui.png"));
++        assert_eq!(m.emissive_map_origin, Some([10.0, -50.0, 60.0]));
++        assert_eq!(m.emissive_map_u, Some([0.0, 100.0, 0.0]));
++        assert_eq!(m.emissive_map_v, Some([0.0, 0.0, -60.0]));
++    }
++
++    #[test]
++    fn emissive_material_without_map_and_plain_material_unchanged() {
++        let mut fields = vec![s("glow"), f(0.0), f(0.0), f(0.0), f(0.0), f(0.5), f(1.0), f(0.5), f(0.1), f(2.0), s("")];
++        fields.extend([0.0; 9].map(f));
++        let plain = adt("Material", vec![s("steel"), f(0.7), f(0.7), f(0.7), f(1.0), f(0.3)]);
++        let doc = value_to_document(&Value::Vec(vec![adt("MaterialE", fields), plain].into())).unwrap();
++        let g = &doc.materials["glow"];
++        assert_eq!((g.emissive, g.emissive_map.clone(), g.emissive_map_origin), (Some([1.0, 0.5, 0.1]), None, None));
++        let st = &doc.materials["steel"];
++        assert_eq!((st.emissive, st.emissive_strength, st.emissive_map.clone()), (None, None, None));
+     }
+ 
+     #[test]
+diff -ruN vcad-orig/crates/vcad-render/src/photoreal.rs vcad/crates/vcad-render/src/photoreal.rs
+--- vcad-orig/crates/vcad-render/src/photoreal.rs	2026-10-26 10:45:08
++++ vcad/crates/vcad-render/src/photoreal.rs	2026-10-26 11:16:42
+@@ -136,10 +136,13 @@
+             untraceable.push(s.name.clone().unwrap_or_else(|| s.id.clone()));
+             continue;
+         }
+-        objects.push(Object::new(
+-            Arc::new(bvh),
+-            Pbr::from_material_def(s.material.as_ref(), s.tint),
+-        ));
++        let mut pbr = Pbr::from_material_def(s.material.as_ref(), s.tint);
++        if let Some(m) = s.material.as_ref() {
++            if let Some(map) = emissive_map(m)? {
++                pbr = pbr.with_emissive_map(map);
++            }
++        }
++        objects.push(Object::new(Arc::new(bvh), pbr));
+     }
+     if objects.is_empty() {
+         return Err(format!(
+@@ -764,4 +767,38 @@
+              left={left} right={right} cols={cols:?}"
+         );
+     }
++}
++
++
++/// The emissive image a material asks for, decoded once per path (sRGB -> linear) and leaked so materials can
++/// hold a `&'static` (one render per process). `None` when the material has no map.
++fn emissive_map(m: &vcad_ir::MaterialDef) -> Result<Option<&'static vcad_kernel_raytrace::pathtrace::EmissiveMap>, String> {
++    use std::collections::HashMap;
++    use std::sync::{Mutex, OnceLock};
++    use vcad_kernel_raytrace::pathtrace::EmissiveMap;
++    let Some(path) = m.emissive_map.as_ref() else { return Ok(None) };
++    let (Some(origin), Some(u), Some(v)) = (m.emissive_map_origin, m.emissive_map_u, m.emissive_map_v) else {
++        return Err(format!("material '{}': emissive map needs origin, u and v", m.name));
++    };
++    static CACHE: OnceLock<Mutex<HashMap<String, &'static EmissiveMap>>> = OnceLock::new();
++    let key = format!("{path}|{origin:?}|{u:?}|{v:?}");
++    let mut cache = CACHE.get_or_init(|| Mutex::new(HashMap::new())).lock().map_err(|e| e.to_string())?;
++    if let Some(hit) = cache.get(&key) {
++        return Ok(Some(*hit));
++    }
++    let img = image::open(path).map_err(|e| format!("material '{}': emissive map {path}: {e}", m.name))?.to_rgb8();
++    let lin = |c: u8| {
++        let c = c as f32 / 255.0;
++        if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
++    };
++    let map: &'static EmissiveMap = Box::leak(Box::new(EmissiveMap {
++        width: img.width() as usize,
++        height: img.height() as usize,
++        texels: img.pixels().map(|p| [lin(p[0]), lin(p[1]), lin(p[2])]).collect(),
++        origin,
++        u,
++        v,
++    }));
++    cache.insert(key, map);
++    Ok(Some(map))
+ }
+--- a/lib/src/lib.loon	2026-10-26 11:19:19
++++ b/lib/src/lib.loon	2026-10-26 11:14:24
+@@ -155,6 +155,13 @@
+ [type Material
+   [Material Str f64 f64 f64 f64 f64]]
+ 
++; An emissive material: name, base colour, metallic, roughness, then emissive colour (linear) and strength, then an
++; optional emissive image ("" for none) planar-mapped in world space: image pixel (0,0), the TOP-LEFT, at (ox oy oz);
++; the image's full width runs along (ux uy uz), its full height (image y, downward) along (vx vy vz). Only the
++; photoreal path tracer emits; drafting views shade the base colour.
++[type MaterialE
++  [MaterialE Str f64 f64 f64 f64 f64 f64 f64 f64 f64 Str f64 f64 f64 f64 f64 f64 f64 f64 f64]]
++
+ ; ---------------------------------------------------------------------------
+ ; Scene output
+ ; ---------------------------------------------------------------------------
+@@ -453,6 +460,8 @@
+ ; Material (no subject)
+ [let material [fn [name r g b metallic roughness]
+   [Material name r g b metallic roughness]]]
++[let material-emissive [fn [name r g b metallic roughness er eg eb strength map ox oy oz ux uy uz vx vy vz]
++  [MaterialE name r g b metallic roughness er eg eb strength map ox oy oz ux uy uz vx vy vz]]]
+ 
+ ; Scene (no subject)
+ [let root [fn [solid material-name]

@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 W, H = (int(sys.argv[1]), int(sys.argv[2])) if len(sys.argv) > 2 else (1024, 600)
 S = 4                                                     # supersample, then downscale
 w, h = W * S, H * S
-img = Image.new("RGB", (w, h), (4, 5, 7))
+img = Image.new("RGB", (w, h), (0, 0, 0))     # pure black: a dead front, the screen vanishes into the glass
 
 # eyes: rounded squares, a little taller than wide, set slightly above centre, looking a touch to the right
 ew, eh, gap = int(0.17 * w), int(0.40 * h), int(0.13 * w)
