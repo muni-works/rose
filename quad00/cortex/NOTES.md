@@ -20,3 +20,26 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
 | Face frame + its 4 bosses | printed frame behind the glass, screwed to tub bosses | not modelled. Not today: display/cams to the glass with foam/VHB for v1 |
 | Grille retention | flush inserts | zero clearance, nothing behind them. CA from inside; slicer XY compensation |
 | Glass fit | | glass outline = opening outline, zero clearance. Cut the acrylic ~0.2 mm under per side |
+
+## 3. Decisions (2026-10-26)
+
+- **Interior adds only, exterior untouched** (SPEC: exterior frozen). Each add is taken out of the cavity before the
+  cavity comes out of the solid, so nothing is unioned face-to-face with the skin.
+  - Corner blocks: Ø18 cylinders on the 4 plan-corner centres, z 3..14. M3 insert hole Ø4.0 × 7, then a Ø3.2 tip to
+    z 12. The screw sits 3.5 mm past the corner centre along the diagonal, so the floor's countersink (Ø6.6) clears the
+    bottom round by ≥ 2.6 mm.
+  - Glass band: the glass outline grown 3 mm, xfz-4.5..-1.0 (tilted). face-opening's existing step then cuts the 2 mm
+    lip at xfz-3, as designed. Notched 0.5 mm round the display and camera envelopes (the display's top edge sat
+    exactly on the lip line). The glass model is 3.8 thick with its back on the lip. Real stack: 0.5 VHB + 3 mm
+    acrylic, so the front sits 0.5 proud. Flagged, not changed.
+  - Floor: 4 × M3 csk + 4 × M2.5 csk (sled feet at x -37.5 / -5.5, y ±50).
+  - `cortex-sled-print`: new part; the Al `cortex-sled` is unchanged. 3 mm wall y ±43..46, foot y ±46..54 (3 thick),
+    flange y ±38..46 at z 35..38, under the carrier edge (±43.5). The pack (±37, top z 36) clears by 1 mm.
+- **Clearances re-checked** (manifold min_gap, all internals): the only zero gaps are SPEC's deliberate mounts. Cables
+  (proxy not watertight): 0 points inside tub / floor / sled.
+- **vcad tessellation bug:** a single countersink in the floor gives 131 open edges. Every leaf is watertight, so
+  `print_build.py` runs the top-level booleans in manifold3d. Not fixed in vcad (out of scope today; report to the vcad manager).
+- **Bambu Studio CLI:** it loads the configs once they are flattened, with `inherits`, `from: User` and
+  `extruder_variant_list` cut to Standard, then segfaults (rc 139) under the sandbox. The print times are estimates.
+- fab/README said "tub face up (+X up: support-free)". That's wrong: face up, the back sweep and crown overhang about
+  16,700 mm². Corrected there.

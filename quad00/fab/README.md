@@ -23,10 +23,10 @@ python harness_check.py     # cables clear everything; service loop lengths
 |---|---|---|---|
 | Frame plates | [`plates/sheet-1..4.dxf`](plates) nested, [`plates/parts/*.dxf`](plates/parts) one each, [`plates/cutlist.csv`](plates/cutlist.csv) | 1/8" (3.2 mm) 5052-H32 on the Anolex 4040 (390 × 390 sheets, 6 mm edge, 8 mm webs). Layer `CUT` = through-cut, `NOTE` = labels (don't cut). Units mm, true size. | 4 sheets, 31 distinct plates, 48 pieces |
 | Body skins | [`shells/*.stl`](shells), [`shells/shells.csv`](shells/shells.csv) | PETG on a P1S, 0.2 mm layers, 5 walls (= the 2 mm skin), 15% gyroid. Soles in TPU 95A. Halves `-a` / `-b` print split face down. | see shells.csv |
-| Cortex tub | `cortex/cortex-tub.step/.stl` | PETG (production: PC/ABS moulding), face up (+X up: support-free) | 1 |
-| Cortex floor | `cortex/cortex-floor.step/.stl` | v1: PETG or PA-CF, flat bottom down (small supports under the cone seats). Production: 3 mm aluminium. | 1 |
+| Cortex tub | `cortex/cortex-tub.step/.stl` | PETG (production: PC/ABS moulding), open side down (+Z up). Face up is **not** support-free: the back sweep overhangs. Print from `cortex/print/`, see [`cortex/README.md`](cortex/README.md) | 1 |
+| Cortex floor | `cortex/cortex-floor.step/.stl` | v1: PETG or PA-CF, flat bottom down (tree supports on the build plate, for the rim round; the cone seats need none). Production: 3 mm aluminium. | 1 |
 | Cortex grilles | `cortex/cortex-ear-grilles`, `cortex/cortex-exhaust-grille` (.step/.stl) | PETG, 0.12 mm layers, 0.25 mm nozzle for the Ø1.4 holes (or resin) | 1 + 1 |
-| Cortex sled | `cortex/cortex-sled.step/.stl` | v1: PETG or PA-CF blanks. Drill to the A603 pattern ([MEASURE](MEASURE.md) #5). Production: 2 mm aluminium, folded. | 1 pair |
+| Cortex sled | `cortex/cortex-sled-print.step/.stl` (v1, with foot + top flange); `cortex/cortex-sled` is the Al part | v1: PETG or PA-CF. Drill to the A603 pattern ([MEASURE](MEASURE.md) #5). Production: 2 mm aluminium, folded. | 1 pair |
 | Latch | `cortex/dock-pawl`, `cortex/dock-release` (.step/.stl), plus `cortex-keeper` | Pawl + release in PA-CF (pawl: -Z up; release: +X up). Keeper laser-cut from 1 mm spring steel. | 1 each |
 | Face glass | [`cortex/glass.dxf`](cortex/glass.dxf) (126.4 × 79.6, R21.9) | Laser-cut 3 mm smoked acrylic. Mask the back black except the screen and the 2 camera windows. | 1 |
 | Everything bought | [`BOM.csv`](BOM.csv) | | |
