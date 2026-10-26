@@ -27,6 +27,7 @@ holes have to line up with the floor's countersinks. Start the tub only after th
 | 1 | Spine | `cortex-sled-print-l.stl`, `cortex-sled-print-r.stl`, `cortex-floor.stl` | PETG (PA-CF if you have it) | 0.20 | Sled: on its end, the Z-shaped profile flat on the bed (+X up), so the foot and flange bends are in-layer. Floor: desk face down. | Sled: none. Floor: **tree, on build plate only**, for the 3 mm bottom round round the rim (a ~70° overhang). Pockets, cone seats and countersinks all open down onto the bed and need none. | 4 walls, 40% gyroid. Sled: 5 mm brim. | ~1.5–2 h |
 | 2 | Tub | `cortex-tub.stl` | PETG, black (ASA is fine in the P1S enclosure) | 0.20 | As assembled, open side down. The outside is support-free. | **Tree (auto), everywhere**, 30° threshold. They land inside the crown, under the top edges of the face opening, the I/O cutout and the exhaust window, and under the glass lip. All of them come out through the open bottom. | 5 walls (= the 2.5 mm wall), 15% gyroid. 5 mm brim, then trim it: the bottom is the face that mates with the floor. | ~5–7 h |
 | 3 | Grilles | `cortex-ear-grille-l.stl`, `cortex-ear-grille-r.stl`, `cortex-exhaust-grille.stl` | PETG for the exhaust grille (hot air off the heatsink). PLA is OK for the ears (intake). | 0.12 | Ears: outer face down (flat). Exhaust: standing on its long straight bottom edge, as assembled. It leans less than 30°, so it prints support-free. | none (the Ø1.4 holes bridge themselves) | 100% infill. X-Y hole compensation +0.1. **X-Y contour compensation −0.1**, because the grilles are line-on-line with their windows. Exhaust grille: 5 mm brim. | ~1.5 h |
+| — | Back grille (if you print the closed-back v1) | `cortex-back-grille.stl` | PETG, black | 0.12 | outer face down (flat) | none | same compensations as the other grilles; line-on-line with the I/O window | ~40 min |
 
 Hole counts check against SPEC: ear grilles 161 each, exhaust 417, all Ø1.4 on a 2.2 mm hex pitch. The webs are 0.8 mm (2 lines at 0.4).
 
@@ -46,6 +47,9 @@ Hole counts check against SPEC: ear grilles 161 each, exhaust 417, all Ø1.4 on 
 - **Keeper:** 1 mm spring steel (laser), not printed. Strikes: steel discs.
 - **Dock body side** (`dock-face`, `dock-pawl`, `dock-release`): these belong to the neck, not the head case. If wanted: pawl and release in PA-CF, pawl −Z up, release +X up.
 - **Face frame** (holds the display and cameras behind the glass) and its 4 tub bosses: in SPEC, **not modelled**. For v1, foam-tape the display and cameras to the glass.
+- **Two face variants, pick one before printing the tub:**
+  - `cortex-tub` (default, SPEC): 3.5" Waveshare behind the laser-cut smoked acrylic (`glass.dxf`).
+  - `cortex-tub-d4` (printed-2026-10-26): 4" square Waveshare HDMI LCD (C), 720×720 — its own tempered glass **is** the face. A 79 × 79 window with a 2.5 mm land for a VHB bead; the glass sits 1 mm proud. Cameras move outboard to y ±55 through Ø7.5 lens holes in the wall. No laser-cut glass at all. Display depth ~10 mm to the connector backs; check the connector edge clears the sled before committing.
 
 ## Renders
 

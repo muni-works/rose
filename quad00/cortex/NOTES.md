@@ -43,3 +43,24 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   `extruder_variant_list` cut to Standard, then segfaults (rc 139) under the sandbox. The print times are estimates.
 - fab/README said "tub face up (+X up: support-free)". That's wrong: face up, the back sweep and crown overhang about
   16,700 mm². Corrected there.
+
+## 4. Back panel + displays (2026-10-26, Cam: "close the hole in the back, try a 7-inch; I also have a 4-inch for the mini")
+
+- **Back:** the I/O window stays in the wall (it is the intake) but is now covered by a perforated insert,
+  `cortex-back-grille` (Ø1.4 on 2.2 hex, same as the other grilles; ~330 holes, ~510 mm²). The head charges and talks
+  on the desk dock through the floor; the carrier's ports are reached only with the tub off. A fully solid back
+  fails the SPEC thermal check at 25 W (intake would be only the ear grids' ~80 mm²).
+- **7" (Cam's Hosyond): does not fit the mini.** Waveshare-class 7" HDMI (C): 164.9 × 107 × 8, active 154 × 86.
+  The mini's face band is ~126 × 82 and the whole head is 121 tall. It wants the full-size head (CORTEX.md already
+  routes the 5" (H) there). No geometry written.
+- **4" square (Waveshare 4inch HDMI LCD (C), 720×720) — fits, modelled.** Numbers taken from its own STEP
+  (waveshare wiki 3D drawing): 84 × 84 × 1 glass, ~69 × 58 PCB, ~10 mm to the connector backs, connectors + 5
+  standoffs off one edge. Variant parts: `cortex-tub-d4` (79 × 79 window, 2.5 mm bond land all round for a VHB
+  bead under the display's own glass, which sits 1 mm proud as the dead front), `d4-glass` / `d4-body` proxies,
+  cameras moved outboard to y ±55 (baseline 110) with Ø7.5 lens holes through the face wall. Ear grids, speakers,
+  mics, sled, dock, battery all unchanged and re-checked clear (min gap: sled 1, battery 5.8, tub 5).
+  The display is centred on the face band; eye height `ze` unchanged.
+- vcad loon front-end bug found: `[cylinder r h]` inside a `fn` body fails ("no matching clause for anonymous with
+  1 args"); `[cylinder-n r h n]` works. Worked around; report to the vcad manager.
+- 4" open: its HDMI/touch connectors sit on one edge (~12 mm deep) — check which edge Cam's unit has and that it
+  clears the sled; its touch runs over USB-C (a second cable to the A603) or I2C.
