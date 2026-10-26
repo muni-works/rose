@@ -107,3 +107,12 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   IS the face: flat rectangular screen flush in a shallow chamfered recess, ears on the skull's own curve with the
   ring as a recessed groove, shorter chin (eyes at 0.42 h), more dome. Make the skull beautiful; the screen is just
   a rectangle in it.
+- **Option J = the direction (Cam: "like the Figure head"):** no literal features (the ":O" read came from round
+  eye holes over a mouth-shaped screen). The egg skull gets a FLAT FACE FACET (plane ~9 mm behind the crown), the
+  4-inch panel flush in it behind a 1.2 mm reveal, and the EYES are glossy dark glass domes protruding 2.2 mm from
+  the pane (21 x 27 mm, 1.45 eye-widths apart, high on the face): catchlights carry the expression, the emissive
+  core sits BEHIND the dome in the real product (screen light through translucent dark glass). Off-state: monolith.
+  Cameras hide behind the pane. Ears + recessed groove ring are the only character lines; one accent colour only.
+  Renderer note: kosm-render 0.2 has no per-hit image emission (the emissive-map patch landed as constant-only,
+  985238af), so the lit-face UI renders as geometry emissive slabs for now; the drawn-face pane returns when
+  kosm-render gains image maps.
