@@ -217,6 +217,40 @@ def option_E():
     return parts, (lo + hi) / 2
 
 
+def option_F():
+    # the printable MVP of E: no lens, no formed part. A single-curve visor band (a vertical-axis cylinder --
+    # printable standing in spiral-vase mode, glossy PETG) wrapped over the skull's front with the 4-inch
+    # panel's glass flush in a window at its centre as the dead front. Skull + ears = D. The band's radius is
+    # fitted to the skull's measured profile, then the band is kept where it stays within 6 mm of the skull.
+    parts, zc = option_D()
+    body = parts["body"] + parts["glass"] + parts["band"] - parts["ear"] - parts["ring"]
+    form = parts["body"] + parts["glass"] + parts["band"]
+    bb = form.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+    zc = (bb[2] + bb[5]) / 2 + 0.02 * (bb[5] - bb[2])
+    lo, hi = 0.28 * (bb[5] - bb[2]), 0.74 * (bb[5] - bb[2])
+    def grown(k):
+        kk = (1 + k / (bb[3] - bb[0]), 1 + k / (bb[4] - bb[1]), 1 + k / (bb[5] - bb[2]))
+        return form.translate(tuple(-c for c in ctr)).scale(kk).translate(ctr)
+    skin_out = grown(0.6)
+    xf = skin_out.bounding_box()[3]
+    Rf = 240.0 * W / 128.0
+    cyc = lambda r: mf.Manifold.cylinder(2 * BIG, r, r, 2048).translate((xf - Rf, 0, -BIG))
+    win = rbox(bb[3] - 60.0, -W, lo, bb[3] + 30.0, W, hi, 14.0)
+    strip = ((skin_out - skin_out.translate((-1.6, 0, 0))) ^ win) ^ cyc(Rf + 5.0)   # the visor skin, single-curved
+    band = strip ^ box(-BIG, -BIG, lo, BIG, BIG, hi)
+    band = band - (band.translate((2.6, 0, 0)) ^ (form ^ win))       # keep only where it stands off the skull <2.6
+    aw, ah = ACT_W / 2 + 1.5, ACT_H / 2 + 1.5
+    pocket = box(bb[3] - 40.0, -aw, zc - ah, xf + 5.0, aw, zc + ah)   # through the band and the skull front
+    band = band - pocket                                             # the window: the band is the bezel
+    # the display recessed inside the window: its front face is the dead front (the emissive pane), the body of
+    # the display behind it. The skull stays intact behind; the panel hides its own pocket.
+    glass = box(xf - 4.4, -ACT_W / 2, zc - ACT_H / 2, xf - 4.2, ACT_W / 2, zc + ACT_H / 2)
+    panel = box(xf - 15.0, -ACT_W / 2 - 0.5, zc - ACT_H / 2 - 0.5, xf - 4.4, ACT_W / 2 + 0.5, zc + ACT_H / 2 + 0.5)
+    body = body - pocket                                             # the window goes through the skull
+    return dict(body=body, glass=glass, band=band, ear=parts["ear"], ring=parts["ring"], panel=panel), zc
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -227,7 +261,7 @@ MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "banana_stem" 0.30 0.32 0.10 0.0 0.7]
 [material "banana_tip" 0.12 0.08 0.04 0.0 0.7]
 """
-MAT = dict(body="soft_black", glass="gloss_black", band="alu", ear="ear_grey", ring="accent")
+MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black")
 
 
 def build(tag, fn, d, dy=0.0):
@@ -240,7 +274,7 @@ def build(tag, fn, d, dy=0.0):
     mname = f"face_{tag}"
     if EMISSIVE:
         # looking down -x with z up, the viewer's left is -y: the image's top-left goes at -y, its width runs +y
-        mat = (f'[material-emissive "{mname}" 0.006 0.006 0.008 0.0 0.04 1.0 1.0 1.0 3.0 "{UI}" '
+        mat = (f'[material-emissive "{mname}" 0.006 0.006 0.008 0.0 0.04 1.0 1.0 1.0 6.0 "{UI}" '
                f'{hi_x:.3f} {dy - aw:.3f} {zc + ah:.3f} 0.0 {2 * aw:.3f} 0.0 0.0 0.0 {-2 * ah:.3f}]')
     else:
         mat = f'[material "{mname}" 0.006 0.006 0.008 0.0 0.04]'
@@ -325,8 +359,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E)
-    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E").split(",")]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None
