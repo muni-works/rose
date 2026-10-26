@@ -22,9 +22,9 @@ EMISSIVE = os.environ.get("EMISSIVE", "1") == "1"        # needs vcad-render wit
 # two sizes, one head language. A human head is ~155 W x 195 D x 230 H; the 7" (166 wide) forces the full to ~1.3x.
 SIZES = {
     # 4" square (Waveshare 4inch HDMI LCD (C), 720x720, active ~72 x 72)
-    "mini": dict(W=128.0, D=150.0, H=172.0, ACT_W=72.0, ACT_H=72.0, UI="ui-face-720x720.png"),
+    "mini": dict(W=128.0, D=150.0, H=172.0, ACT_W=72.0, ACT_H=72.0, UI="ui-eyes-720x720.png"),
     # 7" (Waveshare 7inch HDMI LCD (C), 1024x600, active 154.21 x 85.92; outline 164.9 x 107)
-    "full": dict(W=200.0, D=215.0, H=235.0, ACT_W=154.21, ACT_H=85.92, UI="ui-face-1024x600.png"),
+    "full": dict(W=200.0, D=215.0, H=235.0, ACT_W=154.21, ACT_H=85.92, UI="ui-eyes-1024x600.png"),
 }
 
 
@@ -251,6 +251,45 @@ def option_F():
     return dict(body=body, glass=glass, band=band, ear=parts["ear"], ring=parts["ring"], panel=panel), zc
 
 
+def option_G():
+    # one-material premium: ONE volume (D's egg + ears), the face a RECESS in it: the visor window is carved
+    # 2 mm into the skull on an offset surface (a 0.8 mm chamfer lip at the rim), and the recess FLOOR is the
+    # dead front -- a 0.2 mm glass skin carrying the lit eyes, with the display body behind it. Same trick as
+    # E/F (offset shells), so the rim wraps the skull exactly and the eyes project straight onto the floor.
+    parts, zc = option_D()
+    form = parts["body"] + parts["glass"] + parts["band"]
+    bb = form.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+    zc = (bb[2] + bb[5]) / 2 + 0.02 * (bb[5] - bb[2])
+    lo, hi = 0.30 * (bb[5] - bb[2]), 0.72 * (bb[5] - bb[2])
+    def grown(k):
+        kk = (1 + k / (bb[3] - bb[0]), 1 + k / (bb[4] - bb[1]), 1 + k / (bb[5] - bb[2]))
+        return form.translate(tuple(-c for c in ctr)).scale(kk).translate(ctr)
+    yw = ACT_W / 2 + 14.0                                # the visor's width: the window stops here
+    win = rbox(bb[3] - 60.0, -yw, lo, bb[3] + 30.0, yw, hi, 14.0)
+    shell = lambda a, b: grown(a) - grown(b)
+    recess = win ^ shell(0.8, -2.0)                      # the window, 2 mm deep, 0.8 chamfer lip at the rim
+    skull = form - recess
+    glass = win ^ shell(-1.2, -1.4)                      # the dead front: a 0.2 mm glass skin, outermost in the recess
+    panel = win ^ shell(-1.4, -2.2)                      # the display body behind it
+    skull = skull - panel
+    return dict(body=skull, glass=glass, panel=panel, ear=parts["ear"], ring=parts["ring"]), zc
+
+
+def option_H():
+    # F kept, but every joint gets a designed reveal (one material, two prints): a 1.2 mm tall, 1 mm deep step
+    # at the band's top and bottom edges (a shadow line instead of a raw edge), the band-skull seam offset so the
+    # band reads as its own part, and the ear ring kept as a separate colour-free piece (same filament, glossy).
+    parts, zc = option_F()
+    band = parts["band"]
+    bb = band.bounding_box()
+    t, deep = 1.2, 1.0
+    band = band - box(-BIG, -BIG, bb[5] - t, BIG, BIG, bb[5] + 1.0)     # top step
+    band = band - box(-BIG, -BIG, bb[2] - 1.0, BIG, BIG, bb[2] + t)     # bottom step
+    parts["band"] = band
+    return parts, zc
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -359,8 +398,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F)
-    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F").split(",")]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F, G=option_G, H=option_H)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F,G,H").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None
