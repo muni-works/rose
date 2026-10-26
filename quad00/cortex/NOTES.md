@@ -103,3 +103,7 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   the shell-aperture approach for both (shell = the only visible edge; no screen margin visible).
 - Re-check queue if this becomes a spec: Vector's actual face optics (laser display, tint) and Eilik's eye
   proportions (closest shipped analog to the mini).
+- **Visor dropped (Cam, after the exploded view):** no curved band, no second curvature. Option I = the egg skull
+  IS the face: flat rectangular screen flush in a shallow chamfered recess, ears on the skull's own curve with the
+  ring as a recessed groove, shorter chin (eyes at 0.42 h), more dome. Make the skull beautiful; the screen is just
+  a rectangle in it.

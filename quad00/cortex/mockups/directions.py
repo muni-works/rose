@@ -328,6 +328,73 @@ def explode(tag, fn, d):
     return roots
 
 
+def option_I():
+    # no visor: the skull IS the face (Cam: "drop the visor, make the skull beautiful"). The two real cameras
+    # are the EYES: recessed lens windows high on the skull at +-33 (the 66 mm baseline), dark glass discs in
+    # them. The screen sits low as nose/mouth, flush in a chamfered rectangular recess, its front 3 mm behind
+    # the rim (a shadow reveal, no bezel). The ears sit on the skull's own curve, the ring a recessed groove.
+    sink = 14.0
+    a_pair = (0.44 * D, 0.56 * D)
+    skull = base_form((0.30, 0.66), (0.20, 0.78), sink, a=a_pair)
+    bb = skull.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+
+    def grown2(k):
+        kk = (1 + k / (bb[3] - bb[0]), 1 + k / (bb[4] - bb[1]), 1 + k / (bb[5] - bb[2]))
+        return skull.translate(tuple(-c for c in ctr)).scale(kk).translate(ctr)
+
+    z_cam = 0.60 * H                                            # the camera eyes, high on the skull
+    zc = 0.34 * H                                               # the screen: nose/mouth, well under the eyes
+    skin = grown2(0.6)
+    xf = skin.bounding_box()[3]
+    gtm = tm(skin)
+    def surf_x(y, z):
+        loc, _, _ = gtm.ray.intersects_location([[bb[3] + 40.0, y, z]], [[-1.0, 0, 0]])
+        return loc[:, 0].max() if len(loc) else xf
+    x_edge = surf_x(ACT_W / 2 + 2.0, zc)                        # the skull's surface at the screen's side edge
+    # the screen recess: a chamfered rectangular opening through the front wall
+    aw, ah = ACT_W / 2, ACT_H / 2
+    rec = None
+    for k, (x, hw, hh) in enumerate([(x_edge + 4.0, aw + 3.0, ah + 3.0), (x_edge - 1.0, aw + 2.0, ah + 2.0),
+                                     (x_edge - 3.0, aw + 0.4, ah + 0.4)]):
+        r = rbox(x, -hw, zc - hh, BIG, hw, zc + hh, 3.0)        # from x BACK to +inf: an opening, not a slab
+        rec = r if rec is None else rec + r
+    skull = skull - rec
+    xg = x_edge - 3.0                                           # the pane's front face: 3 behind the rim plane
+    glass = box(xg - 0.2, -aw, zc - ah, xg, aw, zc + ah)
+    panel = box(x_edge - 16.0, -aw - 0.5, zc - ah - 0.5, xg, aw + 0.5, zc + ah + 0.5)
+    skull = skull - panel
+    # the camera eyes: Ø9.5 windows through the skull at +-33, dark glass discs seated inside
+    cam_y, cam_r = 33.0, 4.75
+    cam_win = None
+    for sg in (1, -1):
+        w = cyl_y(bb[0] - 10.0, sg * cam_y - cam_r, sg * cam_y + cam_r, z_cam, cam_r, 64)
+        cam_win = w if cam_win is None else cam_win + w
+    skull = skull - cam_win
+    # the lens discs: dark glass, a 1 mm disc perpendicular to x, seated 2.5 mm inside the rim
+    lens = mf.Manifold.batch_boolean([
+        mf.Manifold.cylinder(1.0, cam_r - 0.1, cam_r - 0.1, 64).rotate((0, 90, 0)).translate((x_edge - 2.5, sg * cam_y, z_cam))
+        for sg in (1, -1)], mf.OpType.Add)
+    # the ears: on the skull's own curve, the ring a recessed groove
+    ex, ez, er = -12.0 * W / 128.0, 0.50 * H, 22.0 * W / 128.0
+    cap_out, ring_out = grown2(1.2), grown2(0.5)
+    ears, rings, holes = [], [], []
+    for sg in (1, -1):
+        yy = (0.0, BIG) if sg > 0 else (-BIG, 0.0)
+        ears.append((cap_out - skull) ^ cyl_y(ex, yy[0], yy[1], ez, er))
+        rings.append(((ring_out - skull) ^ cyl_y(ex, yy[0], yy[1], ez, er + 1.8)) - cyl_y(ex, yy[0], yy[1], ez, er + 0.2))
+        ni, nk = int(er / 2.2) + 1, int(er / 1.905) + 1
+        for i in range(-ni, ni + 1):
+            for k in range(-nk, nk + 1):
+                py, pz = 2.2 * (i + 0.5 * (k % 2)), 1.905 * k
+                if py * py + pz * pz < (er - 3.0) ** 2:
+                    holes.append(cyl_y(ex + py, yy[0], yy[1], ez + pz, 0.7, 10))
+    hole = mf.Manifold.batch_boolean(holes, mf.OpType.Add)
+    ear = mf.Manifold.batch_boolean(ears, mf.OpType.Add) - hole
+    ring = mf.Manifold.batch_boolean(rings, mf.OpType.Add)
+    return dict(body=skull, glass=glass, panel=panel, lens=lens, ear=ear, ring=ring), zc
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -338,13 +405,13 @@ MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "banana_stem" 0.30 0.32 0.10 0.0 0.7]
 [material "banana_tip" 0.12 0.08 0.04 0.0 0.7]
 [material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
+[material-emissive "eye_glow" 0.9 0.92 0.95 0.0 0.4 1.0 1.0 1.0 5.0 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
 """
-MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black")
+MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black", lens="lens")
 
 
 def build(tag, fn, d, dy=0.0):
-    """the option's parts as STLs + roots. The face glass itself carries the emissive map over the active area: a
-    true dead front, one pane, the screen invisible until it lights."""
+    # the option's parts as STLs + roots; the face glass carries the emissive map (a true dead front).
     parts, zc = fn()
     g = parts["glass"]
     hi_x = g.bounding_box()[3]
@@ -352,8 +419,7 @@ def build(tag, fn, d, dy=0.0):
     mname = f"face_{tag}"
     if EMISSIVE:
         # looking down -x with z up, the viewer's left is -y: the image's top-left goes at -y, its width runs +y
-        mat = (f'[material-emissive "{mname}" 0.006 0.006 0.008 0.0 0.04 1.0 1.0 1.0 6.0 "{UI}" '
-               f'{hi_x:.3f} {dy - aw:.3f} {zc + ah:.3f} 0.0 {2 * aw:.3f} 0.0 0.0 0.0 {-2 * ah:.3f}]')
+        mat = f'[material "{mname}" 0.006 0.006 0.008 0.0 0.04]'   # pane: near-black gloss; the eyes glow
     else:
         mat = f'[material "{mname}" 0.006 0.006 0.008 0.0 0.04]'
     roots = []
@@ -437,8 +503,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F, G=option_G, H=option_H)
-    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F,G,H").split(",")]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F, G=option_G, H=option_H, I=option_I)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F,G,H,I").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None
