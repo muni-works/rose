@@ -116,3 +116,17 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   Renderer note: kosm-render 0.2 has no per-hit image emission (the emissive-map patch landed as constant-only,
   985238af), so the lit-face UI renders as geometry emissive slabs for now; the drawn-face pane returns when
   kosm-render gains image maps.
+- **The mouth (Cam: "the lack of a mouth is unsettling"):** a soft emissive bar low on the face pane (26 x 7 mm,
+  stadium section, 1.1 radiance) -- the waveform/mouth animation lives in firmware (dim glow = speaking, off = a
+  dark slot). NOT a physical grille at the mouth: Cam found that horrifying, and the research agrees (a mouth is
+  what makes it a creature; a drawn mouth does not hit the uncanny valley, a fake physical one might).
+  Physical grilles stay at the EARS only, where speakers/mics honestly live.
+- **Eye domes, DIY (off Amazon):** cast acrylic/PC half-domes ("clear acrylic dome 25/30 mm", $1-3) or glass
+  cabochons ("20 mm glass dome cabochon", jewelry supply, ~$0.50 in bulk) -- Vector-style optics, factory gloss.
+  22 mm matches the current eye. Bond with UV-cure adhesive or a VHB ring. In the model the domes are ONE material
+  with the screen light behind them (the drawn eyes on the pane glow through the smoked dome).
+- **Cameras behind the domes:** each IMX219 sits directly behind its dome; the dome is the lens window. CAVEAT:
+  the IMX219's fixed focus shifts with curved glass in front -- bench-test focus through the actual dome before
+  committing (add to MEASURE.md as #7).
+- **The face is one tall pane now (J):** 84 x 104, covers nose-to-chin, eyes + mouth all drawn/lit on it; the
+  physical domes overlay the drawn eyes. One display, one light source, no bezel part.
