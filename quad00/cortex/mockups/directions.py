@@ -165,6 +165,37 @@ def option_C():
     return dict(body=body, glass=glass, band=band, ear=ear, ring=ring), 0.50 * H
 
 
+def option_D():
+    # B + C: B's egg skull and visor face, C's ears -- round caps on the skull's own curve, a Braun dot grid and an
+    # orange ring, set back behind the visor (where ears are)
+    parts, zc = option_B()
+    form = parts["body"] + parts["glass"] + parts["band"]
+    bb = form.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+
+    def grown(t):                                        # the skull offset outward ~t mm (an anisotropic scale)
+        k = (1 + 2 * t / (bb[3] - bb[0]), 1 + 2 * t / (bb[4] - bb[1]), 1 + 2 * t / (bb[5] - bb[2]))
+        return form.translate(tuple(-c for c in ctr)).scale(k).translate(ctr)
+
+    ex, ez, er = -22.0 * W / 128.0, 0.50 * H, 22.0 * W / 128.0
+    cap_out, ring_out = grown(1.5), grown(0.9)
+    ears, rings, holes = [], [], []
+    for sg in (1, -1):
+        yy = (0.0, BIG) if sg > 0 else (-BIG, 0.0)
+        ears.append((cap_out - form) ^ cyl_y(ex, yy[0], yy[1], ez, er))
+        rings.append(((ring_out - form) ^ cyl_y(ex, yy[0], yy[1], ez, er + 2.4)) - cyl_y(ex, yy[0], yy[1], ez, er + 0.3))
+        ni, nk = int(er / 2.2) + 1, int(er / 1.905) + 1
+        for i in range(-ni, ni + 1):
+            for k in range(-nk, nk + 1):
+                py, pz = 2.2 * (i + 0.5 * (k % 2)), 1.905 * k
+                if py * py + pz * pz < (er - 3.0) ** 2:
+                    holes.append(cyl_y(ex + py, yy[0], yy[1], ez + pz, 0.7, 10))
+    hole = mf.Manifold.batch_boolean(holes, mf.OpType.Add)
+    parts["ear"] = mf.Manifold.batch_boolean(ears, mf.OpType.Add) - hole
+    parts["ring"] = mf.Manifold.batch_boolean(rings, mf.OpType.Add)
+    return parts, zc
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -273,7 +304,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    opts = [("A", option_A), ("B", option_B), ("C", option_C)]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None

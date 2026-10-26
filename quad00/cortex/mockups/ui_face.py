@@ -15,7 +15,8 @@ w, h = W * S, H * S
 img = Image.new("RGB", (w, h), (0, 0, 0))     # pure black: a dead front, the screen vanishes into the glass
 
 # eyes: rounded squares, a little taller than wide, set slightly above centre, looking a touch to the right
-ew, eh, gap = int(0.17 * w), int(0.40 * h), int(0.13 * w)
+u = min(w, h)                                             # size the eyes off the short side: same face on any panel
+ew, eh, gap = int(0.33 * u), int(0.43 * u), int(0.22 * u)
 cy = int(0.45 * h)
 look = int(0.012 * w)
 eyes = [((w - gap) // 2 - ew + look, cy - eh // 2), ((w + gap) // 2 + look, cy - eh // 2)]
