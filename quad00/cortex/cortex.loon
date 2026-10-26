@@ -32,11 +32,9 @@
 [material "steel" 0.6 0.6 0.62 0.9 0.35]
 [material "cable_orange" 1.0 0.42 0.05 0.0 0.45]
 
-; ------------------------------------------------------------------ size (mini) ----
-[let hh 120.6]                 ; height
-[let hw 81.8]                  ; half width
-[let x-face 46.0]              ; the flat face plane
-[let x-back -58.0]             ; the flat back plane (reaches past the neck: no craning)
+; ------------------------------------------------------------------ size ----
+; The shell size comes from size.loon (mini default, full for the 7-inch face): one source, every size. See size.loon.
+[use size [hh hw x-face x-back size-full d7-w d7-h d7-t d7-act-w d7-act-h]]
 [let hd [/ [- x-face x-back] 2.0]]
 [let xc [- x-face hd]]
 [let rc [* 0.30 hd]]           ; plan corner radius
@@ -187,6 +185,22 @@
 [let d4-cam-holes [tilt [union [d4-cam-hole 1.0] [d4-cam-hole -1.0]]]]
 [let d4-cams [tilt [union [bx [- xfz 14.5] [- d4-cam-y 12.5] [- ze 12.0] [- xfz 3.5] [+ d4-cam-y 12.5] [+ ze 12.0]]
                           [bx [- xfz 14.5] [- -12.5 d4-cam-y] [- ze 12.0] [- xfz 3.5] [- 12.5 d4-cam-y] [+ ze 12.0]]]]]
+; ---- the 7-inch face (full size): Waveshare 7inch HDMI LCD (C), 164.9 x 107 x 8, active 154.2 x 85.9. Like the 4"
+; variant, its own bezel is the dead front, sitting proud in the tub's window over a VHB bead. The cameras sit
+; outboard of it through lens holes in the wall; the baseline is 1.4x the mini's (the head grew 1.4x in plan).
+[let d7-y [/ d7-w 2.0]]
+[let d7-z [/ d7-h 2.0]]
+[let d7-win-w [- d7-w 10.0]]                        ; the tub window: 5 mm of wall face each side for the VHB
+[let d7-win-h [- d7-h 10.0]]
+[let d7-glass [tilt [bx xfz [- 0.0 d7-y] [- zf d7-z] [+ xfz 1.0] d7-y [+ zf d7-z]]]]                       ; front 1 mm proud
+[let d7-body [tilt [bx [- xfz d7-t] [- 0.0 d7-y] [- zf d7-z] [- xfz 1.0] d7-y [+ zf d7-z]]]]   ; PCB + parts behind the glass
+[let d7-open-sec [fn [x w h] [sketch x 0.0 zf 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [/ w 2.0] [/ h 2.0] 2.0]]]]
+[let d7-open [tilt [loft #[[d7-open-sec [- xfz 8.0] d7-win-w d7-win-h] [d7-open-sec [+ xfz 3.0] d7-win-w d7-win-h]]]]]
+[let d7-cam-y 96.0]                             ; baseline 192 on the full (1.4x was 148; wider reads better at 2 m)
+[let d7-cam-hole [fn [sy] [translate [- xfz 10.0] [* sy d7-cam-y] ze [rotate 0.0 90.0 0.0 [cylinder-n 3.75 50.0 16]]]]]   ; +x, through the face wall
+[let d7-cam-holes [tilt [union [d7-cam-hole 1.0] [d7-cam-hole -1.0]]]]
+[let d7-cams [tilt [union [bx [- xfz 14.5] [- d7-cam-y 12.5] [- ze 12.0] [- xfz 3.5] [+ d7-cam-y 12.5] [+ ze 12.0]]
+                          [bx [- xfz 14.5] [- -12.5 d7-cam-y] [- ze 12.0] [- xfz 3.5] [- 12.5 d7-cam-y] [+ ze 12.0]]]]]
 
 ; the back. The I/O window stays in the wall (it is the intake air's way in, SPEC thermal) but is covered by a
 ; perforated insert like the other grilles: closed to the eye, and the carrier's ports are only reached with the tub
@@ -227,6 +241,8 @@
 ; the 4-inch-face tub variant: the display's own glass is the face, so its window replaces the glass opening, and the
 ; outboard cameras get lens holes through the wall
 [let cortex-tub-d4 [difference [pipe cavity [union below-floor] [union vents] [union d4-open] [union d4-cam-holes] [union insert-holes]] shell-solid]]
+; the 7-inch-face tub (full size): same scheme, the display's own bezel is the dead front
+[let cortex-tub-full [difference [pipe cavity [union below-floor] [union vents] [union d7-open] [union d7-cam-holes] [union insert-holes]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 ; M3 countersunk (90 deg, head 6.6) up into the tub inserts; M2.5 countersunk (head 4.8) up through each sled foot
 [let csk [fn [x y rh rs] [union [translate x y -1.0 [cone [+ rh 1.0] rs [+ [- rh rs] 1.0]]] [translate x y -2.0 [cylinder rs [+ tf 3.0]]]]]]   ; 90 deg, from 1 below the face

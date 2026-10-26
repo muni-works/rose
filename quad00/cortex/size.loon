@@ -1,0 +1,23 @@
+; cortex size. The head's ONE source (cortex.loon) takes its shell size from here, so one file drives every size:
+;   mini (this file, default): 3.5" face, 164 x 104 x 121 overall
+;   full (size-full.loon):     7" face, the shell plan x 1.4, same dock
+; Selection is by file: export.sh (and any importer) copies the size it wants in as `size.loon` next to
+; cortex.loon (module resolution: a file next to the importer wins over the lib path).
+; These are the ONLY size inputs cortex.loon reads: the four shell planes and the 7-inch display's envelope.
+; Everything else in cortex.loon either derives from these or is a datasheet part size, which does not scale.
+[pub let size-mini true]
+[pub let size-full false]
+
+[pub let hh [if size-full 169.0 120.6]]            ; height
+[pub let hw [if size-full 114.5 81.8]]             ; half width
+[pub let x-face [if size-full 64.4 46.0]]          ; the flat face plane
+[pub let x-back [if size-full -81.2 -58.0]]        ; the flat back plane (reaches past the neck: no craning)
+
+; the full's face: Waveshare 7inch HDMI LCD (C), 164.9 x 107 x 8 outline, active 154.21 x 85.92 (wiki Dimension /
+; Display Area). Its own bezel is the dead front, like the mini's 4-inch variant: the tub gets a window with a
+; 5 mm bond land, the display sits 1 mm proud. The mini ignores these.
+[pub let d7-w 166.0]                               ; the display's outline + 1 mm margin each side
+[pub let d7-h 108.0]
+[pub let d7-t 8.0]                                 ; outline to the connector backs (wiki Dimension)
+[pub let d7-act-w 154.21]
+[pub let d7-act-h 85.92]
