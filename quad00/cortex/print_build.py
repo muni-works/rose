@@ -22,7 +22,8 @@ VCAD = os.environ.get("VCAD") or os.path.join(
     os.environ.get("CARGO_TARGET_DIR", os.path.expanduser("~/Developer/vcad/target")), "release", "vcad")
 
 LEAVES = ["shell-solid", "shell-inner", "below-floor", "ear-windows", "exhaust-window", "face-opening", "io-cut",
-          "fix-blocks", "glass-band", "insert-holes", "floor-holes", "dock-cuts", "cone-bosses", "exhaust-holes"]
+          "back-holes", "fix-blocks", "glass-band", "insert-holes", "floor-holes", "dock-cuts", "cone-bosses",
+          "exhaust-holes", "d4-open", "d4-cam-holes"]
 
 
 def export_leaves(names):
@@ -68,7 +69,11 @@ def build(L):
                                L["io-cut"], L["insert-holes"])
     floor = U(L["below-floor"] ^ L["shell-solid"], L["cone-bosses"]) - U(L["dock-cuts"], L["floor-holes"])
     exhaust = (L["exhaust-window"] ^ band) - L["exhaust-holes"]
-    return {"cortex-tub": tub, "cortex-floor": floor, "cortex-exhaust-grille": exhaust}
+    back = (L["io-cut"] ^ band) - L["back-holes"]
+    tub_d4 = L["shell-solid"] - U(cavity, L["below-floor"], L["ear-windows"], L["exhaust-window"], L["d4-open"],
+                                  L["d4-cam-holes"], L["insert-holes"])
+    return {"cortex-tub": tub, "cortex-floor": floor, "cortex-exhaust-grille": exhaust,
+            "cortex-back-grille": back, "cortex-tub-d4": tub_d4}
 
 
 def rot(axis, deg):
@@ -84,6 +89,8 @@ PRINTS = [
     ("cortex-ear-grille-l", "cortex-ear-grilles", lambda c: c[1] > 0, rot([1, 0, 0], -90)),   # outer face down
     ("cortex-ear-grille-r", "cortex-ear-grilles", lambda c: c[1] < 0, rot([1, 0, 0], 90)),
     ("cortex-exhaust-grille", "cortex-exhaust-grille", None, np.eye(4)),                      # standing on its long edge
+    ("cortex-back-grille", "cortex-back-grille", None, rot([0, 1, 0], 90)),                  # outer face down, flat
+    ("cortex-tub-d4", "cortex-tub-d4", None, np.eye(4)),                                      # as assembled, open side down
 ]
 
 

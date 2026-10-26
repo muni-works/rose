@@ -170,14 +170,36 @@
 ; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
 [let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
 [let face-opening [tilt [loft #[[glass-sec [- xfz 8.0] 2.0] [glass-sec [- xfz 3.0] 2.0] [glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 3.0] 0.0]]]]]
-; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
-; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
-; can clip in if wanted)
+; ---- the 4-inch square face (Waveshare 4inch HDMI LCD (C), 720x720; numbers from its own STEP: 84 x 84 x 1 glass
+; over a ~69 x 58 PCB, ~12 deep to the connector backs). Alternative to the 3.5 + glass: the display's own tempered
+; glass IS the dead front, sitting proud in the same opening (a 4.9 mm step, one VHB bead). Same eye height, centre.
+; The cameras move outboard to +-55 (still on the 110 baseline, behind the wall) with Ø7.5 lens holes in the wall;
+; their FFCs reach the A603 at x 18 (run-x style: out along the wall, then aft).
+[let d4 84.0]
+[let d4w 79.0]
+[let d4t 10.0]
+[let d4-glass [tilt [bx xfz -42.0 [- zf 42.0] [+ xfz 1.0] 42.0 [+ zf 42.0]]]]
+[let d4-body [tilt [bx [- xfz d4t] -34.5 [- zf 34.5] [- xfz 1.0] 34.5 [+ zf 34.5]]]]
+[let d4-open-sec [fn [x h] [sketch x 0.0 zf 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 h h 2.0]]]]
+[let d4-open [tilt [loft #[[d4-open-sec [- xfz 8.0] [/ d4w 2.0]] [d4-open-sec [+ xfz 3.0] [/ d4w 2.0]]]]]]
+[let d4-cam-y 55.0]
+[let d4-cam-hole [fn [sy] [translate [- xfz 10.0] [* sy d4-cam-y] ze [rotate 0.0 90.0 0.0 [cylinder-n 3.75 50.0 16]]]]]
+[let d4-cam-holes [tilt [union [d4-cam-hole 1.0] [d4-cam-hole -1.0]]]]
+[let d4-cams [tilt [union [bx [- xfz 14.5] [- d4-cam-y 12.5] [- ze 12.0] [- xfz 3.5] [+ d4-cam-y 12.5] [+ ze 12.0]]
+                          [bx [- xfz 14.5] [- -12.5 d4-cam-y] [- ze 12.0] [- xfz 3.5] [- 12.5 d4-cam-y] [+ ze 12.0]]]]]
+
+; the back. The I/O window stays in the wall (it is the intake air's way in, SPEC thermal) but is covered by a
+; perforated insert like the other grilles: closed to the eye, and the carrier's ports are only reached with the tub
+; off (the head charges and talks on the desk dock through the floor). A fully solid back fails 25 W: with it solid,
+; intake is only the ear grids' 80 mm2 open area.
 [let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
+[let back-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] 42.0 4.0]] r]] [hex-rows 19 3]]]
+[let back-holes [grid-holes back-rows [fn [q] [translate [- x-back 6.0] [nth q 0] [+ 49.0 [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]]
 [let wall-band [difference shell-inner shell-solid]]
 [let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
 [let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
+[let cortex-back-grille [difference back-holes [intersection io-cut wall-band]]]
 ; Interior only (the exterior is frozen, SPEC.md). Each is taken out of the cavity before the cavity is taken out of
 ; the solid, so nothing is unioned face-to-face with the skin.
 ; Floor fixing (SPEC Mounting): a corner block at each bottom corner, on the plan-corner centre, with a heat-set
@@ -202,6 +224,9 @@
                             [tilt [loft #[[glass-sec [- xfz 4.5] -3.0] [glass-sec [- xfz 1.0] -3.0]]]]]]
 [let cavity [pipe shell-inner [difference fix-blocks] [difference glass-band]]]
 [let cortex-tub [difference [pipe cavity [union below-floor] [union vents] [union face-opening] [union io-cut] [union insert-holes]] shell-solid]]
+; the 4-inch-face tub variant: the display's own glass is the face, so its window replaces the glass opening, and the
+; outboard cameras get lens holes through the wall
+[let cortex-tub-d4 [difference [pipe cavity [union below-floor] [union vents] [union d4-open] [union d4-cam-holes] [union insert-holes]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 ; M3 countersunk (90 deg, head 6.6) up into the tub inserts; M2.5 countersunk (head 4.8) up through each sled foot
 [let csk [fn [x y rh rs] [union [translate x y -1.0 [cone [+ rh 1.0] rs [+ [- rh rs] 1.0]]] [translate x y -2.0 [cylinder rs [+ tf 3.0]]]]]]   ; 90 deg, from 1 below the face
@@ -307,6 +332,7 @@
  #[[part "cortex-tub" cortex-tub "satin_black"]
    [part "cortex-floor" cortex-floor "aluminium"]
    [part "cortex-exhaust-grille" cortex-exhaust-grille "satin_black"]
+   [part "cortex-back-grille" cortex-back-grille "satin_black"]
    [part "cortex-ear-grilles" cortex-ear-grilles "satin_black"]
    [part "cortex-keeper" cortex-keeper "steel"]
    [part "cortex-strikes" cortex-strikes "steel"]
@@ -328,6 +354,7 @@
  #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
    [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
    [instance "cortex-exhaust-grille_i" "cortex-exhaust-grille" 0.0 0.0 0.0]
+   [instance "cortex-back-grille_i" "cortex-back-grille" 0.0 0.0 0.0]
    [instance "cortex-ear-grilles_i" "cortex-ear-grilles" 0.0 0.0 0.0]
    [instance "cortex-keeper_i" "cortex-keeper" 0.0 0.0 0.0]
    [instance "cortex-strikes_i" "cortex-strikes" 0.0 0.0 0.0]
@@ -347,6 +374,7 @@
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
  #[[fixed-joint "fix_cortex-exhaust-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-exhaust-grille_i" 0.0 0.0 0.0]
+   [fixed-joint "fix_cortex-back-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-back-grille_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-ear-grilles" "cortex-floor_i" 0.0 0.0 0.0 "cortex-ear-grilles_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-strikes" "cortex-floor_i" 0.0 0.0 0.0 "cortex-strikes_i" 0.0 0.0 0.0]
@@ -367,3 +395,9 @@
    [fixed-joint "fix_cortex-amps" "cortex-floor_i" 0.0 0.0 0.0 "cortex-amps_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-cables" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cables_i" 0.0 0.0 0.0]]
  "cortex-floor_i"]
+
+; proxy roots for export and renders (the assembly above is the real head)
+[root cortex-back-grille "satin_black"]
+[root cortex-tub-d4 "satin_black"]
+[root d4-glass "visor_glass"]
+[root d4-body "pcb_green"]

@@ -28,4 +28,7 @@ sled-print|cortex-sled-print:petg_grey|35|25
 sled-on-floor|cortex-floor:petg_grey cortex-sled-print:satin_black cortex-battery:cell_pack cortex-compute:pcb_green|35|25
 ear-grilles|cortex-ear-grilles:satin_black|60|15
 exhaust-grille|cortex-exhaust-grille:satin_black|200|20
+back-grille|cortex-back-grille:satin_black|205|10
+d4-face|cortex-tub-d4:satin_black d4-glass:visor_glass|20|15
+d4-inside|cortex-tub-d4:satin_black d4-glass:visor_glass d4-body:pcb_green d4-cams:pcb_green|200|-35
 EOF
