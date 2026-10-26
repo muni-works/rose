@@ -17,7 +17,7 @@ img = Image.new("RGB", (w, h), (0, 0, 0))     # pure black: a dead front, the sc
 
 # eyes: rounded squares, a little taller than wide, set slightly above centre, looking a touch to the right
 u = min(w, h)                                             # size the eyes off the short side: same face on any panel
-ew, eh, gap = int(0.33 * u), int(0.43 * u), int(0.22 * u)
+ew, eh, gap = int(0.30 * u), int(0.40 * u), int(0.16 * u)   # baby-schema: each eye ~1/5 of the face, spacing 1.5-1.8 eye-widths
 cy = int(0.45 * h)
 look = int(0.012 * w)
 eyes = [((w - gap) // 2 - ew + look, cy - eh // 2), ((w + gap) // 2 + look, cy - eh // 2)]
