@@ -395,6 +395,70 @@ def option_I():
     return dict(body=skull, glass=glass, panel=panel, lens=lens, ear=ear, ring=ring), zc
 
 
+def option_J():
+    # the Figure lesson: no literal features; one dark glass face; the off-state a monolith. The skull gets a
+    # FLAT FACE FACET (cut with a plane ~9 mm behind its crown front): the silhouette stays an egg from the
+    # side, the face is one calm flat field, and the panel sits flush in it -- no stuck-on card, no curvature
+    # fight. The eyes are soft emissive domes high on the pane (baby-schema sizing); the cameras hide behind.
+    # Ears + recessed groove rings carry the character; the crown stays clean.
+    sink = 14.0
+    a_pair = (0.44 * D, 0.56 * D)
+    skull = base_form((0.30, 0.66), (0.20, 0.78), sink, a=a_pair)
+    bb = skull.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+
+    def grown2(k):
+        kk = (1 + k / (bb[3] - bb[0]), 1 + k / (bb[4] - bb[1]), 1 + k / (bb[5] - bb[2]))
+        return skull.translate(tuple(-c for c in ctr)).scale(kk).translate(ctr)
+
+    skin = grown2(0.6)
+    xf = skin.bounding_box()[3]
+    zc = 0.52 * H                                              # the face panel: centred, slightly high
+    x_face = xf - 9.0                                          # the flat face plane
+    skull = skull ^ box(-BIG, -BIG, -BIG, x_face, BIG, BIG)    # the facet cut (the crown keeps its dome)
+    # the panel: flush in the facet, with a 1.2 mm reveal all round (a shadow line, not a bezel part)
+    pw, ph = 42.0, 42.0
+    glass = box(x_face - 0.25, -pw, zc - ph, x_face - 0.05, pw, zc + ph)
+    panel = box(x_face - 13.0, -pw - 0.5, zc - ph - 0.5, x_face - 0.25, pw + 0.5, zc + ph + 0.5)
+    skull = skull - panel
+    # the eyes: three nested emissive domes per eye (halo, mid, core) -- a cheap bloom, since kosm-render has
+    # no per-hit image emission yet (the real soft edges come from the UI image when it does)
+    ew, eh, gap = 19.0, 25.0, 1.5 * 19.0
+    # the eyes: a glossy dark glass dome per eye (catches the light like a real lens) with a smaller bright
+    # emissive core recessed inside -- the Vector/Eilik construction. All geometry; no image emission needed.
+    ew, eh, gap = 21.0, 27.0, 1.45 * 21.0
+    xg = x_face - 0.05                                        # the pane's front plane
+    dome_l, core = None, None
+    for sg in (1, -1):
+        yc = sg * (0.5 * gap + 0.5 * ew)
+        # the dome: a sphere whose front protrudes 2.2 mm past the pane (centre x = front - 3.0)
+        d = mf.Manifold.sphere(1.0, 96).scale((3.0, ew / 2, eh / 2)).translate((xg + 2.2 - 3.0, yc, zc + 6.0))
+        dome_l = d if dome_l is None else dome_l + d
+        # the emissive core: a smaller dome recessed 0.8 behind the glass dome's front
+        c = mf.Manifold.sphere(1.0, 96).scale((2.4, ew / 2 * 0.62, eh / 2 * 0.62)).translate((xg + 2.2 - 0.8 - 2.4, yc, zc + 6.0))
+        core = c if core is None else core + c
+    eye = dome_l
+    core_out = core
+    # the ears: on the skull's own curve, the ring a recessed groove
+    ex, ez, er = -12.0 * W / 128.0, 0.50 * H, 22.0 * W / 128.0
+    cap_out, ring_out = grown2(1.2), grown2(0.5)
+    ears, rings, holes = [], [], []
+    for sg in (1, -1):
+        yy = (0.0, BIG) if sg > 0 else (-BIG, 0.0)
+        ears.append((cap_out - skull) ^ cyl_y(ex, yy[0], yy[1], ez, er))
+        rings.append(((ring_out - skull) ^ cyl_y(ex, yy[0], yy[1], ez, er + 1.8)) - cyl_y(ex, yy[0], yy[1], ez, er + 0.2))
+        ni, nk = int(er / 2.2) + 1, int(er / 1.905) + 1
+        for i in range(-ni, ni + 1):
+            for k in range(-nk, nk + 1):
+                py, pz = 2.2 * (i + 0.5 * (k % 2)), 1.905 * k
+                if py * py + pz * pz < (er - 3.0) ** 2:
+                    holes.append(cyl_y(ex + py, yy[0], yy[1], ez + pz, 0.7, 10))
+    hole = mf.Manifold.batch_boolean(holes, mf.OpType.Add)
+    ear = mf.Manifold.batch_boolean(ears, mf.OpType.Add) - hole
+    ring = mf.Manifold.batch_boolean(rings, mf.OpType.Add)
+    return dict(body=skull, glass=glass, panel=panel, eye=dome_l, eye1=core, ear=ear, ring=ring), zc
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -405,9 +469,9 @@ MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "banana_stem" 0.30 0.32 0.10 0.0 0.7]
 [material "banana_tip" 0.12 0.08 0.04 0.0 0.7]
 [material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
-[material-emissive "eye_glow" 0.9 0.92 0.95 0.0 0.4 1.0 1.0 1.0 5.0 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
+[material-emissive "eye_core" 0.93 0.95 0.98 0.0 0.22 1.0 1.0 1.0 2.6 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
 """
-MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black", lens="lens")
+MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black", lens="lens", eye="gloss_black", eye1="eye_core")
 
 
 def build(tag, fn, d, dy=0.0):
@@ -503,8 +567,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F, G=option_G, H=option_H, I=option_I)
-    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F,G,H,I").split(",")]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E, F=option_F, G=option_G, H=option_H, I=option_I, J=option_J)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E,F,G,H,I,J").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None
