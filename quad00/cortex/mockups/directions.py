@@ -196,6 +196,27 @@ def option_D():
     return parts, zc
 
 
+def option_E():
+    # D's egg + ears, but the visor is a GOGGLE LENS: a real double-curve polycarbonate lens (a ski/MTB
+    # replacement lens, factory gloss on both faces) trimmed to the visor window and bonded behind the printed
+    # bezel with VHB. The lens fills D's whole visor opening; the eyes light through it. Modelled as a 1.6 mm
+    # skin of the skull's own surface within that window -- stand-in geometry for the real toric lens (same
+    # thickness and wrap class); the actual part gets measured around the lens Cam buys.
+    parts, zc = option_D()
+    form = parts["body"] + parts["glass"] + parts["band"]
+    bb = form.bounding_box()
+    ctr = ((bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2)
+    lo, hi = (0.28 * (bb[5] - bb[2]), 0.74 * (bb[5] - bb[2]))
+    xv = 8.0 * D / 150.0
+    win = rbox(bb[3] - 60.0, -W, lo, bb[3] + 30.0, W, hi, 14.0)
+    def grown(k):
+        kk = (1 + k / (bb[3] - bb[0]), 1 + k / (bb[4] - bb[1]), 1 + k / (bb[5] - bb[2]))
+        return form.translate(tuple(-c for c in ctr)).scale(kk).translate(ctr)
+    # flush: outer face = the skull's own surface, 1.6 thick, bonded in D's 0.6 reveal (a goggle in a bezel)
+    parts["glass"] = (grown(0.6) - grown(-1.0)) ^ win
+    return parts, (lo + hi) / 2
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -304,8 +325,8 @@ def main():
     for sz in SIZES.values():
         shutil.copy(os.path.join(HERE, sz["UI"]), d)
     shutil.copy(os.path.join(HERE, UI7), d)
-    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D)
-    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C").split(",")]
+    allopts = dict(A=option_A, B=option_B, C=option_C, D=option_D, E=option_E)
+    opts = [(t, allopts[t]) for t in os.environ.get("OPTS", "A,B,C,D,E").split(",")]
     mats, rootsall = [], []
     gap, y = 45.0, 0.0
     y_banana = None

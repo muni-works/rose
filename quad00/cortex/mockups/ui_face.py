@@ -1,6 +1,6 @@
 """The cortex face UI mockup: the eyes are drawn on the screen (SPEC.md). Writes ui-face-<w>x<h>.png.
 
-    python3 ui_face.py [1024 600]     # the 7" (Waveshare 7inch HDMI LCD (C)) native resolution by default
+    python3 ui_face.py [1024 600] [eyes]   # the 7" native resolution by default; `eyes` = eyes only, no status line
 
 Minimal: black field, two soft rounded-square eyes with a gentle glow and a highlight, a thin status line at the
 bottom (frog state, battery, time). Black/white with one orange accent (the design direction: no decoration).
@@ -10,6 +10,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H = (int(sys.argv[1]), int(sys.argv[2])) if len(sys.argv) > 2 else (1024, 600)
+EYES_ONLY = "eyes" in sys.argv[3:]                        # the face is only eyes; status lives elsewhere (voice, app)
 S = 4                                                     # supersample, then downscale
 w, h = W * S, H * S
 img = Image.new("RGB", (w, h), (0, 0, 0))     # pure black: a dead front, the screen vanishes into the glass
@@ -35,7 +36,7 @@ for x, y in eyes:
     hx, hy = x + int(0.62 * ew), y + int(0.16 * eh)            # a small catch-light, upper right
     d.ellipse([hx, hy, hx + int(0.16 * ew), hy + int(0.16 * ew)], fill=(255, 255, 255))
 
-# status line
+# status line (not on the eyes-only face)
 def font(size):
     for f in ("/System/Library/Fonts/SFNSMono.ttf", "/System/Library/Fonts/Menlo.ttc"):
         try:
@@ -44,6 +45,12 @@ def font(size):
             pass
     return ImageFont.load_default()
 
+if EYES_ONLY:
+    img = img.resize((W, H), Image.LANCZOS)
+    out = f"ui-eyes-{W}x{H}.png"
+    img.save(out)
+    print(out)
+    raise SystemExit
 fs = int(0.032 * h)
 f = font(fs)
 y0 = h - int(0.085 * h)
