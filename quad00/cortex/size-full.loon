@@ -13,3 +13,7 @@
 [pub let d7-t 8.0]                                 ; outline to the connector backs (wiki Dimension)
 [pub let d7-act-w 154.21]
 [pub let d7-act-h 85.92]
+
+; placement of the 7-inch display and the eye cameras (full only)
+[pub let d7-dz 0.0]                                ; display centre, up from the face band's centre
+[pub let d7-cam-y 96.0]                            ; eye cameras at +-this (z: ze, the top of the flat band)
