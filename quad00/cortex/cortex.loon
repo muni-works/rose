@@ -178,9 +178,40 @@
 [let wall-band [difference shell-inner shell-solid]]
 [let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
 [let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
-[let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
+; Interior only (the exterior is frozen, SPEC.md). Each is taken out of the cavity before the cavity is taken out of
+; the solid, so nothing is unioned face-to-face with the skin.
+; Floor fixing (SPEC Mounting): a corner block at each bottom corner, on the plan-corner centre, with a heat-set
+; insert for an M3 countersunk screw up through the floor. The screw sits fix-in past the corner centre, along the
+; diagonal, so its head clears the floor's bottom round.
+[let fix-in 3.5]
+[let fix-k [* fix-in 0.707107]]
+[let fix-cx #[[- [- x-face [* rake tf]] rc] [+ x-back rc]]]                     ; plan-corner centres, x (front, back)
+[let fix-cy [- hw rc]]
+[let fix-xy #[#[[- [nth fix-cx 0] fix-k] [- fix-cy fix-k]] #[[- [nth fix-cx 0] fix-k] [- fix-k fix-cy]]
+              #[[+ [nth fix-cx 1] fix-k] [- fix-cy fix-k]] #[[+ [nth fix-cx 1] fix-k] [- fix-k fix-cy]]]]
+[let fix-blocks [tree-union [map [fn [c] [translate [nth c 0] [nth c 1] 1.0 [cylinder 9.0 13.0]]]
+  #[#[[nth fix-cx 0] fix-cy] #[[nth fix-cx 0] [- 0.0 fix-cy]] #[[nth fix-cx 1] fix-cy] #[[nth fix-cx 1] [- 0.0 fix-cy]]]]]]
+[let insert-holes [tree-union [map [fn [q] [union [translate [nth q 0] [nth q 1] 1.0 [cylinder 2.0 9.0]]       ; M3 heat-set, 4.0 x 7 above the floor
+                                                  [translate [nth q 0] [nth q 1] [+ tf 6.0] [cylinder 1.6 3.0]]]] fix-xy]]]  ; screw tip, to z 12
+; Glass seat (SPEC: "0.5 mm VHB in the stepped face opening"). face-opening steps to a 2 mm lip at xfz-3, but that
+; is behind the 2.5 mm wall, in air; this band behind the face gives the lip something to be cut from. Notched
+; 0.5 mm round the display and the cameras, which sit up to the glass.
+[let glass-band [difference [tilt [union [bx [- xfz 14.7] -38.8 [- zf 26.3] [- xfz 2.7] 38.8 [+ zf 38.3]]          ; display (zd = zf + 6)
+                                         [union [bx [- xfz 15.0] [- [/ baseline 2.0] 13.0] [- ze 12.5] [- xfz 2.7] [+ [/ baseline 2.0] 13.0] [+ ze 12.5]]
+                                                [bx [- xfz 15.0] [- -13.0 [/ baseline 2.0]] [- ze 12.5] [- xfz 2.7] [- 13.0 [/ baseline 2.0]] [+ ze 12.5]]]]]
+                            [tilt [loft #[[glass-sec [- xfz 4.5] -3.0] [glass-sec [- xfz 1.0] -3.0]]]]]]
+[let cavity [pipe shell-inner [difference fix-blocks] [difference glass-band]]]
+[let cortex-tub [difference [pipe cavity [union below-floor] [union vents] [union face-opening] [union io-cut] [union insert-holes]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
-[let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
+; M3 countersunk (90 deg, head 6.6) up into the tub inserts; M2.5 countersunk (head 4.8) up through each sled foot
+[let csk [fn [x y rh rs] [union [translate x y -1.0 [cone [+ rh 1.0] rs [+ [- rh rs] 1.0]]] [translate x y -2.0 [cylinder rs [+ tf 3.0]]]]]]   ; 90 deg, from 1 below the face
+[let sled-hole-x #[-37.5 -5.5]]
+[let sled-hole-y 50.0]
+[let floor-holes [tree-union [flatten #[
+  [map [fn [q] [csk [nth q 0] [nth q 1] 3.3 1.7]] fix-xy]
+  [map [fn [x] [csk x sled-hole-y 2.4 1.35]] sled-hole-x]
+  [map [fn [x] [csk x [- 0.0 sled-hole-y] 2.4 1.35]] sled-hole-x]]]]]
+[let cortex-floor [difference [union dock-cuts floor-holes] [union [intersection below-floor shell-solid] cone-bosses]]]
 [let cortex-padboard [bx -6.0 -10.0 0.3 6.0 10.0 1.3]]
 [let cortex-pads [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] 0.0 [cylinder 1.25 0.3]]]] pad-xy]]
 [let cortex-strikes [union [translate 0.0 30.0 0.0 [cylinder 4.0 1.0]] [translate 0.0 -30.0 0.0 [cylinder 4.0 1.0]]]]   ; steel discs
@@ -213,6 +244,18 @@
                           [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
 [let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
 [let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
+; The printed v1 sled (cortex-sled stays the 2 mm Al production part): 3 mm walls, an outward foot with 2 x M2.5 up
+; through the floor (nut on top, reached from above with the tub off), and an inward 3 mm top flange under the
+; carrier's edge, left blank: drill it to the A603's holes (MEASURE.md #5). The flange clears the pack by 1 mm.
+[let sled-print-side [fn [s]
+  [let yy [fn [a b] #[[min #[[* s a] [* s b]]] [max #[[* s a] [* s b]]]]]]
+  [let w [yy 43.0 46.0]] [let f [yy 46.0 54.0]] [let t [yy 38.0 46.0]]
+  [difference [union [translate [nth sled-hole-x 0] [* s sled-hole-y] [- tf 0.01] [cylinder 1.35 4.0]]
+                     [translate [nth sled-hole-x 1] [* s sled-hole-y] [- tf 0.01] [cylinder 1.35 4.0]]]
+    [pipe [bx [+ jxa 8.0] [nth w 0] tf jxb [nth w 1] zj0]
+          [union [bx [+ jxa 8.0] [nth f 0] tf jxb [nth f 1] [+ tf 3.0]]]
+          [union [bx [+ jxa 8.0] [nth t 0] [- zj0 3.0] jxb [nth t 1] zj0]]]]]]
+[let cortex-sled-print [union [sled-print-side 1.0] [sled-print-side -1.0]]]
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)

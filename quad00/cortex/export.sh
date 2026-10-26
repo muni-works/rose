@@ -2,8 +2,8 @@
 # cortex.loon -> one STL per part (stl/, the head proxies the Python checks load) and STEP + STL for the parts
 # someone makes (../fab/cortex/). Run from this folder:  sh export.sh   (VCAD=path/to/vcad to override)
 set -e
-VCAD=${VCAD:-$HOME/Developer/vcad/target/release/vcad}
-MAKE="cortex-tub cortex-floor cortex-ear-grilles cortex-exhaust-grille cortex-sled cortex-keeper dock-pawl dock-release dock-face"
+VCAD=${VCAD:-${CARGO_TARGET_DIR:-$HOME/Developer/vcad/target}/release/vcad}
+MAKE="cortex-tub cortex-floor cortex-ear-grilles cortex-exhaust-grille cortex-sled cortex-sled-print cortex-keeper dock-pawl dock-release dock-face"
 BUY="cortex-glass cortex-padboard cortex-pads cortex-strikes cortex-display cortex-cams cortex-dockboard cortex-power
      cortex-battery cortex-compute cortex-heatsink cortex-speakers cortex-mics cortex-amps cortex-cables
      dock-pogo dock-pogo-block dock-cones dock-magnets"
