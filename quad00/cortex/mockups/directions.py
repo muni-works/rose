@@ -15,6 +15,7 @@ import manifold3d as mf
 import trimesh
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.dirname(HERE)          # cortex/: the loon source dir (its stl/ proxies)
 T = os.path.join(os.environ.get("CARGO_TARGET_DIR", os.path.expanduser("~/Developer/vcad/target")), "release")
 R = os.environ.get("VCAD_RENDER", os.path.join(T, "vcad-render"))
 SPP = int(sys.argv[1]) if len(sys.argv) > 1 else 96
@@ -290,6 +291,43 @@ def option_H():
     return parts, zc
 
 
+def explode(tag, fn, d):
+    # an exploded view: shell parts spread apart along sensible axes, the electronics stack behind (the mini's
+    # bought-part proxies from cortex.loon), so the insides and the assembly order are visible.
+    parts, zc = fn()
+    use = {"body": (0, 0, 95), "glass": (60, 0, 0), "panel": (40, 0, 0), "ear_l": (0, 100, 0), "ear_r": (0, -100, 0),
+           "ring_l": (0, 140, 0), "ring_r": (0, -140, 0), "band": (0, 0, -95)}
+    roots = []
+    import shutil
+    for k, off in use.items():
+        base = k[:-2] if k.endswith("_l") or k.endswith("_r") else k
+        if base not in parts:
+            continue
+        m = parts[base]
+        if base != k:                                          # a pair part: split the mesh along y=0
+            m = mf.Manifold.batch_boolean([
+                m, mf.Manifold.cube((4 * BIG, 2 * BIG, 4 * BIG)).translate(
+                    (-BIG, 0 if k.endswith("_l") else -2 * BIG, -BIG))], mf.OpType.Intersect)
+        f = f"{tag}-x-{k}.stl"
+        tm(m.translate(off)).export(os.path.join(d, f))
+        roots.append(f'[root [import-mesh-scaled 0.001 0.001 0.001 "{f}"] "{MAT[base]}"]')
+    # the electronics stack, BEHIND the skull (the head's back is -x): battery low, compute mid, heatsink high
+    ex, ey, ez = -95.0, 0.0, 86.0
+    stack = [("cortex-battery", (ex, ey, ez - 30.0), "cell_pack"),
+             ("cortex-compute", (ex - 55.0, ey, ez - 8.0), "pcb_green"),
+             ("cortex-heatsink", (ex - 105.0, ey, ez + 6.0), "alu"),
+             ("cortex-speakers", (ex - 40.0, 55.0, ez - 60.0), "ear_grey"),
+             ("cortex-speakers", (ex - 40.0, -55.0, ez - 60.0), "ear_grey")]
+    for si, (name, (x, y, z), mat) in enumerate(stack):
+        p = os.path.join(SRC, "stl", name + ".stl")
+        if not os.path.exists(p):
+            continue
+        rel = name if si < 3 else f"{name}-{si}"
+        shutil.copy(p, os.path.join(d, rel + ".stl"))
+        roots.append(f'[root [translate {x} {y} {z} [import-mesh-scaled 0.001 0.001 0.001 "{rel}.stl"]] "{mat}"]')
+    return roots
+
+
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "gloss_black" 0.006 0.006 0.008 0.0 0.04]
 [material "alu" 0.80 0.80 0.81 1.0 0.28]
@@ -299,6 +337,7 @@ MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "banana" 0.86 0.66 0.10 0.0 0.55]
 [material "banana_stem" 0.30 0.32 0.10 0.0 0.7]
 [material "banana_tip" 0.12 0.08 0.04 0.0 0.7]
+[material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
 """
 MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black")
 
@@ -447,6 +486,14 @@ def main():
     for tag in [t for t, _ in opts] + [t + "7" for t, _ in opts]:
         jobs.append((f"{tag}.loon", f"dir-{tag}-34.png", ["--size", "1200x1200", "--azimuth", "32", "--elevation", "10", "--fov", "22", "--fill", "0.8"]))
         jobs.append((f"{tag}.loon", f"dir-{tag}-front.png", ["--size", "1200x1200", "--azimuth", "0", "--elevation", "4", "--fov", "22", "--fill", "0.8"]))
+    if os.environ.get("EXPLODE"):
+        for tag0, fn in opts:
+            exp = explode(tag0, fn, d)
+            with open(os.path.join(d, f"{tag0}-x.loon"), "w") as f:
+                f.write(MATS + "\n".join(exp) + "\n")
+            jobs.append((f"{tag0}-x.loon", f"{tag0}-exploded.png",
+                         ["--size", "1800x1400", "--azimuth=-58", "--elevation", "14", "--fov", "20",
+                          "--fill", "0.9", "--aperture", "0.02"]))
     if os.environ.get("ONLY"):
         jobs = [j for j in jobs if os.environ["ONLY"] in j[1]]
     for src, out, extra in jobs:
