@@ -23,12 +23,14 @@ VCAD = os.environ.get("VCAD") or os.path.join(
 
 LEAVES = ["shell-solid", "shell-inner", "below-floor", "ear-windows", "exhaust-window", "face-opening", "io-cut",
           "back-holes", "fix-blocks", "glass-band", "insert-holes", "floor-holes", "dock-cuts", "cone-bosses",
-          "exhaust-holes", "d4-open", "d4-cam-holes"]
+          "exhaust-holes", "d4-open", "d4-cam-holes", "d7-open", "d7-cam-holes", "ear-holes"]
 
 
-def export_leaves(names):
+def export_leaves(names, size_file=None):
+    """export leaf solids from cortex.loon at a size (default: size.loon, the mini)."""
     tmp = tempfile.mkdtemp(prefix="cortex-leaves-")
     shutil.copy(os.path.join(HERE, "cortex.loon"), tmp)
+    shutil.copy(size_file or os.path.join(HERE, "size.loon"), os.path.join(tmp, "size.loon"))
     procs = []
     for n in names:
         with open(os.path.join(tmp, n + ".loon"), "w") as f:
@@ -70,10 +72,14 @@ def build(L):
     floor = U(L["below-floor"] ^ L["shell-solid"], L["cone-bosses"]) - U(L["dock-cuts"], L["floor-holes"])
     exhaust = (L["exhaust-window"] ^ band) - L["exhaust-holes"]
     back = (L["io-cut"] ^ band) - L["back-holes"]
+    ears = (L["ear-windows"] ^ band) - L["ear-holes"]
+    cavity_bare = L["shell-inner"] - L["fix-blocks"]
+    tub_full = L["shell-solid"] - U(cavity_bare, L["below-floor"], L["ear-windows"], L["exhaust-window"], L["d7-open"],
+                                    L["d7-cam-holes"], L["io-cut"], L["insert-holes"])
     tub_d4 = L["shell-solid"] - U(cavity, L["below-floor"], L["ear-windows"], L["exhaust-window"], L["d4-open"],
-                                  L["d4-cam-holes"], L["insert-holes"])
+                                  L["d4-cam-holes"], L["io-cut"], L["insert-holes"])
     return {"cortex-tub": tub, "cortex-floor": floor, "cortex-exhaust-grille": exhaust,
-            "cortex-back-grille": back, "cortex-tub-d4": tub_d4}
+            "cortex-back-grille": back, "cortex-tub-d4": tub_d4, "cortex-tub-full": tub_full, "cortex-ear-grilles": ears}
 
 
 def rot(axis, deg):
@@ -102,23 +108,43 @@ def lay(m, R):
     return m
 
 
+MINI_ONLY = {"cortex-tub", "cortex-tub-d4"}          # the 3.5" glass face and the 4" face are mini-size parts
+FULL_ONLY = {"cortex-tub-full"}                      # the 7" face
+
+
+def build_size(size_file=None):
+    """watertight parts at a size: {name: trimesh}. size_file=None is the mini (size.loon)."""
+    full = size_file is not None and "true" in dict(
+        __import__("re").findall(r"\[pub let (size-full) (true|false)\]", open(size_file).read())).get("size-full", "")
+    skip = MINI_ONLY if full else FULL_ONLY
+    return {k: to_tm(v) for k, v in build(export_leaves(LEAVES, size_file)).items() if k not in skip}, full
+
+
 def main():
-    L = export_leaves(LEAVES)
-    parts = {k: to_tm(v) for k, v in build(L).items()}
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--size", help="a size file (e.g. size-full.loon); default the mini")
+    a = ap.parse_args()
+    parts, full = build_size(a.size)
+    fab, stl, prn = (FAB, os.path.join(HERE, "stl"), PRINT) if not full else \
+        (FAB + "-full", os.path.join(HERE, "stl-full"), os.path.join(FAB + "-full", "print"))
+    for d in (fab, stl, prn):
+        os.makedirs(d, exist_ok=True)
     for k, m in parts.items():
         assert m.is_watertight, k
-        m.export(os.path.join(FAB, k + ".stl"))
-        m.export(os.path.join(HERE, "stl", k + ".stl"))
+        m.export(os.path.join(fab, k + ".stl"))
+        m.export(os.path.join(stl, k + ".stl"))
         print(f"{k}: watertight, {m.volume / 1000:.1f} cm3, {len(m.split())} bodies")
-    os.makedirs(PRINT, exist_ok=True)
-    for out, src, pick, R in PRINTS:
-        m = parts.get(src) or trimesh.load(os.path.join(FAB, src + ".stl"), force="mesh")
+    for out, src, pick, R in PRINTS + ([("cortex-tub-full", "cortex-tub-full", None, np.eye(4))] if full else []):
+        if src not in parts and not os.path.exists(os.path.join(fab, src + ".stl")):
+            continue
+        m = parts.get(src) or trimesh.load(os.path.join(fab, src + ".stl"), force="mesh")
         if pick:
             bodies = [b for b in m.split(only_watertight=False) if pick(b.bounds.mean(0))]
             m = trimesh.util.concatenate(bodies)
         m = lay(m, R)
         assert m.is_watertight, out
-        m.export(os.path.join(PRINT, out + ".stl"))
+        m.export(os.path.join(prn, out + ".stl"))
         e = m.extents
         print(f"print/{out}.stl: {e[0]:.1f} x {e[1]:.1f} x {e[2]:.1f} mm, {m.volume / 1000:.1f} cm3")
 

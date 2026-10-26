@@ -243,10 +243,10 @@
 [let cortex-tub [difference [pipe cavity [union below-floor] [union vents] [union face-opening] [union io-cut] [union insert-holes]] shell-solid]]
 ; the 4-inch-face tub variant: the display's own glass is the face, so its window replaces the glass opening, and the
 ; outboard cameras get lens holes through the wall
-[let cortex-tub-d4 [difference [pipe cavity [union below-floor] [union vents] [union d4-open] [union d4-cam-holes] [union insert-holes]] shell-solid]]
+[let cortex-tub-d4 [difference [pipe cavity [union below-floor] [union vents] [union d4-open] [union d4-cam-holes] [union io-cut] [union insert-holes]] shell-solid]]
 ; the 7-inch-face tub (full size): same scheme, the display's own bezel is the dead front
 [let cavity-bare [pipe shell-inner [difference fix-blocks]]]   ; no mini glass seat: the 7-inch bonds to the plain inner face
-[let cortex-tub-full [difference [pipe cavity-bare [union below-floor] [union vents] [union d7-open] [union d7-cam-holes] [union insert-holes]] shell-solid]]
+[let cortex-tub-full [difference [pipe cavity-bare [union below-floor] [union vents] [union d7-open] [union d7-cam-holes] [union io-cut] [union insert-holes]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
 ; M3 countersunk (90 deg, head 6.6) up into the tub inserts; M2.5 countersunk (head 4.8) up through each sled foot
 [let csk [fn [x y rh rs] [union [translate x y -1.0 [cone [+ rh 1.0] rs [+ [- rh rs] 1.0]]] [translate x y -2.0 [cylinder rs [+ tf 3.0]]]]]]   ; 90 deg, from 1 below the face

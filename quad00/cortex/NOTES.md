@@ -64,3 +64,20 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   1 args"); `[cylinder-n r h n]` works. Worked around; report to the vcad manager.
 - 4" open: its HDMI/touch connectors sit on one edge (~12 mm deep) — check which edge Cam's unit has and that it
   clears the sled; its touch runs over USB-C (a second cable to the A603) or I2C.
+
+## 5. Full head, 7-inch (2026-10-26, Cam: "let's do the 7-inch full head")
+
+- **One source, every size:** cortex.loon now takes its four shell planes (and the 7-inch envelope + placement) from
+  `size.loon` (mini, the default; output bit-identical to before) or a full-size file copied in as `size.loon`.
+  loon gotchas found: `[use m]` binds `m.name` only (bare names need `[use m [a b ...]]`), and unary `[- x]` on a
+  module-imported value panics the interpreter (builtins.rs `-` reads args[1]) -- use `[- 0.0 x]`.
+- **7-inch (Waveshare 7inch HDMI LCD (C), 164.9 x 107 x 8, active 154.21 x 85.92)** mounts **behind** the face wall:
+  its PCB is bigger than any window with a bond land, so it can't sit proud like the 4-inch. Window = active + 2 mm;
+  the glass VHBs to the inner face; the tub is the bezel. Active area centred on the outline: ASSUMED.
+- **The open call is where the eyes go** (the 7-inch leaves ~10 mm of flat face each side on a straight 1.4x mini).
+  Mockups in `mockups/` (`full-above|beside|corner.loon`, `render.sh`, `lineup.png`): above 216 x 146 x 192,
+  beside 272 x 146 x 169, corner 229 x 146 x 169. The full body's neck currently sizes its head ~170 x 188 x 127
+  (scaled K1 helmet), so the body proportions get re-checked whichever wins.
+- Photoreal with the face UI lit on the screen (`mockups/ui_face.py` -> ui-face-1024x600.png, `photoreal.py`) needs
+  emissive + image-mapped materials in vcad-render: being added by a subagent in /tmp/vb/vcad as a patch
+  (/tmp/vb/vcad-emissive.patch) -- to land in vcad via the vcad manager, not committed from here.
