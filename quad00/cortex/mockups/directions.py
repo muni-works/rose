@@ -295,8 +295,9 @@ def explode(tag, fn, d):
     # an exploded view: shell parts spread apart along sensible axes, the electronics stack behind (the mini's
     # bought-part proxies from cortex.loon), so the insides and the assembly order are visible.
     parts, zc = fn()
-    use = {"body": (0, 0, 95), "glass": (60, 0, 0), "panel": (40, 0, 0), "ear_l": (0, 100, 0), "ear_r": (0, -100, 0),
-           "ring_l": (0, 140, 0), "ring_r": (0, -140, 0), "band": (0, 0, -95)}
+    use = {"body": (0, 0, 95), "glass": (60, 0, 0), "panel": (40, 0, 0), "eye": (75, 0, 15),
+           "ear_l": (0, 100, 0), "ear_r": (0, -100, 0), "ring_l": (0, 140, 0), "ring_r": (0, -140, 0),
+           "band": (0, 0, -95), "lens": (30, 55, 0)}
     roots = []
     import shutil
     for k, off in use.items():
@@ -310,7 +311,7 @@ def explode(tag, fn, d):
                     (-BIG, 0 if k.endswith("_l") else -2 * BIG, -BIG))], mf.OpType.Intersect)
         f = f"{tag}-x-{k}.stl"
         tm(m.translate(off)).export(os.path.join(d, f))
-        roots.append(f'[root [import-mesh-scaled 0.001 0.001 0.001 "{f}"] "{MAT[base]}"]')
+        roots.append(f'[root [import-mesh-scaled 0.001 0.001 0.001 "{f}"] "{MAT.get(base, "default")}"]')
     # the electronics stack, BEHIND the skull (the head's back is -x): battery low, compute mid, heatsink high
     ex, ey, ez = -95.0, 0.0, 86.0
     stack = [("cortex-battery", (ex, ey, ez - 30.0), "cell_pack"),
@@ -416,29 +417,37 @@ def option_J():
     zc = 0.52 * H                                              # the face panel: centred, slightly high
     x_face = xf - 9.0                                          # the flat face plane
     skull = skull ^ box(-BIG, -BIG, -BIG, x_face, BIG, BIG)    # the facet cut (the crown keeps its dome)
-    # the panel: flush in the facet, with a 1.2 mm reveal all round (a shadow line, not a bezel part)
-    pw, ph = 42.0, 42.0
+    # the panel: flush in the facet, 1.2 mm reveal all round. TALL (84 x 104): it covers nose-to-chin, so the
+    # drawn face -- eyes, waveform mouth, all of it -- lives on the one screen (the Figure/EVE approach); the
+    # physical domes overlay the drawn eyes. The mouth is animated (waveform + mouth shapes), which the research
+    # and Cam both point at: a face without a mouth is unsettling, a drawn mouth is not.
+    pw, ph = 42.0, 52.0
     glass = box(x_face - 0.25, -pw, zc - ph, x_face - 0.05, pw, zc + ph)
     panel = box(x_face - 13.0, -pw - 0.5, zc - ph - 0.5, x_face - 0.25, pw + 0.5, zc + ph + 0.5)
     skull = skull - panel
     # the eyes: three nested emissive domes per eye (halo, mid, core) -- a cheap bloom, since kosm-render has
     # no per-hit image emission yet (the real soft edges come from the UI image when it does)
     ew, eh, gap = 19.0, 25.0, 1.5 * 19.0
-    # the eyes: a glossy dark glass dome per eye (catches the light like a real lens) with a smaller bright
-    # emissive core recessed inside -- the Vector/Eilik construction. All geometry; no image emission needed.
-    ew, eh, gap = 21.0, 27.0, 1.45 * 21.0
+    # the eyes: glossy dark glass domes (cabochons -- 22 mm acrylic/glass dome halves, off the shelf) over the
+    # pane's drawn eyes. Their emissive cores sit BEHIND the pane plane (the screen's own pixels are the light).
+    ew, eh, gap = 21.0, 26.0, 1.45 * 21.0
     xg = x_face - 0.05                                        # the pane's front plane
     dome_l, core = None, None
     for sg in (1, -1):
-        yc = sg * (0.5 * gap + 0.5 * ew)
-        # the dome: a sphere whose front protrudes 2.2 mm past the pane (centre x = front - 3.0)
-        d = mf.Manifold.sphere(1.0, 96).scale((3.0, ew / 2, eh / 2)).translate((xg + 2.2 - 3.0, yc, zc + 6.0))
+        yc = sg * (0.5 * gap + 0.5 * ew)                      # the eyes straddle y = 0, on the pane's upper half
+        d = mf.Manifold.sphere(1.0, 96).scale((3.0, ew / 2, eh / 2)).translate((xg + 2.2 - 3.0, yc, zc + 14.0))
         dome_l = d if dome_l is None else dome_l + d
-        # the emissive core: a smaller dome recessed 0.8 behind the glass dome's front
-        c = mf.Manifold.sphere(1.0, 96).scale((2.4, ew / 2 * 0.62, eh / 2 * 0.62)).translate((xg + 2.2 - 0.8 - 2.4, yc, zc + 6.0))
+        # the lit pixels: an emissive disc on the pane under each dome, seen THROUGH the translucent dome
+        c = box(xg - 0.02, yc - ew / 2 * 0.8, zc + 14.0 - eh / 2 * 0.8, xg + 0.02, yc + ew / 2 * 0.8,
+                zc + 14.0 + eh / 2 * 0.8)
         core = c if core is None else core + c
     eye = dome_l
-    core_out = core
+    # the mouth: a soft emissive bar low on the pane -- the waveform/mouth animation lives here in firmware
+    # (dim glow = speaking; off = dark). A stadium: the hull of two spheres along y.
+    mw, mh, mz = 26.0, 7.0, zc - 16.0
+    mouth = mf.Manifold.batch_hull([
+        mf.Manifold.sphere(mh / 2, 64).translate((xg + 0.02, -mw / 2 + mh / 2, mz)),
+        mf.Manifold.sphere(mh / 2, 64).translate((xg + 0.02, mw / 2 - mh / 2, mz))])
     # the ears: on the skull's own curve, the ring a recessed groove
     ex, ez, er = -12.0 * W / 128.0, 0.50 * H, 22.0 * W / 128.0
     cap_out, ring_out = grown2(1.2), grown2(0.5)
@@ -456,7 +465,7 @@ def option_J():
     hole = mf.Manifold.batch_boolean(holes, mf.OpType.Add)
     ear = mf.Manifold.batch_boolean(ears, mf.OpType.Add) - hole
     ring = mf.Manifold.batch_boolean(rings, mf.OpType.Add)
-    return dict(body=skull, glass=glass, panel=panel, eye=dome_l, eye1=core, ear=ear, ring=ring), zc
+    return dict(body=skull, glass=glass, panel=panel, eye=dome_l, mouth=mouth, ear=ear, ring=ring), zc
 
 
 MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
@@ -469,9 +478,13 @@ MATS = """[material "soft_black" 0.028 0.029 0.032 0.0 0.62]
 [material "banana_stem" 0.30 0.32 0.10 0.0 0.7]
 [material "banana_tip" 0.12 0.08 0.04 0.0 0.7]
 [material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
+[material-emissive "dome_smoke" 0.72 0.80 0.92 0.0 0.10 1.0 1.0 1.0 1.05 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]   ; the lens glows (the screen behind it, seen through smoked glass)
+[material-emissive "eye_core" 0.92 0.95 1.0 0.0 0.3 1.0 1.0 1.0 2.4 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
+[material-emissive "mouth_glow" 0.75 0.80 0.88 0.0 0.3 1.0 1.0 1.0 1.1 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
 [material-emissive "eye_core" 0.93 0.95 0.98 0.0 0.22 1.0 1.0 1.0 2.6 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
 """
-MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent", panel="soft_black", lens="lens", eye="gloss_black", eye1="eye_core")
+MAT = dict(body="soft_black", glass="gloss_black", band="gloss_black", ear="ear_grey", ring="accent",
+           panel="soft_black", lens="lens", eye="dome_smoke", core="eye_core", mouth="mouth_glow")
 
 
 def build(tag, fn, d, dy=0.0):
@@ -483,7 +496,7 @@ def build(tag, fn, d, dy=0.0):
     mname = f"face_{tag}"
     if EMISSIVE:
         # looking down -x with z up, the viewer's left is -y: the image's top-left goes at -y, its width runs +y
-        mat = f'[material "{mname}" 0.006 0.006 0.008 0.0 0.04]'   # pane: near-black gloss; the eyes glow
+        mat = f'[material "{mname}" 0.010 0.010 0.013 0.0 0.10]'   # pane: a lighter gloss than the skull, reads as glass
     else:
         mat = f'[material "{mname}" 0.006 0.006 0.008 0.0 0.04]'
     roots = []
