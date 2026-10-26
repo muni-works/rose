@@ -81,3 +81,25 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
 - Photoreal with the face UI lit on the screen (`mockups/ui_face.py` -> ui-face-1024x600.png, `photoreal.py`) needs
   emissive + image-mapped materials in vcad-render: being added by a subagent in /tmp/vb/vcad as a patch
   (/tmp/vb/vcad-emissive.patch) -- to land in vcad via the vcad manager, not committed from here.
+
+## 6. Head-design research (2026-10-26, precedent sweep, findings applied)
+
+- **Eyes are the whole expression budget** (Keepon: two dots; no mouth). Baby-schema sizing (Lorenz kindchenschema):
+  each eye ~1/5 of the face-band width, centre spacing 1.5-1.8 eye-widths, set HIGH (forehead above, small chin
+  below). Applied: ui_face.py eye geometry; eyes at 0.40 h.
+- **Eyes must sit INSIDE the camera baseline.** Our eye graphics were at the camera spacing (110 mm) which reads
+  as a camera rig, not a face. Graphics and cameras are decoupled: cameras keep the wide baseline, the drawn eyes
+  sit inside it.
+- **Off-state is the resting identity** (Vector: premium because almost nothing is ever lit). UI contract: black
+  background, emissive eyes only, no widgets on the face; state goes to voice/app. Dead front: pane base tinted
+  near-black so display-off = shell-black (Nest logic).
+- **One accent only** (Braun AB1/ET66): the ear ring (or dock latch button) -- never the face or shell.
+- **The skin is the vent** (HomePod): use the Ø1.4 hex pattern as the shell's own texture language; no freeform vents.
+- **Uncanny-valley exposure is about heads first** (Mori 1970): the abstract two-eye face is the safe register; never
+  go humanlike (no skin, nose, brows).
+- **Personality is ~80% motion** (Disney/Pixar): invest in eye animation (blink cadence, saccades, idle gaze) over
+  static detail.
+- **Bezel metaphors, unify:** mini panel-proud (Vector-like) vs full shell-aperture (Nest-like) -- research favours
+  the shell-aperture approach for both (shell = the only visible edge; no screen margin visible).
+- Re-check queue if this becomes a spec: Vector's actual face optics (laser display, tint) and Eilik's eye
+  proportions (closest shipped analog to the mini).
