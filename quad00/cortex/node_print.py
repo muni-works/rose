@@ -156,10 +156,15 @@ def boss(x, y):
     b = mf.Manifold.cylinder(10.0, 4.0, 4.0, 32).translate((x + d[0], y + d[1], FLOOR))
     return mf.Manifold.batch_hull([a, b])
 
-# USB-C on the back: a panel-mount USB-C extension (female, 2 screw ears), wired to the carrier. Low on the back
-# where the surface faces down (sheltered from rain), clear of everything inside. Ears ASSUMED 2 x M3 at 18 mm
-# (common panel-mount part; check yours).
-USB_Z, USB_EAR = 20.0, 9.0
+# USB-C on the back: power in AND data. The receptacle is on the power board itself (USB-PD sink + 3S charger,
+# 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall -- no panel-mount extension. The board
+# screws flat to a pad inside the back wall (4 x M2.5 self-tapping, blind holes) just under the exhaust. VBUS/CC go to
+# the PD sink; the USB 2 pair goes on to the carrier (see NODE-BRIEF.md v1.8). Low on the back, where the surface
+# faces slightly down.
+USB_Z = 34.0                    # receptacle centre
+PB_X = -53.0                    # power board's back face (the pad's flat)
+PB_Z0, PB_Z1, PB_Y = 27.0, 57.0, 20.0
+PB_HOLES = [(sy * 17.0, z) for sy in (1, -1) for z in (30.0, 54.0)]
 
 def main():
     outer = loft([(z, outline_at(z)) for z in ZS])
@@ -170,12 +175,13 @@ def main():
     hs = holes()
     bosses = [boss(x, y) for x, y in boss_points()]
     inner_floor_clear = box(-100.0, -100.0, -5.0, 100.0, 100.0, FLOOR)   # nothing below the floor's top face
-    usb_pad = box(-80.0, -14.0, USB_Z - 9.0, -56.0, 14.0, USB_Z + 9.0)        # flat inside face at x -56 for the ears
+    usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 3.0, PB_X, PB_Y + 2.0, PB_Z1 + 1.0)   # flat inside face for the board
     tub = ((outer - inner) + ((mf.Manifold.batch_boolean(bosses + [usb_pad], mf.OpType.Add) ^ outer) - inner_floor_clear)) - face
     cuts = list(hs)
     cuts += [mf.Manifold.cylinder(7.0, 2.0, 2.0, 24).translate((x, y, FLOOR)) for x, y in boss_points()]   # M3 heat-set, Ø4 x 7
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
-    cuts += [rod((-60.0, s * USB_EAR, USB_Z), (1, 0, 0), 1.6, 30.0) for s in (1, -1)]
+    cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2, to the receptacle face
+    cuts += [rod((PB_X - (1.8 if z < 40 else 3.0), y, z), (1, 0, 0), 1.1, 3.6 if z < 40 else 6.0) for y, z in PB_HOLES]   # M2.5 self-tap: 3.6 deep low (thin wall), 6 high
     tub = tub - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     # floor plate + sled, one print, flat on the bed, no supports. The plate drops into the bottom opening (0.2

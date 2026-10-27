@@ -22,8 +22,8 @@ PARTS = {
     'display': (FACE_X - 11.5, -42, 13, FACE_X, 42, 97, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep incl. connectors'),
     'cam-l': (FACE_X - 14, 13.5, 97.5, FACE_X, 38.5, 119.5, 'pcb_green', 'IMX219 25 x 24 x 13, lens at z 108.5, y +26'),
     'cam-r': (FACE_X - 14, -38.5, 97.5, FACE_X, -13.5, 119.5, 'pcb_green', 'IMX219, y -26'),
-    'power': (-53, -20, 34, -47, 20, 64, 'pcb_green', 'PD sink + 3S charger 30 x 40 x 6, upright on the back wall'),
-    'usb-c': (-56, -6, 16, -40, 6, 24, 'heatsink', 'panel-mount USB-C, 16 deep incl. cable boot, from the back pad'),
+    'power': (-53, -20, 27, -47, 20, 57, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
+    'usb-c': (-56.5, -4.6, 32.2, -53, 4.6, 35.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
     'sled-l': (-18, 34, FLOOR, 10, 43, 36, 'petg_grey', 'printed sled wall + lip (with the floor)'),
     'sled-r': (-18, -43, FLOOR, 10, -34, 36, 'petg_grey', 'printed sled wall + lip'),
 }
@@ -91,7 +91,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display', 'cam-l', 'cam-r')) if not name.startswith(('boss', 'usb')) else CLEAR
+        g = min_gap(box_points(b), skip_face=name in ('display', 'cam-l', 'cam-r')) if not name.startswith(('boss', 'usb', 'power')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)

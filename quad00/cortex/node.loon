@@ -103,8 +103,8 @@
 [let node-display [bx 44.3 -42.0 13.0 55.8 42.0 97.0]]  ; 4in 84 x 84 glass + module, 11.5 deep incl. connectors
 [let node-cam-l [bx 41.8 13.5 97.5 55.8 38.5 119.5]]  ; IMX219 25 x 24 x 13, lens at z 108.5, y +26
 [let node-cam-r [bx 41.8 -38.5 97.5 55.8 -13.5 119.5]]  ; IMX219, y -26
-[let node-power [bx -53.0 -20.0 34.0 -47.0 20.0 64.0]]  ; PD sink + 3S charger 30 x 40 x 6, upright on the back wall
-[let node-usb-c [bx -56.0 -6.0 16.0 -40.0 6.0 24.0]]  ; panel-mount USB-C, 16 deep incl. cable boot, from the back pad
+[let node-power [bx -53.0 -20.0 27.0 -47.0 20.0 57.0]]  ; PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C
+[let node-usb-c [bx -56.5 -4.6 32.2 -53.0 4.6 35.8]]  ; mid-mount USB-C receptacle on the power board, through the wall
 [let node-sled-l [bx -18.0 34.0 3.0 10.0 43.0 36.0]]  ; printed sled wall + lip (with the floor)
 [let node-sled-r [bx -18.0 -43.0 3.0 10.0 -34.0 36.0]]  ; printed sled wall + lip
 [let node-boss-0 [bx 34.0 24.0 3.0 42.0 32.0 13.0]]  ; M3 heat-set boss Ø8

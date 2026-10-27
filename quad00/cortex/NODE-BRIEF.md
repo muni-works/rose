@@ -241,8 +241,7 @@ Exhaust open area after the move: 9 rows × ~44 ≈ 390 holes, ~600 mm². The 30
 gaskets, sealing coat) are parked for a later outdoor version. The 30° hole angles and the sheltered exhaust stay,
 because they cost nothing to print.
 
-**USB-C on the back:** a panel-mount USB-C extension (female, 2 screw ears, ASSUMED M3 at 18 mm: check yours) sits
-low on the back at z 20, on a flat pad inside the wall. The surface faces slightly down there. Its cable runs to
+**USB-C on the back:** see v1.8 (it's now on the power board itself). The surface faces slightly down there. Its cable runs to
 the carrier. It's sized for the **Orin Nano** module you're fitting: the A603 takes Nano or NX in the same footprint,
 and the Nano's lower power (7–25 W) eases the thermal budget. **Open:** which port does it wire to, the A603's USB-C
 device/recovery port (data + flashing) or a PD power input? As drawn, it's data. Power for the MVP then comes from
@@ -267,3 +266,29 @@ the carrier's DC jack with the shell off, or from the dock pads.
 **Internals fit** (`node_fit.py`, clearances to the 2.5 mm wall, all ≥ 1 mm, no clashes): battery 4.2, carrier 2.0,
 display 2.7, cameras 1.6, speakers 1.0, power 2.5, USB-C 1.0, sled 5.9, bosses 1.0. Renders: `print-fit` /
 `print-fit-ear` (section through the printed tub with the parts).
+
+## v1.8 USB-C = PD power in + data (2026-10-27)
+
+The back USB-C is now the head's **power input and its data port**. There's no panel-mount extension: the receptacle
+is on the power board.
+
+```
+USB-C receptacle (on the power board, through the back wall)
+ ├─ VBUS, CC1/CC2 ──> USB-PD sink (TPS25750 class, asks for 20 V) ──> 3S charger / power path (BQ25713 class)
+ │                                                                     ├─> pack (3S 21700)
+ │                                                                     └─> system rail ──> A603 DC in (9–20 V)
+ └─ D+/D- (USB 2) ──> short USB 2 cable ──> A603's USB-C device/recovery port (flashing, USB gadget/ethernet)
+```
+
+- **Board:** PD sink + charger on one 40 W × 30 H × 6 mm board. A mid-mount right-angle USB-C sits on its bottom
+  edge. It screws flat to a pad inside the back wall (z 27–57, under the exhaust) with 4 × M2.5 self-tapping into
+  blind holes. The lower two are only 3.6 deep because the wall is thin there.
+- **Wall:** a 9.2 × 3.6 slot through to the receptacle, plus a 12.8 × 7.2 R3 pocket from outside so a plug's
+  overmold reaches it (the receptacle face sits 2.7 mm inside the skin).
+- **USB 2 only for data**: the SuperSpeed pairs aren't routed. That's enough for flashing, USB-gadget ethernet and
+  serial. For USB 3 the receptacle's SS pairs would need routing to the carrier on a proper cable.
+- Recovery mode on the A603 needs its REC button held at power-up. For the MVP that's done with the shell off, or
+  the button can be brought out to a pinhole later.
+- Charging at 20 V PD: about 60 W from a 65 W charger, and the pack + system share it. A 5 V-only charger gives
+  trickle power only.
+- **Rebuild**: tub 121 cm³, watertight. Fit: power board and receptacle clear everything; nothing clashes.
