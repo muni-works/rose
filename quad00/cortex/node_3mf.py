@@ -29,7 +29,9 @@ FAST = {
 
 # Fastest on a 0.4 nozzle: 0.5 mm lines so 2 loops per face fill the 2.0 shell exactly (no gap fill, no infill),
 # draft speeds set on the objects so they hold under any process preset, supports only past 40 deg (face-down).
-FASTEST = dict(FAST, sparse_infill_density='0%', top_shell_layers='3', bottom_shell_layers='3',
+# Near-flat roofs (the back of the head, printed face-down) are ~7 layers thick through a 2.0 shell: 3 top + 3 bottom
+# with 0% infill left the middle layer empty -- holes. 6 top + 4 bottom covers it, and 10% infill backs up anything else.
+FASTEST = dict(FAST, sparse_infill_density='10%', top_shell_layers='6', bottom_shell_layers='4',
                line_width='0.5', outer_wall_line_width='0.5', inner_wall_line_width='0.5',
                outer_wall_speed='250', inner_wall_speed='350', sparse_infill_speed='350',
                internal_solid_infill_speed='300', top_surface_speed='200', gap_infill_speed='250',
@@ -37,7 +39,7 @@ FASTEST = dict(FAST, sparse_infill_density='0%', top_shell_layers='3', bottom_sh
 
 # For a 0.6 mm nozzle (select the P1S 0.6 nozzle printer preset): 0.36 layers, 2 x 0.62 walls fill the 2.5 shell
 # on their own, so no infill at all.
-NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='0%', top_shell_layers='3', bottom_shell_layers='2',
+NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='10%', top_shell_layers='5', bottom_shell_layers='3',
                 support_threshold_angle='35')
 
 def meshes(face_down=False):
