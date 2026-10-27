@@ -471,3 +471,17 @@ The empty margin above the screen is gone: vertical scale 1.18 → 1.12, so the 
 (brow z 130) and the head is ~150 tall (was 158). The screen, grille, depth camera and devkit didn't move. Screen
 corners are flush within 0.2 mm. Fit unchanged (devkit board 2.0, display 3.3), no clashes. Both parts are
 watertight on one plate.
+
+## LOCKED: node v1.21 (2026-10-27)
+
+This is the design. Further changes are fixes from the first print, not new directions.
+
+- All-black skull head, ~123 W × 125 D × 150 H, 2 mm shell (offset along the surface normal).
+- Vertical split at x 40: the **face module** (flush 4" screen, full-width chin grille, Waveshare IMX219-83 stereo
+  depth camera behind two grille windows) and the **rear shell** (devkit on posts, pack, PD/USB-C board, ears,
+  exhaust, intake, closed bottom). Top tabs + 2 × M3 floor-tongue screws.
+- Compute: Jetson Orin Nano Super devkit, loaded from the front.
+- Files: `fab/node/node-face.stl`, `node-rear.stl`, `node-mvp*.3mf` (face module face-down, rear upright),
+  `node-assembly.vcad`. Generators: `node_skull.py` → `node_print.py` → `node_fit.py` → `node_3mf.py`.
+- Still ASSUMED until measured: the screen's glass + LCD stack depth (4.5), the devkit I/O row height (16), the PD
+  board and its mid-mount USB-C, and the A603-free power path.
