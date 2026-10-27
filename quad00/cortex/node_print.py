@@ -183,7 +183,7 @@ DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
 TONGUE_SCREWS = [(34.0, 12.0), (34.0, -12.0)]
 # neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (about the centre)
 DOCK_X, DOCK_BCD = -16.0, 14.1
-DOCK_FEET = [(-24.0, 30.0), (-24.0, -30.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
+DOCK_FEET = [(-16.0, 32.0), (-16.0, -32.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
 # the back wall (4 x M2.5 self-tapping, blind holes). VBUS/CC go to the PD sink; the USB 2 pair goes on to the devkit.
