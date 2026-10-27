@@ -35,13 +35,42 @@ def section(z, n=48):
         pts.append((x, y))
     return pts
 
+def sk(z, pts):
+    segs = ' '.join('[line %.2f %.2f %.2f %.2f]' % (*pts[i], *pts[(i + 1) % len(pts)]) for i in range(len(pts)))
+    return '[sketch 0.0 0.0 %.2f 1.0 0.0 0.0 0.0 1.0 0.0 #[%s]]' % (z, segs)
+
+def scaled(pts, k, cx=None):
+    cx = sum(x for x, _ in pts) / len(pts) if cx is None else cx
+    return [(cx + (x - cx) * k, y * k) for x, y in pts]
+
+def circle(r, cx=0.0, n=48):
+    return [(cx + r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+def loft(name, rows):
+    return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
+
 zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 103, 109, 114, 118, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
-lines = []
-for z in zs:
-    p = section(z)
-    segs = ' '.join('[line %.2f %.2f %.2f %.2f]' % (*p[i], *p[(i + 1) % len(p)]) for i in range(len(p)))
-    lines.append('  [sketch 0.0 0.0 %.2f 1.0 0.0 0.0 0.0 1.0 0.0 #[%s]]' % (z, segs))
-block = '[let node-shell [loft #[\n' + '\n'.join(lines) + ']]]\n'
+block = loft('node-shell', [(z, section(z)) for z in zs])
+
+# Neck join: the neck's top trim is the foot's own outline 1 mm smaller (the reveal), 1 mm under it, then it necks
+# down to a round column. The head rests on it; nothing reads as bolted.
+foot = section(0)
+block += loft('node-neck', [(-1.0, scaled(foot, 0.97)), (-6.0, scaled(foot, 0.86)), (-16.0, circle(30, 2.0)),
+                            (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
+
+# Jaw slot: a 2.4 mm slot along each side, under the cheeks, rising 8 deg toward the back like a jaw
+# line, from the face corner to under the ear (speakers, mics and air intake behind it). The back stays clean.
+JZ, JH = 24.0, 2.4
+ring = lambda k: [(JZ, scaled(section(JZ), k)), (JZ + JH, scaled(section(JZ), k))]
+block += loft('jaw-outer', ring(1.08)) + loft('jaw-inner', ring(0.955))
+block += loft('pipe-inner', [(JZ + 0.6, scaled(section(JZ), 0.95)), (JZ + JH - 0.6, scaled(section(JZ), 0.95))])
+block += loft('pipe-outer', [(JZ + 0.6, scaled(section(JZ), 0.962)), (JZ + JH - 0.6, scaled(section(JZ), 0.962))])
+block += '''[let jaw-tilt [fn [s] [translate 40.0 0.0 JZ [rotate 0.0 8.0 0.0 [translate -40.0 0.0 [- 0.0 JZ] s]]]]]
+[let behind-face [translate -42.0 -100.0 -50.0 [cube 78.0 200.0 200.0]]]
+[let node-jaw [jaw-tilt [intersection behind-face [difference jaw-inner jaw-outer]]]]
+[let node-pipe [jaw-tilt [intersection behind-face [difference pipe-inner pipe-outer]]]]
+[let node-head [difference node-jaw node-shell]]
+'''.replace('JZ', '%.1f' % JZ)
 src = open('node.loon').read()
 src = re.sub(r'; BEGIN skull\n.*?; END skull\n', '; BEGIN skull\n' + block + '; END skull\n', src, flags=re.S)
 open('node.loon', 'w').write(src)

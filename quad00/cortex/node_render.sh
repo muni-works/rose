@@ -7,12 +7,12 @@ mkdir -p renders/node
 tmp=$(mktemp -d .renderXXXX)
 trap 'rm -rf "$tmp"' EXIT
 cp node.loon "$tmp/"
-HEAD='node-shell:moss_black node-lenses:lens node-glass:glass node-face:face'
+HEAD='node-head:moss_black node-pipe:green node-lenses:lens node-glass:glass node-face:face'
 # name | wrap (desk|neck|none) | azimuth | elevation
 while IFS='|' read -r name wrap az el; do
   [ -z "$name" ] && continue
   {
-    echo "[use node [node-shell node-lenses node-glass node-face node-puck node-neck node-torso on-desk]]"
+    echo "[use node [node-head node-pipe node-lenses node-glass node-face node-puck node-neck node-torso on-desk]]"
     sed -n '/^\[material/p' node.loon
     for p in $HEAD; do
       n=${p%%:*}; m=${p##*:}

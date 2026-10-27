@@ -102,3 +102,17 @@ The brow domes are gone, and the panel's own square glass is the face.
   does. The join is still a placeholder.
 - **Next:** the neck join, the lip slot (now a jaw line under the cheeks?), fitting the internals into the egg (the
   carrier is 87 wide and the face end is narrower), then the thermal pass.
+
+## v1.1 neck join + jaw slot (2026-10-27)
+
+- **Neck join:** the neck's top trim is the foot's own outline, 3% smaller, 1 mm under it (the reveal). It flares
+  out of a Ø50 column, so the head rests on the neck instead of being bolted to it. The dock pads, cones and strikes
+  sit inside that trim, as in SPEC.
+- **Jaw slot:** a 2.4 mm slot along each side, running from the face corner back to under the ear at z 24 and rising
+  8° toward the back like a jaw line. There's a green light pipe 2 mm inside it. The back stays clean: a slot round
+  the back read as a seam and tessellated badly. The slot is the speaker, mic and intake port.
+- **Intake area dropped** to about 2 × 2.4 × 80 ≈ 380 mm² gross, before the speaker and mic gaskets (SPEC needs about
+  650 mm² of intake at 25 W). The thermal pass has to find the rest: a deeper slot, a second slot under the foot's
+  round, or an exhaust-assisted crown band.
+- The neck collar has a visible kink where the trim meets the column. Smooth it with more sections once the neck's
+  real diameter comes from the body.
