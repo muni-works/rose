@@ -67,7 +67,7 @@
 [let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
 ; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
 ; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
-[let zk 40.0][let zfj [* 0.48 hh]]                                  ; the facet's centre height
+[let zk 40.0][let zfj [* 0.47 hh]]                                  ; the facet's centre height
 [let xfj [- x-face [* rake zfj] 2.0]]                  ; the facet plane: 2 mm behind the crown front (no bezel)
 [let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
 
@@ -438,7 +438,7 @@
 [pub let j-skull0 [difference face-plane shell-solid]]
 ; the pane: flush in the facet (the tilted frame's u = 0 plane), 1.2 mm reveal all round
 [let j-pw 40.0]                                        ; the 4" panel: 80 wide + reveal
-[let j-ph [* 0.22 hh]]
+[let j-ph 42.5]                       ; the 4" screen: 84 tall, edge-to-edge
 [let j-pr 14.0]                                ; the pane's corner radius: the skull's plan corner
 [let j-sec [fn [u h r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h r]]]]
 [let j-pane [j-tilt [loft #[[j-sec [- 0.0 1.5] j-ph 3.0] [j-sec [- 0.0 0.2] j-ph j-pr]]]]]
