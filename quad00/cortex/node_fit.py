@@ -10,7 +10,7 @@ from node_skull import section
 WALL = 2.0          # printed shell wall (node_print.WALL)
 CLEAR = 1.0         # minimum gap to the inner wall
 FLOOR = 3.0         # floor plate under everything
-FACE_X = 56.3       # back of the inlaid 3.2 mm acrylic (its front is flush with the face plane, x 59.5)
+FACE_X = 56.0       # the face plane: the 4in panel's glass is flush with it
 
 # name: (x0, y0, z0, x1, y1, z1, material, note)
 PARTS = {
@@ -19,15 +19,13 @@ PARTS = {
     'dk-board': (-37, -50, 38, 42, 50, 39.6, 'pcb_green', 'P3768 carrier 100 x 79, on 4 posts at z 38'),
     'dk-io': (-40, -50, 39.6, -24, 50, 55.6, 'heatsink', 'I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang'),
     'dk-stack': (-24, -34, 39.6, 23, 38, 69, 'heatsink', 'module + heatsink + fan: to 31 above the board (datasheet 34.77 incl feet)'),
-    'display': (FACE_X - 1.5 - 11.5, -42, 53, FACE_X - 1.5, 42, 137, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep; bonded to the back of the sensor plate'),
+    'display': (FACE_X - 11.5, -42, 31.5, FACE_X, 42, 115.5, 'heatsink', '4in 84 x 84 glass flush in the face + module, 11.5 deep'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
-    'cam-l': (FACE_X - 7.8, 17.5, 138, FACE_X - 5.3, 42.5, 162, 'pcb_green', 'IMX219 board 25 x 24 x 2.5, y +30, in the brow behind the sensor plate'),
-    'cam-r': (FACE_X - 7.8, -42.5, 138, FACE_X - 5.3, -17.5, 162, 'pcb_green', 'IMX219 board, y -30'),
-    'lens-l': (FACE_X - 5.3, 26, 146, FACE_X, 34, 154, 'lens', 'Ø8 lens barrel through the plate to the acrylic, z 150'),
-    'lens-r': (FACE_X - 5.3, -34, 146, FACE_X, -26, 154, 'lens', 'Ø8 lens barrel'),
-    'power': (-77, -20, 32, -71, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
-    'usb-c': (-80.5, -4.6, 35.2, -77, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
+    'cam-l': (42, 43.7, 69.7, 47, 52.3, 78.3, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +48, 8 mm behind its Ø4 hole'),
+    'cam-r': (42, -52.3, 69.7, 47, -43.7, 78.3, 'pcb_green', 'IMX219 spy-camera head, y -48'),
+    'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
+    'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
 # devkit posts and seam-screw columns/bosses from node_print, as boxes, for the clash check
 try:
@@ -39,7 +37,7 @@ try:
 except ImportError:
     pass
 # speakers + mics behind each ear patch (x -6, z 66): Ø28 x 5.4, cylinder along y, against the inner wall
-EAR = (-6.0, 103.0)
+EAR = (-6.0, 66.0)
 SPK_R, SPK_T = 14.0, 5.4
 
 def poly(z, n=144):
@@ -95,7 +93,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display', 'lens-l', 'lens-r')) if not name.startswith(('post', 'seam', 'usb', 'power')) else CLEAR
+        g = min_gap(box_points(b), skip_face=name in ('display',)) if not name.startswith(('post', 'seam', 'usb', 'power')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)

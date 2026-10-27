@@ -13,7 +13,7 @@ import math, os, zipfile
 import trimesh
 
 F = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
-PLACE = {'node-upper': (128, 66), 'node-base': (128, 194)}   # stacked in y: the portrait upper is 160 tall
+PLACE = {'node-upper': (64, 128), 'node-base': (191, 128)}
 FAST = {
     'layer_height': '0.28',
     'wall_loops': '2',

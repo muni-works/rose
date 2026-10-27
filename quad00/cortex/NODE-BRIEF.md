@@ -410,3 +410,19 @@ The same whole sheet, stood **portrait** (101.6 W × 152.4 H). The landscape ver
 - Prints: the upper is 134 cm³ and 159 tall, the base 57 cm³. The P1S plate is now stacked front-to-back.
 - Thermal note: the exhaust stays level with the heatsink (z 63–75). The tall crown above is dead air, so watch
   the module temperature on the first long run.
+
+## v1.17 back to the short head, no cover sheet, sneaky cameras (2026-10-27)
+
+We were drifting (landscape, then portrait 4 × 6" sheets, then a 190 tall skull). This version goes back to the
+small head (`414688a`: ~123 W × 125 D × 134 H, 2 mm normal-offset shell, split at z 30 over the devkit) and simplifies:
+
+- **No acrylic.** The 4" panel's own 84 × 84 glass sits **flush in a pocket** in the face (x 56). The pocket is 4.5
+  deep for the glass + LCD stack (ASSUMED), and the panel drops in from the front onto a VHB ledge. Its PCB and
+  connectors pass through a 72 mm window. The pocket runs from just above the seam to the brow (z 31.3–115.7), so the
+  seam becomes a clean chin line under the screen. The face moved back to x 56.
+- **Sneaky cameras:** IMX219 "spy camera" heads (8.6 mm square on a flex, ASSUMED) behind **Ø4 holes on the face
+  rim**, tucked against the screen's side edges (y ±48, z 74). They read as part of the bezel and give a 96 mm stereo
+  baseline. That was the only spot that clears: further out onto the rounded edge, the head hits the side wall.
+- Fit: display 3.2, devkit board 2.6, I/O row 1.1, cameras 0.9. No clashes against the true shell.
+- Dropped: `node_acrylic.py` and `node-acrylic.dxf`. The landscape and portrait sheet versions are in git
+  (`4c62a29`, `b00d219`).

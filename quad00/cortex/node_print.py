@@ -10,7 +10,7 @@ import math, os
 import numpy as np
 import manifold3d as mf
 import trimesh
-from node_skull import section, BROW, FACE, ZS, SHEET_RT, SHEET_RB
+from node_skull import section, BROW, FACE
 
 WALL = 2.0                      # printed shell wall: exactly 4 x 0.5 mm lines (2 loops each face), no gap fill
 RAIN_DROP = 0.58                # tan 30: side holes fall 30 deg toward the outside
@@ -18,6 +18,8 @@ FLOOR = 3.0
 N = 144                         # points per section
 OUT = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
 
+ZS = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5,
+      133.6, 134.2]
 
 def offset(pts, d):
     """Move each vertex of a CCW polygon inward by d along its vertex normal."""
@@ -72,17 +74,6 @@ def rod(p, d, r, length=12.0):
     T = np.hstack([R, np.array(p, float).reshape(3, 1)])
     return c.transform(T)
 
-def rrect_prism2(x0, x1, cy, cz, hy, hz, rt, rb):
-    """rrect_prism with different top (rt) and bottom (rb) corner radii."""
-    pts = []
-    for cyc, czc, a0, r in ((hy - rt, hz - rt, 0, rt), (-(hy - rt), hz - rt, 90, rt), (-(hy - rb), -(hz - rb), 180, rb),
-                            (hy - rb, -(hz - rb), 270, rb)):
-        for k in range(13):
-            a = math.radians(a0 + k * 90 / 12)
-            pts.append((cy + cyc + r * math.cos(a), cz + czc + r * math.sin(a)))
-    m = mf.Manifold.extrude(mf.CrossSection([pts]), x1 - x0)
-    return m.transform(np.array([[0, 0, 1, x0], [1, 0, 0, 0], [0, 1, 0, 0.0]]))
-
 def rrect_prism(x0, x1, cy, cz, hy, hz, r):
     """Rounded rectangle in the y-z plane, extruded along x from x0 to x1."""
     pts = []
@@ -104,7 +95,7 @@ def holes():
     # Rain: every hole that isn't on the underside runs DOWN as it goes out (outer end lower, RAIN_DROP), so water
     # that lands in a hole runs back out instead of in. The underside intake already points 45 deg down.
     # ears: the 0.6-radius dots from node_skull, through along y, dropping toward the outside
-    EX, EZ, EA, EB, P = -6.0, 103.0, 6.2, 11.2, 2.6
+    EX, EZ, EA, EB, P = -6.0, 66.0, 6.2, 11.2, 2.6
     for j in range(-6, 7):
         for i in range(-4, 4):
             x, z = EX + P * (i + 0.5 * (j % 2)), EZ + P * 0.866 * j
@@ -164,7 +155,7 @@ LIP_H, LIP_T = 5.0, 1.4                     # locating lip: rises above the base
 # head_y = bx - 46), board y -> head x (I/O aft: head_x = by + DK_X0), board underside at DK_Z.
 DK_X0, DK_Z = -20.0, 38.0
 DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
-SEAM_SCREWS = [(22.0, 48.0, 50.0), (22.0, -48.0, 50.0), (-44.0, 30.0, 50.0), (-44.0, -30.0, 50.0)]   # x, y, web: all webbed out to the side/back walls (a front-centre boss would float: the display blocks its web)
+SEAM_SCREWS = [(22.0, 48.0, 14.0), (22.0, -48.0, 14.0), (-44.0, 30.0, 14.0), (-44.0, -30.0, 14.0)]   # x, y, web: all webbed out to the side/back walls (a front-centre boss would float: the display blocks its web)
 
 def column(x, y, z0, z1, r=4.0, web=14.0):
     """Ø2r column from z0 to z1 webbed out toward the wall (hull outward; clipped by the skin by the caller)."""
@@ -178,10 +169,10 @@ def column(x, y, z0, z1, r=4.0, web=14.0):
 # 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall. The board screws flat to a pad inside
 # the back wall of the UPPER shell (4 x M2.5 self-tapping, blind holes), just under the exhaust. VBUS/CC go to the PD
 # sink; the USB 2 pair goes on to the devkit (see NODE-BRIEF.md v1.8).
-PANEL_Z = 95.0                  # 4in panel centre (node.loon fz)
-CAM_Y, CAM_Z = 30.0, 150.0      # stereo cameras in the brow above the panel: 60 baseline
+PANEL_Z, PANEL_D = 73.5, 4.5      # 4in panel centre (z 31.3-115.7) and its glass + LCD stack depth (ASSUMED)
+CAM_Y, CAM_Z = 48.0, 74.0       # spy-camera heads on the face rim, tucked against the screen edge (96 baseline)
 USB_Z = 37.0                    # receptacle centre
-PB_X = -77.0                    # power board's back face (the pad's flat), just inside the back wall at the port
+PB_X = -53.0                    # power board's back face (the pad's flat)
 PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
 PB_HOLES = [(sy * 17.0, z) for sy in (1, -1) for z in (35.0, 59.0)]
 
@@ -230,27 +221,23 @@ def main():
     rods = mf.Manifold.batch_boolean(hs, mf.OpType.Add)
 
     # UPPER: everything above the seam + gap, the face window, ears, exhaust, USB-C, seam-screw bosses
-    # Face: the 3.2 mm acrylic (92 x 101.6, R8) inlays FLUSH with the face plane. It sits in a pocket on a 2.5 mm wide,
-    # LAND_T thick land (0.5 VHB); the land is a frame added behind the face, since the pocket is deeper than the wall,
-    # and the 4in panel bonds to its back (VHB), showing through the window. The window
-    # through the land is the acrylic less 2.5 per side.
-    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 50.8, 76.2, 0.6, 90.9, 1.5    # a whole 4 x 6 in sheet, portrait, factory corners
-    gx = FACE - G_T                                              # acrylic back face
-    frame = rrect_prism2(gx - LAND_T, FACE, 0.0, G_ZC, G_HY + 3.0, G_HZ + 3.0, SHEET_RT + 3.0, SHEET_RB + 3.0) ^ outer
-    pocket = rrect_prism2(gx - 0.01, FACE + 10.0, 0.0, G_ZC, G_HY + 0.2, G_HZ + 0.2, SHEET_RT + 0.2, SHEET_RB + 0.2)
-    # behind the sheet: a full SENSOR PLATE (the land), with a window for the panel's 84 square glass and a Ø10 hole
-    # per camera. The panel and cameras bond to its back; more sensors (ToF, light, mic) get their own holes here.
-    window = rrect_prism(gx - 10.0, gx + 0.5, 0.0, PANEL_Z, 43.0, 43.0, 1.0)
-    cams = [rod((gx, s_ * CAM_Y, CAM_Z), (1, 0, 0), 5.0, 12.0) for s_ in (1, -1)]
+    # Face: no cover sheet. The 4in panel's own 84 x 84 glass sits FLUSH in a pocket (glass + LCD stack, PANEL_D deep,
+    # ASSUMED), dropped in from the front onto a VHB ledge; its PCB and connectors pass through a 72 square window.
+    # The pocket runs from just above the seam to the brow, so the seam is the chin line under the screen.
+    pocket = rrect_prism(FACE - PANEL_D, FACE + 10.0, 0.0, PANEL_Z, 42.2, 42.2, 1.0)
+    window = rrect_prism(FACE - 20.0, FACE - PANEL_D + 0.5, 0.0, PANEL_Z, 36.0, 36.0, 2.0)
+    # Cameras: IMX219 "spy camera" heads (8.6 x 8.6 on a flex, ASSUMED) look forward through Ø4 holes in the face's
+    # rim right beside the screen edge, where they read as part of the bezel. 96 mm stereo baseline.
+    cams = [rod((FACE, s_ * CAM_Y, CAM_Z), (1, 0, 0), 2.0, 40.0) for s_ in (1, -1)]
     face = pocket + window + mf.Manifold.batch_boolean(cams, mf.OpType.Add)
     zu = SEAM_Z + SEAM_GAP
-    usb_pad = box(PB_X - 40.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
+    usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     ubosses = [column(x, y, zu, zu + 6.5, web=w) for x, y, w in SEAM_SCREWS]   # 6.5 tall: clears the devkit's I/O band
-    upper = (skin + frame + (mf.Manifold.batch_boolean(ubosses + [usb_pad], mf.OpType.Add) ^ outer)) ^ above(zu)
+    upper = (skin + (mf.Manifold.batch_boolean(ubosses + [usb_pad], mf.OpType.Add) ^ outer)) ^ above(zu)
     cuts = [face, rods]
     cuts += [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, zu - 0.01)) for x, y, _ in SEAM_SCREWS]  # M3 heat-set, 5.7 long
-    cuts.append(rrect_prism(PB_X - 40.0, PB_X + 3.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
-    cuts.append(rrect_prism(PB_X - 40.0, PB_X - 3.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
+    cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
+    cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
     cuts += [rod((PB_X - (1.6 if z < 40 else 3.0), y, z), (1, 0, 0), 1.1, 3.2 if z < 40 else 6.0) for y, z in PB_HOLES]   # M2.5 self-tap: 3.2 deep low (the pad thins there), 6 high
     upper = upper - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
@@ -258,13 +245,11 @@ def main():
     base = (outer ^ below(FLOOR)) + (skin ^ below(SEAM_Z))
     lip_out = loft([(z, offset(outline_at(z), WALL + 0.2)) for z in (SEAM_Z - 1.0, SEAM_Z + LIP_H)])
     lip_in = loft([(z, offset(outline_at(z), WALL + 0.2 + LIP_T)) for z in (SEAM_Z - 2.0, SEAM_Z + LIP_H + 1.0)])
-    # the acrylic and the panel bonded to the upper hang below the seam (to z 14.7 / 12): no lip across the face, and
-    # the same pocket + window in the base's front, so they slide down past it and the glass covers the seam there
-    base = base + ((lip_out - lip_in) - box(40.0, -100.0, -5.0, 100.0, 100.0, 100.0))
+    base = base + (lip_out - lip_in)
     posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.5, 3.5, 32).translate((x, y, FLOOR)) for x, y in DK_HOLES]
     cols = [column(x, y, FLOOR, SEAM_Z, web=w) for x, y, w in SEAM_SCREWS]
     base = base + (mf.Manifold.batch_boolean(posts + cols, mf.OpType.Add) ^ outer)
-    bcuts = [rods ^ below(SEAM_Z), face]
+    bcuts = [rods ^ below(SEAM_Z)]
     bcuts += [rod((x, y, DK_Z - 4.0), (0, 0, 1), 1.1, 8.5) for x, y in DK_HOLES]           # M2.5 self-tap pilots
     for x, y, _ in SEAM_SCREWS:
         bcuts.append(mf.Manifold.cylinder(SEAM_Z + 2.0, 1.7, 1.7, 24).translate((x, y, -1.0)))   # M3 clearance

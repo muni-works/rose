@@ -1,63 +1,23 @@
 """Generate the skull sections for node.loon (between the BEGIN/END skull markers). Run: python3 node_skull.py
 
 Each section is an egg in plan: a superellipse whose half width runs from `wf` at the face to `wb` at the back,
-and which squares off toward the face so the portrait 102 x 152 acrylic sits on a flat. Heights: face plane chin 11 to
-brow 170, crown to 190 (all above the seam stretched from a 134-tall design frame), neck recess under the back."""
+and which squares off toward the face so the 84 mm glass sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
+cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck recess under the back."""
 import math, re
 
-# Portrait 4 x 6 in face (101.6 W x 152.4 H). The skull is designed in a 134-tall frame, then everything above the
-# seam (z 30) is stretched to TOP, so the base, seam and devkit don't move while the face grows tall.
-SEAM, TOP = 30.0, 198.0
-STRETCH = (TOP - SEAM) / (134.0 - SEAM)
-CHIN = 11.0                                          # bottom of the flat face plane (the sheet's bottom 14.7 - its frame)
-BROW = 170.0                                         # top of the flat face plane (the sheet's top 167.1 + its frame)
-FACE = 59.5                                          # the face plane (front of the inlaid acrylic)
-WIDE = 1.0                                           # width scale (1.36 was the landscape sheet)
-FACE_HW = 56.0                                       # face half width: the sheet's 50.8 + the frame
-# the sheet, real coordinates: half width, bottom/top edge, corner radii (top corners rounded so the temples can
-# roll back into the crown; a file or one CNC pass on a stock sheet)
-SHEET_HW, SHEET_Z0, SHEET_Z1, SHEET_RT, SHEET_RB = 50.8, 14.7, 167.1, 24.0, 10.0
-FRAME = 4.0                                          # face flat beyond the sheet edge
-
-def sheet_half(z):
-    """Half width of the corner-rounded sheet at real height z (0 outside it)."""
-    if z > SHEET_Z1 or z < SHEET_Z0:
-        return 0.0
-    for zc, r in ((SHEET_Z1 - SHEET_RT, SHEET_RT), (SHEET_Z0 + SHEET_RB, SHEET_RB)):
-        d = z - zc if zc > SHEET_Z0 + SHEET_RB else zc - z
-        if (zc == SHEET_Z1 - SHEET_RT and z > zc) or (zc == SHEET_Z0 + SHEET_RB and z < zc):
-            return SHEET_HW - r + math.sqrt(max(r * r - (z - zc) ** 2, 0.0))
-    return SHEET_HW
-
-def design_z(z):
-    """Real height -> the 134-tall design frame."""
-    return z if z <= SEAM else SEAM + (z - SEAM) / STRETCH
-
-def real_z(z):
-    return z if z <= SEAM else SEAM + (z - SEAM) * STRETCH
-
-# section heights (real), denser where the crown turns
-ZS = [real_z(z) for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
-                          130.5, 132.5, 133.6, 134.2)]
+BROW = 116.0                                         # top of the flat face plane
+FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
     return (1 - u ** n) ** (1 / n)
 
 def outline(z):
-    zr = z
-    brow = design_z(BROW)
-    z = design_z(z)
-    fx = FACE if CHIN <= z <= brow else (FACE - 12 + 12 * se((CHIN - z) / CHIN, 2.2) if z < CHIN else -4 + (FACE + 4) * se((z - brow) / (134 - brow), 2.2))
-    # the back: a human skull is ~1.3x longer than wide. An elliptical occiput bulges back to x -94 at design z 70
-    # and tucks under into the neck (x -42 at the foot)
-    bx = -42 - 37 * (min(z, 30.0) / 30.0) ** 0.8 if z <= 30 else -4 - 90 * se(abs(z - 70) / 64, 2.3)
-    wb = WIDE * (58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4))   # back (parietal) half width: a round crown
-    wf = min(wb, FACE_HW) * (1 if z <= brow else se((z - brow) / (134 - brow), 2.2))   # face half width
+    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
+    bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
+    wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4)   # back (parietal) half width
+    wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
     wf = min(wf, wb)
-    # jaw: the face narrows with the sheet's rounded bottom corners
-    if SHEET_Z0 <= zr < SHEET_Z0 + SHEET_RB:
-        wf = min(wf, sheet_half(zr) + FRAME)
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))
         wb -= k; wf -= k; bx += k
@@ -65,13 +25,12 @@ def outline(z):
 
 def section(z, n=48):
     fx, bx, wf, wb = outline(z)
-    ef = 28.0 - 24.0 * min(max((z - 160.0) / 18.0, 0.0), 1.0)   # square at the sheet, round above it (no ridge)
     xc, a = (fx + bx) / 2, (fx - bx) / 2
     pts = []
     for i in range(n):
         t = 2 * math.pi * i / n
         c, s = math.cos(t), math.sin(t)
-        e = ef if c > 0 else 2.6                        # square toward the face (the flat sheet), an egg behind
+        e = 12.0 if c > 0 else 2.6                      # squarer toward the face
         x = xc + a * math.copysign(abs(c) ** (2 / e), c)
         u = min(max((x - bx) / (fx - bx), 0.0), 1.0)    # 0 back .. 1 face
         w = wb + (wf - wb) * u ** 1.6
@@ -94,7 +53,7 @@ def loft(name, rows):
     return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
 
 def main():
-    zs = ZS
+    zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
     block = loft('node-shell', [(z, section(z)) for z in zs])
 
     # Neck join: the neck's top trim is the foot's flat (the dock face) 1 mm under it, then it necks down to a round
@@ -104,16 +63,6 @@ def main():
                                 (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
 
     block += '[let node-head node-shell]\n'
-
-    # the face sheet: 3.2 acrylic, its back at x FACE - 3.2, corner radii SHEET_RT (top) / SHEET_RB (bottom)
-    zc, hz = (SHEET_Z0 + SHEET_Z1) / 2, (SHEET_Z1 - SHEET_Z0) / 2
-    gp = []
-    for cy, cz, a0, r in ((SHEET_HW - SHEET_RT, hz - SHEET_RT, 0, SHEET_RT), (-(SHEET_HW - SHEET_RT), hz - SHEET_RT, 90, SHEET_RT),
-                          (-(SHEET_HW - SHEET_RB), -(hz - SHEET_RB), 180, SHEET_RB), (SHEET_HW - SHEET_RB, -(hz - SHEET_RB), 270, SHEET_RB)):
-        gp += [(cy + r * math.cos(math.radians(a0 + k * 7.5)), cz + r * math.sin(math.radians(a0 + k * 7.5))) for k in range(13)]
-    segs = ' '.join('[line %.3f %.3f %.3f %.3f]' % (*gp[i], *gp[(i + 1) % len(gp)]) for i in range(len(gp)))
-    block += ('[let node-glass [extrude 3.2 0.0 0.0 [sketch %.2f 0.0 %.2f 0.0 1.0 0.0 0.0 0.0 1.0 #[%s]]]]\n'
-              % (FACE - 3.2, zc, segs))
 
     # Intake: a perforated band on the foot's bottom round (z 1.5-7), facing down and out. On the neck and on the puck it
     # sits in the shadow under the head, so it's hidden from any normal view. Ø1.4 on 2.2 hex, 3 rows round the whole
