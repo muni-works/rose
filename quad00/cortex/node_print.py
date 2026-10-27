@@ -181,9 +181,9 @@ STEREO_Y, STEREO_Z = 30.0, 28.5
 DK_X0, DK_Z = -20.0, 38.0
 DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
 TONGUE_SCREWS = [(34.0, 12.0), (34.0, -12.0)]
-# neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (flat frame)
+# neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (about the centre)
 DOCK_X, DOCK_BCD = -16.0, 14.1
-DOCK_FEET = [(-22.0, 32.0), (-22.0, -32.0), (22.0, 38.0), (22.0, -38.0)]
+DOCK_FEET = [(-24.0, 30.0), (-24.0, -30.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
 # the back wall (4 x M2.5 self-tapping, blind holes). VBUS/CC go to the PD sink; the USB 2 pair goes on to the devkit.
@@ -292,7 +292,7 @@ def main():
     cuts.append(dk(pcyl(26.0, 0.0, 2.5, -1.0, 0.8)))
     cuts.append(dk(pcyl(0.0, 0.0, 7.0, -1.0, FLOOR + 1.0)))
     cuts += [dk(pcyl(DOCK_BCD * u, DOCK_BCD * v, 2.1, -1.0, 4.2)) for u, v in ((1, 0), (-1, 0), (0, 1), (0, -1))]
-    cuts += [on_plane(pcyl(x, y, 4.1, -1.0, 0.6), 0.0) for x, y in DOCK_FEET]
+    cuts += [dk(pcyl(x, y, 4.1, -1.0, 0.6)) for x, y in DOCK_FEET]
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)
