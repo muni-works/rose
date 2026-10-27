@@ -146,6 +146,15 @@ def prism_yz(poly, x0, x1):
     m = mf.Manifold.extrude(mf.CrossSection([poly]), x1 - x0)
     return m.transform(np.array([[0, 0, 1, x0], [1, 0, 0, 0], [0, 1, 0, 0.0]]))
 
+def pcyl(x, y, r, z0, z1, n=32):
+    """A z-up cylinder at (x, y) from z0 to z1, for on_plane."""
+    return mf.Manifold.cylinder(z1 - z0, r, r, n).translate((x, y, z0))
+
+def on_plane(m, x0):
+    """Lay a part drawn in a z-up frame (z 0 = the outside face) onto the lean flat, its origin at plan x0, y 0."""
+    ls, lc, ld = sk.lean_plane(sk.LEAN, sk.FLAT_X)
+    return m.translate((x0 / lc, 0.0, 0.0)).rotate((0.0, sk.LEAN, 0.0)).translate((ld * ls, 0.0, ld * lc))
+
 def box(x0, y0, z0, x1, y1, z1):
     return mf.Manifold.cube((x1 - x0, y1 - y0, z1 - z0)).translate((x0, y0, z0))
 
@@ -172,6 +181,9 @@ STEREO_Y, STEREO_Z = 30.0, 28.5
 DK_X0, DK_Z = -20.0, 38.0
 DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
 TONGUE_SCREWS = [(34.0, 12.0), (34.0, -12.0)]
+# neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (flat frame)
+DOCK_X, DOCK_BCD = -16.0, 14.1
+DOCK_FEET = [(-22.0, 32.0), (-22.0, -32.0), (22.0, 38.0), (22.0, -38.0)]
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
 # the back wall (4 x M2.5 self-tapping, blind holes). VBUS/CC go to the PD sink; the USB 2 pair goes on to the devkit.
@@ -269,7 +281,18 @@ def main():
     for x, y in TONGUE_SCREWS:
         cuts.append(mf.Manifold.cylinder(10.0, 1.7, 1.7, 24).translate((x, y, -1.0)))         # M3 clearance
         cuts.append(mf.Manifold.cylinder(1.9, 3.4, 1.5, 24).translate((x, y, -0.01)))          # 90-deg countersink
-    cuts += [box(-10.0, s_ * 35.3 - 1.0, -1.0, 10.0, s_ * 35.3 + 1.0, FLOOR + 1.0) for s_ in (1, -1)]   # pack strap slots
+    cuts += [on_plane(box(-10.0, s_ * 35.3 - 1.0, -1.0, 10.0, s_ * 35.3 + 1.0, FLOOR + 1.0), 0.0) for s_ in (1, -1)]  # pack strap slots
+    # NECK DOCK, on the lean flat: a Ø52 x 0.8 locating recess for the neck's top plate (a key notch at the front sets
+    # its rotation), 4 M3 x 3 heat-set inserts on a Ø40 circle in Ø8 bosses, and a Ø14 cable port in the middle that
+    # opens under the pack. On the desk the flat stands on 4 Ø8 bumpons in 0.6 recesses.
+    dk = lambda m_: on_plane(m_, DOCK_X)
+    rear = rear + (dk(mf.Manifold.batch_boolean([pcyl(DOCK_BCD * u, DOCK_BCD * v, 4.0, 0.0, FLOOR + 1.6)
+                                                 for u, v in ((1, 0), (-1, 0), (0, 1), (0, -1))], mf.OpType.Add)) ^ outer)
+    cuts.append(dk(pcyl(0.0, 0.0, 26.0, -1.0, 0.8, 96)))
+    cuts.append(dk(pcyl(26.0, 0.0, 2.5, -1.0, 0.8)))
+    cuts.append(dk(pcyl(0.0, 0.0, 7.0, -1.0, FLOOR + 1.0)))
+    cuts += [dk(pcyl(DOCK_BCD * u, DOCK_BCD * v, 2.1, -1.0, 4.2)) for u, v in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+    cuts += [on_plane(pcyl(x, y, 4.1, -1.0, 0.6), 0.0) for x, y in DOCK_FEET]
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)
