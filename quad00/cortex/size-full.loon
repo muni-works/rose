@@ -3,10 +3,10 @@
 [pub let size-mini false]
 [pub let size-full true]
 
-[pub let hh 169.0]                                 ; height
-[pub let hw 114.5]                                 ; half width
-[pub let x-face 64.4]                              ; the flat face plane
-[pub let x-back -81.2]                             ; the flat back plane
+[pub let hh 126.0]                                 ; height (the 7" is the whole face, mini ratios)
+[pub let hw 96.5]                                  ; half width (193 W: the 7" panel edge-to-edge)
+[pub let x-face 55.0]                              ; the flat face plane (depth ~118)
+[pub let x-back -63.0]                             ; the flat back plane
 
 [pub let d7-w 166.0]                               ; the display's outline + 1 mm margin each side
 [pub let d7-h 108.0]
