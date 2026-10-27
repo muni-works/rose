@@ -134,3 +134,22 @@ A also tidies the face: one glass edge from chin to brow instead of a panel edge
 behind the middle of the head and above the back end of the jaw slot. The mic port is the centre dot, with a gasket
 ring as in SPEC. The speakers stay behind the jaw slot. In this pass the dots are drawn as discs; print prep cuts them
 as holes.
+
+## v1.3 ears, no jaw, satin black (2026-10-27)
+
+- **Jaw slot removed** (with its light pipe). The status light needs a new home; the default is the screen itself.
+- **Ears moved** to where a human ear sits: at eye height (z 66), just behind the middle of the head's depth
+  (x −6). Each is a vertical oval of Ø1.2 dots (about 12 × 22), echoing the ear's outline. The mics and speaker sit
+  behind it.
+- **Finish:** satin black (`satin_black`, as in cortex.loon) for the printed v1.
+- **Intake:** with the jaw slot gone, intake is the two ear patches (~2 × 30 holes × 1.1 mm² ≈ 70 mm² before the
+  gaskets), far short of SPEC's ~650 mm² at 25 W. The thermal pass has to add intake under the foot (hidden on the
+  neck and on the puck) or around the back.
+
+**Cameras behind the screen: no.** The Waveshare 4inch HDMI LCD (C) is an IPS LCD (its wiki), so behind the glass
+sit the LCD cell, polarisers, then an LED backlight with diffuser and reflector sheets and the PCB. The backlight
+stack is opaque, so a camera behind it sees nothing. The 3D drawing on the wiki (`4inch-hdmi-lcd_c.zip`) wasn't
+downloaded. It would show the same layered module (NOTES §4 measured it at 84 × 84 glass, about 10 mm deep), but no
+geometry can make an LCD backlight transparent. Seeing through the screen needs a transparent OLED or a
+camera-under-display panel, and neither exists as a 4" HDMI module. The cameras stay behind the brow band of the
+cover glass (option A).

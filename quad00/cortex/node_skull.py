@@ -60,24 +60,13 @@ foot = section(0)
 block += loft('node-neck', [(-1.0, scaled(foot, 0.97)), (-6.0, scaled(foot, 0.86)), (-16.0, circle(30, 2.0)),
                             (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
 
-# Jaw slot: a 2.4 mm slot along each side, under the cheeks, rising 8 deg toward the back like a jaw
-# line, from the face corner to under the ear (speakers, mics and air intake behind it). The back stays clean.
-JZ, JH = 24.0, 2.4
-ring = lambda k: [(JZ, scaled(section(JZ), k)), (JZ + JH, scaled(section(JZ), k))]
-block += loft('jaw-outer', ring(1.08)) + loft('jaw-inner', ring(0.955))
-block += loft('pipe-inner', [(JZ + 0.6, scaled(section(JZ), 0.95)), (JZ + JH - 0.6, scaled(section(JZ), 0.95))])
-block += loft('pipe-outer', [(JZ + 0.6, scaled(section(JZ), 0.962)), (JZ + JH - 0.6, scaled(section(JZ), 0.962))])
-block += '''[let jaw-tilt [fn [s] [translate 40.0 0.0 JZ [rotate 0.0 8.0 0.0 [translate -40.0 0.0 [- 0.0 JZ] s]]]]]
-[let behind-face [translate -42.0 -100.0 -50.0 [cube 78.0 200.0 200.0]]]
-[let node-jaw [jaw-tilt [intersection behind-face [difference jaw-inner jaw-outer]]]]
-[let node-pipe [jaw-tilt [intersection behind-face [difference pipe-inner pipe-outer]]]]
-[let node-head [difference node-jaw node-shell]]
-'''.replace('JZ', '%.1f' % JZ)
+block += '[let node-head node-shell]\n'
 
-# Ear grilles: a 19-dot hex patch (Ø1.2 on 2.6) on each side where a human ear sits, behind mid-depth and just above
-# the jaw slot's back end. The mic port is the centre dot. Massing only: the dots are drawn as dark discs on the
-# surface (each at the local surface y); print prep cuts them as real holes.
-EAR_X, EAR_Z, P = -14.0, 50.0, 2.6
+# Ear grilles: where a human ear sits -- at eye height, just behind the middle of the head's depth -- a vertical
+# oval patch of dots (Ø1.2 on a 2.6 hex, ~12 x 22) on each side, like the ear's own outline. The mic ports and the
+# speaker sit behind it. Massing only: the dots are drawn as dark discs on the surface (each at the local surface y);
+# print prep cuts them as real holes.
+EAR_X, EAR_Z, EAR_A, EAR_B, P = -6.0, 66.0, 6.2, 11.2, 2.6
 
 def surface_y(x, z):
     pts = [q for q in section(z, 96) if q[1] > 0]
@@ -87,7 +76,8 @@ def surface_y(x, z):
             return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
     return max(y for _, y in pts)
 
-dots = [(EAR_X + P * (i + 0.5 * j), EAR_Z + P * 0.866 * j) for j in range(-2, 3) for i in range(-2, 3) if abs(i + 0.5 * j) + abs(j) * 0.5 <= 2.01 and abs(j) <= 2]
+dots = [(EAR_X + P * (i + 0.5 * (j % 2)), EAR_Z + P * 0.866 * j) for j in range(-6, 7) for i in range(-4, 4)]
+dots = [(x, z) for x, z in dots if ((x - EAR_X) / EAR_A) ** 2 + ((z - EAR_Z) / EAR_B) ** 2 <= 1.0]
 discs = []
 for x, z in dots:
     y = surface_y(x, z)
