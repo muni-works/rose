@@ -418,60 +418,54 @@
 
 ; ==========================================================================
 ; J -- the Figure architecture (the direction, NOTES.md 6): the egg skull IS
-; the face. A flat face facet (a plane cut ~9 mm behind the crown), the panel
-; flush in it behind a 1.2 mm reveal, the eyes = Ø22 smoked cabochon domes
-; over Ø19 lit discs (the drawn eyes), the mouth = a 30 x 6.5 emissive bar
-; (the waveform/mouth animation in firmware), and the cameras as clear Ø5
-; dots centred in the ear grids (baseline ~115; the 7" has no room behind
-; it). Off-state: a black monolith with glass catchlights. The old face
-; variants (3.5" glass, d4 proud, d7 aperture) stay above for reference.
+; the face. A flat face facet leaning back with the face's 8 deg rake, the
+; panel flush in it behind a 1.2 mm reveal, the eyes = Ø21.2 smoked cabochon
+; domes over Ø18 lit discs (the drawn eyes), the mouth = a 30 x 6.5 emissive
+; bar (the waveform/mouth animation in firmware), and the cameras as clear
+; Ø4.3 dots centred in the ear grids' top row (baseline ~115; the 7" has no
+; room behind it). Off-state: a black monolith with glass catchlights.
+; Everything below is defined in the TILTED face frame (j-tilt: u = the face
+; normal, v = y, w = z along the face), so the pane is flush everywhere.
 ; ==========================================================================
-[let zfj [* 0.48 hh]]                                  ; the facet's centre height: the flat band's middle
-[let xfj [- x-face 9.0]]                               ; the facet plane: vertical, 9 mm behind the widest front
-[let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 [translate [- 0.0 xfj] 0.0 [- 0.0 zfj] s]]]]]
-[let face-plane [bx xfj -200.0 -200.0 500.0 200.0 200.0]]
+[let zfj [* 0.48 hh]]                                  ; the facet's centre height
+[let xfj [- x-face [* rake zfj] 9.0]]                  ; the facet plane: 9 mm behind the crown front there
+[let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
+[let face-plane [j-tilt [bx 0.0 -400.0 -400.0 400.0 400.0 400.0]]]    ; the facet: u>0 (in front), through the origin
 [pub let j-skull0 [difference face-plane shell-solid]]
-; the pane: flush in the facet, 1.2 mm reveal all round (gloss at render time; the shell is satin)
-[let j-pw 40.0]                        ; the 4" panel: 80 wide + reveal
+; the pane: flush in the facet (the tilted frame's u = 0 plane), 1.2 mm reveal all round
+[let j-pw 40.0]                                        ; the 4" panel: 80 wide + reveal
 [let j-ph [* 0.22 hh]]
-[let j-pane [bx [- xfj 1.5] [- 0.0 j-pw] [- zfj j-ph] [- xfj 1.2] j-pw [+ zfj j-ph]]]
-[let j-panel [bx [- xfj 13.0] [- 0.0 [+ j-pw 0.5]] [- zfj j-ph 0.5] [- xfj 0.3] [+ j-pw 0.5] [+ zfj j-ph 0.5]]]
+[let j-pane [j-tilt [bx [- 0.0 1.5] [- 0.0 j-pw] [- 0.0 j-ph] [- 0.0 0.2] j-pw j-ph]]]
+[let j-panel [j-tilt [bx [- 0.0 13.0] [- 0.0 [+ j-pw 0.5]] [- 0.0 [+ j-ph 0.5]] [- 0.0 0.2] [+ j-pw 0.5] [+ j-ph 0.5]]]]
 [let j-skull [difference j-panel j-skull0]]
-; the eyes: the lit disc (Ø19, 0.1 proud of the pane -- flush to the eye) and the dome: a sphere cap
-; (Ø22.4), seated so its rim lands ON the pane plane (like a cabochon glued to the glass)
+; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
 [let j-eye-r 9.0]
 [let j-dome-r 10.6]
-[let j-eye-gap 16.0]                        ; the eye centres: ±16 (spacing 1.5 eye-widths)
-[let j-eye-z [+ zfj [* 0.11 hh]]]
-[let j-eye-x [- xfj 1.1]]                     ; the mouth: just proud of the recessed pane
-[let j-eye-disc [fn [sy] [translate [- xfj 1.15] [* sy j-eye-gap] j-eye-z [rotate 0.0 90.0 0.0 [cylinder-n j-eye-r 0.08 32]]]]]
-[let j-dome-cap [difference [bx -1.0 -200.0 -200.0 0.0 200.0 200.0] [sphere-n j-dome-r 64]]]   ; the +x half
-[let j-dome [fn [sy] [translate [- xfj 1.2] [* sy j-eye-gap] j-eye-z j-dome-cap]]]
-[let j-eyes [union [j-eye-disc 1.0] [j-eye-disc -1.0]]]
-[let j-domes [union [j-dome 1.0] [j-dome -1.0]]]
+[let j-eye-cy 16.0]                                    ; the eye centres: ±16 (1.5 eye-widths apart)
+[let j-eye-v [+ 10.0 0.0]]                             ; the eyes: 10 above the facet centre
+[let j-eye-lens [rotate 0.0 90.0 0.0 [cylinder-n j-eye-r 0.08 32]]]
+[let j-dome-cap [difference [bx -1.0 -200.0 -200.0 0.0 200.0 200.0] [sphere-n j-dome-r 64]]]   ; the +u half
+[let j-eyes [union [j-tilt [translate [- 0.0 0.15] j-eye-cy j-eye-v j-eye-lens]]
+                   [j-tilt [translate [- 0.0 0.15] [- 0.0 j-eye-cy] j-eye-v j-eye-lens]]]]
+[let j-domes [union [j-tilt [translate 0.0 j-eye-cy j-eye-v j-dome-cap]]
+                    [j-tilt [translate 0.0 [- 0.0 j-eye-cy] j-eye-v j-dome-cap]]]]
 ; the mouth: a 30 x 6.5 stadium bar, low on the pane (the waveform/mouth animation in firmware; off = dark)
-[let j-mouth-z [- zfj [* 0.06 hh]]]
-[let j-mouth [hull [translate [- xfj 1.15] -8.25 j-mouth-z [sphere 3.25]]
-                   [translate [- xfj 1.15] 8.25 j-mouth-z [sphere 3.25]]]]
-; the cameras: a Ø5 bore through the ear cap's centre + a dark glass dot seated in it (perforation grid hides it)
-[let ezj zg]                                           ; the camera dots at the grille centre height
-[let j-cam-bore [union [translate gx [- 0.0 hw] ezj [rotate -90.0 0.0 0.0 [cylinder-n 2.5 [* 2.0 hw] 24]]]
-                       [translate gx hw ezj [rotate -90.0 0.0 0.0 [cylinder-n 2.5 [* 2.0 hw] 24]]]]]
-[let j-cam-dot [union [translate gx [- 0.0 [- hw 0.8]] ezj [rotate -90.0 0.0 0.0 [cylinder-n 2.4 1.4 24]]]
-                      [translate gx [- hw 0.8] ezj [rotate -90.0 0.0 0.0 [cylinder-n 2.4 1.4 24]]]]]
-; the tub (J): the skull opens with the pane, keeps the floor/vents/IO/back-grille infrastructure, and loses the
-; old face-opening and glass seat. The ear-grille windows stay. The camera bores go through the skull wall.
-[let j-cavity [pipe shell-inner [difference fix-blocks] [difference j-panel]]]
+[let j-mouth-v [- 0.0 [* 0.14 hh]]]
+[let j-mouth [j-tilt [hull [translate [- 0.0 0.15] -8.25 j-mouth-v [sphere 3.25]] [translate [- 0.0 0.15] 8.25 j-mouth-v [sphere 3.25]]]]]
+; the cameras: a Ø4.4 bore through the ear wall at the grid's top row + a dark glass dot seated in it
+[let zcamj [+ zg [- gh 3.0]]]                          ; the camera dot: the grid's top row, centre column
+[let j-cam-bore [union [translate gx [- 0.0 hw] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]] [translate gx hw zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]]]]
+[let j-cam-dot [union [translate gx [- 0.0 [- hw 0.9]] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]
+                      [translate gx [- hw 0.9] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]]]
+; the tub (J): the skull (facet-cut) minus the openings; the panel pocket included
 [let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-cam-bore] [union j-panel]] shell-solid]]
 [pub let cortex-tub-j [difference j-cuts j-skull0]]
-; the J face parts
 [pub let cortex-face-j j-pane]
 [pub let cortex-eyes-j j-eyes]
 [pub let cortex-domes-j j-domes]
 [pub let cortex-mouth-j j-mouth]
 [pub let cortex-camdots-j j-cam-dot]
-; the ear caps: the skull's own wall at the ears (the dot grid IS the grille) -- no separate part. The
-; camera dots live in the wall between grille holes at the grid's centre height.
+
 ; proxy roots for export and renders (the assembly above is the real head)
 [root cortex-back-grille "satin_black"]
 [root cortex-tub-d4 "satin_black"]
