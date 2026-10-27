@@ -226,3 +226,9 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
 - **Print material note:** the ring is a separate part in the render but prints as part of the shell IF
   multi-material; single-material printers print it black (or it's a separate bonded ring — 2 parts/head,
   printable flat in 20 min).
+- **The ears are DONE (943ec0e):** orange grille INSERTS — an oval plate (2.2 thick, gw 9 / gh 14 + rim)
+  with the hex dot grid cut through (Ø2.2 on the 2.2 pitch), seated flush in each ear window, printed in
+  the accent colour. The ring idea is dropped (it fought the curved wall); the insert is flat, prints in
+  15 min, and reads as a speaker bezel. Built ALL in local coords then placed (the difference-direction
+  bug had exported the hole cylinders instead of the plate — [difference A B] = B − A struck again).
+  The head is visually complete: egg skull + full-face screen + orange ears + forehead camera dot.
