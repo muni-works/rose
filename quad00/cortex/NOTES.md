@@ -176,3 +176,12 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   spans z 8.5..93.5 of a 108-tall head: forehead ~14, chin ~9. The screen IS the face, edge-to-edge both ways.
   NOTE: the bottom round (rb 12.5) nearly swallows the chin band — if the chin reads too thin in person, drop rb
   to 0.20*hd and/or lift the whole head 2 mm on the dock.
+- **Domes removed (Cam, after the K1-class shrink):** the eyes are Ø20 lit discs directly on the pane (u -0.10,
+  0.1 proud of the glass). The whole-face pane made the domes redundant — they were the answer when the face was
+  a small window; with an 85-tall pane the pixels ARE the eye surface. Amazon cabochons stay an option for a
+  physical-eye variant later.
+- **Clearance sweep at the K1-class size: GREEN.** No overlaps: tub/pane vs eyes, mouth, camdots, display, cams,
+  battery, compute, heatsink, speakers, mics, amps, power, dockboard, sled-print, keeper. Tightest: eyes 0.10 off
+  the pane (printed flush by design), display 1.1 off the pane, mouth 0.18. The shrunken tub (±49) still clears
+  the 78-wide battery. Fixes on the way: the mouth stadium was centred at u=0.16 with r3.25 (it spanned the
+  pane); now scaled 0.5 in u and centred at u=1.6 (fully in front of the glass).
