@@ -13,7 +13,7 @@ import math, os, zipfile
 import trimesh
 
 F = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
-PLACE = {'node-upper': (64, 128), 'node-base': (191, 128)}
+PLACE = {'node-rear': (68, 128), 'node-face': (190, 128), 'node-shutter': (68, 228)}   # the face module lies face-down
 FAST = {
     'layer_height': '0.28',
     'wall_loops': '2',
@@ -45,10 +45,11 @@ NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='10%', top_shel
 def meshes(face_down=False):
     for name, (x, y) in PLACE.items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
-        if face_down and name == 'node-upper':
-            # lay the upper on its face plane: +x (the face) points down. The crown's walls go vertical, so most of
-            # the tree support inside the crown disappears; the 3.2 mm acrylic pocket bridges over the bed.
+        if name in ('node-face', 'node-shutter'):
+            # the face module always prints face-down: its face plane on the bed (best surface, no supports)
+            #
             m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+            m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 0, 1]))   # long side front-to-back
         c = m.bounds.mean(axis=0)
         m.apply_translation([x - c[0], y - c[1], -m.bounds[0][2]])
         yield name, m
@@ -74,7 +75,7 @@ def fast(face_down=False, out='node-mvp-fast.3mf', settings=None):
         c = m.bounds.mean(axis=0)
         c[2] = m.bounds[0][2]
         v = m.vertices - c                              # mesh local to its centre, placed by the build transform
-        verts = ''.join('<vertex x="%.7g" y="%.7g" z="%.7g"/>' % tuple(p) for p in v)
+        verts = ''.join('<vertex x="%.9g" y="%.9g" z="%.9g"/>' % tuple(p) for p in v)
         tris = ''.join('<triangle v1="%d" v2="%d" v3="%d"/>' % tuple(t) for t in m.faces)
         path = '3D/Objects/object_%d.model' % mesh_id
         files[path] = ('<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" %s>\n'

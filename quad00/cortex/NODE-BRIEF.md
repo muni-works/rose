@@ -433,3 +433,20 @@ The rim cameras weren't elegant. The chin, under the screen and the seam, is now
 5 rows, across y ±40, z ~16–26. It reads as a speaker grille and matches the ear patches. The **stereo cameras are
 two of its holes** (Ø4 at y ±30, z 21: 60 baseline), with IMX219 spy-camera heads 7 mm behind them in the base.
 ToF, ambient light and mics get holes in the same field. Fit: camera heads 5.0, no clashes against the true shell.
+
+## v1.19 face module + rear shell (StackChan / Portal lessons) (2026-10-27)
+
+- **Vertical split at x 40** instead of the horizontal seam. The **face module** prints face-down and is black. The
+  **rear shell** is everything else, with a closed bottom, prints upright, and is in the body colour (bone in the
+  renders; all-black also tested). The only visible joint is a 1 mm shadow gap that frames the face. The devkit
+  slides in from the front through the full cross-section.
+- **Face module:** a face panel (96 × 98, R8) outlined by a 1 × 0.8 mm groove, with the 4" glass flush inside it
+  (z 42–126). **One camera** sits centred in the panel's top margin (Ø5 window, IMX219 spy-camera head behind it),
+  with a **privacy shutter**: a printed slider in a recessed track that slides over the lens (`node-shutter.stl`).
+  A **full-width chin grille** under the panel (Ø1.4 on a 2.2 hex) carries the mics.
+- **Attachment:** a lip on the rear shell locates the face module; it's cut away across the devkit's height so the
+  carrier can slide in. Two **top tabs** on the face module hook behind the lip. A **floor tongue** at the bottom
+  takes 2 × M3 from under the rear shell into heat-set inserts.
+- The head is 18% taller (~158 H) so one flat face holds the panel and the grille. Ears are at the new eye height.
+- Fit: display 3.3, camera 5.0, devkit board 1.7, tongue 1.0. No clashes against the true shell. All three parts
+  are single watertight bodies on one P1S plate.

@@ -5,14 +5,19 @@ and which squares off toward the face so the 84 mm glass sits on a flat. Heights
 cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck recess under the back."""
 import math, re
 
-BROW = 116.0                                         # top of the flat face plane
+BROW = 116.0                                         # top of the flat face plane (design frame)
+VS = 1.18                                            # vertical scale: the face module (panel + chin grille) needs ~115 of flat face
 FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
+
+ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
+                       130.5, 132.5, 133.6, 134.2)]
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
     return (1 - u ** n) ** (1 / n)
 
 def outline(z):
+    z = z / VS
     fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
     bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
     wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4)   # back (parietal) half width
@@ -53,7 +58,7 @@ def loft(name, rows):
     return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
 
 def main():
-    zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
+    zs = ZS
     block = loft('node-shell', [(z, section(z)) for z in zs])
 
     # Neck join: the neck's top trim is the foot's flat (the dock face) 1 mm under it, then it necks down to a round

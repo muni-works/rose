@@ -19,25 +19,23 @@ PARTS = {
     'dk-board': (-37, -50, 38, 42, 50, 39.6, 'pcb_green', 'P3768 carrier 100 x 79, on 4 posts at z 38'),
     'dk-io': (-40, -50, 39.6, -24, 50, 55.6, 'heatsink', 'I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang'),
     'dk-stack': (-24, -34, 39.6, 23, 38, 69, 'heatsink', 'module + heatsink + fan: to 31 above the board (datasheet 34.77 incl feet)'),
-    'display': (FACE_X - 11.5, -42, 31.5, FACE_X, 42, 115.5, 'heatsink', '4in 84 x 84 glass flush in the face + module, 11.5 deep'),
+    'display': (FACE_X - 11.5, -42, 42, FACE_X, 42, 126, 'heatsink', '4in 84 x 84 glass flush in the face panel + module, 11.5 deep'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
-    'cam-l': (44, 25.7, 16.7, 49, 34.3, 25.3, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +30, behind a chin-grille hole'),
-    'cam-r': (44, -34.3, 16.7, 49, -25.7, 25.3, 'pcb_green', 'IMX219 spy-camera head, y -30'),
+    'cam': (44, -4.3, 126.4, 49, 4.3, 135.0, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), centred in the panel top margin'),
     'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
-# devkit posts and seam-screw columns/bosses from node_print, as boxes, for the clash check
+# devkit posts and the face module's floor tongue from node_print, as boxes, for the clash check
 try:
-    from node_print import DK_HOLES, SEAM_SCREWS, SEAM_Z, SEAM_GAP
+    from node_print import DK_HOLES, TONGUE_SCREWS, SPLIT_X
     for k, (px, py) in enumerate(DK_HOLES):
         PARTS['post-%d' % k] = (px - 3.5, py - 3.5, FLOOR, px + 3.5, py + 3.5, 38.0, 'satin_black', 'devkit post Ø7')
-    for k, (sx, sy, _) in enumerate(SEAM_SCREWS):
-        PARTS['seam-%d' % k] = (sx - 4, sy - 4, FLOOR, sx + 4, sy + 4, SEAM_Z + SEAM_GAP + 6.5, 'satin_black', 'seam screw column + boss')
+    PARTS['tongue'] = (28.0, -18.0, FLOOR, SPLIT_X + 6.5, 18.0, FLOOR + 6.0, 'satin_black', 'face module floor tongue')
 except ImportError:
     pass
 # speakers + mics behind each ear patch (x -6, z 66): Ø28 x 5.4, cylinder along y, against the inner wall
-EAR = (-6.0, 66.0)
+EAR = (-6.0, 78.0)
 SPK_R, SPK_T = 14.0, 5.4
 
 def poly(z, n=144):
@@ -93,7 +91,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display',)) if not name.startswith(('post', 'seam', 'usb', 'power')) else CLEAR
+        g = min_gap(box_points(b), skip_face=name in ('display',)) if not name.startswith(('post', 'tongue', 'usb', 'power')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)
