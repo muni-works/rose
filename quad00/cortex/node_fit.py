@@ -22,8 +22,8 @@ PARTS = {
     'display': (FACE_X - 11.5, -42, 31.5, FACE_X, 42, 115.5, 'heatsink', '4in 84 x 84 glass flush in the face + module, 11.5 deep'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
-    'cam-l': (42, 43.7, 69.7, 47, 52.3, 78.3, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +48, 8 mm behind its Ø4 hole'),
-    'cam-r': (42, -52.3, 69.7, 47, -43.7, 78.3, 'pcb_green', 'IMX219 spy-camera head, y -48'),
+    'cam-l': (44, 25.7, 16.7, 49, 34.3, 25.3, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +30, behind a chin-grille hole'),
+    'cam-r': (44, -34.3, 16.7, 49, -25.7, 25.3, 'pcb_green', 'IMX219 spy-camera head, y -30'),
     'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }

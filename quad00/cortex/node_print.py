@@ -132,6 +132,16 @@ def holes():
             xs = [a for a, b in zip(p, p[1:] + p[:1]) if (a[1] - y) * (b[1] - y) <= 0 and a[0] < 0]
             xb = min(q[0] for q in xs) if xs else -60.0
             out.append(rod((xb, y, z), (-1, 0, -RAIN_DROP), 0.7, 12.0))
+    # chin grille ("sensortown"): a band of Ø1.6 dots on a 2.6 hex across the chin, under the screen and the seam. The
+    # stereo cameras are two of its holes (Ø4), so the pattern hides them; ToF / mics get holes here too.
+    for j in range(-2, 3):
+        z = CHIN_Z + j * 2.6 * 0.866
+        for i in range(-16, 17):
+            y = (i + 0.5 * (j % 2)) * 2.6
+            if abs(y) > 40.0 or any(math.hypot(y - sy * CAM_Y, z - CAM_Z) < 3.6 for sy in (1, -1)):
+                continue
+            out.append(rod((FACE, y, z), (1, 0, 0), 0.8, 10.0))
+    out += [rod((FACE, sy * CAM_Y, CAM_Z), (1, 0, 0), 2.0, 16.0) for sy in (1, -1)]
     return out
 
 def prism_yz(poly, x0, x1):
@@ -170,7 +180,8 @@ def column(x, y, z0, z1, r=4.0, web=14.0):
 # the back wall of the UPPER shell (4 x M2.5 self-tapping, blind holes), just under the exhaust. VBUS/CC go to the PD
 # sink; the USB 2 pair goes on to the devkit (see NODE-BRIEF.md v1.8).
 PANEL_Z, PANEL_D = 73.5, 4.5      # 4in panel centre (z 31.3-115.7) and its glass + LCD stack depth (ASSUMED)
-CAM_Y, CAM_Z = 48.0, 74.0       # spy-camera heads on the face rim, tucked against the screen edge (96 baseline)
+CAM_Y, CAM_Z = 30.0, 21.0       # spy-camera heads behind two of the chin grille's holes (60 baseline)
+CHIN_Z = 21.0                   # chin grille band centre (z ~16-26, under the seam)
 USB_Z = 37.0                    # receptacle centre
 PB_X = -53.0                    # power board's back face (the pad's flat)
 PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
@@ -226,10 +237,8 @@ def main():
     # The pocket runs from just above the seam to the brow, so the seam is the chin line under the screen.
     pocket = rrect_prism(FACE - PANEL_D, FACE + 10.0, 0.0, PANEL_Z, 42.2, 42.2, 1.0)
     window = rrect_prism(FACE - 20.0, FACE - PANEL_D + 0.5, 0.0, PANEL_Z, 36.0, 36.0, 2.0)
-    # Cameras: IMX219 "spy camera" heads (8.6 x 8.6 on a flex, ASSUMED) look forward through Ø4 holes in the face's
-    # rim right beside the screen edge, where they read as part of the bezel. 96 mm stereo baseline.
-    cams = [rod((FACE, s_ * CAM_Y, CAM_Z), (1, 0, 0), 2.0, 40.0) for s_ in (1, -1)]
-    face = pocket + window + mf.Manifold.batch_boolean(cams, mf.OpType.Add)
+    # the cameras are in the chin grille (holes())
+    face = pocket + window
     zu = SEAM_Z + SEAM_GAP
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     ubosses = [column(x, y, zu, zu + 6.5, web=w) for x, y, w in SEAM_SCREWS]   # 6.5 tall: clears the devkit's I/O band

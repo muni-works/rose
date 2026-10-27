@@ -82,11 +82,11 @@
 
 ; ------------------------------------------------------------------- face ----
 ; No cover sheet: the 4in square panel's own 84 x 84 glass sits flush in the face (x 56), centred at z 73.5 between
-; the seam and the brow. The stereo cameras are IMX219 spy-camera heads behind Ø4 holes on the face rim, tucked
-; against the screen's side edges (y +-48, z 74: 96 baseline).
+; the seam and the brow. Under it, across the chin, a dot grille ("sensortown") hides the stereo cameras: IMX219
+; spy-camera heads behind two of its holes (y +-30, z 21: 60 baseline).
 [let fz 73.5]
 [let node-glass [extrude 1.0 0.0 0.0 [sketch 55.0 0.0 fz 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 42.0 1.0]]]]
-[let lens [fn [s] [translate 54.95 [* s 48.0] 74.0 [rotate 0.0 90.0 0.0 [cylinder 2.0 0.06]]]]]
+[let lens [fn [s] [translate 56.0 [* s 30.0] 21.0 [rotate 0.0 90.0 0.0 [cylinder 2.0 0.06]]]]]
 [let node-lenses [union [lens 1.0] [lens -1.0]]]
 [let eye [fn [s] [translate 56.02 [* s 15.0] [+ fz 8.0] [rotate 0.0 90.0 0.0 [cylinder 8.0 0.2]]]]]
 [let node-face [union [eye 1.0] [union [eye -1.0] [translate 56.02 -7.0 [- fz 16.0] [cube 0.2 14.0 2.4]]]]]
@@ -100,8 +100,8 @@
 [let node-dk-io [bx -40.0 -50.0 39.6 -24.0 50.0 55.6]]  ; I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang
 [let node-dk-stack [bx -24.0 -34.0 39.6 23.0 38.0 69.0]]  ; module + heatsink + fan: to 31 above the board (datasheet 34.77 incl feet)
 [let node-display [bx 44.5 -42.0 31.5 56.0 42.0 115.5]]  ; 4in 84 x 84 glass flush in the face + module, 11.5 deep
-[let node-cam-l [bx 42.0 43.7 69.7 47.0 52.3 78.3]]  ; IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +48, 8 mm behind its Ø4 hole
-[let node-cam-r [bx 42.0 -52.3 69.7 47.0 -43.7 78.3]]  ; IMX219 spy-camera head, y -48
+[let node-cam-l [bx 44.0 25.7 16.7 49.0 34.3 25.3]]  ; IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), y +30, behind a chin-grille hole
+[let node-cam-r [bx 44.0 -34.3 16.7 49.0 -25.7 25.3]]  ; IMX219 spy-camera head, y -30
 [let node-power [bx -53.0 -20.0 32.0 -47.0 20.0 62.0]]  ; PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C
 [let node-usb-c [bx -56.5 -4.6 35.2 -53.0 4.6 38.8]]  ; mid-mount USB-C receptacle on the power board, through the wall
 [let node-post-0 [bx -23.5 -49.5 3.0 -16.5 -42.5 38.0]]  ; devkit post Ø7

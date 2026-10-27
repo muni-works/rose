@@ -426,3 +426,10 @@ small head (`414688a`: ~123 W × 125 D × 134 H, 2 mm normal-offset shell, split
 - Fit: display 3.2, devkit board 2.6, I/O row 1.1, cameras 0.9. No clashes against the true shell.
 - Dropped: `node_acrylic.py` and `node-acrylic.dxf`. The landscape and portrait sheet versions are in git
   (`4c62a29`, `b00d219`).
+
+## v1.18 chin "sensortown" (2026-10-27)
+
+The rim cameras weren't elegant. The chin, under the screen and the seam, is now a **dot grille**: Ø1.6 on a 2.6 hex,
+5 rows, across y ±40, z ~16–26. It reads as a speaker grille and matches the ear patches. The **stereo cameras are
+two of its holes** (Ø4 at y ±30, z 21: 60 baseline), with IMX219 spy-camera heads 7 mm behind them in the base.
+ToF, ambient light and mics get holes in the same field. Fit: camera heads 5.0, no clashes against the true shell.
