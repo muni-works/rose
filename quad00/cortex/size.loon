@@ -8,8 +8,8 @@
 [pub let size-mini true]
 [pub let size-full false]
 
-[pub let hh [if size-full 169.0 126.0]]            ; height (mini: head proportion, taller than wide)
-[pub let hw [if size-full 114.5 62.0]]             ; half width (mini: 124 W — the 4" panel needs ~100 of flat face)
+[pub let hh [if size-full 169.0 118.0]]            ; height (mini: K1-class)
+[pub let hw [if size-full 114.5 49.0]]             ; half width (mini: 98 W — the 4" screen IS the face)
 [pub let x-face [if size-full 64.4 46.0]]          ; the flat face plane
 [pub let x-back [if size-full -81.2 -58.0]]        ; the flat back plane (reaches past the neck: no craning)
 

@@ -68,7 +68,7 @@
 ; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
 ; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
 [let zk 40.0][let zfj [* 0.48 hh]]                                  ; the facet's centre height
-[let xfj [- x-face [* rake zfj] 9.0]]                  ; the facet plane: 9 mm behind the crown front there
+[let xfj [- x-face [* rake zfj] 2.0]]                  ; the facet plane: 2 mm behind the crown front (no bezel)
 [let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
 
 [let kb 38.0]
@@ -434,13 +434,15 @@
 ; Everything below is defined in the TILTED face frame (j-tilt: u = the face
 ; normal, v = y, w = z along the face), so the pane is flush everywhere.
 ; ==========================================================================
-[let face-plane [j-tilt [bx 0.0 -400.0 -400.0 400.0 400.0 400.0]]]    ; the facet: u>0 (in front), through the origin
+[let face-plane [j-tilt [bx -1.5 -400.0 -400.0 400.0 400.0 400.0]]]  ; the facet: cuts u > -1.5 (the pane's back)
 [pub let j-skull0 [difference face-plane shell-solid]]
 ; the pane: flush in the facet (the tilted frame's u = 0 plane), 1.2 mm reveal all round
 [let j-pw 40.0]                                        ; the 4" panel: 80 wide + reveal
 [let j-ph [* 0.22 hh]]
-[let j-pane [j-tilt [bx [- 0.0 1.5] [- 0.0 j-pw] [- 0.0 j-ph] [- 0.0 0.2] j-pw j-ph]]]
-[let j-panel [j-tilt [bx [- 0.0 13.0] [- 0.0 [+ j-pw 0.5]] [- 0.0 [+ j-ph 0.5]] 0.5 [+ j-pw 0.5] [+ j-ph 0.5]]]]   ; through the facet
+[let j-pr 14.0]                                ; the pane's corner radius: the skull's plan corner
+[let j-sec [fn [u h r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h r]]]]
+[let j-pane [j-tilt [loft #[[j-sec [- 0.0 1.5] j-ph 3.0] [j-sec [- 0.0 0.2] j-ph j-pr]]]]]
+[let j-panel [j-tilt [loft #[[j-sec 0.5 [+ j-ph 0.5] 3.0] [j-sec [- 0.0 13.0] [+ j-ph 0.8] 18.0]]]]]           ; the pocket, through the facet
 [let j-skull [difference j-panel j-skull0]]
 ; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
 [let j-eye-r 9.0]
