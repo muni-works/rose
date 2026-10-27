@@ -445,19 +445,17 @@
 [let j-panel [j-tilt [loft #[[j-sec 0.5 [+ j-ph 0.5] 3.0] [j-sec [- 0.0 13.0] [+ j-ph 0.8] 18.0]]]]]           ; the pocket, through the facet
 [let j-skull [difference j-panel j-skull0]]
 ; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
-[let j-eye-r 9.0]
+[let j-eye-r 10.0]
 [let j-dome-r 10.6]
 [let j-eye-cy 16.0]                                    ; the eye centres: ±16 (1.5 eye-widths apart)
 [let j-eye-v [+ 10.0 0.0]]                             ; the eyes: 10 above the facet centre
 [let j-eye-lens [rotate 0.0 90.0 0.0 [cylinder-n j-eye-r 0.08 32]]]
-[let j-dome-cap [difference [bx -1.0 -200.0 -200.0 0.0 200.0 200.0] [sphere-n j-dome-r 64]]]   ; the +u half
-[let j-eyes [union [j-tilt [translate [- 0.0 0.15] j-eye-cy j-eye-v j-eye-lens]]
-                   [j-tilt [translate [- 0.0 0.15] [- 0.0 j-eye-cy] j-eye-v j-eye-lens]]]]
-[let j-domes [union [j-tilt [translate 0.0 j-eye-cy j-eye-v j-dome-cap]]
-                    [j-tilt [translate 0.0 [- 0.0 j-eye-cy] j-eye-v j-dome-cap]]]]
+; the domes are gone (Cam): the eyes are the lit discs directly on the pane
+[let j-eyes [union [j-tilt [translate [- 0.0 0.10] j-eye-cy j-eye-v j-eye-lens]]
+                   [j-tilt [translate [- 0.0 0.10] [- 0.0 j-eye-cy] j-eye-v j-eye-lens]]]]
 ; the mouth: a 30 x 6.5 stadium bar, low on the pane (the waveform/mouth animation in firmware; off = dark)
 [let j-mouth-v [- 0.0 [* 0.14 hh]]]
-[let j-mouth [j-tilt [hull [translate [- 0.0 0.15] -8.25 j-mouth-v [sphere 3.25]] [translate [- 0.0 0.15] 8.25 j-mouth-v [sphere 3.25]]]]]
+[let j-mouth [j-tilt [hull [translate 1.6 -8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]] [translate 1.6 8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]]]]]
 ; the cameras: a Ø4.4 bore through the ear wall at the grid's top row + a dark glass dot seated in it
 [let j-cam-bore [union [translate gx [- 0.0 hw] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]] [translate gx hw zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]]]]
 [let j-cam-dot [union [translate gx [- 0.0 [- hw 0.9]] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]
@@ -467,7 +465,6 @@
 [pub let cortex-tub-j [difference j-cuts j-skull0]]
 [pub let cortex-face-j j-pane]
 [pub let cortex-eyes-j j-eyes]
-[pub let cortex-domes-j j-domes]
 [pub let cortex-mouth-j j-mouth]
 [pub let cortex-camdots-j j-cam-dot]
 ; the display proxy, J: fills the panel pocket behind the recessed pane (the pane sits at u -1.5..-0.2)
@@ -484,6 +481,5 @@
 [root cortex-tub-j "satin_black"]
 [root cortex-face-j "screen_glass"]
 [root cortex-eyes-j "eye_lit"]
-[root cortex-domes-j "dome_smoke"]
 [root cortex-mouth-j "mouth_glow"]
 [root cortex-camdots-j "lens"]
