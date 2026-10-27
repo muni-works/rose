@@ -10,7 +10,7 @@ import math, os
 import numpy as np
 import manifold3d as mf
 import trimesh
-from node_skull import section, BROW
+from node_skull import section, BROW, FACE
 
 WALL = 2.5
 RAIN_DROP = 0.58                # tan 30: side holes fall 30 deg toward the outside
@@ -191,11 +191,20 @@ def main():
     rods = mf.Manifold.batch_boolean(hs, mf.OpType.Add)
 
     # UPPER: everything above the seam + gap, the face window, ears, exhaust, USB-C, seam-screw bosses
-    face = rrect_prism(45.0, 70.0, 0.0, 65.5, 43.0, 47.5, 6.0)
+    # Face: the 3.2 mm acrylic (92 x 101.6, R8) inlays FLUSH with the face plane. It sits in a pocket on a 2.5 mm wide,
+    # LAND_T thick land (0.5 VHB); the land is a frame added behind the face, since the pocket is deeper than the wall,
+    # and the 4in panel bonds to its back (VHB), showing through the window. The window
+    # through the land is the acrylic less 2.5 per side.
+    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 46.0, 50.8, 8.0, 65.5, 1.5
+    gx = FACE - G_T                                              # acrylic back face
+    frame = rrect_prism(gx - LAND_T, FACE, 0.0, G_ZC, G_HY + 3.0, G_HZ + 3.0, G_R + 3.0) ^ outer
+    pocket = rrect_prism(gx - 0.01, FACE + 10.0, 0.0, G_ZC, G_HY + 0.2, G_HZ + 0.2, G_R + 0.2)
+    window = rrect_prism(gx - 10.0, gx + 0.5, 0.0, G_ZC, G_HY - 2.5, G_HZ - 2.5, G_R - 2.5)
+    face = pocket + window
     zu = SEAM_Z + SEAM_GAP
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     ubosses = [column(x, y, zu, zu + 6.5, web=w) for x, y, w in SEAM_SCREWS]   # 6.5 tall: clears the devkit's I/O band
-    upper = (skin + (mf.Manifold.batch_boolean(ubosses + [usb_pad], mf.OpType.Add) ^ outer)) ^ above(zu)
+    upper = (skin + frame + (mf.Manifold.batch_boolean(ubosses + [usb_pad], mf.OpType.Add) ^ outer)) ^ above(zu)
     cuts = [face, rods]
     cuts += [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, zu - 0.01)) for x, y, _ in SEAM_SCREWS]  # M3 heat-set, 5.7 long
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
@@ -207,11 +216,13 @@ def main():
     base = (outer ^ below(FLOOR)) + (skin ^ below(SEAM_Z))
     lip_out = loft([(z, offset(outline_at(z), WALL + 0.2)) for z in (SEAM_Z - 1.0, SEAM_Z + LIP_H)])
     lip_in = loft([(z, offset(outline_at(z), WALL + 0.2 + LIP_T)) for z in (SEAM_Z - 2.0, SEAM_Z + LIP_H + 1.0)])
-    base = base + (lip_out - lip_in)
+    # the acrylic and the panel bonded to the upper hang below the seam (to z 14.7 / 12): no lip across the face, and
+    # the same pocket + window in the base's front, so they slide down past it and the glass covers the seam there
+    base = base + ((lip_out - lip_in) - box(40.0, -100.0, -5.0, 100.0, 100.0, 100.0))
     posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.5, 3.5, 32).translate((x, y, FLOOR)) for x, y in DK_HOLES]
     cols = [column(x, y, FLOOR, SEAM_Z, web=w) for x, y, w in SEAM_SCREWS]
     base = base + (mf.Manifold.batch_boolean(posts + cols, mf.OpType.Add) ^ outer)
-    bcuts = [rods ^ below(SEAM_Z)]
+    bcuts = [rods ^ below(SEAM_Z), face]
     bcuts += [rod((x, y, DK_Z - 4.0), (0, 0, 1), 1.1, 8.5) for x, y in DK_HOLES]           # M2.5 self-tap pilots
     for x, y, _ in SEAM_SCREWS:
         bcuts.append(mf.Manifold.cylinder(SEAM_Z + 2.0, 1.7, 1.7, 24).translate((x, y, -1.0)))   # M3 clearance

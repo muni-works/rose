@@ -10,7 +10,7 @@ from node_skull import section
 WALL = 2.5          # printed shell wall
 CLEAR = 1.0         # minimum gap to the inner wall
 FLOOR = 3.0         # floor plate under everything
-FACE_X = 55.8       # back of the cover glass
+FACE_X = 56.3       # back of the inlaid 3.2 mm acrylic (its front is flush with the face plane, x 59.5)
 
 # name: (x0, y0, z0, x1, y1, z1, material, note)
 PARTS = {
@@ -19,7 +19,7 @@ PARTS = {
     'dk-board': (-37, -50, 38, 42, 50, 39.6, 'pcb_green', 'P3768 carrier 100 x 79, on 4 posts at z 38'),
     'dk-io': (-40, -50, 39.6, -24, 50, 55.6, 'heatsink', 'I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang'),
     'dk-stack': (-24, -34, 39.6, 23, 38, 69, 'heatsink', 'module + heatsink + fan: to 31 above the board (datasheet 34.77 incl feet)'),
-    'display': (FACE_X - 11.5, -42, 12, FACE_X, 42, 96, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep incl. connectors'),
+    'display': (FACE_X - 1.5 - 11.5, -42, 12, FACE_X - 1.5, 42, 96, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep; bonded to the back of the 1.5 land'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
     'cam-l': (FACE_X - 7.8, 13.5, 96.5, FACE_X - 5.3, 38.5, 120.5, 'pcb_green', 'IMX219 board 25 x 24 x 2.5, y +26'),

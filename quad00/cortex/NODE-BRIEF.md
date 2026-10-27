@@ -342,3 +342,23 @@ The 79 × 100 board can't pass through the 71 × 87 foot opening, so **the head 
 - **Power:** the PD/charger board moved up into the upper shell (z 32–62, USB-C at z 37) and feeds the devkit's DC
   jack (19 V class). Exhaust starts at z 63, above the pad.
 - `node-mvp.3mf` has both parts side by side on one P1S plate.
+
+## v1.12 inlaid acrylic face (2026-10-27)
+
+The face is now **3.2 mm (1/8") cast acrylic, 92 × 101.6 mm, R8, inlaid flush** with the face plane. A smoked
+transparent sheet is best, but clear works too. Either way, mask the back black except the panel's active area and
+the two camera windows.
+
+- **Face plane moved forward 3.5 mm** (x 59.5) so the panel can sit right behind the sheet without crowding the
+  devkit.
+- **Pocket and land:** a 92.4 × 102 pocket, 3.2 deep, on a 2.5 wide × 1.5 thick land (0.5 VHB for the sheet). The
+  land is a frame added behind the face, because the pocket is deeper than the wall. The window through it is
+  87 × 96.6, and the 4" panel bonds to the back of the land, showing through.
+- **The sheet runs past the seam** (z 14.7–116.3), so on the face the glass hides the jaw seam. The base carries
+  the same pocket, and its locating lip stops short of the face, so the sheet and panel (bonded to the upper) slide
+  down past it.
+- **CNC:** `python3 node_acrylic.py` → `fab/node/node-acrylic.dxf` (R12, mm, seen from the front, origin at the
+  sheet centre). Layers: `CUT` is the profile, `MASK_SCREEN` the 71.8 mm active window (centre −11.5), and
+  `MASK_CAMS` the Ø8 camera windows at (±26, +43). Mirror X to engrave the mask guide on the back. Cast acrylic,
+  single-flute O-flute, ~16–18k rpm, 1–1.5 mm passes.
+- Fit: panel 1.5, cameras 4.1, devkit board 1.7, I/O box 0.3 (worst case), no clashes.

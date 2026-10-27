@@ -6,13 +6,14 @@ cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck re
 import math, re
 
 BROW = 116.0                                         # top of the flat face plane
+FACE = 59.5                                          # the face plane (front of the inlaid acrylic)
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
     return (1 - u ** n) ** (1 / n)
 
 def outline(z):
-    fx = 56.0 if 18 <= z <= BROW else (44 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + 60 * se((z - BROW) / (134 - BROW), 2.2))
+    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
     bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
     wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4)   # back (parietal) half width
     wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
