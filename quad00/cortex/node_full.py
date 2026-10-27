@@ -16,6 +16,13 @@ FLAT_X = 16.0                                         # desk lean cut meets the 
 CHIN_Z = 22.0                                         # stereo + grille band under the glass
 STEREO_Y = 45.0                                       # 90 baseline (a second IMX219 pair, or a wider stereo board)
 
+def inside(poly, x, y):
+    c = False
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            c = not c
+    return c
+
 def lerp_map(z, pairs):
     for (a0, b0), (a1, b1) in zip(pairs, pairs[1:]):
         if z <= a1:
@@ -90,7 +97,29 @@ def main():
     out += bx('full-display', FACE - 1 - SCR_D, -SCR_W / 2, SCR_Z, FACE - 1, SCR_W / 2, SCR_Z + SCR_H, '7in panel + driver, 9 deep ASSUMED')
     out += bx('full-stereo', FACE - 12, -58, CHIN_Z - 8, FACE - 2, 58, CHIN_Z + 7, 'stereo pair board(s), 90 baseline')
     out += bx('full-power', -76, -24, 56, -68, 24, 96, 'PD sink + 4S charger, carries the USB-C on the back')
-    out += bx('full-mics', -10, -40, 200, 30, 40, 204, '4-mic array (ReSpeaker class) under the crown')
+    # Ears: Seeed reSpeaker XVF3800 USB 4-mic array (2D drawing + STEP from the Seeed wiki): a Ø100 x 1.2
+    # disc, 4 holes on a 66 square, parts to 4.8 on the component side, mic inlets on the other. It lies
+    # flat under the crown, mics up, parts down; each mic reaches the outside through a short sealed
+    # channel to a Ø1.6 port in the crown (~11 mm), the four ports a quiet square on top of the head.
+    # Hung from four crown bosses (M2.5). USB-C at the back edge, to the AGX.
+    XC, XZ = 8.0, 203.0
+    out += '[let full-xvf [translate %.1f 0.0 %.1f [cylinder 50.0 1.2]]]\n' % (XC, XZ)
+    out += bx('full-xvf-parts', XC - 30, -30, XZ - 4.8, XC + 30, 30, XZ, 'XVF3800 + XIAO side, 4.8 deep')
+    out += bx('full-xvf-usb', XC - 50, -5, XZ - 3.5, XC - 42, 5, XZ, 'its USB-C at the back edge')
+    ports, bosses = [], []
+    for sx, sy in [(1, 1), (-1, 1), (1, -1), (-1, -1)]:
+        mx, my = XC + sx * 30.5, sy * 30.5   # mic inlets just inside the mounting holes (ASSUMED from the drawing)
+        hx, hy = XC + sx * 33.0, sy * 33.0
+        zt = XZ + 1.2
+        while zt < 230 and inside(section(zt), mx, my):
+            zt += 0.25
+        zh = XZ + 1.2
+        while zh < 230 and inside(section(zh), hx, hy):
+            zh += 0.25
+        ports.append('[translate %.2f %.2f %.2f [cylinder 0.8 %.2f]]' % (mx, my, XZ + 1.2, zt - XZ - 1.2 + 0.4))
+        bosses.append('[translate %.2f %.2f %.2f [cylinder 3.0 %.2f]]' % (hx, hy, XZ + 1.2, zh - XZ - 1.2 - 1.0))
+    out += '[let full-mic-ports [union %s [union %s [union %s %s]]]]\n' % tuple(ports)
+    out += '[let full-xvf-bosses [union %s [union %s [union %s %s]]]]\n' % tuple(bosses)
     out += '[let spk [fn [y] [translate -10.0 y 110.0 [rotate 90.0 0.0 0.0 [cylinder 20.0 8.0]]]]]\n'
     out += '[let full-speakers [union [spk 78.0] [spk -70.0]]]\n'
 
