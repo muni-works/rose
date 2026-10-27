@@ -116,3 +116,21 @@ The brow domes are gone, and the panel's own square glass is the face.
   round, or an exhaust-assisted crown band.
 - The neck collar has a visible kink where the trim meets the column. Smooth it with more sections once the neck's
   real diameter comes from the body.
+
+## v1.2 hidden cameras + ear grilles (2026-10-27)
+
+**Cameras: one dead-front glass, cameras behind it.** The options were:
+
+| Option | Hides them? | Cost |
+|---|---|---|
+| **A. One glass over panel + brow (chosen)** | Yes. Black print with two camera-clear windows; they read as faint marks at most | Face plane runs up to the brow (z 116), so the forehead is taller. One 92 × 101 cover glass instead of the panel's own. The panel's glass sits under it: check the double-glass reflection and the focus through 2 layers (MEASURE #7). |
+| B. Cameras inside the panel's black border | Yes | The 4" panel has no border wide enough for an IMX219 lens; needs a custom flex board in the margin. |
+| C. Cameras in the eye glyphs (behind holes in the panel) | Yes, until the eyes move | Needs a panel with drilled-through holes. Too exotic for v1. |
+| D. Accept them as features (lens rings, "brows") | No | Simple, but that's the robot look the brief walks away from. |
+
+A also tidies the face: one glass edge from chin to brow instead of a panel edge plus two dots.
+
+**Ear grilles:** a 19-dot hex patch (Ø1.2 on a 2.6 pitch, about 10 mm across) on each side where a human ear sits,
+behind the middle of the head and above the back end of the jaw slot. The mic port is the centre dot, with a gasket
+ring as in SPEC. The speakers stay behind the jaw slot. In this pass the dots are drawn as discs; print prep cuts them
+as holes.
