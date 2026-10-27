@@ -132,7 +132,8 @@
            [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
 [let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
 [let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
-[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]]]
+[let dot-hole [fn [q] [union [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]
+                             [translate [+ gx [nth q 0]] [- 0.0 [- hw 0.8]] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cone-n dot-r 2.2 1.0 16]]]]]]   ; 45 deg csk at the outer face
 [let ear-holes [grid-holes ear-rows dot-hole]]
 ; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
 [let zx 76.0]                                   ; exhaust grille centre, z
@@ -443,7 +444,21 @@
 [let j-sec [fn [u h r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h r]]]]
 [let j-pane [j-tilt [loft #[[j-sec [- 0.0 1.5] j-ph 3.0] [j-sec [- 0.0 0.2] j-ph j-pr]]]]]
 [let j-panel [j-tilt [loft #[[j-sec 0.5 [+ j-ph 0.5] 3.0] [j-sec [- 0.0 13.0] [+ j-ph 0.8] 18.0]]]]]           ; the pocket, through the facet
+; the aperture chamfer: a 0.6 mm band at the pane opening's edge, cut 0.3 deep at 45 deg (crisp machined edge)
+[let j-chnf-sec [fn [u h] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h j-pr]]]]
+[let j-chnf-outer [j-tilt [loft #[[j-chnf-sec 0.1 [+ j-ph 0.6]] [j-chnf-sec 0.4 [+ j-ph 0.3]]]]]]
+[let j-chnf-inner [j-tilt [loft #[[j-chnf-sec 0.1 [+ j-ph 0.3]] [j-chnf-sec 0.4 j-ph]]]]]
+[let j-chnf [j-tilt [difference j-chnf-inner j-chnf-outer]]]   ; A-B = B-A: the chamfer band
 [let j-skull [difference j-panel j-skull0]]
+; the parting line: a 1.2 mm tall, 0.5 mm deep groove band around the shell at the pane's bottom edge —
+; a designed shadow line (and the print seam hides in it)
+[let j-part-z 30.0]
+[let j-part-groove [difference [bx -60.0 -60.0 29.4 60.0 60.0 30.6] [bx -58.5 -58.5 29.4 58.5 58.5 30.6]]]
+[let j-skull2 [difference j-part-groove j-skull]]
+; the base band: the bottom 3 mm recessed 1 mm (a shadow gap; the head floats off the dock line)
+[let j-base-band [difference [bx -60.0 -60.0 0.0 60.0 60.0 3.0] [bx -58.5 -58.5 0.0 58.5 58.5 3.0]]]
+[let j-skull3 [difference j-base-band j-skull2]]
+[let j-skull j-skull3]
 ; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
 [let j-eye-r 10.0]
 [let j-dome-r 10.6]
@@ -461,8 +476,8 @@
 [let j-cam-dot [union [translate gx [- 0.0 [- hw 0.9]] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]
                       [translate gx [- hw 0.9] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]]]
 ; the tub (J): the skull (facet-cut) minus the openings; the panel pocket included
-[let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-cam-bore] [union j-panel]] shell-solid]]
-[pub let cortex-tub-j [difference j-cuts j-skull0]]
+[let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-cam-bore] [union j-panel] [union j-chnf]] shell-solid]]
+[pub let cortex-tub-j [difference j-cuts j-skull]]
 [pub let cortex-face-j j-pane]
 [pub let cortex-eyes-j j-eyes]
 [pub let cortex-mouth-j j-mouth]
