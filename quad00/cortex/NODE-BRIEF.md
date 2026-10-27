@@ -215,3 +215,22 @@ Renders: `sh node_print_render.sh` → `renders/node/print-*.png` (3/4, back, un
 - Internal mounts for the display, camera, speaker and sled.
 - Print orientation: crown up with the open bottom on the bed is the natural choice. Tree supports inside the crown
   come out through the bottom, as with the cortex tub.
+
+## v1.6 rain (2026-10-27)
+
+Target: **IPX4** (splash from any direction) on the humanoid outdoors. The desk doesn't drive this. Opening by opening:
+
+| Opening | Before | Now | Still needed |
+|---|---|---|---|
+| Face glass | VHB onto the face land | unchanged: a continuous VHB ring is a seal | Unbroken bead all round, no gaps at the corners. |
+| Ear patches | holes straight through along y | **holes fall 30° toward the outside** (outer end lower), so water in a hole runs out | An IP67 acoustic membrane (Gore/Saati class) over each mic port and speaker. Holes alone don't stop wind-driven spray. |
+| Exhaust | top of the occiput (z 84–100), facing back and **up** | **moved under the occiput's widest line (z 61–75)**, where the surface faces slightly down and the swell above shelters it, level with the heatsink's aft fins. Holes fall 30° outward. | A drip lip inside, below the field, and the fan's aft side gasketed to it, so spray that gets past the holes lands outside the electronics. |
+| Intake | foot's bottom round, 45° down | unchanged: it faces the ground, so rain can't fall into it | A drain path: anything that gets in must run out of the lowest intake row, not pool on the floor plate. Keep the floor's top face free of pockets. |
+| Tub/floor seam | 0.2 gap | unchanged | A gasket or a glue bead. It's under the head, so it's sheltered. |
+| Dock | flush gold pads | unchanged | The neck-side pogo block needs its own seal; pads on the head stay wet-safe. |
+
+Material: **ASA in satin black**, not PETG, for an outdoor head (UV). FDM walls weep at 2.5 mm, so print 5 walls
+with no gaps and seal the inside (a brushed epoxy coat or XTC-3D).
+
+Exhaust open area after the move: 9 rows × ~44 ≈ 390 holes, ~600 mm². The 30° drop costs a little effective area
+(longer hole); the thermal pass checks it.

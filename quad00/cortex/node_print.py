@@ -13,6 +13,7 @@ import trimesh
 from node_skull import section, BROW
 
 WALL = 2.5
+RAIN_DROP = 0.58                # tan 30: side holes fall 30 deg toward the outside
 FLOOR = 3.0
 N = 144                         # points per section
 OUT = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
@@ -91,14 +92,16 @@ def outline_at(z):
 
 def holes():
     out = []
-    # ears: the 0.6-radius dots from node_skull, straight through along y
+    # Rain: every hole that isn't on the underside runs DOWN as it goes out (outer end lower, RAIN_DROP), so water
+    # that lands in a hole runs back out instead of in. The underside intake already points 45 deg down.
+    # ears: the 0.6-radius dots from node_skull, through along y, dropping toward the outside
     EX, EZ, EA, EB, P = -6.0, 66.0, 6.2, 11.2, 2.6
     for j in range(-6, 7):
         for i in range(-4, 4):
             x, z = EX + P * (i + 0.5 * (j % 2)), EZ + P * 0.866 * j
             if ((x - EX) / EA) ** 2 + ((z - EZ) / EB) ** 2 <= 1.0:
                 for s in (1, -1):
-                    out.append(rod((x, s * 60.0, z), (0, s, 0), 0.6, 24.0))
+                    out.append(rod((x, s * 60.0, z), (0, s, -RAIN_DROP), 0.6, 24.0))
     # intake: 3 staggered rows on the foot's bottom round, pointing out and 45 deg down
     for row, z in enumerate((4.0, 5.8, 7.6)):
         p = outline_at(z)
@@ -117,17 +120,18 @@ def holes():
             if x > 50.0:
                 continue                                # not under the face glass
             out.append(rod((x, y, z), (nx, ny, -1.0), 0.7, 12.0))
-    # exhaust: a hex field low on the back of the crown, through along -x
-    for j in range(10):
-        z = 84.0 + j * 2.2 * 0.866
+    # exhaust: a hex field on the back, just under the occiput's widest line (z 80), where the surface starts to face
+    # down and the swell above shelters it; level with the heatsink's aft fins (z 64-72). Through along -x, dropping.
+    for j in range(9):
+        z = 61.0 + j * 2.2 * 0.866
         for i in range(-21, 22):
             y = (i + 0.5 * (j % 2)) * 2.2
-            if abs(y) > 45.0:
+            if abs(y) > 48.0:
                 continue
             p = outline_at(z)
             xs = [a for a, b in zip(p, p[1:] + p[:1]) if (a[1] - y) * (b[1] - y) <= 0 and a[0] < 0]
             xb = min(q[0] for q in xs) if xs else -60.0
-            out.append(rod((xb, y, z), (-1, 0, 0), 0.7, 12.0))
+            out.append(rod((xb, y, z), (-1, 0, -RAIN_DROP), 0.7, 12.0))
     return out
 
 def main():
