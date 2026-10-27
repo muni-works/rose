@@ -7,7 +7,7 @@ import math, re
 
 # Portrait 4 x 6 in face (101.6 W x 152.4 H). The skull is designed in a 134-tall frame, then everything above the
 # seam (z 30) is stretched to TOP, so the base, seam and devkit don't move while the face grows tall.
-SEAM, TOP = 30.0, 190.0
+SEAM, TOP = 30.0, 198.0
 STRETCH = (TOP - SEAM) / (134.0 - SEAM)
 CHIN = 11.0                                          # bottom of the flat face plane (the sheet's bottom 14.7 - its frame)
 BROW = 170.0                                         # top of the flat face plane (the sheet's top 167.1 + its frame)
@@ -55,10 +55,8 @@ def outline(z):
     wb = WIDE * (58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4))   # back (parietal) half width: a round crown
     wf = min(wb, FACE_HW) * (1 if z <= brow else se((z - brow) / (134 - brow), 2.2))   # face half width
     wf = min(wf, wb)
-    # temples and jaw: the face narrows with the sheet's rounded corners, so the sides roll in toward the brow
-    if zr > SHEET_Z1 - SHEET_RT:
-        wf = min(wf, (sheet_half(zr) if zr <= SHEET_Z1 else SHEET_HW - SHEET_RT) + FRAME)
-    elif zr < SHEET_Z0 + SHEET_RB and zr >= SHEET_Z0:
+    # jaw: the face narrows with the sheet's rounded bottom corners
+    if SHEET_Z0 <= zr < SHEET_Z0 + SHEET_RB:
         wf = min(wf, sheet_half(zr) + FRAME)
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))
