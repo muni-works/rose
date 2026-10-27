@@ -7,7 +7,7 @@ ASSUMED where they say so. Frame as node.loon: dock origin, x fore, y left, z up
 import math, re
 from node_skull import section
 
-WALL = 2.5          # printed shell wall
+WALL = 2.0          # printed shell wall (node_print.WALL)
 CLEAR = 1.0         # minimum gap to the inner wall
 FLOOR = 3.0         # floor plate under everything
 FACE_X = 56.3       # back of the inlaid 3.2 mm acrylic (its front is flush with the face plane, x 59.5)

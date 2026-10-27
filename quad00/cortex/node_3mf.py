@@ -6,6 +6,7 @@
                      10% infill, tree supports at a 30 deg threshold. Pick the "0.28mm Extra Draft" process preset
                      for the speeds; the object settings override the rest.
   node-mvp-facedown.3mf  the same, with the upper laid on its face (less support inside the crown).
+  node-mvp-fastest.3mf  face-down, 0.4 nozzle, everything turned toward speed (see FASTEST).
   node-mvp-06.3mf    face-down, for a 0.6 mm nozzle: 0.36 layers, 2 walls, no infill, supports at 35 deg.
 """
 import math, os, zipfile
@@ -25,6 +26,14 @@ FAST = {
     'support_threshold_angle': '30',
     'brim_type': 'auto_brim',
 }
+
+# Fastest on a 0.4 nozzle: 0.5 mm lines so 2 loops per face fill the 2.0 shell exactly (no gap fill, no infill),
+# draft speeds set on the objects so they hold under any process preset, supports only past 40 deg (face-down).
+FASTEST = dict(FAST, sparse_infill_density='0%', top_shell_layers='3', bottom_shell_layers='3',
+               line_width='0.5', outer_wall_line_width='0.5', inner_wall_line_width='0.5',
+               outer_wall_speed='250', inner_wall_speed='350', sparse_infill_speed='350',
+               internal_solid_infill_speed='300', top_surface_speed='200', gap_infill_speed='250',
+               support_speed='250', support_threshold_angle='40')
 
 # For a 0.6 mm nozzle (select the P1S 0.6 nozzle printer preset): 0.36 layers, 2 x 0.62 walls fill the 2.5 shell
 # on their own, so no infill at all.
@@ -115,4 +124,5 @@ if __name__ == '__main__':
     fast()
     fast(face_down=True, out='node-mvp-facedown.3mf')
     fast(face_down=True, out='node-mvp-06.3mf', settings=NOZZLE06)
+    fast(face_down=True, out='node-mvp-fastest.3mf', settings=FASTEST)
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))

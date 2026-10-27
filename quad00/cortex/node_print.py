@@ -12,7 +12,7 @@ import manifold3d as mf
 import trimesh
 from node_skull import section, BROW, FACE
 
-WALL = 2.5
+WALL = 2.0                      # printed shell wall: exactly 4 x 0.5 mm lines (2 loops each face), no gap fill
 RAIN_DROP = 0.58                # tan 30: side holes fall 30 deg toward the outside
 FLOOR = 3.0
 N = 144                         # points per section

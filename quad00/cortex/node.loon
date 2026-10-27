@@ -115,7 +115,7 @@
 [let node-seam-1 [bx -48.0 26.0 3.0 -40.0 34.0 37.5]]  ; seam screw column + boss
 [let node-seam-2 [bx -48.0 -34.0 3.0 -40.0 -26.0 37.5]]  ; seam screw column + boss
 [let spk [fn [y] [translate -6.0 y 66.0 [rotate 90.0 0.0 0.0 [cylinder 14.0 5.4]]]]]
-[let node-speakers [union [spk 56.40] [spk -51.00]]]
+[let node-speakers [union [spk 56.90] [spk -51.50]]]
 [let node-floor [translate 0.0 0.0 0.0 [scale 1.0 1.0 1.0 [bx -36.0 -44.0 0.0 44.0 44.0 3.0]]]]
 ; END internals
 
