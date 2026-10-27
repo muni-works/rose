@@ -111,9 +111,10 @@
 [let node-post-1 [bx 34.5 -49.5 3.0 41.5 -42.5 38.0]]  ; devkit post Ø7
 [let node-post-2 [bx -23.5 42.5 3.0 -16.5 49.5 38.0]]  ; devkit post Ø7
 [let node-post-3 [bx 34.5 42.5 3.0 41.5 49.5 38.0]]  ; devkit post Ø7
-[let node-seam-0 [bx 34.0 -4.0 3.0 42.0 4.0 37.5]]  ; seam screw column + boss
-[let node-seam-1 [bx -48.0 26.0 3.0 -40.0 34.0 37.5]]  ; seam screw column + boss
-[let node-seam-2 [bx -48.0 -34.0 3.0 -40.0 -26.0 37.5]]  ; seam screw column + boss
+[let node-seam-0 [bx 18.0 44.0 3.0 26.0 52.0 37.5]]  ; seam screw column + boss
+[let node-seam-1 [bx 18.0 -52.0 3.0 26.0 -44.0 37.5]]  ; seam screw column + boss
+[let node-seam-2 [bx -48.0 26.0 3.0 -40.0 34.0 37.5]]  ; seam screw column + boss
+[let node-seam-3 [bx -48.0 -34.0 3.0 -40.0 -26.0 37.5]]  ; seam screw column + boss
 [let spk [fn [y] [translate -6.0 y 66.0 [rotate 90.0 0.0 0.0 [cylinder 14.0 5.4]]]]]
 [let node-speakers [union [spk 56.90] [spk -51.50]]]
 [let node-floor [translate 0.0 0.0 0.0 [scale 1.0 1.0 1.0 [bx -36.0 -44.0 0.0 44.0 44.0 3.0]]]]

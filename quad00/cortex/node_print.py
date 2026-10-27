@@ -155,7 +155,7 @@ LIP_H, LIP_T = 5.0, 1.4                     # locating lip: rises above the base
 # head_y = bx - 46), board y -> head x (I/O aft: head_x = by + DK_X0), board underside at DK_Z.
 DK_X0, DK_Z = -20.0, 38.0
 DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
-SEAM_SCREWS = [(38.0, 0.0, 0.0), (-44.0, 30.0, 14.0), (-44.0, -30.0, 14.0)]   # x, y, web (none at the front: the display)
+SEAM_SCREWS = [(22.0, 48.0, 14.0), (22.0, -48.0, 14.0), (-44.0, 30.0, 14.0), (-44.0, -30.0, 14.0)]   # x, y, web: all webbed out to the side/back walls (a front-centre boss would float: the display blocks its web)
 
 def column(x, y, z0, z1, r=4.0, web=14.0):
     """Ø2r column from z0 to z1 webbed out toward the wall (hull outward; clipped by the skin by the caller)."""
@@ -209,7 +209,7 @@ def main():
     cuts += [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, zu - 0.01)) for x, y, _ in SEAM_SCREWS]  # M3 heat-set, 5.7 long
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
     cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
-    cuts += [rod((PB_X - 3.0, y, z), (1, 0, 0), 1.1, 6.0) for y, z in PB_HOLES]   # M2.5 self-tap, 6 deep
+    cuts += [rod((PB_X - (1.6 if z < 40 else 3.0), y, z), (1, 0, 0), 1.1, 3.2 if z < 40 else 6.0) for y, z in PB_HOLES]   # M2.5 self-tap: 3.2 deep low (the pad thins there), 6 high
     upper = upper - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     # BASE: closed bottom, skin below the seam, a locating lip, devkit posts, seam-screw columns, intake
