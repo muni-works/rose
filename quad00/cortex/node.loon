@@ -1,0 +1,70 @@
+; node -- the cortex head as a frog node: v0 massing from NODE-BRIEF.md.
+;
+; One pebble, two brow domes (stereo cameras, frog eyes above the waterline), a flush square glass face, a flat foot.
+; The desk tilt lives in the puck, not the shell: the face is vertical on the neck, 12 deg up on the desk.
+; Frame: the dock origin, centre of the foot. x fore, y left, z up, mm. Massing only: no internals, no lip, no exhaust.
+; Every part is its own root (no booleans between the shell and its features) so the massing stays cheap to iterate.
+
+[material "moss_black" 0.06 0.072 0.064 0.05 0.5]
+[material "glass" 0.01 0.012 0.014 0.4 0.04]
+[material "lens" 0.0 0.0 0.0 0.6 0.05]
+[material "face" 0.72 0.95 0.76 0.0 0.5]
+[material "puck" 0.62 0.6 0.56 0.0 0.65]
+[material "body" 0.8 0.8 0.78 0.1 0.5]
+
+; cos/sin of 0, 15, ... 90 degrees (loon has no trig), and the rounded-rectangle loop from cortex.loon
+[let C0 1.0] [let C1 0.965926] [let C2 0.866025] [let C3 0.707107] [let C4 0.5] [let C5 0.258819] [let C6 0.0]
+[let CS #[C0 C1 C2 C3 C4 C5 C6]]
+[let rr-segs [fn [cu cv a b r]
+  [let ua [- [+ cu a] r]] [let ub [+ [- cu a] r]] [let va [- [+ cv b] r]] [let vb [+ [- cv b] r]]
+  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 6 k]]]]]]]
+  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 6 k] k]]]]]]
+  [let q [fn [ox oy sx sy fwd]
+    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] #[0 1 2 3 4 5]]]]
+  [flatten #[
+    #[[line [+ cu a] vb [+ cu a] va]] [q ua va 1.0 1.0 true]
+    #[[line ua [+ cv b] ub [+ cv b]]] [q ub va -1.0 1.0 false]
+    #[[line [- cu a] va [- cu a] vb]] [q ub vb -1.0 -1.0 true]
+    #[[line ub [- cv b] ua [- cv b]]] [q ua vb 1.0 -1.0 false]]]]]
+
+; ------------------------------------------------------------------ pebble ----
+; Half sizes at the waist (z 48): 56 deep, 63 wide. Each section is inset d from the waist outline; the front only
+; takes 0.3 d so the face stays nearly flat for the glass. Profile: superellipse n 2.4 under the waist (foot ~76 x 97),
+; n 2.3 over it (crown). Plan corners soften from R28 as the section shrinks.
+[let sec [fn [zd]
+  [let d [nth zd 1]]
+  [let fx [- 56.0 [* 0.3 d]]] [let bx [+ -56.0 d]]
+  [sketch 0.0 0.0 [nth zd 0] 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [/ [+ fx bx] 2.0] 0.0 [/ [- fx bx] 2.0] [- 63.0 d] [- 28.0 [* 0.6 d]]]]]]
+[let prof #[#[0.00 14.70] #[4.00 8.02] #[8.00 5.61] #[12.00 4.03] #[16.00 2.87] #[20.00 2.00] #[24.00 1.34]
+  #[28.00 0.85] #[32.00 0.49] #[36.00 0.24] #[40.00 0.09] #[44.00 0.02] #[48.00 0.00] #[52.32 0.02] #[56.61 0.12]
+  #[60.88 0.31] #[65.08 0.59] #[69.22 0.98] #[73.26 1.48] #[77.19 2.09] #[81.00 2.82] #[84.67 3.66] #[88.18 4.62]
+  #[91.52 5.69] #[94.67 6.88] #[97.62 8.17] #[100.36 9.58] #[102.88 11.09] #[105.16 12.71] #[107.19 14.42]
+  #[108.98 16.24] #[110.50 18.16] #[111.75 20.18] #[112.73 22.31] #[113.44 24.58] #[113.86 27.02] #[114.00 27.86]]]
+[let node-shell [loft [map sec prof]]]
+
+; ------------------------------------------------------------- brow domes ----
+; Low and wide, sunk into the crown so only ~10 mm shows. Camera baseline = 2 x dome-y.
+[let dome-x 26.0] [let dome-y 26.0] [let dome-z 103.0]
+[let dome [fn [s] [translate dome-x [* s dome-y] dome-z [scale 1.0 1.0 0.7 [sphere 17.0]]]]]
+[let node-domes [union [dome 1.0] [dome -1.0]]]
+[let lens [fn [s] [translate [+ dome-x 12.6] [* s dome-y] [+ dome-z 4.5] [rotate 0.0 70.0 0.0 [cylinder 4.5 4.0]]]]]
+[let node-lenses [union [lens 1.0] [lens -1.0]]]
+
+; ------------------------------------------------------------------- face ----
+; 76 x 68 dead-front glass, R12, 1 mm proud of the front at its centre (the 4in square display sits behind).
+[let node-glass [extrude 1.6 0.0 0.0 [sketch 55.6 0.0 58.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 38.0 34.0 12.0]]]]
+[let eye [fn [s] [translate 57.2 [* s 14.0] 64.0 [rotate 0.0 90.0 0.0 [cylinder 7.0 0.2]]]]]
+[let node-face [union [eye 1.0] [union [eye -1.0] [translate 57.2 -6.0 44.0 [cube 0.2 12.0 2.2]]]]]
+
+; ------------------------------------------------------------------ scenes ----
+[let tilt 12.0]
+[let lift 14.0]                                   ; dock origin height on the desk; the puck's front edge is ~5 tall
+[let on-desk [fn [s] [translate 0.0 0.0 lift [rotate 0.0 tilt 0.0 s]]]]
+; the puck: the dock's 88 x 100 footprint below the foot, cut flat by the desk
+[let node-puck [intersection [translate -100.0 -100.0 0.0 [cube 200.0 200.0 80.0]]
+  [on-desk [translate -44.0 -50.0 -40.0 [cube 88.0 100.0 40.0]]]]]
+
+; humanoid: a neck stub on a shoulder mass, only to judge the join and the proportion
+[let node-neck [translate 0.0 0.0 -46.0 [cylinder 21.0 46.0]]]
+[let tsec [fn [z a b r] [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs -8.0 0.0 a b r]]]]
+[let node-torso [loft #[[tsec -200.0 58.0 120.0 40.0] [tsec -80.0 62.0 140.0 50.0] [tsec -58.0 52.0 120.0 46.0] [tsec -46.0 30.0 50.0 24.0]]]]
