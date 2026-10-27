@@ -130,3 +130,17 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   committing (add to MEASURE.md as #7).
 - **The face is one tall pane now (J):** 84 x 104, covers nose-to-chin, eyes + mouth all drawn/lit on it; the
   physical domes overlay the drawn eyes. One display, one light source, no bezel part.
+- **Texture rule (Cam):** the screen is GLOSS, the shell SATIN. The pane's roughness is a fraction of the skull's
+  and a touch lighter, so the face reads as a glass sheet in a plastic head (no ski-mask: the ski-mask read came
+  from matte-on-matte with white stickers). Lit elements are FLUSH with the pane and proud of the skull rim by
+  ~0.05 mm (z-order: glass front < rim plane < lit elements) -- anything at or below the rim gets swallowed.
+- **Cameras move to the EARS (Cam: no room behind the 7"):** one clear Ø5 dot per ear cap, centred in the
+  perforation grid, baseline ~115 mm (SPEC wants 106 -- fine). On the mini the same construction works. The dots
+  are nearly invisible among the dark grille holes; a dark glass insert seats in each bore.
+- **Emissives double-count warning:** MaterialDef emission = color x emissive x strength. Setting emissive=[1,1,1]
+  with a high strength blows out to pure white (the "sticker" look). Set the EMISSIVE component to the wanted
+  colour and strength 1.
+- **J final construction:** egg skull with a flat face facet (plane 9 mm behind the crown), 84 x 92 pane flush in
+  it, two Ø22 smoked cabochon domes (off-the-shelf acrylic/glass, $1-3) over Ø19 emissive eye discs, a 30 x 6.5
+  stadium mouth bar, ear caps with dot grids + camera dots + recessed groove rings. Off-state: black monolith
+  with glass catchlights. On-state: dim blue glows, not white.
