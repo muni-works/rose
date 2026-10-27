@@ -40,7 +40,7 @@ Three tests, all judged from renders at 1000×1000:
    both places.
 5. **Sound and air go through one lip.** The ear ovals and orange inserts are gone. There's one continuous slot,
    2.4 mm tall, that wraps the sides and back just under the shell's widest line, where the curve turns under. It is
-   the speaker port, the mic port and the air intake. A perforated band on the back of the crown, under the domes, is
+   the speaker port, the mic port and the air intake. A perforated band on the back of the crown is
    the exhaust. Nothing on the sides draws the eye except the shape.
 6. **One accent, and it's light.** The shell is a single material in two finishes: satin moss-black (default) and
    bone. The only colour is the status light: a thin light pipe in the lip slot that glows frog green while pip is
@@ -66,9 +66,9 @@ any of this is frozen. Intake moves from the I/O cutout to the lip, and that is 
 
 ## Order of work
 
-1. **Massing** (this pass): pebble, domes, face glass, foot, lip, puck, neck stub. Render desk 3/4, desk side,
+1. **Massing** (this pass): skull shell, face glass, foot, lip, puck, neck stub. Render desk 3/4, desk side,
    humanoid 3/4 and dark-screen front. Judge against the three tests. Nothing else gets drawn until those pass.
-2. Fit internals into the new shell (carrier, pack, display, cameras in the domes, speakers at the lip). Run the
+2. Fit internals into the new shell (carrier, pack, display, brow cameras, speakers at the lip). Run the
    clearance sweep.
 3. Redo the thermal check for the lip intake and crown exhaust.
 4. Details: lens glass, light pipe, exhaust perforation, seam.
