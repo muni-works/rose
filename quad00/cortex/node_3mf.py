@@ -6,6 +6,7 @@
                      10% infill, tree supports at a 30 deg threshold. Pick the "0.28mm Extra Draft" process preset
                      for the speeds; the object settings override the rest.
   node-mvp-facedown.3mf  the same, with the upper laid on its face (less support inside the crown).
+  node-mvp-06.3mf    face-down, for a 0.6 mm nozzle: 0.36 layers, 2 walls, no infill, supports at 35 deg.
 """
 import math, os, zipfile
 import trimesh
@@ -24,6 +25,11 @@ FAST = {
     'support_threshold_angle': '30',
     'brim_type': 'auto_brim',
 }
+
+# For a 0.6 mm nozzle (select the P1S 0.6 nozzle printer preset): 0.36 layers, 2 x 0.62 walls fill the 2.5 shell
+# on their own, so no infill at all.
+NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='0%', top_shell_layers='3', bottom_shell_layers='2',
+                support_threshold_angle='35')
 
 def meshes(face_down=False):
     for name, (x, y) in PLACE.items():
@@ -49,7 +55,7 @@ NS = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
 def uuid(n):
     return '%08x-0000-4000-8000-%012x' % (n, n)
 
-def fast(face_down=False, out='node-mvp-fast.3mf'):
+def fast(face_down=False, out='node-mvp-fast.3mf', settings=None):
     parts = list(meshes(face_down))
     files, objs, items, rels, cfg = {}, [], [], [], ['<?xml version="1.0" encoding="UTF-8"?>', '<config>']
     for k, (name, m) in enumerate(parts):
@@ -73,7 +79,7 @@ def fast(face_down=False, out='node-mvp-fast.3mf'):
                     % (path, k + 1))
         cfg += ['  <object id="%d">' % obj_id, '    <metadata key="name" value="%s"/>' % name,
                 '    <metadata key="extruder" value="1"/>']
-        cfg += ['    <metadata key="%s" value="%s"/>' % kv for kv in FAST.items()]
+        cfg += ['    <metadata key="%s" value="%s"/>' % kv for kv in (settings or FAST).items()]
         cfg += ['    <part id="1" subtype="normal_part">', '      <metadata key="name" value="%s"/>' % name,
                 '      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>', '    </part>', '  </object>']
     cfg += ['  <plate>', '    <metadata key="plater_id" value="1"/>', '    <metadata key="plater_name" value="node MVP"/>',
@@ -108,4 +114,5 @@ if __name__ == '__main__':
     plain()
     fast()
     fast(face_down=True, out='node-mvp-facedown.3mf')
+    fast(face_down=True, out='node-mvp-06.3mf', settings=NOZZLE06)
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
