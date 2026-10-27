@@ -171,3 +171,8 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   vs the face (~94 at the facet): ~5 mm of skull each side. Eyes ±16, dome Ø21.2, mouth bar 30 x 6.5 low on the
   pane. K1 reference: the bought Booster K1's helmet is ~110 W x 118 D x 125 H; ours is tighter because the
   screen defines the face.
+- **Forehead/chin reduced (Cam: "shorter if possible"):** the KEY fix was j-ph — the pane half-height is now the
+  4" screen's real half-height (42.5; it was 26, showing only 60% of the screen). hh 118 -> 108. Result: the pane
+  spans z 8.5..93.5 of a 108-tall head: forehead ~14, chin ~9. The screen IS the face, edge-to-edge both ways.
+  NOTE: the bottom round (rb 12.5) nearly swallows the chin band — if the chin reads too thin in person, drop rb
+  to 0.20*hd and/or lift the whole head 2 mm on the dock.
