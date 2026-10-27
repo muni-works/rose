@@ -156,3 +156,12 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   (2) single-arg `[union X]` poisons the whole module at any later use, (3) a top-level form split across two
   lines breaks the reader (unclosed [), (4) primitives with module-imported values as arguments fail anywhere
   ("no matching clause"), including through [+ x 0.0]; only locally-bound literals work. All worked around.
+- **J in the tilted frame (873daf5):** j-tilt = rotate about the ORIGIN, then translate to (xfj, 0, zfj). The
+  mockup's double-pivot (translate(-x,-z) INSIDE the fn) double-subtracted for origin-built geometry and threw
+  the pane under the chin. The facet plane cuts only u>0 (a +u box through the origin), so the leaning crown
+  survives. Mini narrowed: 124 W x 104 D x 126 H (the 4" panel needs ~100 mm of flat face; the old 164 W was
+  appliance-wide). Eyes ±16 mm centres, +10 above the facet centre; mouth -19; both flush on the pane recessed
+  1.2 mm into the facet. Cameras: Ø4.4 bores + dark glass dots in the ear grids' TOP ROW (they read as grille
+  dots, not nostrils).
+- **loon lesson (recurring):** top-level forms must be ONE LINE (the reader breaks multi-line forms); fns must
+  not take primitives with module-imported args; single-arg [union X] poisons the module; [difference A B] = B-A.
