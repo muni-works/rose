@@ -144,3 +144,15 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   it, two Ø22 smoked cabochon domes (off-the-shelf acrylic/glass, $1-3) over Ø19 emissive eye discs, a 30 x 6.5
   stadium mouth bar, ear caps with dot grids + camera dots + recessed groove rings. Off-state: black monolith
   with glass catchlights. On-state: dim blue glows, not white.
+- **J in cortex.loon (the production source, cbd174a):** `cortex-tub-j` (egg skull, vertical facet plane 9 mm
+  behind the widest front, pane pocket, vents/IO/back-grille/camera-bore cuts), `cortex-face-j` (the recessed
+  pane), `cortex-eyes-j` (Ø19 lit discs) + `cortex-domes-j` (Ø21.2 cabochon caps, centres ±16, +x half-spheres),
+  `cortex-mouth-j` (30 x 6.5 stadium bar), `cortex-camdots-j` (Ø5 dark dots in the ear grids). All pub.
+  z-layout: facet centre 0.48 hh; pane 0.22 hh half-height; eyes +0.11 hh, mouth −0.06 hh. The tub's boolean
+  result has the usual open-edge issue (print_build.py rebuilds it watertight via manifold3d; extend its LEAVES
+  + build() trees for the J parts next).
+  **Materials live in the IMPORTER, not the module** (mini.loon pattern): a module's materials don't export.
+  loon bugs found (for the vcad manager): (1) `[difference A B]` is B−A (documented in-file but hostile),
+  (2) single-arg `[union X]` poisons the whole module at any later use, (3) a top-level form split across two
+  lines breaks the reader (unclosed [), (4) primitives with module-imported values as arguments fail anywhere
+  ("no matching clause"), including through [+ x 0.0]; only locally-bound literals work. All worked around.
