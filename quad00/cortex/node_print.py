@@ -174,6 +174,32 @@ PB_X = -53.0                    # power board's back face (the pad's flat)
 PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
 PB_HOLES = [(sy * 17.0, z) for sy in (1, -1) for z in (35.0, 59.0)]
 
+def cavity(w=WALL):
+    """The inside of the shell, offset w along the surface NORMAL, not just sideways. A sideways offset of each slice
+    is w thick on vertical walls but only w * sin(slope) on shallow ones -- 0.3-1.2 mm across the crown, which
+    sliced as a ring of holes. So: intersect copies of the skin offset sideways by sqrt(w^2 - dz^2) at heights shifted
+    by dz, for dz across [-w, w]; every point of the skin is then >= w (to a few %) from the cavity."""
+    top = ZS[-1]
+    zgrid = sorted(set([-1.0] + [z for z in ZS] + [z * 1.0 for z in range(0, int(top) + 1, 2)]))
+    def shifted(dz, r):
+        rows = []
+        for z in zgrid:
+            zz = max(z + dz, 0.0)
+            if zz > top - 0.3:
+                break
+            p = outline_at(zz)
+            xs, ys = [q[0] for q in p], [q[1] for q in p]
+            if min(max(xs) - min(xs), max(ys) - min(ys)) / 2 <= r + 0.6:
+                break
+            rows.append((z, offset(p, r)))
+        return loft(rows)
+    cav = None
+    for f in (-1.0, -0.7, -0.35, 0.0, 0.35, 0.7, 1.0):
+        dz = f * w
+        m = shifted(dz, math.sqrt(max(w * w - dz * dz, 0.0)))
+        cav = m if cav is None else cav ^ m
+    return cav
+
 def export(name, m, holes=0):
     mesh = m.to_mesh()
     tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=True)
@@ -183,7 +209,7 @@ def export(name, m, holes=0):
 
 def main():
     outer = loft([(z, outline_at(z)) for z in ZS])
-    inner = loft([(-1.0, offset(outline_at(0.0), WALL))] + [(z, offset(outline_at(z), WALL)) for z in ZS[1:] if z <= 131.0])
+    inner = cavity()
     skin = outer - inner
     above = lambda z: box(-100.0, -100.0, z, 100.0, 100.0, 200.0)
     below = lambda z: box(-100.0, -100.0, -5.0, 100.0, 100.0, z)
