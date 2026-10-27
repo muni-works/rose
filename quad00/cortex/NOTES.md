@@ -203,3 +203,11 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   skull depth at the back. Actually that's the pane seen edge-on from behind through the I/O window).
   Ear color: Cam wants better ear color — the grille reads as a hole; options: orange dot ring (the accent),
   or a lighter grey cap ring. NOT DONE YET.
+- **The 7-inch FULL through the J architecture (866dc6e):** 193 W x 118 D x 126 H, the 7" panel (166 x 108,
+  Waveshare HDMI LCD (C)) as the whole face. The pane geometry is now size-driven ([if size-full ...] on
+  j-pw/j-ph/j-pr), so ONE source builds both. The eyes (Ø20) and mouth (30 wide) are intentionally NOT scaled
+  up — on the bigger pane they stay the same physical size (the research: the eyes are character, not
+  information; bigger eyes on a bigger head would read cartoonish). The full looks like a wide desk radio with
+  a face — proportionally faithful to the mini.
+  RENDER NOTE: at this size the pane's glossy black dominates; the eyes' soft-blue glow reads smaller than on
+  the mini. If it needs more presence, the eye size can grow to Ø24 without breaking the layout.
