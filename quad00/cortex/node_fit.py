@@ -26,8 +26,8 @@ PARTS = {
     'cam-r': (FACE_X - 7.8, -42.5, 138, FACE_X - 5.3, -17.5, 162, 'pcb_green', 'IMX219 board, y -30'),
     'lens-l': (FACE_X - 5.3, 26, 146, FACE_X, 34, 154, 'lens', 'Ø8 lens barrel through the plate to the acrylic, z 150'),
     'lens-r': (FACE_X - 5.3, -34, 146, FACE_X, -26, 154, 'lens', 'Ø8 lens barrel'),
-    'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
-    'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
+    'power': (-77, -20, 32, -71, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
+    'usb-c': (-80.5, -4.6, 35.2, -77, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
 # devkit posts and seam-screw columns/bosses from node_print, as boxes, for the clash check
 try:
