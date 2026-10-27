@@ -185,3 +185,12 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   the pane (printed flush by design), display 1.1 off the pane, mouth 0.18. The shrunken tub (±49) still clears
   the 78-wide battery. Fixes on the way: the mouth stadium was centred at u=0.16 with r3.25 (it spanned the
   pane); now scaled 0.5 in u and centred at u=1.6 (fully in front of the glass).
+- **Shorter still (Cam):** hh 100, facet centre 0.49 hh. Forehead ~8.5, chin ~6.5 — the 85-tall screen fills
+  the face with even padding. Rendered satin BLACK (0.035/0.55), not gray, five angles. The renders show the
+  toy-killer is CONTRAST: the screen is glossier and the shell now truly black; what still reads "printed toy":
+  (1) the pane's bottom edge cuts across the chin round at an angle (the pane is bigger than the flat band at
+  the bottom — trim or chamfer), (2) the ear grille is a hole, not a detail — chamfer it, (3) no parting line
+  or base trim. DFM for 3D print (all FDM, no bought parts beyond the panel): shell 2 mm wall vase-mode or
+  spiral the crown; the pane pocket is a flat shelf — printable; the facet overhang at the leaning crown is
+  <45 deg from vertical — supportless in PETG; grille dots Ø1.4 print fine; camera bore Ø4.4 with a printed
+  dot; no supports anywhere if printed open-side-down.
