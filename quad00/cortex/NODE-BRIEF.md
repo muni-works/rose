@@ -362,3 +362,20 @@ the two camera windows.
   `MASK_CAMS` the Ø8 camera windows at (±26, +43). Mirror X to engrave the mask guide on the back. Cast acrylic,
   single-flute O-flute, ~16–18k rpm, 1–1.5 mm passes.
 - Fit: panel 1.5, cameras 4.1, devkit board 1.7, I/O box 0.3 (worst case), no clashes.
+
+## v1.13 fast print (2026-10-27)
+
+The first slice took 13 h 19 m (0.16 mm High Quality, 645 layers, 47.8 g of tree support).
+`fab/node/node-mvp-fast.3mf` is a Bambu project with per-object settings for a draft-speed MVP:
+
+| Setting | Was | Now | Why |
+|---|---|---|---|
+| Process preset | 0.16 High Quality | **0.28 Extra Draft** (pick it in Bambu) | Faster speeds and accelerations |
+| Layer height | 0.16 | 0.28 | ~370 layers instead of ~645 |
+| Walls | profile default | 2 | 4 lines ≈ the 2.5 mm shell plus gap fill |
+| Infill | 15% | 10% grid | The shells are nearly all wall anyway |
+| Top/bottom layers | profile default | 4 / 3 | |
+| Support | tree, 25° | tree, **30°** | Fewer trees inside the crown |
+
+Re-slice to get the real time. These settings should roughly halve it or better. A 0.6 mm nozzle would roughly halve
+it again. `node-mvp.3mf` stays as the plain, settings-free fallback.
