@@ -142,10 +142,14 @@ def prism_yz(poly, x0, x1):
 def box(x0, y0, z0, x1, y1, z1):
     return mf.Manifold.cube((x1 - x0, y1 - y0, z1 - z0)).translate((x0, y0, z0))
 
+SLED_X0, SLED_X1 = -16.0, 40.0
+CARRIER_X0 = -12.0                                    # A603 back edge (I/O aft); front edge at +40
+CARRIER_HOLES_X = (CARRIER_X0 + 3.5, CARRIER_X0 + 48.5)
+
 def boss_points():
-    """Four floor-screw bosses, placed by hand in the free corners of the floor plate: in front of the pack
-    (x 38, y ±28) and behind the sled walls beside the pack (x -26, y ±38.6). See node_fit.py for the clearances."""
-    return [(38.0, 28.0), (38.0, -28.0), (-26.0, 38.6), (-26.0, -38.6)]
+    """Three floor-screw bosses, placed by hand where the plate is free: one centred in front of the pack
+    (x 38.5) and two behind the sled walls (x -26, y ±38.6). See node_fit.py for the clearances."""
+    return [(38.5, 0.0), (-26.0, 38.6), (-26.0, -38.6)]
 
 def boss(x, y):
     """Ø8 boss from the floor's top face up 10 mm, webbed out to the wall (hull toward the outside, clipped by the
@@ -191,13 +195,16 @@ def main():
     fp = offset(outline_at(0.0), WALL + 0.2)
     floor = mf.Manifold.extrude(mf.CrossSection([fp]), FLOOR)
     for s in (1, -1):
-        wall = [(s * 40.0, FLOOR), (s * 43.0, FLOOR), (s * 43.0, 36.0), (s * 34.0, 36.0), (s * 40.0, 30.0)]
-        floor += prism_yz(wall if s > 0 else wall[::-1], -18.0, 10.0)
+        # wall beside the pack, full carrier length; its lip reaches OUT under the A603's corner holes (y ±40,
+        # ASSUMED 3.5 in from the 87 x 52 corners: MEASURE #5), 45-degree underside so it prints without support
+        wall = [(s * 35.5, FLOOR), (s * 38.5, FLOOR), (s * 38.5, 31.5), (s * 43.0, 36.0), (s * 35.5, 36.0)]
+        floor += prism_yz(wall if s > 0 else wall[::-1], SLED_X0, SLED_X1)
     fcuts = []
     for x, y in boss_points():
         fcuts.append(mf.Manifold.cylinder(10.0, 1.7, 1.7, 24).translate((x, y, -1.0)))
         fcuts.append(mf.Manifold.cylinder(1.9, 3.4, 1.5, 24).translate((x, y, -0.01)))   # 90-deg countersink
-    fcuts += [box(-13.0, s * 36.5 - 1.5, -1.0, 7.0, s * 36.5 + 1.5, FLOOR + 1.0) for s in (1, -1)]   # strap slots
+    fcuts += [box(-10.0, s * 34.3 - 1.0, -1.0, 10.0, s * 34.3 + 1.0, FLOOR + 1.0) for s in (1, -1)]   # strap slots
+    fcuts += [rod((x, y, 34.0), (0, 0, 1), 1.1, 8.0) for x in CARRIER_HOLES_X for y in (40.0, -40.0)]  # M2.5 pilots
     floor = floor - mf.Manifold.batch_boolean(fcuts, mf.OpType.Add)
     os.makedirs(OUT, exist_ok=True)
     for name, m in (('node-tub', tub), ('node-floor', floor)):

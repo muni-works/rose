@@ -301,3 +301,19 @@ USB-C receptacle (on the power board, through the back wall)
   face plane. Each camera is now its 25 × 24 board 5.3 mm behind the glass plus a Ø8 lens barrel to the glass, and
   only the barrels are exempt from the check. The boards clear by 1.2 mm. The panel dropped 1 mm (`fz` 54).
 - Assembly for vcad.app: `fab/node/node-assembly.loon` → `node-assembly.vcad`.
+
+## v1.10 sled fixed (2026-10-27)
+
+The sled walls were 28 mm long, off-centre, and missed the carrier's holes. The floor plate is only the foot's flat
+(71 × 87), and at the carrier's hole line (y ±40) it runs only from x −14 to 41.
+
+- **Sled:** two full-length walls (x −16..40) beside the pack at y ±35.5–38.5. Their lips point **outward** to y ±43
+  with a 45° underside, so they print without supports, and they carry the A603 under its 4 corner holes. The holes
+  are ASSUMED 3.5 mm in from the 87 × 52 corners (MEASURE #5). There are Ø2.2 pilot holes in the lips for M2.5
+  self-tapping screws.
+- **Carrier** moved forward to x −12..40 (I/O still aft), so all 4 holes land on the lips. The module and heatsink
+  moved with it, so the heatsink now vents into the open crown ahead of the exhaust.
+- **Pack** sits at x −37..33, held by a strap through 2 slots at y ±34.3. **Floor screws** are down to 3: one front
+  centre and two behind the walls.
+- Fit: carrier 10.4 to the wall, pack 5.1, no clashes. Renders: `sled-carrier.png`, `sled-carrier-front.png`.
+  `node_3mf.py` rebuilds the plain 3MF.
