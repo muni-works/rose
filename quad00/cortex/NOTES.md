@@ -211,3 +211,10 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   a face — proportionally faithful to the mini.
   RENDER NOTE: at this size the pane's glossy black dominates; the eyes' soft-blue glow reads smaller than on
   the mini. If it needs more presence, the eye size can grow to Ø24 without breaking the layout.
+- **Cameras v1 (a66ea22):** ONE mono sensor, forehead band, above the pane (Vector-style third-eye dot).
+  Ø9.5 bore through the crown wall at z 95.5, dark glass dot flush with the outer wall. The stereo question
+  is SETTLED by the vendor CAD: on both panels the glass sits directly ON the LCD (4": 1 mm glass, 7": glass
+  over PCB, zero cavity) — no camera can hide behind the glass. The 4" has ~7.5 mm side margins beside its
+  PCB: a CUSTOM micro camera flex board could live there later (not the stock 25x24 IMX219). Ear grilles
+  relocated to the wall's full-width band (zg 43) after the floating-dot artifact; styling of the grille
+  (orange accent ring vs chamfer vs mesh) still open.
