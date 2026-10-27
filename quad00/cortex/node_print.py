@@ -10,7 +10,7 @@ import math, os
 import numpy as np
 import manifold3d as mf
 import trimesh
-from node_skull import section, BROW, FACE
+from node_skull import section, BROW, FACE, ZS
 
 WALL = 2.0                      # printed shell wall: exactly 4 x 0.5 mm lines (2 loops each face), no gap fill
 RAIN_DROP = 0.58                # tan 30: side holes fall 30 deg toward the outside
@@ -18,8 +18,6 @@ FLOOR = 3.0
 N = 144                         # points per section
 OUT = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
 
-ZS = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5,
-      133.6, 134.2]
 
 def offset(pts, d):
     """Move each vertex of a CCW polygon inward by d along its vertex normal."""
@@ -95,7 +93,7 @@ def holes():
     # Rain: every hole that isn't on the underside runs DOWN as it goes out (outer end lower, RAIN_DROP), so water
     # that lands in a hole runs back out instead of in. The underside intake already points 45 deg down.
     # ears: the 0.6-radius dots from node_skull, through along y, dropping toward the outside
-    EX, EZ, EA, EB, P = -6.0, 66.0, 6.2, 11.2, 2.6
+    EX, EZ, EA, EB, P = -6.0, 103.0, 6.2, 11.2, 2.6
     for j in range(-6, 7):
         for i in range(-4, 4):
             x, z = EX + P * (i + 0.5 * (j % 2)), EZ + P * 0.866 * j
@@ -169,8 +167,8 @@ def column(x, y, z0, z1, r=4.0, web=14.0):
 # 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall. The board screws flat to a pad inside
 # the back wall of the UPPER shell (4 x M2.5 self-tapping, blind holes), just under the exhaust. VBUS/CC go to the PD
 # sink; the USB 2 pair goes on to the devkit (see NODE-BRIEF.md v1.8).
-PANEL_Z = 54.0                  # 4in panel centre (node.loon fz)
-CAM_Y, CAM_Z = 62.0, 62.0       # stereo cameras beside the panel at eye height: 124 baseline
+PANEL_Z = 95.0                  # 4in panel centre (node.loon fz)
+CAM_Y, CAM_Z = 30.0, 150.0      # stereo cameras in the brow above the panel: 60 baseline
 USB_Z = 37.0                    # receptacle centre
 PB_X = -53.0                    # power board's back face (the pad's flat)
 PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
@@ -223,7 +221,7 @@ def main():
     # LAND_T thick land (0.5 VHB); the land is a frame added behind the face, since the pocket is deeper than the wall,
     # and the 4in panel bonds to its back (VHB), showing through the window. The window
     # through the land is the acrylic less 2.5 per side.
-    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 76.2, 50.8, 0.6, 65.5, 1.5    # a whole 4 x 6 in sheet, factory corners
+    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 50.8, 76.2, 0.6, 90.9, 1.5    # a whole 4 x 6 in sheet, portrait, factory corners
     gx = FACE - G_T                                              # acrylic back face
     frame = rrect_prism(gx - LAND_T, FACE, 0.0, G_ZC, G_HY + 3.0, G_HZ + 3.0, G_R + 3.0) ^ outer
     pocket = rrect_prism(gx - 0.01, FACE + 10.0, 0.0, G_ZC, G_HY + 0.2, G_HZ + 0.2, G_R + 0.2)

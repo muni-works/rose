@@ -1,25 +1,42 @@
 """Generate the skull sections for node.loon (between the BEGIN/END skull markers). Run: python3 node_skull.py
 
 Each section is an egg in plan: a superellipse whose half width runs from `wf` at the face to `wb` at the back,
-and which squares off toward the face so the 152 x 102 acrylic sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
-cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck recess under the back."""
+and which squares off toward the face so the portrait 102 x 152 acrylic sits on a flat. Heights: face plane chin 11 to
+brow 170, crown to 190 (all above the seam stretched from a 134-tall design frame), neck recess under the back."""
 import math, re
 
+# Portrait 4 x 6 in face (101.6 W x 152.4 H). The skull is designed in a 134-tall frame, then everything above the
+# seam (z 30) is stretched to TOP, so the base, seam and devkit don't move while the face grows tall.
+SEAM, TOP = 30.0, 190.0
+STRETCH = (TOP - SEAM) / (134.0 - SEAM)
 CHIN = 11.0                                          # bottom of the flat face plane (the sheet's bottom 14.7 - its frame)
-BROW = 119.5                                         # top of the flat face plane (the sheet's top 116.3 + its frame)
+BROW = 170.0                                         # top of the flat face plane (the sheet's top 167.1 + its frame)
 FACE = 59.5                                          # the face plane (front of the inlaid acrylic)
-WIDE = 1.36                                          # width scale for the landscape 4 x 6 in face (152.4 wide)
-FACE_HW = 86.0                                       # face half width: the sheet's 76.2 + the frame
+WIDE = 1.0                                           # width scale (1.36 was the landscape sheet)
+FACE_HW = 56.0                                       # face half width: the sheet's 50.8 + the frame
+
+def design_z(z):
+    """Real height -> the 134-tall design frame."""
+    return z if z <= SEAM else SEAM + (z - SEAM) / STRETCH
+
+def real_z(z):
+    return z if z <= SEAM else SEAM + (z - SEAM) * STRETCH
+
+# section heights (real), denser where the crown turns
+ZS = [real_z(z) for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
+                          130.5, 132.5, 133.6, 134.2)]
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
     return (1 - u ** n) ** (1 / n)
 
 def outline(z):
-    fx = FACE if CHIN <= z <= BROW else (FACE - 12 + 12 * se((CHIN - z) / CHIN, 2.2) if z < CHIN else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
+    brow = design_z(BROW)
+    z = design_z(z)
+    fx = FACE if CHIN <= z <= brow else (FACE - 12 + 12 * se((CHIN - z) / CHIN, 2.2) if z < CHIN else -4 + (FACE + 4) * se((z - brow) / (134 - brow), 2.2))
     bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
     wb = WIDE * (58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 4.0))   # back (parietal) half width; squarer crown (n 4) holds the width up to the sheet's top corners
-    wf = min(wb, FACE_HW) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
+    wf = min(wb, FACE_HW) * (1 if z <= brow else se((z - brow) / (134 - brow), 2.2))   # face half width
     wf = min(wf, wb)
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))
@@ -56,7 +73,7 @@ def loft(name, rows):
     return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
 
 def main():
-    zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
+    zs = ZS
     block = loft('node-shell', [(z, section(z)) for z in zs])
 
     # Neck join: the neck's top trim is the foot's flat (the dock face) 1 mm under it, then it necks down to a round

@@ -19,13 +19,13 @@ PARTS = {
     'dk-board': (-37, -50, 38, 42, 50, 39.6, 'pcb_green', 'P3768 carrier 100 x 79, on 4 posts at z 38'),
     'dk-io': (-40, -50, 39.6, -24, 50, 55.6, 'heatsink', 'I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang'),
     'dk-stack': (-24, -34, 39.6, 23, 38, 69, 'heatsink', 'module + heatsink + fan: to 31 above the board (datasheet 34.77 incl feet)'),
-    'display': (FACE_X - 1.5 - 11.5, -42, 12, FACE_X - 1.5, 42, 96, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep; bonded to the back of the sensor plate'),
+    'display': (FACE_X - 1.5 - 11.5, -42, 53, FACE_X - 1.5, 42, 137, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep; bonded to the back of the sensor plate'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
-    'cam-l': (FACE_X - 7.8, 49.5, 50, FACE_X - 5.3, 74.5, 74, 'pcb_green', 'IMX219 board 25 x 24 x 2.5, y +62, behind the sensor plate'),
-    'cam-r': (FACE_X - 7.8, -74.5, 50, FACE_X - 5.3, -49.5, 74, 'pcb_green', 'IMX219 board, y -62'),
-    'lens-l': (FACE_X - 5.3, 58, 58, FACE_X, 66, 66, 'lens', 'Ø8 lens barrel through the plate to the acrylic, z 62'),
-    'lens-r': (FACE_X - 5.3, -66, 58, FACE_X, -58, 66, 'lens', 'Ø8 lens barrel'),
+    'cam-l': (FACE_X - 7.8, 17.5, 138, FACE_X - 5.3, 42.5, 162, 'pcb_green', 'IMX219 board 25 x 24 x 2.5, y +30, in the brow behind the sensor plate'),
+    'cam-r': (FACE_X - 7.8, -42.5, 138, FACE_X - 5.3, -17.5, 162, 'pcb_green', 'IMX219 board, y -30'),
+    'lens-l': (FACE_X - 5.3, 26, 146, FACE_X, 34, 154, 'lens', 'Ø8 lens barrel through the plate to the acrylic, z 150'),
+    'lens-r': (FACE_X - 5.3, -34, 146, FACE_X, -26, 154, 'lens', 'Ø8 lens barrel'),
     'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
@@ -39,7 +39,7 @@ try:
 except ImportError:
     pass
 # speakers + mics behind each ear patch (x -6, z 66): Ø28 x 5.4, cylinder along y, against the inner wall
-EAR = (-6.0, 66.0)
+EAR = (-6.0, 103.0)
 SPK_R, SPK_T = 14.0, 5.4
 
 def poly(z, n=144):

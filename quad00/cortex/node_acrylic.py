@@ -2,17 +2,17 @@
 
 Seen from the FRONT (as the head looks at you), origin at the sheet centre, X right (the head's -y), Y up (z).
 Layers:
-  CUT          152.4 x 101.6 outline: the sheet as bought (a 4 x 6 in sheet needs no cutting)
+  CUT          101.6 x 152.4 outline: the sheet as bought, portrait (a 4 x 6 in sheet needs no cutting)
   MASK_SCREEN  the 4in panel's active area (71.8 square), left CLEAR when the back is masked black
   MASK_CAMS    the two Ø8 camera windows, left CLEAR
 The mask goes on the BACK: to engrave it as a paint guide with the sheet face-down, mirror X in CAM.
 """
 import math, os
 
-W, H, R = 152.4, 101.6, 0.0         # a whole 4 x 6 in sheet, landscape, factory corners (node_print: G_HY, G_HZ)
-ZC = 65.5                           # sheet centre height in the head
-PANEL_Z, ACTIVE = 54.0, 71.8        # panel centre (node.loon fz), active area of the 720x720 4in IPS
-CAM_Y, CAM_Z, CAM_D = 62.0, 62.0, 8.0
+W, H, R = 101.6, 152.4, 0.0         # a whole 4 x 6 in sheet, portrait, factory corners (node_print: G_HY, G_HZ)
+ZC = 90.9                           # sheet centre height in the head
+PANEL_Z, ACTIVE = 95.0, 71.8        # panel centre (node.loon fz), active area of the 720x720 4in IPS
+CAM_Y, CAM_Z, CAM_D = 30.0, 150.0, 8.0
 
 def rrect(cx, cy, w, h, r, layer):
     x0, x1, y0, y1 = cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2

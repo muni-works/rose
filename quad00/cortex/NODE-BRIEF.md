@@ -396,3 +396,17 @@ No cutting and no CNC. Mask the back as before (`node-acrylic.dxf` is now just t
 - Fit: devkit board 13.7 to the wall, panel 2.7, cameras 6.5. Speakers sit at the wider walls. No clashes against
   the true shell.
 - Prints: upper 129 cm³, base 85 cm³. Both are single bodies, watertight, and fit the P1S bed in every 3MF layout.
+
+## v1.15 the 4 × 6" sheet, portrait (2026-10-27)
+
+The same whole sheet, stood **portrait** (101.6 W × 152.4 H). The landscape version is commit `4c62a29`.
+
+- **Head:** ~123 W × ~125 D × ~190 H. The skull is still designed in its 134-tall frame, and everything above the
+  seam is stretched ×1.54 (`node_skull.design_z` / `real_z`). So the base, seam, devkit, battery and USB-C don't
+  move. The flat face runs z 11–170. The sheet sits at z 14.7–167.1, and its corners are within 0.15 mm of flush.
+- **Panel** mid-face at z 95. **Stereo cameras in the brow** above it at y ±30, z 150: a 60 mm baseline. The strip
+  under the panel (z ~15–50) is free behind the sheet for more sensors. **Ears** moved up to eye height (z 103).
+- Fit: devkit board 1.9, panel 2.7, cameras 6.5. No clashes, including against the true shell.
+- Prints: the upper is 134 cm³ and 159 tall, the base 57 cm³. The P1S plate is now stacked front-to-back.
+- Thermal note: the exhaust stays level with the heatsink (z 63–75). The tall crown above is dead air, so watch
+  the module temperature on the first long run.
