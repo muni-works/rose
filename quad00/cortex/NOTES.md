@@ -218,3 +218,11 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   PCB: a CUSTOM micro camera flex board could live there later (not the stock 25x24 IMX219). Ear grilles
   relocated to the wall's full-width band (zg 43) after the floating-dot artifact; styling of the grille
   (orange accent ring vs chamfer vs mesh) still open.
+- **The ears are DONE (af6ce6a):** an orange accent ring around each grille oval — the design's ONE colour
+  accent (the Braun single-accent rule). Flat frame 1.4 wide (outer oval gw+1.4/gh+1.4 r8, inner gw/gh r7),
+  extruded 4.8 through the wall so it caps the hole from outside; rendered in "accent" (1.0 0.36 0.06).
+  The render: the ring reads as a speaker bezel, deliberate hardware. Combined with the forehead camera dot
+  and the countersunk grille, the ear is now a feature, not a hole.
+- **Print material note:** the ring is a separate part in the render but prints as part of the shell IF
+  multi-material; single-material printers print it black (or it's a separate bonded ring — 2 parts/head,
+  printable flat in 20 min).
