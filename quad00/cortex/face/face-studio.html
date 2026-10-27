@@ -1,0 +1,367 @@
+<title>Pip Face Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one dark studio wall; a control strip, then a wrapping grid of head fronts, each a live 720x720 screen.
+   Deliberately single-theme (the faces live on a black LCD), so colors are set explicitly. */
+:root {
+  --wall: #0e1012;          /* the studio wall */
+  --shell: #050607;         /* satin black face module */
+  --shell-edge: #1b1e22;
+  --ink: #e8ece9;           /* text */
+  --muted: #8b928e;
+  --line: #262a2e;
+  --chip: #171a1d;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { background: var(--wall); color: var(--ink); }
+body { font-family: var(--mono); font-size: 13px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 32px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 62ch; line-height: 1.55; }
+.controls { display: grid; gap: 12px; margin-top: 22px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; width: 64px; }
+button.chip { font: inherit; color: var(--ink); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+button.chip[aria-pressed="true"] { background: var(--ink); color: var(--wall); border-color: var(--ink); }
+button.chip:focus-visible, .tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 22px; margin-top: 30px; }
+.tile { display: grid; gap: 10px; min-width: 0; cursor: pointer; border-radius: 14px; }
+.tile canvas { width: 100%; max-width: 100%; aspect-ratio: 104 / 128; display: block; }
+.meta { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.name { font-family: var(--display); font-weight: 500; font-size: 18px; }
+.idx { color: var(--muted); font-size: 11px; }
+.note { color: var(--muted); line-height: 1.5; margin: 0; min-height: 3em; }
+.focus { margin-top: 30px; display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; align-items: center; border-top: 1px solid var(--line); padding-top: 28px; }
+.focus canvas { width: 100%; max-width: 380px; aspect-ratio: 104 / 128; }
+.focus h2 { font-family: var(--display); font-size: 28px; margin: 0 0 8px; }
+.focus p { color: var(--muted); line-height: 1.6; max-width: 58ch; margin: 0 0 10px; }
+.spec { color: var(--ink); }
+@media (max-width: 640px) { .focus { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Pip Face Studio</h1>
+      <p class="sub">Eight face directions, drawn inside the real face of either node head: the mini's 4" square screen or the full head's 7" portrait one, with the chin grille and the depth camera's two windows. Pick a head, a mood and a glow colour to compare them in the same state.</p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="row" id="heads"><span class="label">Head</span></div>
+    <div class="row" id="moods"><span class="label">Mood</span></div>
+    <div class="row" id="colors"><span class="label">Glow</span></div>
+  </div>
+
+  <section class="focus" aria-live="polite">
+    <canvas id="big" width="520" height="640" aria-label="Selected face, large"></canvas>
+    <div>
+      <h2 id="fname"></h2>
+      <p id="fnote"></p>
+      <p><span class="spec" id="fspec"></span></p>
+    </div>
+  </section>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const MOODS = ['idle', 'listening', 'thinking', 'happy', 'speaking', 'working', 'sleeping'];
+const COLORS = [
+  { id: 'mint', hex: '#b8e8d2', name: 'mint' },
+  { id: 'frog', hex: '#6fe07a', name: 'frog green' },
+  { id: 'white', hex: '#f2efe8', name: 'warm white' },
+  { id: 'amber', hex: '#ffb347', name: 'amber' },
+];
+let mood = 'idle', color = COLORS[0].hex, selected = 0;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// --- helpers ---------------------------------------------------------------------------------------------------
+const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
+function blink(t, seed) {                     // 0 open .. 1 closed, a quick blink every ~4 s
+  const p = (t / 1000 + seed * 1.7) % 4.2;
+  return p < 0.14 ? Math.sin(p / 0.14 * Math.PI) : 0;
+}
+function gaze(t, seed) {                      // slow wander, -1..1
+  return { x: Math.sin(t / 2300 + seed) * 0.6 + Math.sin(t / 900 + seed * 3) * 0.15, y: Math.sin(t / 3100 + seed * 2) * 0.35 };
+}
+const talk = t => 0.25 + 0.75 * Math.abs(Math.sin(t / 95) * Math.sin(t / 233));
+function glow(c, col, blur) { c.shadowColor = col; c.shadowBlur = blur * c.getTransform().a; }   // blur is in pixels
+
+// --- the head front (face module) -------------------------------------------------------------------------------
+// proportions from the CAD. mini: face 112 wide, 84 square glass, lenses +-30, grille between them.
+// full: face ~150 wide, 100 x 165 portrait glass, lenses +-45, grille between them.
+const HEADS = {
+  mini: { fw: 112, fh: 124, r: 26, sw: 84, sh: 84, top: 10, gap: 13, lens: 30, name: 'mini · 4" 720 × 720' },
+  full: { fw: 150, fh: 206, r: 34, sw: 100, sh: 165, top: 12, gap: 9, lens: 45, name: 'full · 7" 600 × 1024 portrait' },
+};
+let head = 'mini';
+function drawHead(c, W, H) {
+  const h = HEADS[head], k = Math.min(W / (h.fw + 12), H / (h.fh + 8)); // px per mm
+  const ox = (W - h.fw * k) / 2, oy = (H - h.fh * k) / 2;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = '#050607';
+  rr(c, ox, oy, h.fw * k, h.fh * k, h.r * k); c.fill();
+  c.strokeStyle = '#1b1e22'; c.lineWidth = Math.max(1, 0.6 * k); c.stroke();
+  const s = { x: W / 2 - h.sw / 2 * k, y: oy + h.top * k, w: h.sw * k, h: h.sh * k };
+  // chin grille: between the two depth-camera windows only
+  const gy = s.y + s.h + h.gap * k, lim = (h.lens - 9.5) * k;
+  c.fillStyle = '#000';
+  for (let j = -2; j <= 2; j++) for (let i = -30; i <= 30; i++) {
+    const x = W / 2 + (i + 0.5 * (j & 1)) * 2.2 * k, y = gy + j * 1.9 * k;
+    if (Math.abs(x - W / 2) > lim) continue;
+    c.beginPath(); c.arc(x, y, 0.7 * k, 0, 7); c.fill();
+  }
+  for (const sx of [-h.lens, h.lens]) {       // depth-camera windows
+    c.fillStyle = '#000'; c.beginPath(); c.arc(W / 2 + sx * k, gy, 5.5 * k, 0, 7); c.fill();
+    c.fillStyle = '#0b1220'; c.beginPath(); c.arc(W / 2 + sx * k, gy, 2.6 * k, 0, 7); c.fill();
+    c.fillStyle = 'rgba(160,190,255,.35)'; c.beginPath(); c.arc(W / 2 + sx * k - 0.9 * k, gy - 0.9 * k, 0.8 * k, 0, 7); c.fill();
+  }
+  // screen
+  c.fillStyle = '#07090b'; rr(c, s.x, s.y, s.w, s.h, 1.2 * k); c.fill();
+  return s;
+}
+
+// --- face directions -----------------------------------------------------------------------------------------------
+// each draws into a unit square (0..1) mapped to the screen; c is translated + scaled already
+const FACES = [
+  { name: 'Pip dots', note: 'Today\'s face: two round eyes, a short mouth bar. Readable at any distance, cheap to animate, and every mood is a small change to three shapes.',
+    spec: 'Eyes Ø0.20 at ±0.17, mouth 0.18 × 0.03. Blink: vertical squash.',
+    draw(c, t, m, col) {
+      const b = blink(t, 0.1), g = gaze(t, 0.3);
+      const open = m === 'sleeping' ? 0.06 : m === 'listening' ? 1.12 : 1;
+      glow(c, col, 0.04); c.fillStyle = col;
+      for (const sx of [-1, 1]) {
+        const x = 0.5 + sx * 0.17 + g.x * 0.03, y = 0.42 + g.y * 0.02 + (m === 'thinking' ? -0.05 : 0);
+        c.save(); c.translate(x, y);
+        if (m === 'happy') { c.lineWidth = 0.045; c.strokeStyle = col; c.beginPath(); c.arc(0, 0.03, 0.08, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+        else { c.scale(1, Math.max(0.06, (1 - b) * open)); c.beginPath(); c.arc(0, 0, 0.1, 0, 7); c.fill(); }
+        c.restore();
+      }
+      const mw = m === 'happy' ? 0.24 : 0.18, mh = m === 'speaking' ? 0.03 + 0.08 * talk(t) : 0.03;
+      if (m === 'happy') { c.lineWidth = 0.035; c.strokeStyle = col; c.beginPath(); c.arc(0.5, 0.6, 0.12, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke(); }
+      else if (m !== 'sleeping') { rr(c, 0.5 - mw / 2, 0.66 - mh / 2, mw, mh, 0.015); c.fill(); }
+      if (m === 'working') workingBar(c, t, col);
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Frog', note: 'The frog, without the costume: wide-set eyes high on the face, heavy lids, and a long thin smile that runs nearly edge to edge.',
+    spec: 'Eyes Ø0.26 at ±0.25, lids cut the top 30%. Mouth: 0.70-wide arc.',
+    draw(c, t, m, col) {
+      const b = blink(t, 0.7), g = gaze(t, 1.1);
+      const lid = m === 'sleeping' ? 0.95 : m === 'listening' ? 0.05 : m === 'thinking' ? 0.45 : 0.3;
+      glow(c, col, 0.03);
+      for (const sx of [-1, 1]) {
+        const x = 0.5 + sx * 0.25, y = 0.33;
+        c.save(); c.beginPath(); c.arc(x, y, 0.13, 0, 7); c.clip();
+        c.fillStyle = col; c.fillRect(x - 0.14, y - 0.14, 0.28, 0.28);
+        c.fillStyle = '#07090b'; c.beginPath(); c.arc(x + g.x * 0.04, y + 0.02 + g.y * 0.03, 0.055, 0, 7); c.fill();
+        const cover = Math.min(1, lid + b);
+        c.fillStyle = '#07090b'; c.fillRect(x - 0.14, y - 0.14, 0.28, 0.28 * cover);
+        c.restore();
+        c.strokeStyle = col; c.lineWidth = 0.012; c.beginPath(); c.arc(x, y, 0.13, 0, 7); c.stroke();
+      }
+      c.strokeStyle = col; c.lineWidth = 0.022; c.beginPath();
+      const smile = m === 'happy' ? 0.1 : m === 'speaking' ? 0.03 + 0.05 * talk(t) : 0.04;
+      c.moveTo(0.15, 0.66); c.quadraticCurveTo(0.5, 0.66 + smile * 2, 0.85, 0.66); c.stroke();
+      if (m === 'working') workingBar(c, t, col);
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Soft blocks', note: 'Rounded-rectangle eyes with expressive lids, the Vector / Eilik school. No mouth: all the feeling is in the eye shapes, which keeps the face calm.',
+    spec: 'Eyes 0.22 × 0.30, R0.06, at ±0.18. Lids are angled cuts per mood.',
+    draw(c, t, m, col) {
+      const b = blink(t, 1.4), g = gaze(t, 2.2);
+      glow(c, col, 0.05); c.fillStyle = col;
+      for (const sx of [-1, 1]) {
+        let h = 0.30 * (1 - b), w = 0.22, y = 0.46 + g.y * 0.03, x = 0.5 + sx * 0.18 + g.x * 0.04;
+        if (m === 'sleeping') h = 0.03;
+        if (m === 'listening') { h *= 1.1; w *= 1.08; }
+        if (m === 'happy') { h = 0.12; y -= 0.04; }
+        if (m === 'speaking') h *= 0.9 + 0.1 * talk(t);
+        c.save(); rr(c, x - w / 2, y - h / 2, w, Math.max(0.03, h), Math.min(0.06, h / 2)); c.clip();
+        c.fillRect(x - w / 2, y - h / 2, w, h);
+        c.fillStyle = '#07090b';
+        if (m === 'thinking') { c.beginPath(); c.moveTo(x - w / 2, y - h / 2); c.lineTo(x + w / 2, y - h / 2); c.lineTo(sx > 0 ? x + w / 2 : x - w / 2, y - h / 2 + 0.11); c.fill(); }
+        if (m === 'happy') { c.beginPath(); c.arc(x, y + 0.13, 0.14, 0, 7); c.fill(); }
+        c.restore(); c.fillStyle = col;
+      }
+      if (m === 'working') workingBar(c, t, col);
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Pixel', note: 'Chunky 12 × 12 pixels, honest about being a screen. It reads like a character from a handheld, and frames are trivial to author by hand.',
+    spec: '12 × 12 grid, 1-cell gaps. Each mood is a hand-drawn bitmap.',
+    draw(c, t, m, col) {
+      const N = 12, cell = 1 / N, b = blink(t, 2.3) > 0.4;
+      const eyesOpen = ['..##....##..', '..##....##..'], eyesShut = ['............', '.###....###.'];
+      const happy = ['.#..#..#..#.', '#....##....#'];
+      let rows = Array(N).fill('............');
+      const E = m === 'sleeping' || b ? eyesShut : m === 'happy' ? happy : eyesOpen;
+      rows[3] = E[0]; rows[4] = E[1];
+      if (m === 'listening') { rows[2] = '..##....##..'; }
+      if (m === 'thinking') { rows[3] = '...##....##.'; rows[4] = '...##....##.'; }
+      const sp = talk(t) > 0.6;
+      rows[8] = m === 'happy' ? '..#......#..' : '............';
+      rows[9] = m === 'sleeping' ? '............' : m === 'happy' ? '...######...' : m === 'speaking' && sp ? '....####....' : '....####....';
+      if (m === 'speaking' && sp) rows[10] = '....####....';
+      glow(c, col, 0.02); c.fillStyle = col;
+      rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch === '#') c.fillRect(x * cell + cell * 0.1, y * cell + cell * 0.1, cell * 0.8, cell * 0.8); }));
+      if (m === 'working') { const k = Math.floor(t / 120) % N; c.globalAlpha = 0.6; c.fillRect(k * cell + cell * 0.1, 11 * cell + cell * 0.1, cell * 0.8, cell * 0.8); c.globalAlpha = 1; }
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Orb', note: 'No face at all: one breathing light, like an assistant rather than a creature. Mood shows as size, pulse rate and ring. The calmest option for a desk.',
+    spec: 'Core Ø0.22, halo to Ø0.60. Breathing 0.25 Hz idle, 1.5 Hz speaking.',
+    draw(c, t, m, col) {
+      const rate = m === 'speaking' ? 1.5 : m === 'listening' ? 0.6 : m === 'sleeping' ? 0.12 : 0.25;
+      const p = (Math.sin(t / 1000 * rate * Math.PI * 2) + 1) / 2;
+      let r = 0.11 + 0.025 * p; if (m === 'listening') r += 0.03; if (m === 'happy') r += 0.02; if (m === 'sleeping') r = 0.07;
+      const grd = c.createRadialGradient(0.5, 0.5, 0, 0.5, 0.5, 0.32);
+      grd.addColorStop(0, col); grd.addColorStop(r / 0.32, col); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      c.globalAlpha = m === 'sleeping' ? 0.35 : 0.9; c.fillStyle = grd; c.fillRect(0, 0, 1, 1); c.globalAlpha = 1;
+      if (m === 'thinking' || m === 'working') {
+        c.strokeStyle = col; c.lineWidth = 0.012; c.beginPath();
+        const a = t / 400; c.arc(0.5, 0.5, 0.24, a, a + (m === 'working' ? 1.2 : 0.6)); c.stroke();
+      }
+      if (m === 'happy') { c.strokeStyle = col; c.lineWidth = 0.008; c.beginPath(); c.arc(0.5, 0.5, 0.2 + 0.03 * p, 0, 7); c.stroke(); }
+    } },
+  { name: 'Two lines', note: 'The most reduced face: two short strokes for eyes. Tilt and length carry all of it. Elegant when off, and it never competes with a status overlay.',
+    spec: 'Strokes 0.16 × 0.025 at ±0.16. Mood = angle (±18°) and length.',
+    draw(c, t, m, col) {
+      const b = blink(t, 3.1), g = gaze(t, 0.9);
+      c.strokeStyle = col; c.lineCap = 'round'; c.lineWidth = 0.028; glow(c, col, 0.03);
+      for (const sx of [-1, 1]) {
+        const x = 0.5 + sx * 0.16 + g.x * 0.03, y = 0.48 + g.y * 0.02;
+        let ang = 0, len = 0.16, h = 0;
+        if (m === 'happy') { c.beginPath(); c.arc(x, y + 0.04, 0.07, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); continue; }
+        if (m === 'thinking') ang = sx * 0.3;
+        if (m === 'listening') { len = 0.12; h = 0.09 * (1 - b); }
+        if (m === 'sleeping') { ang = 0; len = 0.13; }
+        if (m === 'speaking') h = 0.03 * talk(t);
+        c.save(); c.translate(x, y); c.rotate(ang);
+        if (h > 0.01) { rr(c, -len / 2, -h / 2, len, h, h / 2); c.fillStyle = col; c.fill(); }
+        else { c.beginPath(); c.moveTo(-len / 2, 0); c.lineTo(len / 2, 0); c.stroke(); }
+        c.restore();
+      }
+      if (m === 'working') workingBar(c, t, col);
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Gaze', note: 'Eyes with real pupils that track: it looks at whoever is speaking (the depth camera knows where they are). The most alive, and the most uncanny if the tracking lags.',
+    spec: 'Sclera Ø0.24 at ±0.17, pupil Ø0.09, travel ±0.05. Pupils dilate when listening.',
+    draw(c, t, m, col) {
+      const b = blink(t, 4.2), g = gaze(t, 3.3);
+      for (const sx of [-1, 1]) {
+        const x = 0.5 + sx * 0.17, y = 0.44;
+        c.save(); c.translate(x, y); c.scale(1, m === 'sleeping' ? 0.08 : Math.max(0.08, 1 - b));
+        c.fillStyle = col; glow(c, col, 0.03); c.beginPath(); c.arc(0, 0, 0.12, 0, 7); c.fill();
+        c.shadowBlur = 0;
+        const pr = m === 'listening' ? 0.062 : m === 'happy' ? 0.04 : 0.048;
+        const px = (m === 'thinking' ? 0.04 * sx * 0 + 0.04 : g.x * 0.05), py = (m === 'thinking' ? -0.05 : g.y * 0.04);
+        c.fillStyle = '#07090b'; c.beginPath(); c.arc(px, py, pr, 0, 7); c.fill();
+        c.restore();
+      }
+      if (m === 'happy') { c.strokeStyle = col; c.lineWidth = 0.025; c.beginPath(); c.arc(0.5, 0.6, 0.1, 0.2 * Math.PI, 0.8 * Math.PI); c.stroke(); }
+      if (m === 'speaking') { c.fillStyle = col; const h = 0.02 + 0.06 * talk(t); rr(c, 0.44, 0.66 - h / 2, 0.12, h, 0.01); c.fill(); }
+      if (m === 'working') workingBar(c, t, col);
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+  { name: 'Node status', note: 'Pip dots shrunk into the top half, with a line of what the frog node is doing underneath. The face for when it\'s working for you while you\'re away from the desk.',
+    spec: 'Face in the top 55%; status in mono at 0.045, max 2 lines, fades in "working".',
+    draw(c, t, m, col) {
+      const b = blink(t, 5.1);
+      c.fillStyle = col; glow(c, col, 0.03);
+      for (const sx of [-1, 1]) {
+        c.save(); c.translate(0.5 + sx * 0.12, 0.3);
+        if (m === 'happy') { c.lineWidth = 0.03; c.strokeStyle = col; c.beginPath(); c.arc(0, 0.02, 0.055, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+        else { c.scale(1, m === 'sleeping' ? 0.08 : Math.max(0.08, 1 - b)); c.beginPath(); c.arc(0, 0, 0.065, 0, 7); c.fill(); }
+        c.restore();
+      }
+      if (m !== 'sleeping') { const h = m === 'speaking' ? 0.02 + 0.04 * talk(t) : 0.02; rr(c, 0.44, 0.43 - h / 2, 0.12, h, 0.01); c.fill(); }
+      c.shadowBlur = 0; c.font = '600 0.042px "JetBrains Mono", monospace'; c.textAlign = 'center';
+      const lines = {
+        idle: ['frog node · idle', 'docked · 24°C'], listening: ['listening…', ''], thinking: ['thinking', 'tang-4b · 31 tok/s'],
+        happy: ['PR #114 merged', 'nice'], speaking: ['', ''], working: ['building frog/main', 'cargo test · ' + (Math.floor(t / 300) % 97 + 3) + '%'],
+        sleeping: ['', ''] }[m];
+      c.globalAlpha = 0.85; c.fillText(lines[0], 0.5, 0.66); c.globalAlpha = 0.5; c.fillText(lines[1], 0.5, 0.73); c.globalAlpha = 1;
+      if (m === 'sleeping') zzz(c, t, col);
+    } },
+];
+
+function workingBar(c, t, col) {               // shared "working" cue: a thin sweep along the bottom of the screen
+  const p = (t / 1400) % 1; c.shadowBlur = 0;
+  c.fillStyle = col; c.globalAlpha = 0.2; c.fillRect(0.15, 0.86, 0.7, 0.012);
+  c.globalAlpha = 0.9; c.fillRect(0.15 + 0.55 * p, 0.86, 0.15, 0.012); c.globalAlpha = 1;
+}
+function zzz(c, t, col) {
+  c.shadowBlur = 0; c.fillStyle = col; c.font = '600 0.06px "JetBrains Mono", monospace';
+  for (let i = 0; i < 3; i++) { const p = ((t / 1800) + i / 3) % 1; c.globalAlpha = (1 - p) * 0.7; c.fillText('z', 0.72 + p * 0.1, 0.3 - p * 0.15); }
+  c.globalAlpha = 1;
+}
+
+// --- render ---------------------------------------------------------------------------------------------------
+const tiles = [];
+const grid = document.getElementById('grid');
+FACES.forEach((f, i) => {
+  const el = document.createElement('div'); el.className = 'tile'; el.tabIndex = 0; el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', 'Show ' + f.name + ' large');
+  const cv = document.createElement('canvas'); cv.width = 312; cv.height = 384;
+  el.append(cv);
+  const meta = document.createElement('div'); meta.className = 'meta';
+  meta.innerHTML = `<span class="name"></span><span class="idx">direction ${i + 1} of ${FACES.length}</span>`;
+  meta.querySelector('.name').textContent = f.name;
+  el.append(meta);
+  const n = document.createElement('p'); n.className = 'note'; n.textContent = f.note; el.append(n);
+  const pick = () => { selected = i; showFocus(); };
+  el.addEventListener('click', pick); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+  grid.append(el); tiles.push(cv);
+});
+
+function render(cv, f, t) {
+  const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.save(); const s = drawHead(c, W, H);
+  c.beginPath(); c.rect(s.x, s.y, s.w, s.h); c.clip();
+  // faces are drawn in a unit square; on the portrait screen it sits a little above centre, leaving the lower third
+  c.translate(s.x, s.y + (s.h - s.w) * 0.32); c.scale(s.w, s.w);
+  f.draw(c, t, mood, color);
+  c.restore();
+}
+const big = document.getElementById('big');
+function showFocus() {
+  const f = FACES[selected];
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fnote').textContent = f.note;
+  document.getElementById('fspec').textContent = f.spec;
+}
+
+function chips(id, items, onPick, isSwatch) {
+  const row = document.getElementById(id);
+  items.forEach((it, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.id = id + '-' + (it.id || it);
+    if (isSwatch) { b.className = 'swatch'; b.style.background = it.hex; b.setAttribute('aria-label', it.name); }
+    else { b.className = 'chip'; b.textContent = it; }
+    b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+    b.addEventListener('click', () => { row.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); onPick(it); });
+    row.append(b);
+  });
+}
+chips('heads', Object.keys(HEADS), hd => { head = hd; });
+document.querySelectorAll('#heads button').forEach(b => { b.textContent = HEADS[b.id.slice(6)].name; });
+chips('moods', MOODS, m => { mood = m; });
+chips('colors', COLORS, c => { color = c.hex; }, true);
+showFocus();
+
+let t0 = performance.now();
+function frame(now) {
+  const t = reduced ? 1500 : now - t0;
+  tiles.forEach((cv, i) => render(cv, FACES[i], t));
+  render(big, FACES[selected], t);
+  if (!reduced) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (reduced) { document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => requestAnimationFrame(frame))); document.getElementById('grid').addEventListener('click', () => requestAnimationFrame(frame)); }
+</script>
