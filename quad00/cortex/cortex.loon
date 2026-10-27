@@ -67,7 +67,7 @@
 [let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
 ; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
 ; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
-[let zk 40.0][let zfj [* 0.47 hh]]                                  ; the facet's centre height
+[let zk 40.0][let zfj [* 0.49 hh]]                                  ; the facet's centre height
 [let xfj [- x-face [* rake zfj] 2.0]]                  ; the facet plane: 2 mm behind the crown front (no bezel)
 [let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
 
