@@ -338,8 +338,16 @@
 
 [pub let cortex-display [j-tilt [bx [- 0.0 13.0] -37.0 [- 0.0 25.0] [- 0.0 2.6] 37.0 25.0]]]
 ; the camera proxies, J: behind each ear grille (the Ø4.4 dot at the grid's top row), an IMX219-sized box
-[pub let cortex-cams [union [bx [- gx 9.0] [- hw 12.0] [- zcamj 9.0] [+ gx 9.0] [- hw 1.5] [+ zcamj 9.0]]
-                        [bx [- gx 9.0] [- 1.5 hw] [- zcamj 9.0] [+ gx 9.0] [+ 12.0 hw] [+ zcamj 9.0]]]]
+; the camera proxies, J: BEHIND THE PANE at its outer corners (the glass is clear there — the eyes' mask
+; leaves the corners transparent). Baseline 60 (the 4" pane limits it; SPEC's 106 was for the old face).
+; the camera, v1: ONE mono sensor in the forehead band, above the pane (Vector-style). Ø9.5 bore through
+; the crown wall at z 95.5, dark glass dot flush with the outer wall. Stereo returns later with a custom
+; flex board in the panel's side margins (the CAD says there's 7.5 mm beside the 4" PCB — not enough for
+; the stock IMX219, enough for a custom micro board).
+[let zcamf 95.5]
+[let xcamf 30.0]
+[pub let cortex-cams [union [bx 18.0 -4.75 [- zcamf 4.75] 40.0 4.75 [+ zcamf 4.75]]
+                            [rotate 0.0 90.0 0.0 [translate xcamf 0.0 zcamf [cylinder-n 4.25 26.0 32]]]]]
 
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries, its neck's dock face at the origin (z up into the head). A desk dock is the same parts in a
@@ -472,17 +480,13 @@
 ; the mouth: a 30 x 6.5 stadium bar, low on the pane (the waveform/mouth animation in firmware; off = dark)
 [let j-mouth-v [- 0.0 [* 0.14 hh]]]
 [let j-mouth [j-tilt [hull [translate 1.6 -8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]] [translate 1.6 8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]]]]]
-; the cameras: in the FACET edge at eye height (flanking the screen, baseline 90), dark glass flush
-[let j-cam-v [+ j-eye-v 2.0]]
-[let j-cam-c [+ j-pw 6.0]]
-[let j-cam-bore [union [j-tilt [translate 1.0 j-cam-c j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.25 6.0 24]]]] [j-tilt [translate 1.0 [- 0.0 j-cam-c] j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.25 6.0 24]]]]]]
-[let j-cam-dot [union [j-tilt [translate [- 0.0 1.1] j-cam-c j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.6 32]]]] [j-tilt [translate [- 0.0 1.1] [- 0.0 j-cam-c] j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.6 32]]]]]]
 ; the tub (J): the skull (facet-cut) minus the openings; the panel pocket included
-[let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-cam-bore] [union j-panel] [union j-chnf]] shell-solid]]
+[let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-panel] [union j-chnf] [union [rotate 0.0 90.0 0.0 [translate xcamf 0.0 zcamf [cylinder-n 4.25 60.0 32]]]]] shell-solid]]
 [pub let cortex-tub-j [difference j-cuts j-skull]]
 [pub let cortex-face-j j-pane]
 [pub let cortex-eyes-j j-eyes]
 [pub let cortex-mouth-j j-mouth]
+[let j-cam-dot [translate xcamf 0.0 zcamf [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.2 32]]]]
 [pub let cortex-camdots-j j-cam-dot]
 ; the display proxy, J: fills the panel pocket behind the recessed pane (the pane sits at u -1.5..-0.2)
 
