@@ -19,9 +19,13 @@ PARTS = {
     'carrier': (-44, -43.5, 36, 8, 43.5, 54, 'pcb_green', 'Seeed A603 87 x 52 + Orin NX, 18 tall; I/O edge aft'),
     'module': (-39, -43.5, 54, 8, 43.5, 64, 'pcb_green', 'module stack to 28 over the carrier underside'),
     'heatsink': (-38, -31.5, 64, 2, 31.5, 72, 'heatsink', 'ATS 63 x 40 x 8 fan heatsink, fan up'),
-    'display': (FACE_X - 11.5, -42, 13, FACE_X, 42, 97, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep incl. connectors'),
-    'cam-l': (FACE_X - 14, 13.5, 97.5, FACE_X, 38.5, 119.5, 'pcb_green', 'IMX219 25 x 24 x 13, lens at z 108.5, y +26'),
-    'cam-r': (FACE_X - 14, -38.5, 97.5, FACE_X, -13.5, 119.5, 'pcb_green', 'IMX219, y -26'),
+    'display': (FACE_X - 11.5, -42, 12, FACE_X, 42, 96, 'heatsink', '4in 84 x 84 glass + module, 11.5 deep incl. connectors'),
+    # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
+    # where the face plane curves back into the crown, so only the lens reaches the face plane.
+    'cam-l': (FACE_X - 7.8, 13.5, 96.5, FACE_X - 5.3, 38.5, 120.5, 'pcb_green', 'IMX219 board 25 x 24 x 2.5, y +26'),
+    'cam-r': (FACE_X - 7.8, -38.5, 96.5, FACE_X - 5.3, -13.5, 120.5, 'pcb_green', 'IMX219 board, y -26'),
+    'lens-l': (FACE_X - 5.3, 22, 104.5, FACE_X, 30, 112.5, 'lens', 'Ø8 lens barrel to the glass, centre z 108.5'),
+    'lens-r': (FACE_X - 5.3, -30, 104.5, FACE_X, -22, 112.5, 'lens', 'Ø8 lens barrel'),
     'power': (-53, -20, 27, -47, 20, 57, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 32.2, -53, 4.6, 35.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
     'sled-l': (-18, 34, FLOOR, 10, 43, 36, 'petg_grey', 'printed sled wall + lip (with the floor)'),
@@ -91,7 +95,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display', 'cam-l', 'cam-r')) if not name.startswith(('boss', 'usb', 'power')) else CLEAR
+        g = min_gap(box_points(b), skip_face=name in ('display', 'lens-l', 'lens-r')) if not name.startswith(('boss', 'usb', 'power')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)
@@ -106,9 +110,11 @@ def main():
     lines = ['[let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]']
     for name, b in PARTS.items():
         lines.append('[let node-%s [bx %s]]  ; %s' % (name, ' '.join('%.1f' % v for v in b[:6]), b[7]))
-    lines.append('[let spk [fn [s] [translate %.1f [* s %.2f] %.1f [rotate 90.0 0.0 0.0 [cylinder %.1f %.1f]]]]]'
-                 % (EAR[0], ys, EAR[1], SPK_R, SPK_T))
-    lines.append('[let node-speakers [union [spk 1.0] [spk -1.0]]]')
+    # rotate 90 about x points the cylinder along -y, so the left one starts at +ys and the right one at
+    # -(ys - SPK_T): both span |y| in [ys - SPK_T, ys]
+    lines.append('[let spk [fn [y] [translate %.1f y %.1f [rotate 90.0 0.0 0.0 [cylinder %.1f %.1f]]]]]'
+                 % (EAR[0], EAR[1], SPK_R, SPK_T))
+    lines.append('[let node-speakers [union [spk %.2f] [spk %.2f]]]' % (ys, -(ys - SPK_T)))
     lines.append('[let node-floor [translate 0.0 0.0 0.0 [scale 1.0 1.0 1.0 [bx -36.0 -44.0 0.0 44.0 44.0 %.1f]]]]' % FLOOR)
     block = '\n'.join(lines) + '\n'
     src = open('node.loon').read()

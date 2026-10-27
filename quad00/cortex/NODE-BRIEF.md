@@ -292,3 +292,12 @@ USB-C receptacle (on the power board, through the back wall)
 - Charging at 20 V PD: about 60 W from a 65 W charger, and the pack + system share it. A 5 V-only charger gives
   trickle power only.
 - **Rebuild**: tub 121 cm³, watertight. Fit: power board and receptacle clear everything; nothing clashes.
+
+## v1.9 fixes found in vcad.app (2026-10-27)
+
+- **Right speaker was mirrored outward**, hanging 5 mm outside the head. `[rotate 90 0 0]` points the cylinder
+  along −y, so negating y isn't a mirror. Both speakers now span |y| 50.8–56.2.
+- **Camera boards poked 0.5 mm through the skin** above the brow: the clearance check skipped anything touching the
+  face plane. Each camera is now its 25 × 24 board 5.3 mm behind the glass plus a Ø8 lens barrel to the glass, and
+  only the barrels are exempt from the check. The boards clear by 1.2 mm. The panel dropped 1 mm (`fz` 54).
+- Assembly for vcad.app: `fab/node/node-assembly.loon` → `node-assembly.vcad`.

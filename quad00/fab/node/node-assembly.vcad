@@ -1,0 +1,1120 @@
+{
+  "version": "0.1",
+  "nodes": {
+    "22": {
+      "id": 22,
+      "name": "node-battery",
+      "op": {
+        "type": "Translate",
+        "child": 21,
+        "offset": {
+          "x": -38.0,
+          "y": -33.0,
+          "z": 9.0
+        }
+      }
+    },
+    "1": {
+      "id": 1,
+      "name": null,
+      "op": {
+        "type": "mesh_import",
+        "path": "/Users/cam/Developer/rose/.claude/worktrees/head-node-design/quad00/fab/node/node-floor.stl",
+        "scale": {
+          "x": 0.001,
+          "y": 0.001,
+          "z": 0.001
+        }
+      }
+    },
+    "15": {
+      "id": 15,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 14,
+        "angles": {
+          "x": 0.0,
+          "y": 90.0,
+          "z": 0.0
+        }
+      }
+    },
+    "23": {
+      "id": 23,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 52.0,
+          "y": 87.0,
+          "z": 18.0
+        }
+      }
+    },
+    "45": {
+      "id": 45,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 44,
+        "angles": {
+          "x": 90.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      }
+    },
+    "36": {
+      "id": 36,
+      "name": "node-lens-l",
+      "op": {
+        "type": "Translate",
+        "child": 35,
+        "offset": {
+          "x": 50.5,
+          "y": 22.0,
+          "z": 104.5
+        }
+      }
+    },
+    "16": {
+      "id": 16,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 15,
+        "offset": {
+          "x": 57.0,
+          "y": -26.0,
+          "z": 108.5
+        }
+      }
+    },
+    "3": {
+      "id": 3,
+      "name": "node-glass",
+      "op": {
+        "type": "Extrude",
+        "sketch": 2,
+        "direction": {
+          "x": 1.2,
+          "y": 0.0,
+          "z": 0.0
+        }
+      }
+    },
+    "12": {
+      "id": 12,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 11,
+        "offset": {
+          "x": 57.1,
+          "y": 15.0,
+          "z": 62.0
+        }
+      }
+    },
+    "24": {
+      "id": 24,
+      "name": "node-carrier",
+      "op": {
+        "type": "Translate",
+        "child": 23,
+        "offset": {
+          "x": -44.0,
+          "y": -43.5,
+          "z": 36.0
+        }
+      }
+    },
+    "34": {
+      "id": 34,
+      "name": "node-cam-r",
+      "op": {
+        "type": "Translate",
+        "child": 33,
+        "offset": {
+          "x": 48.0,
+          "y": -38.5,
+          "z": 96.5
+        }
+      }
+    },
+    "33": {
+      "id": 33,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 2.5,
+          "y": 25.0,
+          "z": 24.0
+        }
+      }
+    },
+    "31": {
+      "id": 31,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 2.5,
+          "y": 25.0,
+          "z": 24.0
+        }
+      }
+    },
+    "10": {
+      "id": 10,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 8.0,
+        "height": 0.2,
+        "segments": 0
+      }
+    },
+    "17": {
+      "id": 17,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 3.0,
+        "height": 0.06,
+        "segments": 0
+      }
+    },
+    "38": {
+      "id": 38,
+      "name": "node-lens-r",
+      "op": {
+        "type": "Translate",
+        "child": 37,
+        "offset": {
+          "x": 50.5,
+          "y": -30.0,
+          "z": 104.5
+        }
+      }
+    },
+    "39": {
+      "id": 39,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 6.0,
+          "y": 40.0,
+          "z": 30.0
+        }
+      }
+    },
+    "47": {
+      "id": 47,
+      "name": "node-speakers",
+      "op": {
+        "type": "Union",
+        "left": 43,
+        "right": 46
+      }
+    },
+    "5": {
+      "id": 5,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 4,
+        "offset": {
+          "x": 57.1,
+          "y": -7.0,
+          "z": 38.0
+        }
+      }
+    },
+    "18": {
+      "id": 18,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 17,
+        "angles": {
+          "x": 0.0,
+          "y": 90.0,
+          "z": 0.0
+        }
+      }
+    },
+    "8": {
+      "id": 8,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 7,
+        "offset": {
+          "x": 57.1,
+          "y": -15.0,
+          "z": 62.0
+        }
+      }
+    },
+    "19": {
+      "id": 19,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 18,
+        "offset": {
+          "x": 57.0,
+          "y": 26.0,
+          "z": 108.5
+        }
+      }
+    },
+    "26": {
+      "id": 26,
+      "name": "node-module",
+      "op": {
+        "type": "Translate",
+        "child": 25,
+        "offset": {
+          "x": -39.0,
+          "y": -43.5,
+          "z": 54.0
+        }
+      }
+    },
+    "32": {
+      "id": 32,
+      "name": "node-cam-l",
+      "op": {
+        "type": "Translate",
+        "child": 31,
+        "offset": {
+          "x": 48.0,
+          "y": 13.5,
+          "z": 96.5
+        }
+      }
+    },
+    "29": {
+      "id": 29,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 11.5,
+          "y": 84.0,
+          "z": 84.0
+        }
+      }
+    },
+    "40": {
+      "id": 40,
+      "name": "node-power",
+      "op": {
+        "type": "Translate",
+        "child": 39,
+        "offset": {
+          "x": -53.0,
+          "y": -20.0,
+          "z": 27.0
+        }
+      }
+    },
+    "2": {
+      "id": 2,
+      "name": null,
+      "op": {
+        "type": "Sketch2D",
+        "origin": {
+          "x": 55.8,
+          "y": 0.0,
+          "z": 65.5
+        },
+        "x_dir": {
+          "x": 0.0,
+          "y": 1.0,
+          "z": 0.0
+        },
+        "y_dir": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 1.0
+        },
+        "segments": [
+          {
+            "type": "Line",
+            "start": {
+              "x": 46.0,
+              "y": -42.5
+            },
+            "end": {
+              "x": 46.0,
+              "y": 42.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 46.0,
+              "y": 42.5
+            },
+            "end": {
+              "x": 45.727408,
+              "y": 44.570552
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 45.727408,
+              "y": 44.570552
+            },
+            "end": {
+              "x": 44.928200000000004,
+              "y": 46.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 44.928200000000004,
+              "y": 46.5
+            },
+            "end": {
+              "x": 43.656856,
+              "y": 48.156856
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 43.656856,
+              "y": 48.156856
+            },
+            "end": {
+              "x": 42.0,
+              "y": 49.428200000000004
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 42.0,
+              "y": 49.428200000000004
+            },
+            "end": {
+              "x": 40.070552,
+              "y": 50.227408
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 40.070552,
+              "y": 50.227408
+            },
+            "end": {
+              "x": 38.0,
+              "y": 50.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 38.0,
+              "y": 50.5
+            },
+            "end": {
+              "x": -38.0,
+              "y": 50.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -38.0,
+              "y": 50.5
+            },
+            "end": {
+              "x": -40.070552,
+              "y": 50.227408
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -40.070552,
+              "y": 50.227408
+            },
+            "end": {
+              "x": -42.0,
+              "y": 49.428200000000004
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -42.0,
+              "y": 49.428200000000004
+            },
+            "end": {
+              "x": -43.656856,
+              "y": 48.156856
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -43.656856,
+              "y": 48.156856
+            },
+            "end": {
+              "x": -44.928200000000004,
+              "y": 46.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -44.928200000000004,
+              "y": 46.5
+            },
+            "end": {
+              "x": -45.727408,
+              "y": 44.570552
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -45.727408,
+              "y": 44.570552
+            },
+            "end": {
+              "x": -46.0,
+              "y": 42.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -46.0,
+              "y": 42.5
+            },
+            "end": {
+              "x": -46.0,
+              "y": -42.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -46.0,
+              "y": -42.5
+            },
+            "end": {
+              "x": -45.727408,
+              "y": -44.570552
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -45.727408,
+              "y": -44.570552
+            },
+            "end": {
+              "x": -44.928200000000004,
+              "y": -46.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -44.928200000000004,
+              "y": -46.5
+            },
+            "end": {
+              "x": -43.656856,
+              "y": -48.156856
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -43.656856,
+              "y": -48.156856
+            },
+            "end": {
+              "x": -42.0,
+              "y": -49.428200000000004
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -42.0,
+              "y": -49.428200000000004
+            },
+            "end": {
+              "x": -40.070552,
+              "y": -50.227408
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -40.070552,
+              "y": -50.227408
+            },
+            "end": {
+              "x": -38.0,
+              "y": -50.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": -38.0,
+              "y": -50.5
+            },
+            "end": {
+              "x": 38.0,
+              "y": -50.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 38.0,
+              "y": -50.5
+            },
+            "end": {
+              "x": 40.070552,
+              "y": -50.227408
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 40.070552,
+              "y": -50.227408
+            },
+            "end": {
+              "x": 42.0,
+              "y": -49.428200000000004
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 42.0,
+              "y": -49.428200000000004
+            },
+            "end": {
+              "x": 43.656856,
+              "y": -48.156856
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 43.656856,
+              "y": -48.156856
+            },
+            "end": {
+              "x": 44.928200000000004,
+              "y": -46.5
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 44.928200000000004,
+              "y": -46.5
+            },
+            "end": {
+              "x": 45.727408,
+              "y": -44.570552
+            }
+          },
+          {
+            "type": "Line",
+            "start": {
+              "x": 45.727408,
+              "y": -44.570552
+            },
+            "end": {
+              "x": 46.0,
+              "y": -42.5
+            }
+          }
+        ]
+      }
+    },
+    "21": {
+      "id": 21,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 70.0,
+          "y": 66.0,
+          "z": 22.0
+        }
+      }
+    },
+    "44": {
+      "id": 44,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 14.0,
+        "height": 5.4,
+        "segments": 0
+      }
+    },
+    "11": {
+      "id": 11,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 10,
+        "angles": {
+          "x": 0.0,
+          "y": 90.0,
+          "z": 0.0
+        }
+      }
+    },
+    "27": {
+      "id": 27,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 40.0,
+          "y": 63.0,
+          "z": 8.0
+        }
+      }
+    },
+    "14": {
+      "id": 14,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 3.0,
+        "height": 0.06,
+        "segments": 0
+      }
+    },
+    "41": {
+      "id": 41,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 14.0,
+        "height": 5.4,
+        "segments": 0
+      }
+    },
+    "43": {
+      "id": 43,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 42,
+        "offset": {
+          "x": -6.0,
+          "y": -50.8,
+          "z": 66.0
+        }
+      }
+    },
+    "9": {
+      "id": 9,
+      "name": null,
+      "op": {
+        "type": "Union",
+        "left": 5,
+        "right": 8
+      }
+    },
+    "30": {
+      "id": 30,
+      "name": "node-display",
+      "op": {
+        "type": "Translate",
+        "child": 29,
+        "offset": {
+          "x": 44.3,
+          "y": -42.0,
+          "z": 12.0
+        }
+      }
+    },
+    "46": {
+      "id": 46,
+      "name": null,
+      "op": {
+        "type": "Translate",
+        "child": 45,
+        "offset": {
+          "x": -6.0,
+          "y": 56.2,
+          "z": 66.0
+        }
+      }
+    },
+    "48": {
+      "id": 48,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 3.5,
+          "y": 9.2,
+          "z": 3.5999999999999943
+        }
+      }
+    },
+    "50": {
+      "id": 50,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 20.0,
+          "y": 32.0,
+          "z": 5.0
+        }
+      }
+    },
+    "35": {
+      "id": 35,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 5.299999999999997,
+          "y": 8.0,
+          "z": 8.0
+        }
+      }
+    },
+    "0": {
+      "id": 0,
+      "name": null,
+      "op": {
+        "type": "mesh_import",
+        "path": "/Users/cam/Developer/rose/.claude/worktrees/head-node-design/quad00/fab/node/node-tub.stl",
+        "scale": {
+          "x": 0.001,
+          "y": 0.001,
+          "z": 0.001
+        }
+      }
+    },
+    "6": {
+      "id": 6,
+      "name": null,
+      "op": {
+        "type": "Cylinder",
+        "radius": 8.0,
+        "height": 0.2,
+        "segments": 0
+      }
+    },
+    "20": {
+      "id": 20,
+      "name": "node-lenses",
+      "op": {
+        "type": "Union",
+        "left": 16,
+        "right": 19
+      }
+    },
+    "37": {
+      "id": 37,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 5.299999999999997,
+          "y": 8.0,
+          "z": 8.0
+        }
+      }
+    },
+    "7": {
+      "id": 7,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 6,
+        "angles": {
+          "x": 0.0,
+          "y": 90.0,
+          "z": 0.0
+        }
+      }
+    },
+    "42": {
+      "id": 42,
+      "name": null,
+      "op": {
+        "type": "Rotate",
+        "child": 41,
+        "angles": {
+          "x": 90.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      }
+    },
+    "51": {
+      "id": 51,
+      "name": "node-dockboard",
+      "op": {
+        "type": "Translate",
+        "child": 50,
+        "offset": {
+          "x": -10.0,
+          "y": -16.0,
+          "z": 3.0
+        }
+      }
+    },
+    "4": {
+      "id": 4,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 0.2,
+          "y": 14.0,
+          "z": 2.4
+        }
+      }
+    },
+    "13": {
+      "id": 13,
+      "name": "node-face",
+      "op": {
+        "type": "Union",
+        "left": 9,
+        "right": 12
+      }
+    },
+    "25": {
+      "id": 25,
+      "name": null,
+      "op": {
+        "type": "Cube",
+        "size": {
+          "x": 47.0,
+          "y": 87.0,
+          "z": 10.0
+        }
+      }
+    },
+    "49": {
+      "id": 49,
+      "name": "node-usb-c",
+      "op": {
+        "type": "Translate",
+        "child": 48,
+        "offset": {
+          "x": -56.5,
+          "y": -4.6,
+          "z": 32.2
+        }
+      }
+    },
+    "28": {
+      "id": 28,
+      "name": "node-heatsink",
+      "op": {
+        "type": "Translate",
+        "child": 27,
+        "offset": {
+          "x": -38.0,
+          "y": -31.5,
+          "z": 64.0
+        }
+      }
+    }
+  },
+  "materials": {
+    "glass": {
+      "name": "glass",
+      "color": [
+        0.01,
+        0.012,
+        0.014
+      ],
+      "metallic": 0.4,
+      "roughness": 0.04
+    },
+    "petg_grey": {
+      "name": "petg_grey",
+      "color": [
+        0.42,
+        0.44,
+        0.47
+      ],
+      "metallic": 0.1,
+      "roughness": 0.5
+    },
+    "pcb_green": {
+      "name": "pcb_green",
+      "color": [
+        0.05,
+        0.32,
+        0.18
+      ],
+      "metallic": 0.1,
+      "roughness": 0.45
+    },
+    "default": {
+      "name": "default",
+      "color": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "metallic": 0.0,
+      "roughness": 0.5
+    },
+    "cell_pack": {
+      "name": "cell_pack",
+      "color": [
+        0.13,
+        0.22,
+        0.42
+      ],
+      "metallic": 0.1,
+      "roughness": 0.5
+    },
+    "face": {
+      "name": "face",
+      "color": [
+        0.72,
+        0.95,
+        0.76
+      ],
+      "metallic": 0.0,
+      "roughness": 0.5
+    },
+    "heatsink": {
+      "name": "heatsink",
+      "color": [
+        0.55,
+        0.57,
+        0.6
+      ],
+      "metallic": 0.7,
+      "roughness": 0.4
+    },
+    "satin_black": {
+      "name": "satin_black",
+      "color": [
+        0.035,
+        0.037,
+        0.042
+      ],
+      "metallic": 0.05,
+      "roughness": 0.6
+    },
+    "lens": {
+      "name": "lens",
+      "color": [
+        0.035,
+        0.04,
+        0.045
+      ],
+      "metallic": 0.3,
+      "roughness": 0.08
+    }
+  },
+  "part_materials": {},
+  "roots": [
+    {
+      "root": 0,
+      "material": "satin_black"
+    },
+    {
+      "root": 1,
+      "material": "petg_grey"
+    },
+    {
+      "root": 3,
+      "material": "glass"
+    },
+    {
+      "root": 13,
+      "material": "face"
+    },
+    {
+      "root": 20,
+      "material": "lens"
+    },
+    {
+      "root": 22,
+      "material": "cell_pack"
+    },
+    {
+      "root": 24,
+      "material": "pcb_green"
+    },
+    {
+      "root": 26,
+      "material": "pcb_green"
+    },
+    {
+      "root": 28,
+      "material": "heatsink"
+    },
+    {
+      "root": 30,
+      "material": "heatsink"
+    },
+    {
+      "root": 32,
+      "material": "pcb_green"
+    },
+    {
+      "root": 34,
+      "material": "pcb_green"
+    },
+    {
+      "root": 36,
+      "material": "lens"
+    },
+    {
+      "root": 38,
+      "material": "lens"
+    },
+    {
+      "root": 40,
+      "material": "pcb_green"
+    },
+    {
+      "root": 47,
+      "material": "heatsink"
+    },
+    {
+      "root": 49,
+      "material": "heatsink"
+    },
+    {
+      "root": 51,
+      "material": "pcb_green"
+    }
+  ]
+}
