@@ -79,6 +79,7 @@ input[type=range] { width: 100%; accent-color: var(--ink); }
       </div>
       <div class="group"><span class="label">Glyph</span><div class="row" id="glyphs"></div></div>
       <div class="group"><span class="label">Head</span><div class="row" id="heads"></div></div>
+      <div class="group"><span class="label">Mouth</span><div class="row" id="mouths"></div></div>
       <div class="group"><span class="label">Finish · glow</span><div class="row"><span class="row" id="finishes"></span><span class="row" id="colors"></span></div></div>
       <div class="group"><span class="label">Shape</span>
         <label class="slider"><span>size</span><input type="range" id="size" min="0.75" max="1.3" step="0.01" value="1"><span id="size-v">1.00</span></label>
@@ -105,7 +106,7 @@ const MOODS = {
   idle: { v: 0, a: 0 }, listening: { v: 0.2, a: 0.5, mode: 'listening' }, thinking: { v: 0, a: 0.2, gx: 0.55, gy: -0.6, mode: 'thinking' },
   happy: { v: 0.9, a: 0.45 }, delighted: { v: 1, a: 0.9 }, surprised: { v: 0.2, a: 1 }, annoyed: { v: -0.7, a: 0.6 },
   sad: { v: -0.75, a: -0.4, gy: 0.6 }, sleepy: { v: 0.05, a: -1, gy: 0.3 }, focused: { v: 0, a: -0.2, gy: 0.75 },
-  love: { v: 1, a: 0.4, glyph: 'heart' }, done: { v: 0.7, a: 0.2, glyph: 'check' },
+  love: { v: 1, a: 0.4, glyph: 'heart' }, done: { v: 0.7, a: 0.2, glyph: 'check' }, speaking: { v: 0.35, a: 0.25, talk: true },
 };
 const GLYPHS = ['none', 'heart', 'star', 'check', 'cross', 'diamond'];
 
@@ -247,6 +248,83 @@ function drawFace(c, t, s, col, opts = {}) {
     }
     c.globalAlpha = 1;
   }
+  drawMouth(c, t, s, col, opts);
+}
+
+// --- mouths ---------------------------------------------------------------------------------------------------------
+// Every style shares the quiet states (a breathing rest, pills that bounce with your voice while listening, dots
+// while thinking) and differs in how it speaks and smiles. The lab has no audio, so loudness is a stand-in envelope.
+let mouth = 'ribbon', speakT0 = 0;
+const MOUTHS = ['ribbon', 'line', 'kawaii', 'visemes', 'none'];
+const mouthState = { w: 0.056, h: 0.01 };
+function glowFill(c, col, a, path) { c.save(); c.globalAlpha = a; c.fillStyle = col; c.beginPath(); path(); c.fill(); c.restore(); }
+function drawMouth(c, t, s, col, opts) {
+  if (mouth === 'none') return;
+  const x = 0.5, y = 0.49 + 0.33 * P.size, k = P.size;
+  const talk = Math.min(1, s.talk || 0), listen = (s.listen || 0) * (1 - talk), think = (s.think || 0) * (1 - talk) * (1 - listen);
+  const rest = Math.max(0, 1 - talk - listen - think);
+  const amp = talk * (opts.still ? 0.6 : voice(t));
+  const smile = Math.max(-1, Math.min(1, s.v || 0));
+  const br = 0.5 + 0.5 * Math.sin(t / 1400);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  if (listen > 0.02) for (let i = -2; i <= 2; i++) {            // your voice: soft pills
+    const h = 0.022 + (s.hear || 0) * (1 - Math.abs(i) / 3.2) * (0.6 + 0.4 * Math.sin(t / 160 + i * 1.7)) * 0.07;
+    glowFill(c, col, listen * 0.85, () => c.roundRect(x + i * 0.035 * k - 0.009, y - h / 2, 0.018, h, 0.009));
+  }
+  if (think > 0.02) for (let i = 0; i < 3; i++) {
+    const yy = y - Math.max(0, Math.sin(t / 166 - i * 0.9)) * 0.014;
+    glowFill(c, col, think * 0.9, () => c.arc(x + (i - 1) * 0.035 * k, yy, 0.011, 0, 7));
+  }
+  if (mouth === 'ribbon') {
+    if (rest > 0.02) glowFill(c, col, rest * (0.5 + 0.3 * br), () => c.roundRect(x - 0.028 * k, y - 0.009, 0.056 * k, 0.018, 0.009));
+    if (talk > 0.02) {
+      // three lens-shaped ribbons drifting against each other, summed as light, around a bright core
+      const half = 0.17 * k, A = 0.004 + 0.075 * Math.pow(amp, 0.8);
+      [[1, 1.3, 0, 1, col, 0.3], [1.6, -2.1, 1.7, 0.75, '#ff8ca5', 0.22], [2.4, 3.2, 4.1, 0.55, '#ffffff', 0.16]].forEach(([cyc, sp, ph, hk, cc, al]) => {
+        const edge = (f, sgn) => { const env = Math.pow(Math.sin(f * Math.PI), 1.4); return y + sgn * A * hk * env * (0.55 + 0.45 * Math.sin(f * cyc * 6.283 + t / 1000 * sp + ph)); };
+        glowFill(c, cc, talk * al, () => {
+          for (let i = 0; i <= 48; i++) c.lineTo(x - half + 2 * half * i / 48, edge(i / 48, -1));
+          for (let i = 48; i >= 0; i--) c.lineTo(x - half + 2 * half * i / 48, edge(i / 48, 1));
+        });
+      });
+      glowFill(c, '#ffffff', talk * 0.55, () => c.roundRect(x - half, y - 0.003, 2 * half, 0.006, 0.003));
+    }
+  } else if (mouth === 'line') {
+    // one soft stroke that smiles or frowns with the mood, and opens into a lens to speak
+    const half = 0.07 * k, bend = smile * 0.03, open = amp * 0.06;
+    c.globalAlpha = 0.9; c.strokeStyle = col; c.lineCap = 'round'; c.lineWidth = 0.014;
+    c.beginPath(); c.moveTo(x - half, y - bend); c.quadraticCurveTo(x, y + bend - open, x + half, y - bend); c.stroke();
+    if (open > 0.004) { c.beginPath(); c.moveTo(x - half, y - bend); c.quadraticCurveTo(x, y + bend + open * 1.6, x + half, y - bend); c.stroke(); }
+  } else if (mouth === 'kawaii') {
+    // a tiny cat mouth at rest (a small frown when sad), a small round "o" that grows to speak
+    c.strokeStyle = col; c.fillStyle = col; c.lineCap = 'round'; c.lineWidth = 0.011; c.globalAlpha = 0.9;
+    if (talk > 0.05) {
+      const r = 0.012 + amp * 0.03;
+      glowFill(c, col, talk * 0.9, () => c.ellipse(x, y, r * 0.95, r * (0.8 + amp * 0.5), 0, 0, 7));
+    } else if (smile < -0.2) {
+      c.beginPath(); c.arc(x, y + 0.03, 0.028, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+    } else {
+      c.beginPath(); c.arc(x - 0.018, y - 0.004, 0.018, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+      c.beginPath(); c.arc(x + 0.018, y - 0.004, 0.018, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+    }
+  } else if (mouth === 'visemes') {
+    // lip-sync from the words being said: open vowels tall, o/u round, e/i wide, m/b/p shut, f/v a slit
+    const text = (caption || '').toLowerCase();
+    const ch = talk > 0.05 ? (text[Math.floor((t - speakT0) / 1000 * 13)] || ' ') : ' ';
+    const V = { a: [0.07, 0.06], o: [0.04, 0.05], u: [0.03, 0.04], e: [0.08, 0.035], i: [0.08, 0.025], y: [0.07, 0.03],
+      m: [0.06, 0.004], b: [0.06, 0.004], p: [0.06, 0.004], f: [0.065, 0.01], v: [0.065, 0.01], w: [0.03, 0.03],
+      r: [0.045, 0.03], l: [0.06, 0.03], ' ': [0.055, 0.006] };
+    const tg = V[ch] || [0.06, 0.025];
+    if (!opts.still) {
+      mouthState.w += (tg[0] * k - mouthState.w) * 0.35;
+      mouthState.h += (tg[1] * k - mouthState.h) * 0.35;
+    }
+    const speaking = talk > 0.05;
+    const w = speaking ? mouthState.w : 0.056 * k, h = speaking ? Math.max(0.005, mouthState.h) : 0.009 + 0.003 * br;
+    glowFill(c, col, 0.85 * (speaking ? 1 : rest), () => c.roundRect(x - w / 2, y - h / 2, w, h, Math.min(w, h) / 2));
+  }
+  c.restore();
 }
 
 // --- the head around the panel --------------------------------------------------------------------------------------
@@ -357,11 +435,16 @@ function chips(id, items, label, onPick, swatch, first = 0) {
     row.append(b);
   });
 }
-const goMood = k => { const m = MOODS[k]; setEmotion(m.v, m.a, m.gx != null || m.gy != null ? { gx: m.gx ?? 0, gy: m.gy ?? 0 } : null); tgt.glyph = m.glyph || 'none'; tgt.mode = m.mode || 'idle'; pressed('glyphs', tgt.glyph); };
+const goMood = k => { const m = MOODS[k];
+  if (m.talk) { // the lab has no voice: say a sample line so the mouths have something to speak
+    caption = ''; setCaption("Hi, I'm frog. Want me to run the tests and tell you what broke?");
+    st.talk = 1; clearTimeout(goMood.t); goMood.t = setTimeout(() => { st.talk = 0; setCaption('', true); }, 5200);
+  } setEmotion(m.v, m.a, m.gx != null || m.gy != null ? { gx: m.gx ?? 0, gy: m.gy ?? 0 } : null); tgt.glyph = m.glyph || 'none'; tgt.mode = m.mode || 'idle'; pressed('glyphs', tgt.glyph); };
 chips('moods', Object.keys(MOODS), k => k, goMood, false, -1);
 chips('glyphs', GLYPHS, k => k, k => { tgt.glyph = k; });
 chips('heads', Object.keys(HEADS), k => HEADS[k].name, k => { head = k; });
 chips('finishes', ['glow', 'solid'], k => k, k => { finish = k; });
+chips('mouths', MOUTHS, k => k, k => { mouth = k; paintThumbs(); });
 chips('colors', COLORS, null, c => { color = c.hex; }, true);
 for (const id of ['size', 'spacing', 'round']) {
   const el = document.getElementById(id);
@@ -385,7 +468,7 @@ const sayEl = document.getElementById('say');
 sayEl.addEventListener('focus', () => { if (!busy) { setEmotion(0.2, 0.5); tgt.mode = 'listening'; } });
 sayEl.addEventListener('input', () => { st.hear = 1; if (!busy) tgt.mode = 'listening'; });   // every keystroke is heard
 sayEl.addEventListener('blur', () => { if (!busy && !sayEl.value) { setEmotion(0, 0); } });
-function setCaption(text, dim) { caption = dim ? '' : text; capEl.textContent = text; capEl.classList.toggle('dim', !!dim); }
+function setCaption(text, dim) { if (!dim && !caption) speakT0 = performance.now(); caption = dim ? '' : text; capEl.textContent = text; capEl.classList.toggle('dim', !!dim); }
 document.getElementById('talk').addEventListener('submit', async e => {
   e.preventDefault();
   const say = document.getElementById('say'), msg = say.value.trim();
@@ -440,7 +523,7 @@ function paintThumbs() {
     const m = MOODS[k], c = cv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#07090b'; c.fillRect(0, 0, 220, 220);
     c.setTransform(220, 0, 0, 220, 0, 0);
-    drawFace(c, 0, { v: m.v, a: m.a, gx: m.gx || 0, gy: m.gy || 0, vgx: 0, vgy: 0, g: m.glyph ? 1 : 0, glyph: m.glyph || 'none', talk: 0, listen: +(m.mode === 'listening'), think: +(m.mode === 'thinking') }, color, { still: true });
+    drawFace(c, 0, { v: m.v, a: m.a, gx: m.gx || 0, gy: m.gy || 0, vgx: 0, vgy: 0, g: m.glyph ? 1 : 0, glyph: m.glyph || 'none', talk: m.talk ? 1 : 0, listen: +(m.mode === 'listening'), think: +(m.mode === 'thinking') }, color, { still: true });
   }
 }
 
