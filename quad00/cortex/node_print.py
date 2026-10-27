@@ -134,6 +134,33 @@ def holes():
             out.append(rod((xb, y, z), (-1, 0, -RAIN_DROP), 0.7, 12.0))
     return out
 
+def prism_yz(poly, x0, x1):
+    """A y-z polygon extruded along x from x0 to x1."""
+    m = mf.Manifold.extrude(mf.CrossSection([poly]), x1 - x0)
+    return m.transform(np.array([[0, 0, 1, x0], [1, 0, 0, 0], [0, 1, 0, 0.0]]))
+
+def box(x0, y0, z0, x1, y1, z1):
+    return mf.Manifold.cube((x1 - x0, y1 - y0, z1 - z0)).translate((x0, y0, z0))
+
+def boss_points():
+    """Four floor-screw bosses, placed by hand in the free corners of the floor plate: in front of the pack
+    (x 38, y ±28) and behind the sled walls beside the pack (x -26, y ±38.6). See node_fit.py for the clearances."""
+    return [(38.0, 28.0), (38.0, -28.0), (-26.0, 38.6), (-26.0, -38.6)]
+
+def boss(x, y):
+    """Ø8 boss from the floor's top face up 10 mm, webbed out to the wall (hull toward the outside, clipped by the
+    skin later). Its underside is 3 mm off the bed: it needs a small tree support from the plate when printing."""
+    cx = sum(q[0] for q in outline_at(0.0)) / N
+    d = np.array([x - cx, y]); d = d / np.linalg.norm(d) * 20.0
+    a = mf.Manifold.cylinder(10.0, 4.0, 4.0, 32).translate((x, y, FLOOR))
+    b = mf.Manifold.cylinder(10.0, 4.0, 4.0, 32).translate((x + d[0], y + d[1], FLOOR))
+    return mf.Manifold.batch_hull([a, b])
+
+# USB-C on the back: a panel-mount USB-C extension (female, 2 screw ears), wired to the carrier. Low on the back
+# where the surface faces down (sheltered from rain), clear of everything inside. Ears ASSUMED 2 x M3 at 18 mm
+# (common panel-mount part; check yours).
+USB_Z, USB_EAR = 20.0, 9.0
+
 def main():
     outer = loft([(z, outline_at(z)) for z in ZS])
     # cavity: the outline offset by the wall, open through the bottom (the floor plate closes it)
@@ -141,10 +168,31 @@ def main():
     inner = loft(inner_rows)
     face = rrect_prism(45.0, 70.0, 0.0, 65.5, 43.0, 47.5, 6.0)       # through-window behind the cover glass
     hs = holes()
-    tub = outer - inner - face - mf.Manifold.batch_boolean(hs, mf.OpType.Add)
-    # floor plate: drops into the bottom opening, 0.2 clearance all round, 3 thick
+    bosses = [boss(x, y) for x, y in boss_points()]
+    inner_floor_clear = box(-100.0, -100.0, -5.0, 100.0, 100.0, FLOOR)   # nothing below the floor's top face
+    usb_pad = box(-80.0, -14.0, USB_Z - 9.0, -56.0, 14.0, USB_Z + 9.0)        # flat inside face at x -56 for the ears
+    tub = ((outer - inner) + ((mf.Manifold.batch_boolean(bosses + [usb_pad], mf.OpType.Add) ^ outer) - inner_floor_clear)) - face
+    cuts = list(hs)
+    cuts += [mf.Manifold.cylinder(7.0, 2.0, 2.0, 24).translate((x, y, FLOOR)) for x, y in boss_points()]   # M3 heat-set, Ø4 x 7
+    cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
+    cuts += [rod((-60.0, s * USB_EAR, USB_Z), (1, 0, 0), 1.6, 30.0) for s in (1, -1)]
+    tub = tub - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
+
+    # floor plate + sled, one print, flat on the bed, no supports. The plate drops into the bottom opening (0.2
+    # clearance) and screws up into the 4 bosses (M3 x 8 countersunk). Two sled walls carry the carrier on 45-degree
+    # chamfered lips (drill the lips to the A603's holes); the pack sits between them on the plate, held by a hook-
+    # and-loop strap through two slots.
     fp = offset(outline_at(0.0), WALL + 0.2)
     floor = mf.Manifold.extrude(mf.CrossSection([fp]), FLOOR)
+    for s in (1, -1):
+        wall = [(s * 40.0, FLOOR), (s * 43.0, FLOOR), (s * 43.0, 36.0), (s * 34.0, 36.0), (s * 40.0, 30.0)]
+        floor += prism_yz(wall if s > 0 else wall[::-1], -18.0, 10.0)
+    fcuts = []
+    for x, y in boss_points():
+        fcuts.append(mf.Manifold.cylinder(10.0, 1.7, 1.7, 24).translate((x, y, -1.0)))
+        fcuts.append(mf.Manifold.cylinder(1.9, 3.4, 1.5, 24).translate((x, y, -0.01)))   # 90-deg countersink
+    fcuts += [box(-13.0, s * 36.5 - 1.5, -1.0, 7.0, s * 36.5 + 1.5, FLOOR + 1.0) for s in (1, -1)]   # strap slots
+    floor = floor - mf.Manifold.batch_boolean(fcuts, mf.OpType.Add)
     os.makedirs(OUT, exist_ok=True)
     for name, m in (('node-tub', tub), ('node-floor', floor)):
         mesh = m.to_mesh()

@@ -234,3 +234,36 @@ with no gaps and seal the inside (a brushed epoxy coat or XTC-3D).
 
 Exhaust open area after the move: 9 rows × ~44 ≈ 390 holes, ~600 mm². The 30° drop costs a little effective area
 (longer hole); the thermal pass checks it.
+
+## v1.7 MVP print on the P1S: USB-C, floor + sled, internals fitted (2026-10-27)
+
+**Keep DFM simple.** This is a home-printed MVP on a Bambu P1S. The rain extras from v1.6 (membranes, drip lip,
+gaskets, sealing coat) are parked for a later outdoor version. The 30° hole angles and the sheltered exhaust stay,
+because they cost nothing to print.
+
+**USB-C on the back:** a panel-mount USB-C extension (female, 2 screw ears, ASSUMED M3 at 18 mm: check yours) sits
+low on the back at z 20, on a flat pad inside the wall. The surface faces slightly down there. Its cable runs to
+the carrier. It's sized for the **Orin Nano** module you're fitting: the A603 takes Nano or NX in the same footprint,
+and the Nano's lower power (7–25 W) eases the thermal budget. **Open:** which port does it wire to, the A603's USB-C
+device/recovery port (data + flashing) or a PD power input? As drawn, it's data. Power for the MVP then comes from
+the carrier's DC jack with the shell off, or from the dock pads.
+
+**Two prints, no supports except four small trees:**
+
+| File | Print | Notes |
+|---|---|---|
+| `node-tub.stl` | open bottom on the bed, crown up. 0.2 layer, 5 walls (= 2.5 mm), 15% gyroid. **Tree supports, build plate + inside**: they hold up the crown's inside and the 4 boss undersides, and all come out through the bottom. | ~114 cm³. The face window and holes are already cut. The face plane is vertical: no supports on the outside. |
+| `node-floor.stl` | flat, as modelled | ~23 cm³. Plate + 2 sled walls with 45° lips, so no supports. Countersinks for 4 × M3 × 8 open downward. |
+
+**Assembly:**
+1. Press 4 × M3 heat-set inserts (Ø4 × 7 holes) into the tub bosses.
+2. On the floor, strap the pack (hook-and-loop through the 2 slots). Drill the sled lips to the A603's holes
+   (MEASURE #5) and screw the carrier + module + heatsink on top.
+3. In the tub, VHB the 4" panel behind the face window, the cameras behind the brow, and the speakers + mics behind
+   the ear patches. Screw the USB-C to its pad.
+4. Plug the harnesses, lower the tub over the floor, and fit 4 × M3 × 8 countersunk screws from below.
+5. Bond the cover glass onto the face land.
+
+**Internals fit** (`node_fit.py`, clearances to the 2.5 mm wall, all ≥ 1 mm, no clashes): battery 4.2, carrier 2.0,
+display 2.7, cameras 1.6, speakers 1.0, power 2.5, USB-C 1.0, sled 5.9, bosses 1.0. Renders: `print-fit` /
+`print-fit-ear` (section through the printed tub with the parts).

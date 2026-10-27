@@ -104,6 +104,13 @@
 [let node-cam-l [bx 41.8 13.5 97.5 55.8 38.5 119.5]]  ; IMX219 25 x 24 x 13, lens at z 108.5, y +26
 [let node-cam-r [bx 41.8 -38.5 97.5 55.8 -13.5 119.5]]  ; IMX219, y -26
 [let node-power [bx -53.0 -20.0 34.0 -47.0 20.0 64.0]]  ; PD sink + 3S charger 30 x 40 x 6, upright on the back wall
+[let node-usb-c [bx -56.0 -6.0 16.0 -40.0 6.0 24.0]]  ; panel-mount USB-C, 16 deep incl. cable boot, from the back pad
+[let node-sled-l [bx -18.0 34.0 3.0 10.0 43.0 36.0]]  ; printed sled wall + lip (with the floor)
+[let node-sled-r [bx -18.0 -43.0 3.0 10.0 -34.0 36.0]]  ; printed sled wall + lip
+[let node-boss-0 [bx 34.0 24.0 3.0 42.0 32.0 13.0]]  ; M3 heat-set boss Ø8
+[let node-boss-1 [bx 34.0 -32.0 3.0 42.0 -24.0 13.0]]  ; M3 heat-set boss Ø8
+[let node-boss-2 [bx -30.0 34.6 3.0 -22.0 42.6 13.0]]  ; M3 heat-set boss Ø8
+[let node-boss-3 [bx -30.0 -42.6 3.0 -22.0 -34.6 13.0]]  ; M3 heat-set boss Ø8
 [let spk [fn [s] [translate -6.0 [* s 56.20] 66.0 [rotate 90.0 0.0 0.0 [cylinder 14.0 5.4]]]]]
 [let node-speakers [union [spk 1.0] [spk -1.0]]]
 [let node-floor [translate 0.0 0.0 0.0 [scale 1.0 1.0 1.0 [bx -36.0 -44.0 0.0 44.0 44.0 3.0]]]]

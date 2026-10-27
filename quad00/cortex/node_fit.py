@@ -23,7 +23,17 @@ PARTS = {
     'cam-l': (FACE_X - 14, 13.5, 97.5, FACE_X, 38.5, 119.5, 'pcb_green', 'IMX219 25 x 24 x 13, lens at z 108.5, y +26'),
     'cam-r': (FACE_X - 14, -38.5, 97.5, FACE_X, -13.5, 119.5, 'pcb_green', 'IMX219, y -26'),
     'power': (-53, -20, 34, -47, 20, 64, 'pcb_green', 'PD sink + 3S charger 30 x 40 x 6, upright on the back wall'),
+    'usb-c': (-56, -6, 16, -40, 6, 24, 'heatsink', 'panel-mount USB-C, 16 deep incl. cable boot, from the back pad'),
+    'sled-l': (-18, 34, FLOOR, 10, 43, 36, 'petg_grey', 'printed sled wall + lip (with the floor)'),
+    'sled-r': (-18, -43, FLOOR, 10, -34, 36, 'petg_grey', 'printed sled wall + lip'),
 }
+# the floor screws' bosses (node_print.boss_points), as boxes, for the clash check
+try:
+    from node_print import boss_points
+    for k, (bxp, byp) in enumerate(boss_points()):
+        PARTS['boss-%d' % k] = (bxp - 4, byp - 4, FLOOR, bxp + 4, byp + 4, FLOOR + 10, 'satin_black', 'M3 heat-set boss Ø8')
+except ImportError:
+    pass
 # speakers + mics behind each ear patch (x -6, z 66): Ø28 x 5.4, cylinder along y, against the inner wall
 EAR = (-6.0, 66.0)
 SPK_R, SPK_T = 14.0, 5.4
@@ -81,7 +91,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display', 'cam-l', 'cam-r'))
+        g = min_gap(box_points(b), skip_face=name in ('display', 'cam-l', 'cam-r')) if not name.startswith(('boss', 'usb')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)
