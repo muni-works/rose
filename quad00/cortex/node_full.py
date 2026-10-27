@@ -8,11 +8,11 @@ import node_skull as sk
 HS = 1.35                                             # plan scale against the mini's design frame
 # height map, design z -> real z (piecewise linear): tight chin round, the flat face stretched to the 7in glass,
 # and a taller dome so the crown rounds over instead of capping the box
-ZMAP = [(0.0, 0.0), (18.0, 18.0), (116.0, 200.0), (134.0, 228.0)]
+ZMAP = [(0.0, 0.0), (18.0, 18.0), (116.0, 196.0), (134.0, 226.0)]
 FACE = sk.FACE * HS                                   # 75.6
 SCR_W, SCR_H, SCR_D = 100.0, 164.9, 9.0               # Waveshare 7in (C): 164.9 x 100 glass; module depth ASSUMED
-SCR_Z = 18.5                                          # glass bottom at the chin's edge; top at 183.4
-CHIN_Z = 191.5                                        # stereo + grille band: a brow above the glass (flat face ends at 200)
+SCR_Z = 30.0                                          # glass bottom; top at 194.9, the flat face ends at 196
+CHIN_Z = 22.0                                         # stereo + grille band under the glass
 STEREO_Y = 45.0                                       # 90 baseline (a second IMX219 pair, or a wider stereo board)
 
 def lerp_map(z, pairs):
@@ -25,7 +25,7 @@ def section(z):
     d = lerp_map(z, [(b, a) for a, b in ZMAP])            # real -> design
     pts = [(x * HS, y * HS) for x, y in sk.section(d * sk.VS)]
     # skull taper: the crown narrows and the back tucks in above the ears, so the box reads as a head
-    t = min(max((z - 110.0) / (228.0 - 110.0), 0.0), 1.0)
+    t = min(max((z - 110.0) / (226.0 - 110.0), 0.0), 1.0)
     t = t * t * (3 - 2 * t)
     ky, kx = 1 - 0.12 * t, 1 - 0.14 * t
     return [(x * kx if x < 0 else x, y * ky) for x, y in pts]
@@ -86,9 +86,9 @@ def main():
     for i, (px, py) in enumerate([(-45, -46), (47, -46), (-45, 46), (47, 46)]):
         out += bx('full-post-%d' % i, px - 4, py - 4, 30, px + 4, py + 4, 34, 'AGX foot post, M3 into the rail hole')
     out += bx('full-display', FACE - 1 - SCR_D, -SCR_W / 2, SCR_Z, FACE - 1, SCR_W / 2, SCR_Z + SCR_H, '7in panel + driver, 9 deep ASSUMED')
-    out += bx('full-stereo', FACE - 12, -54, CHIN_Z - 7, FACE - 2, 54, CHIN_Z + 7, 'stereo pair board(s), 90 baseline')
+    out += bx('full-stereo', FACE - 12, -58, CHIN_Z - 8, FACE - 2, 58, CHIN_Z + 7, 'stereo pair board(s), 90 baseline')
     out += bx('full-power', -76, -24, 56, -68, 24, 96, 'PD sink + 4S charger, carries the USB-C on the back')
-    out += bx('full-mics', -20, -40, 205, 20, 40, 209, '4-mic array (ReSpeaker class) under the crown')
+    out += bx('full-mics', -10, -40, 200, 30, 40, 204, '4-mic array (ReSpeaker class) under the crown')
     out += '[let spk [fn [y] [translate -10.0 y 110.0 [rotate 90.0 0.0 0.0 [cylinder 20.0 8.0]]]]]\n'
     out += '[let full-speakers [union [spk 78.0] [spk -70.0]]]\n'
 
