@@ -5,8 +5,9 @@
                      segfaults Bambu Studio / Orca on load) carrying FAST per-object settings: 0.28 layers, 2 walls,
                      10% infill, tree supports at a 30 deg threshold. Pick the "0.28mm Extra Draft" process preset
                      for the speeds; the object settings override the rest.
+  node-mvp-facedown.3mf  the same, with the upper laid on its face (less support inside the crown).
 """
-import os, zipfile
+import math, os, zipfile
 import trimesh
 
 F = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
@@ -24,9 +25,13 @@ FAST = {
     'brim_type': 'auto_brim',
 }
 
-def meshes():
+def meshes(face_down=False):
     for name, (x, y) in PLACE.items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
+        if face_down and name == 'node-upper':
+            # lay the upper on its face plane: +x (the face) points down. The crown's walls go vertical, so most of
+            # the tree support inside the crown disappears; the 3.2 mm acrylic pocket bridges over the bed.
+            m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
         c = m.bounds.mean(axis=0)
         m.apply_translation([x - c[0], y - c[1], -m.bounds[0][2]])
         yield name, m
@@ -44,8 +49,8 @@ NS = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
 def uuid(n):
     return '%08x-0000-4000-8000-%012x' % (n, n)
 
-def fast():
-    parts = list(meshes())
+def fast(face_down=False, out='node-mvp-fast.3mf'):
+    parts = list(meshes(face_down))
     files, objs, items, rels, cfg = {}, [], [], [], ['<?xml version="1.0" encoding="UTF-8"?>', '<config>']
     for k, (name, m) in enumerate(parts):
         mesh_id, obj_id = 2 * k + 1, 2 * k + 2
@@ -93,7 +98,7 @@ def fast():
                                     '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
                                     '<Default Extension="config" ContentType="text/xml"/></Types>')
     files['Metadata/model_settings.config'] = '\n'.join(cfg)
-    with zipfile.ZipFile(os.path.join(F, 'node-mvp-fast.3mf'), 'w', zipfile.ZIP_DEFLATED) as z:
+    with zipfile.ZipFile(os.path.join(F, out), 'w', zipfile.ZIP_DEFLATED) as z:
         for order in ('[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model', '3D/_rels/3dmodel.model.rels'):
             z.writestr(order, files.pop(order))
         for path, data in files.items():
@@ -102,4 +107,5 @@ def fast():
 if __name__ == '__main__':
     plain()
     fast()
-    print('node-mvp.3mf (plain), node-mvp-fast.3mf (Bambu project, fast settings):', ', '.join(PLACE))
+    fast(face_down=True, out='node-mvp-facedown.3mf')
+    print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
