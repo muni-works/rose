@@ -153,3 +153,40 @@ downloaded. It would show the same layered module (NOTES §4 measured it at 84 �
 geometry can make an LCD backlight transparent. Seeing through the screen needs a transparent OLED or a
 camera-under-display panel, and neither exists as a 4" HDMI module. The cameras stay behind the brow band of the
 cover glass (option A).
+
+## v1.4 hidden intake + internals fit (2026-10-27)
+
+**Intake** is a perforated band round the whole perimeter of the foot's bottom round (z 1.5–7), facing down and out:
+3 rows of Ø1.4 on a 2.2 hex, about 450 holes and ~690 mm², which meets SPEC's ~650 at 25 W. On the neck and on the
+puck it sits in the shadow under the head. The neck's top trim shrank to the foot's flat (80%) so it doesn't cover
+the band. In the renders the band is drawn dark; print prep cuts the holes.
+
+**Internals** come from `python3 node_fit.py`, which writes the parts into node.loon and checks each part's smallest
+gap to the inner wall (skin − 2.5 mm wall). Datasheet sizes match SPEC/cortex.loon.
+
+```
+part           gap  note
+dockboard     29.0  dock board over the pad board, centred on the dock
+battery        4.2  3S1P 21700 flat pack 70 x 66 x 22, over the dock
+carrier        2.0  Seeed A603 87 x 52 + Orin NX, 18 tall; I/O edge aft
+module         8.2  module stack to 28 over the carrier underside
+heatsink      18.3  ATS 63 x 40 x 8 fan heatsink, fan up
+display        2.7  4in 84 x 84 glass + module, 11.5 deep incl. connectors
+cam-l          1.6  IMX219 25 x 24 x 13, lens at z 108.5, y +26
+cam-r          1.6  IMX219, y -26
+power          2.5  PD sink + 3S charger 30 x 40 x 6, upright on the back wall
+speakers       1.0  Visaton K 28 WPC BL, Ø28 x 5.4, outer face at y ±56.2 behind the ear patch
+clashes between parts: none
+```
+
+- Stack, bottom up: 3 mm floor → dock board → pack flat over the dock (z 9–31) → A603 + Orin NX (z 36–64,
+  I/O edge aft) → fan heatsink, fan up into the crown (18 mm of air above it). The 4" panel is behind the glass
+  (z 13–97). The cameras sit behind the brow band (lens z 108.5, ±26), the speakers behind the ear patches, and the
+  power board stands upright on the back wall.
+- To fit the cameras under the crown curve, the panel dropped 3 mm (`fz` 55).
+- **Still open:**
+  - The exhaust: hot air rises into the crown and has nowhere to go yet. It needs a hidden outlet at the back of
+    the crown, or a crown band.
+  - The shell is still a solid massing body. Hollowing, the tub/floor split and the bosses come with print prep.
+  - Camera FOV through the brow windows isn't checked.
+  - The carrier's I/O edge is now only reachable with the shell off: there's no back cutout.

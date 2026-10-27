@@ -51,42 +51,54 @@ def circle(r, cx=0.0, n=48):
 def loft(name, rows):
     return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
 
-zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
-block = loft('node-shell', [(z, section(z)) for z in zs])
+def main():
+    zs = [0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2]
+    block = loft('node-shell', [(z, section(z)) for z in zs])
 
-# Neck join: the neck's top trim is the foot's own outline 1 mm smaller (the reveal), 1 mm under it, then it necks
-# down to a round column. The head rests on it; nothing reads as bolted.
-foot = section(0)
-block += loft('node-neck', [(-1.0, scaled(foot, 0.97)), (-6.0, scaled(foot, 0.86)), (-16.0, circle(30, 2.0)),
-                            (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
+    # Neck join: the neck's top trim is the foot's flat (the dock face) 1 mm under it, then it necks down to a round
+    # column. It stops inside the foot's bottom round, so the intake band on that round stays open on the neck too.
+    foot = section(0)
+    block += loft('node-neck', [(-1.0, scaled(foot, 0.8)), (-6.0, scaled(foot, 0.72)), (-16.0, circle(30, 2.0)),
+                                (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
 
-block += '[let node-head node-shell]\n'
+    block += '[let node-head node-shell]\n'
 
-# Ear grilles: where a human ear sits -- at eye height, just behind the middle of the head's depth -- a vertical
-# oval patch of dots (Ø1.2 on a 2.6 hex, ~12 x 22) on each side, like the ear's own outline. The mic ports and the
-# speaker sit behind it. Massing only: the dots are drawn as dark discs on the surface (each at the local surface y);
-# print prep cuts them as real holes.
-EAR_X, EAR_Z, EAR_A, EAR_B, P = -6.0, 66.0, 6.2, 11.2, 2.6
+    # Intake: a perforated band on the foot's bottom round (z 1.5-7), facing down and out. On the neck and on the puck it
+    # sits in the shadow under the head, so it's hidden from any normal view. Ø1.4 on 2.2 hex, 3 rows round the whole
+    # perimeter: ~3 x 150 = 450 holes, ~690 mm² (SPEC wants ~650 at 25 W). Drawn as a dark band; print prep cuts holes.
+    block += loft('intake-out', [(1.5, scaled(section(1.5), 1.01)), (7.0, scaled(section(7.0), 1.006))])
+    block += loft('intake-in', [(1.5, scaled(section(1.5), 0.985)), (7.0, scaled(section(7.0), 0.99))])
+    block += '[let node-intake [difference intake-in intake-out]]\n'
 
-def surface_y(x, z):
-    pts = [q for q in section(z, 96) if q[1] > 0]
-    pts.sort()
-    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
-        if x0 <= x <= x1:
-            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-    return max(y for _, y in pts)
+    # Ear grilles: where a human ear sits -- at eye height, just behind the middle of the head's depth -- a vertical
+    # oval patch of dots (Ø1.2 on a 2.6 hex, ~12 x 22) on each side, like the ear's own outline. The mic ports and the
+    # speaker sit behind it. Massing only: the dots are drawn as dark discs on the surface (each at the local surface y);
+    # print prep cuts them as real holes.
+    EAR_X, EAR_Z, EAR_A, EAR_B, P = -6.0, 66.0, 6.2, 11.2, 2.6
 
-dots = [(EAR_X + P * (i + 0.5 * (j % 2)), EAR_Z + P * 0.866 * j) for j in range(-6, 7) for i in range(-4, 4)]
-dots = [(x, z) for x, z in dots if ((x - EAR_X) / EAR_A) ** 2 + ((z - EAR_Z) / EAR_B) ** 2 <= 1.0]
-discs = []
-for x, z in dots:
-    y = surface_y(x, z)
-    for s in (1, -1):
-        discs.append('[translate %.2f %.2f %.2f [rotate %d 0.0 0.0 [cylinder-n 0.6 0.6 12]]]' % (x, s * (y - 0.35), z, -90 if s > 0 else 90))
-u = discs[0]
-for d in discs[1:]:
-    u = '[union %s %s]' % (d, u)
-block += '[let node-ears %s]\n' % u
-src = open('node.loon').read()
-src = re.sub(r'; BEGIN skull\n.*?; END skull\n', '; BEGIN skull\n' + block + '; END skull\n', src, flags=re.S)
-open('node.loon', 'w').write(src)
+    def surface_y(x, z):
+        pts = [q for q in section(z, 96) if q[1] > 0]
+        pts.sort()
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x0 <= x <= x1:
+                return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+        return max(y for _, y in pts)
+
+    dots = [(EAR_X + P * (i + 0.5 * (j % 2)), EAR_Z + P * 0.866 * j) for j in range(-6, 7) for i in range(-4, 4)]
+    dots = [(x, z) for x, z in dots if ((x - EAR_X) / EAR_A) ** 2 + ((z - EAR_Z) / EAR_B) ** 2 <= 1.0]
+    discs = []
+    for x, z in dots:
+        y = surface_y(x, z)
+        for s in (1, -1):
+            discs.append('[translate %.2f %.2f %.2f [rotate %d 0.0 0.0 [cylinder-n 0.6 0.6 12]]]' % (x, s * (y - 0.35), z, -90 if s > 0 else 90))
+    u = discs[0]
+    for d in discs[1:]:
+        u = '[union %s %s]' % (d, u)
+    block += '[let node-ears %s]\n' % u
+    src = open('node.loon').read()
+    src = re.sub(r'; BEGIN skull\n.*?; END skull\n', '; BEGIN skull\n' + block + '; END skull\n', src, flags=re.S)
+    open('node.loon', 'w').write(src)
+
+
+if __name__ == '__main__':
+    main()
