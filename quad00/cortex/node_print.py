@@ -130,13 +130,13 @@ def holes():
             xs = [a for a, b in zip(p, p[1:] + p[:1]) if (a[1] - y) * (b[1] - y) <= 0 and a[0] < 0]
             xb = min(q[0] for q in xs) if xs else -60.0
             out.append(rod((xb, y, z), (-1, 0, -RAIN_DROP), 0.7, 12.0))
-    # chin grille: a full-width band of fine dots under the face panel (Portal-style), the same side margin as the
-    # panel. The stereo depth camera looks out through two Ø8 windows in it; mics behind the rest.
+    # chin grille: a band of fine dots under the face panel between the stereo camera's two Ø8 windows (Ø11 with the
+    # chamfer), stopping 4 short of them -- the same rule as the full-size head. Mics behind it.
     for j in range(-2, 3):
         z = CHIN_Z + j * 2.2 * 0.866
         for i in range(-21, 22):
             y = (i + 0.5 * (j % 2)) * 2.2
-            if abs(y) <= PANEL_HW - 2.0 and all(math.hypot(y - sy * STEREO_Y, z - STEREO_Z) > 6.0 for sy in (1, -1)):
+            if abs(y) <= STEREO_Y - 9.5:
                 out.append(rod((FACE, y, z), (1, 0, 0), 0.7, 10.0))
     return out
 
