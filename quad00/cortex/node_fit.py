@@ -14,7 +14,7 @@ FACE_X = 56.0       # the face plane: the 4in panel's glass is flush with it
 
 # name: (x0, y0, z0, x1, y1, z1, material, note)
 PARTS = {
-    'battery': (-37, -33, FLOOR + 6, 33, 33, FLOOR + 28, 'cell_pack', '3S1P 21700 flat pack 70 x 66 x 22, on the base floor'),
+    'battery': (-37, -33, FLOOR + 9, 33, 33, FLOOR + 31, 'cell_pack', '3S1P 21700 flat pack 70 x 66 x 22, on the base floor'),
     # Jetson Orin Nano Super devkit (P3768 carrier, A04 layout): board 100 x 79 x 1.6 turned so its I/O edge faces aft
     'dk-board': (-37, -50, 38, 42, 50, 39.6, 'pcb_green', 'P3768 carrier 100 x 79, on 4 posts at z 38'),
     'dk-io': (-40, -50, 39.6, -24, 50, 55.6, 'heatsink', 'I/O row (USB-A stack, RJ45, DP, DC): 16 tall ASSUMED, 3 overhang'),

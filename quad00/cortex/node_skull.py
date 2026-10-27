@@ -8,6 +8,8 @@ import math, re
 BROW = 116.0                                         # top of the flat face plane (design frame)
 VS = 1.12                                            # vertical scale: the flat face ends ~4 above the screen (BROW 130)
 FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
+LEAN, FLAT_X = 10.0, 12.0                            # desk lean: the back of the foot is cut on a 10 deg plane that
+                                                     # meets the foot's bottom at x 12, ahead of the centre of mass
 
 ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
                        130.5, 132.5, 133.6, 134.2)]
@@ -54,6 +56,16 @@ def scaled(pts, k, cx=None):
 def circle(r, cx=0.0, n=48):
     return [(cx + r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for i in range(n)]
 
+def lean_plane(lean, flat_x):
+    """(sin, cos, c) of the desk plane x*sin + z*cos = c: below it is cut off, and it rests on the desk."""
+    a = math.radians(lean)
+    return math.sin(a), math.cos(a), flat_x * math.sin(a)
+
+def lean_cut(name, solid, lean, flat_x):
+    s, c, d = lean_plane(lean, flat_x)
+    return ('[let %s [intersection %s [translate %.3f 0.0 %.3f [rotate 0.0 %.1f 0.0 [translate -500.0 -500.0 0.0 [cube 1000.0 1000.0 1000.0]]]]]]\n'
+            % (name, solid, d * s, d * c, lean))
+
 def loft(name, rows):
     return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
 
@@ -67,7 +79,7 @@ def main():
     block += loft('node-neck', [(-1.0, scaled(foot, 0.8)), (-6.0, scaled(foot, 0.72)), (-16.0, circle(30, 2.0)),
                                 (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
 
-    block += '[let node-head node-shell]\n'
+    block += lean_cut('node-head', 'node-shell', LEAN, FLAT_X)
 
     # Intake: a perforated band on the foot's bottom round (z 1.5-7), facing down and out. On the neck and on the puck it
     # sits in the shadow under the head, so it's hidden from any normal view. Ø1.4 on 2.2 hex, 3 rows round the whole

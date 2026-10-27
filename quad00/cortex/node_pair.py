@@ -22,8 +22,8 @@ def grille(face, cz, half, y_lim):
     return u
 
 def main():
-    lm = rest([(z, m.section(z)) for z in m.ZS])
-    lf = rest([(z, f.section(z)) for z in [f.lerp_map(z / m.VS, f.ZMAP) for z in m.ZS]])
+    lm = -m.lean_plane(LEAN, m.FLAT_X)[2]   # the cut plane lands flat on the desk
+    lf = -m.lean_plane(LEAN, f.FLAT_X)[2]
     pose = lambda s, y, lift: '[translate 0.0 %.1f %.2f [rotate 0.0 %.1f 0.0 %s]]' % (y, lift, -LEAN, s)
     L = ['[use node [node-head node-glass node-face node-lenses]]',
          '[use node-full [full-shell full-glass full-face full-lenses full-grille full-ears]]',

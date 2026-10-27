@@ -6,6 +6,7 @@ holes is what kept breaking vcad), so the output is watertight by construction. 
 Writes ../fab/node/node-tub.stl and node-floor.stl in the model frame (dock origin, z up) and node-tub-print.stl
 laid for the printer (crown up, open bottom on the bed... see NODE-BRIEF.md for supports).
 """
+import node_skull as sk
 import math, os
 import numpy as np
 import manifold3d as mf
@@ -215,7 +216,11 @@ def export(name, m, holes=0):
         name, tm.is_watertight, tm.volume / 1000, np.round(tm.extents, 1).tolist(), holes))
 
 def main():
-    outer = loft([(z, outline_at(z)) for z in ZS])
+    # desk lean: everything under the 10 deg plane (node_skull.lean_plane) is cut off the back of the foot, and the
+    # floor follows the cut as a FLOOR-thick slab over it
+    ls, lc, ld = sk.lean_plane(sk.LEAN, sk.FLAT_X)
+    above_plane = lambda d: box(-500.0, -500.0, 0.0, 500.0, 500.0, 1000.0).rotate((0.0, sk.LEAN, 0.0)).translate((d * ls, 0.0, d * lc))
+    outer = loft([(z, outline_at(z)) for z in ZS]) ^ above_plane(ld)
     skin = outer - cavity()
     front = lambda x: box(x, -100.0, -5.0, 100.0, 100.0, 250.0)
     behind = lambda x: box(-150.0, -100.0, -5.0, x, 100.0, 250.0)
@@ -223,7 +228,7 @@ def main():
     hs = holes()
     rods = mf.Manifold.batch_boolean(hs, mf.OpType.Add)
     xf, xr = SPLIT_X + SPLIT_GAP / 2, SPLIT_X - SPLIT_GAP / 2
-    floor = outer ^ box(-150.0, -100.0, -5.0, 100.0, 100.0, FLOOR)
+    floor = outer ^ (box(-150.0, -100.0, -5.0, 100.0, 100.0, FLOOR) + (above_plane(ld) - above_plane(ld + FLOOR)))
 
     # FACE MODULE --------------------------------------------------------------------------------------------------
     face = (skin + floor) ^ front(xf)
