@@ -271,9 +271,6 @@
 [let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
 ; ---------------------------------------------------------------------- insides ----
 [let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
-[let cortex-display [tilt [bx [- xfz 14.2] -38.3 [- zd 31.8] [- xfz 3.2] 38.3 [+ zd 31.8]]]]
-[let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
-                              [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 ; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
 ; Heaviest part lowest and over the neck: the pack lies flat right above the dock, the Jetson rides over it on two
 ; side brackets, fan up into the open crown. The heatsink's fins exhaust aft: a short duct carries it to the dot
@@ -436,7 +433,7 @@
 [let j-pw 40.0]                                        ; the 4" panel: 80 wide + reveal
 [let j-ph [* 0.22 hh]]
 [let j-pane [j-tilt [bx [- 0.0 1.5] [- 0.0 j-pw] [- 0.0 j-ph] [- 0.0 0.2] j-pw j-ph]]]
-[let j-panel [j-tilt [bx [- 0.0 13.0] [- 0.0 [+ j-pw 0.5]] [- 0.0 [+ j-ph 0.5]] [- 0.0 0.2] [+ j-pw 0.5] [+ j-ph 0.5]]]]
+[let j-panel [j-tilt [bx [- 0.0 13.0] [- 0.0 [+ j-pw 0.5]] [- 0.0 [+ j-ph 0.5]] 0.5 [+ j-pw 0.5] [+ j-ph 0.5]]]]   ; through the facet
 [let j-skull [difference j-panel j-skull0]]
 ; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
 [let j-eye-r 9.0]
