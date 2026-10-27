@@ -255,7 +255,7 @@ function drawFace(c, t, s, col, opts = {}) {
 // Every style shares the quiet states (a breathing rest, pills that bounce with your voice while listening, dots
 // while thinking) and differs in how it speaks and smiles. The lab has no audio, so loudness is a stand-in envelope.
 let mouth = 'ribbon', speakT0 = 0;
-const MOUTHS = ['ribbon', 'line', 'kawaii', 'visemes', 'none'];
+const MOUTHS = ['ribbon', 'neon lips', 'liquid', 'aurora', 'ring', 'line', 'kawaii', 'visemes', 'none'];
 const mouthState = { w: 0.056, h: 0.01 };
 function glowFill(c, col, a, path) { c.save(); c.globalAlpha = a; c.fillStyle = col; c.beginPath(); path(); c.fill(); c.restore(); }
 function drawMouth(c, t, s, col, opts) {
@@ -323,9 +323,89 @@ function drawMouth(c, t, s, col, opts) {
     const speaking = talk > 0.05;
     const w = speaking ? mouthState.w : 0.056 * k, h = speaking ? Math.max(0.005, mouthState.h) : 0.009 + 0.003 * br;
     glowFill(c, col, 0.85 * (speaking ? 1 : rest), () => c.roundRect(x - w / 2, y - h / 2, w, h, Math.min(w, h) / 2));
+  } else if (mouth === 'neon lips') {
+    // an upper lip with a cupid's bow and a lower lip, as neon strokes: they part, round and spread per sound
+    // (the same letter timing as visemes), and the corners lift or fall with the mood
+    const vis = visemeAt(t, talk, opts);
+    const open = talk > 0.05 ? vis[1] * 1.1 : 0.0015 + 0.0015 * br;
+    const w = (talk > 0.05 ? vis[0] * 1.4 : 0.085) * k;
+    const lift = smile * 0.018, lx = x - w / 2, rx = x + w / 2, cy = y - lift;
+    const up = y - open * 0.45, dn = y + open * 0.55 + 0.004;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const lips = () => {
+      c.beginPath(); c.moveTo(lx, cy);                                                       // upper lip, cupid's bow
+      c.bezierCurveTo(lx + w * 0.18, up - 0.012, x - w * 0.12, up - 0.016, x, up - 0.006);
+      c.bezierCurveTo(x + w * 0.12, up - 0.016, rx - w * 0.18, up - 0.012, rx, cy);
+      c.moveTo(lx, cy);                                                                      // lower lip
+      c.bezierCurveTo(lx + w * 0.2, dn + 0.012, rx - w * 0.2, dn + 0.012, rx, cy);
+    };
+    if (open > 0.012) glowFill(c, col, 0.12 * talk, () => {                                   // the light inside
+      c.moveTo(lx, cy); c.bezierCurveTo(lx + w * 0.2, up, rx - w * 0.2, up, rx, cy); c.bezierCurveTo(rx - w * 0.2, dn, lx + w * 0.2, dn, lx, cy);
+    });
+    c.strokeStyle = col; c.globalAlpha = 0.35; c.lineWidth = 0.024; lips(); c.stroke();     // halo
+    c.globalAlpha = 0.95; c.lineWidth = 0.009; lips(); c.stroke();                           // tube
+    c.strokeStyle = '#ffffff'; c.globalAlpha = 0.5; c.lineWidth = 0.003; lips(); c.stroke(); // hot core
+  } else if (mouth === 'liquid') {
+    // merging blobs of light with surface tension: speaking pulls them apart and stretches them, quiet
+    // draws them back into one soft bead. A metaball field sampled on a grid, edges smoothstepped.
+    const n = 5, span = (0.05 + 0.1 * amp) * k;
+    const balls = Array.from({ length: n }, (_, i) => {
+      const f = i / (n - 1) - 0.5, ph = t / 1000 * (2.2 + i * 0.7) + i * 1.9;
+      return [x + f * span * 2 + Math.sin(ph) * 0.006 * amp, y - smile * 0.03 * (0.25 - f * f) * 4 + Math.sin(ph * 1.3) * (0.004 + 0.03 * amp) * (1 - Math.abs(f)),
+        (0.016 + 0.012 * amp * (1 - Math.abs(f) * 1.4)) * k];
+    });
+    const cell = 0.0035, x0 = x - 0.18 * k, x1 = x + 0.18 * k, y0 = y - 0.08, y1 = y + 0.08;
+    c.fillStyle = col;
+    for (let gy = y0; gy < y1; gy += cell) for (let gx = x0; gx < x1; gx += cell) {
+      let f = 0;
+      for (const [bx, by, r] of balls) { const d2 = (gx - bx) ** 2 + (gy - by) ** 2; f += r * r / (d2 + 1e-6); }
+      if (f < 0.7) continue;
+      const a = Math.min(1, (f - 0.7) / 0.6);
+      c.globalAlpha = 0.9 * a * a * (3 - 2 * a); c.fillRect(gx, gy, cell * 1.05, cell * 1.05);
+    }
+  } else if (mouth === 'aurora') {
+    // ~150 motes of light on a lip-shaped orbit, swirling: the voice spreads and brightens them, quiet
+    // gathers them into a calm line
+    const w = 0.15 * k, open = 0.004 + 0.07 * amp, tt = t / 1000;
+    for (let i = 0; i < 150; i++) {
+      const h1 = Math.sin(i * 12.9898) * 43758.5453, rnd = h1 - Math.floor(h1);
+      const h2 = Math.sin(i * 78.233) * 12543.21, rnd2 = h2 - Math.floor(h2);
+      const u = rnd * 6.283 + tt * (0.3 + rnd2 * 0.8) * (i % 2 ? 1 : -1);
+      const px = x + Math.cos(u) * w * (0.85 + 0.15 * Math.sin(tt * 2 + i));
+      const py = y - smile * 0.02 * (1 - Math.cos(u) ** 2) + Math.sin(u) * open * (0.6 + 0.6 * rnd2) + Math.sin(tt * 3 + i) * 0.002;
+      c.globalAlpha = (0.25 + 0.6 * rnd2) * (0.5 + 0.5 * Math.max(amp, rest * (0.4 + 0.3 * br)));
+      c.fillStyle = i % 9 === 0 ? '#ffffff' : (i % 7 === 0 ? '#ff8ca5' : col);
+      c.beginPath(); c.arc(px, py, 0.0025 + 0.003 * rnd, 0, 7); c.fill();
+    }
+  } else if (mouth === 'ring') {
+    // an O of light whose outline ripples with layered harmonics of the voice; at rest a small calm ring
+    const R = (0.016 + 0.035 * amp + 0.002 * br) * k, tt = t / 1000;
+    const path = () => {
+      for (let i = 0; i <= 96; i++) {
+        const th = i / 96 * 6.283;
+        const r = R * (1 + amp * (0.12 * Math.sin(3 * th + tt * 5) + 0.08 * Math.sin(5 * th - tt * 7) + 0.05 * Math.sin(8 * th + tt * 11)));
+        c.lineTo(x + Math.cos(th) * r * 1.25, y + Math.sin(th) * r * (0.9 - smile * 0.15));
+      }
+    };
+    glowFill(c, col, 0.12 + 0.2 * amp, path);
+    c.strokeStyle = col; c.globalAlpha = 0.35; c.lineWidth = 0.02; c.beginPath(); path(); c.stroke();
+    c.globalAlpha = 0.95; c.lineWidth = 0.007; c.beginPath(); path(); c.stroke();
   }
   c.restore();
 }
+
+// The mouth shape [width, opening] for the letter being said now (the lab times captions at 13 letters/s).
+function visemeAt(t, talk, opts) {
+  const text = (caption || '').toLowerCase();
+  const ch = talk > 0.05 ? (text[Math.floor((t - speakT0) / 1000 * 13)] || ' ') : ' ';
+  const V = { a: [0.07, 0.06], o: [0.04, 0.05], u: [0.03, 0.04], e: [0.08, 0.035], i: [0.08, 0.025], y: [0.07, 0.03],
+    m: [0.06, 0.004], b: [0.06, 0.004], p: [0.06, 0.004], f: [0.065, 0.01], v: [0.065, 0.01], w: [0.03, 0.03],
+    r: [0.045, 0.03], l: [0.06, 0.03], ' ': [0.055, 0.006] };
+  const tg = V[ch] || [0.06, 0.025];
+  if (!opts.still) { visemeAt.w += (tg[0] - visemeAt.w) * 0.35; visemeAt.h += (tg[1] - visemeAt.h) * 0.35; }
+  return [visemeAt.w, visemeAt.h];
+}
+visemeAt.w = 0.056; visemeAt.h = 0.01;
 
 // --- the head around the panel --------------------------------------------------------------------------------------
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, Math.max(0, Math.min(r, w / 2, h / 2))); };
