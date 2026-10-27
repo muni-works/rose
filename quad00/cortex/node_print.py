@@ -155,7 +155,7 @@ LIP_H, LIP_T = 5.0, 1.4                     # locating lip: rises above the base
 # head_y = bx - 46), board y -> head x (I/O aft: head_x = by + DK_X0), board underside at DK_Z.
 DK_X0, DK_Z = -20.0, 38.0
 DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
-SEAM_SCREWS = [(22.0, 48.0, 14.0), (22.0, -48.0, 14.0), (-44.0, 30.0, 14.0), (-44.0, -30.0, 14.0)]   # x, y, web: all webbed out to the side/back walls (a front-centre boss would float: the display blocks its web)
+SEAM_SCREWS = [(22.0, 48.0, 50.0), (22.0, -48.0, 50.0), (-44.0, 30.0, 50.0), (-44.0, -30.0, 50.0)]   # x, y, web: all webbed out to the side/back walls (a front-centre boss would float: the display blocks its web)
 
 def column(x, y, z0, z1, r=4.0, web=14.0):
     """Ø2r column from z0 to z1 webbed out toward the wall (hull outward; clipped by the skin by the caller)."""
@@ -169,6 +169,8 @@ def column(x, y, z0, z1, r=4.0, web=14.0):
 # 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall. The board screws flat to a pad inside
 # the back wall of the UPPER shell (4 x M2.5 self-tapping, blind holes), just under the exhaust. VBUS/CC go to the PD
 # sink; the USB 2 pair goes on to the devkit (see NODE-BRIEF.md v1.8).
+PANEL_Z = 54.0                  # 4in panel centre (node.loon fz)
+CAM_Y, CAM_Z = 62.0, 62.0       # stereo cameras beside the panel at eye height: 124 baseline
 USB_Z = 37.0                    # receptacle centre
 PB_X = -53.0                    # power board's back face (the pad's flat)
 PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
@@ -221,12 +223,15 @@ def main():
     # LAND_T thick land (0.5 VHB); the land is a frame added behind the face, since the pocket is deeper than the wall,
     # and the 4in panel bonds to its back (VHB), showing through the window. The window
     # through the land is the acrylic less 2.5 per side.
-    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 46.0, 50.8, 8.0, 65.5, 1.5
+    G_T, G_HY, G_HZ, G_R, G_ZC, LAND_T = 3.2, 76.2, 50.8, 0.6, 65.5, 1.5    # a whole 4 x 6 in sheet, factory corners
     gx = FACE - G_T                                              # acrylic back face
     frame = rrect_prism(gx - LAND_T, FACE, 0.0, G_ZC, G_HY + 3.0, G_HZ + 3.0, G_R + 3.0) ^ outer
     pocket = rrect_prism(gx - 0.01, FACE + 10.0, 0.0, G_ZC, G_HY + 0.2, G_HZ + 0.2, G_R + 0.2)
-    window = rrect_prism(gx - 10.0, gx + 0.5, 0.0, G_ZC, G_HY - 2.5, G_HZ - 2.5, G_R - 2.5)
-    face = pocket + window
+    # behind the sheet: a full SENSOR PLATE (the land), with a window for the panel's 84 square glass and a Ø10 hole
+    # per camera. The panel and cameras bond to its back; more sensors (ToF, light, mic) get their own holes here.
+    window = rrect_prism(gx - 10.0, gx + 0.5, 0.0, PANEL_Z, 43.0, 43.0, 1.0)
+    cams = [rod((gx, s_ * CAM_Y, CAM_Z), (1, 0, 0), 5.0, 12.0) for s_ in (1, -1)]
+    face = pocket + window + mf.Manifold.batch_boolean(cams, mf.OpType.Add)
     zu = SEAM_Z + SEAM_GAP
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     ubosses = [column(x, y, zu, zu + 6.5, web=w) for x, y, w in SEAM_SCREWS]   # 6.5 tall: clears the devkit's I/O band

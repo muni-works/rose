@@ -379,3 +379,20 @@ The first slice took 13 h 19 m (0.16 mm High Quality, 645 layers, 47.8 g of tree
 
 Re-slice to get the real time. These settings should roughly halve it or better. A 0.6 mm nozzle would roughly halve
 it again. `node-mvp.3mf` stays as the plain, settings-free fallback.
+
+## v1.14 a whole 4 × 6" sheet, landscape (2026-10-27)
+
+The face is now **one whole 4 × 6" (152.4 × 101.6 × 3.2) cast acrylic sheet, as bought, with its factory corners.**
+No cutting and no CNC. Mask the back as before (`node-acrylic.dxf` is now just the mask guide).
+
+- **Head widened** to ~173 W. Height is unchanged and depth is ~125. The flat face runs z 11–119.5, ±86 wide, and
+  the plan squares off toward the face. The crown holds its width higher (n 4) so the sheet's top corners stay
+  inside the skin: they sit within 0.25 mm of flush.
+- **Sensor plate:** the land behind the sheet is now a full printed plate. It has an 86 mm window for the 4" panel
+  (which bonds to its back) and Ø10 holes for the cameras. Future sensors (ToF, ambient light, mic) get their own
+  holes in this plate, and the mask stays black over everything except their windows.
+- **Stereo cameras moved beside the panel at eye height**, at y ±62 and z 62: a **124 mm baseline**, up from 52,
+  which beats SPEC's 106.
+- Fit: devkit board 13.7 to the wall, panel 2.7, cameras 6.5. Speakers sit at the wider walls. No clashes against
+  the true shell.
+- Prints: upper 129 cm³, base 85 cm³. Both are single bodies, watertight, and fit the P1S bed in every 3MF layout.

@@ -1,22 +1,25 @@
 """Generate the skull sections for node.loon (between the BEGIN/END skull markers). Run: python3 node_skull.py
 
 Each section is an egg in plan: a superellipse whose half width runs from `wf` at the face to `wb` at the back,
-and which squares off toward the face so the 84 mm glass sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
+and which squares off toward the face so the 152 x 102 acrylic sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
 cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck recess under the back."""
 import math, re
 
-BROW = 116.0                                         # top of the flat face plane
+CHIN = 11.0                                          # bottom of the flat face plane (the sheet's bottom 14.7 - its frame)
+BROW = 119.5                                         # top of the flat face plane (the sheet's top 116.3 + its frame)
 FACE = 59.5                                          # the face plane (front of the inlaid acrylic)
+WIDE = 1.36                                          # width scale for the landscape 4 x 6 in face (152.4 wide)
+FACE_HW = 86.0                                       # face half width: the sheet's 76.2 + the frame
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
     return (1 - u ** n) ** (1 / n)
 
 def outline(z):
-    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
+    fx = FACE if CHIN <= z <= BROW else (FACE - 12 + 12 * se((CHIN - z) / CHIN, 2.2) if z < CHIN else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
     bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
-    wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4)   # back (parietal) half width
-    wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
+    wb = WIDE * (58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 4.0))   # back (parietal) half width; squarer crown (n 4) holds the width up to the sheet's top corners
+    wf = min(wb, FACE_HW) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
     wf = min(wf, wb)
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))
@@ -30,7 +33,7 @@ def section(z, n=48):
     for i in range(n):
         t = 2 * math.pi * i / n
         c, s = math.cos(t), math.sin(t)
-        e = 12.0 if c > 0 else 2.6                      # squarer toward the face
+        e = 28.0 if c > 0 else 2.6                      # square toward the face: the flat sheet runs nearly to the sides
         x = xc + a * math.copysign(abs(c) ** (2 / e), c)
         u = min(max((x - bx) / (fx - bx), 0.0), 1.0)    # 0 back .. 1 face
         w = wb + (wf - wb) * u ** 1.6
