@@ -67,7 +67,10 @@
 [let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
 ; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
 ; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
-[let zk 40.0]
+[let zk 40.0][let zfj [* 0.48 hh]]                                  ; the facet's centre height
+[let xfj [- x-face [* rake zfj] 9.0]]                  ; the facet plane: 9 mm behind the crown front there
+[let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
+
 [let kb 38.0]
 [let xb [fn [z] [if [> z zk] [+ x-back [* kb [* [/ [- z zk] [- hh zk]] [/ [- z zk] [- hh zk]]]]] x-back]]]
 [let head-sec [fn [z d]
@@ -205,6 +208,8 @@
 [let d7-cams [tilt [union [bx [- d7-xi 11.0] [- d7-cam-y 12.5] [- ze 12.0] [- d7-xi 0.5] [+ d7-cam-y 12.5] [+ ze 12.0]]
                           [bx [- d7-xi 11.0] [- -12.5 d7-cam-y] [- ze 12.0] [- d7-xi 0.5] [- 12.5 d7-cam-y] [+ ze 12.0]]]]]
 
+[let zcamj [+ zg [- gh 3.0]]]                          ; the camera dot: the grid's top row, centre column
+
 ; the back. The I/O window stays in the wall (it is the intake air's way in, SPEC thermal) but is covered by a
 ; perforated insert like the other grilles: closed to the eye, and the carrier's ports are only reached with the tub
 ; off (the head charges and talks on the desk dock through the floor). A fully solid back fails 25 W: with it solid,
@@ -329,6 +334,11 @@
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
     [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock T1 Ethernet + USB 2 -> A603
 
+[pub let cortex-display [j-tilt [bx [- 0.0 13.0] -37.0 [- 0.0 25.0] [- 0.0 2.6] 37.0 25.0]]]
+; the camera proxies, J: behind each ear grille (the Ø4.4 dot at the grid's top row), an IMX219-sized box
+[pub let cortex-cams [union [bx [- gx 9.0] [- hw 12.0] [- zcamj 9.0] [+ gx 9.0] [- hw 1.5] [+ zcamj 9.0]]
+                        [bx [- gx 9.0] [- 1.5 hw] [- zcamj 9.0] [+ gx 9.0] [+ 12.0 hw] [+ zcamj 9.0]]]]
+
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries, its neck's dock face at the origin (z up into the head). A desk dock is the same parts in a
 ; weighted puck. Lower the head: the cones seat it (+-0.1 mm), the magnets pull it flat, the pogo pins compress onto
@@ -424,9 +434,6 @@
 ; Everything below is defined in the TILTED face frame (j-tilt: u = the face
 ; normal, v = y, w = z along the face), so the pane is flush everywhere.
 ; ==========================================================================
-[let zfj [* 0.48 hh]]                                  ; the facet's centre height
-[let xfj [- x-face [* rake zfj] 9.0]]                  ; the facet plane: 9 mm behind the crown front there
-[let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
 [let face-plane [j-tilt [bx 0.0 -400.0 -400.0 400.0 400.0 400.0]]]    ; the facet: u>0 (in front), through the origin
 [pub let j-skull0 [difference face-plane shell-solid]]
 ; the pane: flush in the facet (the tilted frame's u = 0 plane), 1.2 mm reveal all round
@@ -450,7 +457,6 @@
 [let j-mouth-v [- 0.0 [* 0.14 hh]]]
 [let j-mouth [j-tilt [hull [translate [- 0.0 0.15] -8.25 j-mouth-v [sphere 3.25]] [translate [- 0.0 0.15] 8.25 j-mouth-v [sphere 3.25]]]]]
 ; the cameras: a Ø4.4 bore through the ear wall at the grid's top row + a dark glass dot seated in it
-[let zcamj [+ zg [- gh 3.0]]]                          ; the camera dot: the grid's top row, centre column
 [let j-cam-bore [union [translate gx [- 0.0 hw] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]] [translate gx hw zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]]]]
 [let j-cam-dot [union [translate gx [- 0.0 [- hw 0.9]] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]
                       [translate gx [- hw 0.9] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]]]
@@ -462,6 +468,7 @@
 [pub let cortex-domes-j j-domes]
 [pub let cortex-mouth-j j-mouth]
 [pub let cortex-camdots-j j-cam-dot]
+; the display proxy, J: fills the panel pocket behind the recessed pane (the pane sits at u -1.5..-0.2)
 
 ; proxy roots for export and renders (the assembly above is the real head)
 [root cortex-back-grille "satin_black"]
