@@ -8,13 +8,13 @@ tmp=$(mktemp -d .renderXXXX)
 trap 'rm -rf "$tmp"' EXIT
 cp node.loon "$tmp/"
 mkdir -p renders/node
-USE='[use node [node-glass node-face node-lenses node-puck on-desk node-battery node-carrier node-module node-heatsink node-display node-cam-l node-cam-r node-power node-speakers node-usb-c node-dockboard]]'
+USE='[use node [node-glass node-face node-lenses node-puck on-desk node-battery node-dk-board node-dk-io node-dk-stack node-display node-cam-l node-cam-r node-power node-speakers node-usb-c]]'
 MAT='[material "satin_black" 0.035 0.037 0.042 0.05 0.6] [material "petg_grey" 0.42 0.44 0.47 0.1 0.5]
 [material "glass" 0.01 0.012 0.014 0.4 0.04] [material "face" 0.72 0.95 0.76 0.0 0.5] [material "lens" 0.035 0.04 0.045 0.3 0.08]
 [material "puck" 0.62 0.6 0.56 0.0 0.65] [material "pcb_green" 0.05 0.32 0.18 0.1 0.45] [material "cell_pack" 0.13 0.22 0.42 0.1 0.5]
 [material "heatsink" 0.55 0.57 0.6 0.7 0.4]'
-TUB="[import-mesh \"$F/node-tub.stl\" :units \"mm\"]"
-FLR="[import-mesh \"$F/node-floor.stl\" :units \"mm\"]"
+TUB="[import-mesh \"$F/node-upper.stl\" :units \"mm\"]"
+FLR="[import-mesh \"$F/node-base.stl\" :units \"mm\"]"
 
 # hero: the printed head on its desk puck, screen on
 {
@@ -24,18 +24,18 @@ FLR="[import-mesh \"$F/node-floor.stl\" :units \"mm\"]"
   echo '[root node-puck "puck"]'
 } > "$tmp/hero.loon"
 
-# exploded: floor + pack at the bottom, carrier stack up off its sled, power board out the back, speakers out the
-# sides, display + cameras forward of the tub, cover glass further forward, tub lifted clear above
+# exploded: base + pack at the bottom, devkit lifted off its posts, power board out the back, speakers out the
+# sides, display + cameras forward, cover glass further forward, upper shell lifted clear above
 E='[let up [fn [z s] [translate 0.0 0.0 z s]]] [let fw [fn [x s] [translate x 0.0 0.0 s]]]'
 {
   echo "$USE"; echo "$MAT"; echo "$E"
-  echo "[root $FLR \"petg_grey\"] [root node-battery \"cell_pack\"] [root node-dockboard \"pcb_green\"]"
-  echo '[root [up 45.0 node-carrier] "pcb_green"] [root [up 45.0 node-module] "pcb_green"] [root [up 70.0 node-heatsink] "heatsink"]'
+  echo "[root $FLR \"petg_grey\"] [root node-battery \"cell_pack\"]"
+  echo '[root [up 80.0 node-dk-board] "pcb_green"] [root [up 80.0 node-dk-io] "heatsink"] [root [up 80.0 node-dk-stack] "heatsink"]'
   echo '[root [fw -70.0 node-power] "pcb_green"] [root [fw -70.0 node-usb-c] "heatsink"]'
   echo '[root [translate 0.0 0.0 0.0 [union [translate 0.0 45.0 0.0 [intersection [translate -100.0 0.0 -100.0 [cube 200.0 200.0 300.0]] node-speakers]] [translate 0.0 -45.0 0.0 [intersection [translate -100.0 -200.0 -100.0 [cube 200.0 200.0 300.0]] node-speakers]]]] "heatsink"]'
   echo '[root [fw 70.0 node-display] "heatsink"] [root [fw 70.0 node-cam-l] "pcb_green"] [root [fw 70.0 node-cam-r] "pcb_green"]'
   echo '[root [fw 120.0 node-glass] "glass"] [root [fw 120.0 node-face] "face"]'
-  echo "[root [up 170.0 $TUB] \"satin_black\"]"
+  echo "[root [up 130.0 $TUB] \"satin_black\"]"
 } > "$tmp/exploded.loon"
 
 for n in hero exploded; do (cd "$tmp" && "$V" export "$n.loon" "$n.vcad" >/dev/null); done

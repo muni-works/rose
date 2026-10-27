@@ -317,3 +317,28 @@ The sled walls were 28 mm long, off-centre, and missed the carrier's holes. The 
   centre and two behind the walls.
 - Fit: carrier 10.4 to the wall, pack 5.1, no clashes. Renders: `sled-carrier.png`, `sled-carrier-front.png`.
   `node_3mf.py` rebuilds the plain 3MF.
+
+## v1.11 the real compute: Jetson Orin Nano Super devkit, and the split shell (2026-10-27)
+
+There's no A603. The compute is the **Jetson Orin Nano Super devkit**. Its numbers come from NVIDIA's P3768 A04
+reference files (Allegro ASCII extract + NC drill):
+- **Board:** x −4..96, y −17..62, so 100 × 79, R0.6 corners, 1.6 thick.
+- **Mounting:** 4 × Ø2.75 NPTH (M2.5) at x {0, 92} × y {0, 58}, with an alternate pair at x 86. The I/O edge is y −17.
+- **Stack height:** 31 above the board's underside (datasheet: 34.77 incl. feet). The I/O row height (16) is
+  ASSUMED. The 3 × Ø3.8 plated holes at (32.3, 38.7), (73.3, 38.7), (82.3, 15.5) are the module's standoffs.
+
+The 79 × 100 board can't pass through the 71 × 87 foot opening, so **the head now splits at z 30**:
+
+| Part | Print | What |
+|---|---|---|
+| `node-base.stl` | flat bottom down; tree supports only under the bottom round's first mm | Closed-bottom cup, z 0–30, with the intake band. Holds the pack (strap slots) and **4 Ø7 posts** to z 38 on the devkit's 92 × 58 holes (M2.5 self-tapping pilots). 3 screw columns. A 1.4 × 5 mm locating lip stands above the rim. |
+| `node-upper.stl` | seam rim down; tree supports inside the crown | z 31 up: face window, ears, exhaust, USB-C + power-board pad, 3 M3 heat-set bosses (6.5 tall, 5.7 inserts). |
+
+- **Seam:** a 1 mm shadow gap all round at jaw height. The lip behind it locates the shell and blocks light.
+- **Fastening:** 3 × M3 × 12 screws from under the base, up the columns into the upper's inserts. One is front
+  centre (no web, the display is just ahead) and two are at the back (x −44, y ±30).
+- **Devkit placement:** board at head x −37..42, y ±50, z 38, I/O aft. Board-to-wall 2.1. The I/O row's box
+  (full width) is at 0.6, but the real connectors sit inboard.
+- **Power:** the PD/charger board moved up into the upper shell (z 32–62, USB-C at z 37) and feeds the devkit's DC
+  jack (19 V class). Exhaust starts at z 63, above the pad.
+- `node-mvp.3mf` has both parts side by side on one P1S plate.

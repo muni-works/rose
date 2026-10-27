@@ -122,8 +122,8 @@ def holes():
             out.append(rod((x, y, z), (nx, ny, -1.0), 0.7, 12.0))
     # exhaust: a hex field on the back, just under the occiput's widest line (z 80), where the surface starts to face
     # down and the swell above shelters it; level with the heatsink's aft fins (z 64-72). Through along -x, dropping.
-    for j in range(9):
-        z = 61.0 + j * 2.2 * 0.866
+    for j in range(8):
+        z = 63.0 + j * 2.2 * 0.866
         for i in range(-21, 22):
             y = (i + 0.5 * (j % 2)) * 2.2
             if abs(y) > 48.0:
@@ -142,77 +142,86 @@ def prism_yz(poly, x0, x1):
 def box(x0, y0, z0, x1, y1, z1):
     return mf.Manifold.cube((x1 - x0, y1 - y0, z1 - z0)).translate((x0, y0, z0))
 
-SLED_X0, SLED_X1 = -16.0, 40.0
-CARRIER_X0 = -12.0                                    # A603 back edge (I/O aft); front edge at +40
-CARRIER_HOLES_X = (CARRIER_X0 + 3.5, CARRIER_X0 + 48.5)
+# ---- the split -------------------------------------------------------------------------------------------------
+# The Jetson Orin Nano devkit's carrier (P3768, 100 x 79) is wider than the foot opening, so the head splits at
+# SEAM_Z into a closed-bottom BASE (battery, intake, devkit posts) and an UPPER shell that lowers over the devkit.
+# The 1 mm gap between them reads as a deliberate shadow line round the jaw; a lip on the base locates the upper
+# and closes the gap to light. 3 x M3 screws from under the base run up its columns into heat-set inserts in the upper.
+SEAM_Z, SEAM_GAP = 30.0, 1.0
+LIP_H, LIP_T = 5.0, 1.4                     # locating lip: rises above the base rim inside the upper's wall
 
-def boss_points():
-    """Three floor-screw bosses, placed by hand where the plate is free: one centred in front of the pack
-    (x 38.5) and two behind the sled walls (x -26, y ±38.6). See node_fit.py for the clearances."""
-    return [(38.5, 0.0), (-26.0, 38.6), (-26.0, -38.6)]
+# Devkit, from the P3768 A04 Allegro extract: board x -4..96, y -17..62 (R0.6), M2.5 holes (Ø2.75 NPTH) at
+# x {0, 92} x y {0, 58} (an alternate pair at x 86); I/O edge at y -17. In the head: board x -> head y (centred,
+# head_y = bx - 46), board y -> head x (I/O aft: head_x = by + DK_X0), board underside at DK_Z.
+DK_X0, DK_Z = -20.0, 38.0
+DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
+SEAM_SCREWS = [(38.0, 0.0, 0.0), (-44.0, 30.0, 14.0), (-44.0, -30.0, 14.0)]   # x, y, web (none at the front: the display)
 
-def boss(x, y):
-    """Ø8 boss from the floor's top face up 10 mm, webbed out to the wall (hull toward the outside, clipped by the
-    skin later). Its underside is 3 mm off the bed: it needs a small tree support from the plate when printing."""
-    cx = sum(q[0] for q in outline_at(0.0)) / N
-    d = np.array([x - cx, y]); d = d / np.linalg.norm(d) * 20.0
-    a = mf.Manifold.cylinder(10.0, 4.0, 4.0, 32).translate((x, y, FLOOR))
-    b = mf.Manifold.cylinder(10.0, 4.0, 4.0, 32).translate((x + d[0], y + d[1], FLOOR))
+def column(x, y, z0, z1, r=4.0, web=14.0):
+    """Ø2r column from z0 to z1 webbed out toward the wall (hull outward; clipped by the skin by the caller)."""
+    cx = sum(q[0] for q in outline_at(z0)) / N
+    d = np.array([x - cx, y]); d = d / np.linalg.norm(d) * web
+    a = mf.Manifold.cylinder(z1 - z0, r, r, 32).translate((x, y, z0))
+    b = mf.Manifold.cylinder(z1 - z0, r, r, 32).translate((x + d[0], y + d[1], z0))
     return mf.Manifold.batch_hull([a, b])
 
 # USB-C on the back: power in AND data. The receptacle is on the power board itself (USB-PD sink + 3S charger,
-# 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall -- no panel-mount extension. The board
-# screws flat to a pad inside the back wall (4 x M2.5 self-tapping, blind holes) just under the exhaust. VBUS/CC go to
-# the PD sink; the USB 2 pair goes on to the carrier (see NODE-BRIEF.md v1.8). Low on the back, where the surface
-# faces slightly down.
-USB_Z = 34.0                    # receptacle centre
+# 40 W x 30 H), a mid-mount right-angle USB-C poking through a slot in the wall. The board screws flat to a pad inside
+# the back wall of the UPPER shell (4 x M2.5 self-tapping, blind holes), just under the exhaust. VBUS/CC go to the PD
+# sink; the USB 2 pair goes on to the devkit (see NODE-BRIEF.md v1.8).
+USB_Z = 37.0                    # receptacle centre
 PB_X = -53.0                    # power board's back face (the pad's flat)
-PB_Z0, PB_Z1, PB_Y = 27.0, 57.0, 20.0
-PB_HOLES = [(sy * 17.0, z) for sy in (1, -1) for z in (30.0, 54.0)]
+PB_Z0, PB_Z1, PB_Y = 32.0, 62.0, 20.0
+PB_HOLES = [(sy * 17.0, z) for sy in (1, -1) for z in (35.0, 59.0)]
+
+def export(name, m, holes=0):
+    mesh = m.to_mesh()
+    tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=True)
+    tm.export(os.path.join(OUT, name + '.stl'))
+    print('%-11s watertight=%s volume=%.0f cm3 bbox=%s holes=%d' % (
+        name, tm.is_watertight, tm.volume / 1000, np.round(tm.extents, 1).tolist(), holes))
 
 def main():
     outer = loft([(z, outline_at(z)) for z in ZS])
-    # cavity: the outline offset by the wall, open through the bottom (the floor plate closes it)
-    inner_rows = [(-1.0, offset(outline_at(0.0), WALL))] + [(z, offset(outline_at(z), WALL)) for z in ZS[1:] if z <= 131.0]
-    inner = loft(inner_rows)
-    face = rrect_prism(45.0, 70.0, 0.0, 65.5, 43.0, 47.5, 6.0)       # through-window behind the cover glass
+    inner = loft([(-1.0, offset(outline_at(0.0), WALL))] + [(z, offset(outline_at(z), WALL)) for z in ZS[1:] if z <= 131.0])
+    skin = outer - inner
+    above = lambda z: box(-100.0, -100.0, z, 100.0, 100.0, 200.0)
+    below = lambda z: box(-100.0, -100.0, -5.0, 100.0, 100.0, z)
     hs = holes()
-    bosses = [boss(x, y) for x, y in boss_points()]
-    inner_floor_clear = box(-100.0, -100.0, -5.0, 100.0, 100.0, FLOOR)   # nothing below the floor's top face
-    usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 3.0, PB_X, PB_Y + 2.0, PB_Z1 + 1.0)   # flat inside face for the board
-    tub = ((outer - inner) + ((mf.Manifold.batch_boolean(bosses + [usb_pad], mf.OpType.Add) ^ outer) - inner_floor_clear)) - face
-    cuts = list(hs)
-    cuts += [mf.Manifold.cylinder(7.0, 2.0, 2.0, 24).translate((x, y, FLOOR)) for x, y in boss_points()]   # M3 heat-set, Ø4 x 7
-    cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
-    cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2, to the receptacle face
-    cuts += [rod((PB_X - (1.8 if z < 40 else 3.0), y, z), (1, 0, 0), 1.1, 3.6 if z < 40 else 6.0) for y, z in PB_HOLES]   # M2.5 self-tap: 3.6 deep low (thin wall), 6 high
-    tub = tub - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
+    rods = mf.Manifold.batch_boolean(hs, mf.OpType.Add)
 
-    # floor plate + sled, one print, flat on the bed, no supports. The plate drops into the bottom opening (0.2
-    # clearance) and screws up into the 4 bosses (M3 x 8 countersunk). Two sled walls carry the carrier on 45-degree
-    # chamfered lips (drill the lips to the A603's holes); the pack sits between them on the plate, held by a hook-
-    # and-loop strap through two slots.
-    fp = offset(outline_at(0.0), WALL + 0.2)
-    floor = mf.Manifold.extrude(mf.CrossSection([fp]), FLOOR)
-    for s in (1, -1):
-        # wall beside the pack, full carrier length; its lip reaches OUT under the A603's corner holes (y ±40,
-        # ASSUMED 3.5 in from the 87 x 52 corners: MEASURE #5), 45-degree underside so it prints without support
-        wall = [(s * 35.5, FLOOR), (s * 38.5, FLOOR), (s * 38.5, 31.5), (s * 43.0, 36.0), (s * 35.5, 36.0)]
-        floor += prism_yz(wall if s > 0 else wall[::-1], SLED_X0, SLED_X1)
-    fcuts = []
-    for x, y in boss_points():
-        fcuts.append(mf.Manifold.cylinder(10.0, 1.7, 1.7, 24).translate((x, y, -1.0)))
-        fcuts.append(mf.Manifold.cylinder(1.9, 3.4, 1.5, 24).translate((x, y, -0.01)))   # 90-deg countersink
-    fcuts += [box(-10.0, s * 34.3 - 1.0, -1.0, 10.0, s * 34.3 + 1.0, FLOOR + 1.0) for s in (1, -1)]   # strap slots
-    fcuts += [rod((x, y, 34.0), (0, 0, 1), 1.1, 8.0) for x in CARRIER_HOLES_X for y in (40.0, -40.0)]  # M2.5 pilots
-    floor = floor - mf.Manifold.batch_boolean(fcuts, mf.OpType.Add)
+    # UPPER: everything above the seam + gap, the face window, ears, exhaust, USB-C, seam-screw bosses
+    face = rrect_prism(45.0, 70.0, 0.0, 65.5, 43.0, 47.5, 6.0)
+    zu = SEAM_Z + SEAM_GAP
+    usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
+    ubosses = [column(x, y, zu, zu + 6.5, web=w) for x, y, w in SEAM_SCREWS]   # 6.5 tall: clears the devkit's I/O band
+    upper = (skin + (mf.Manifold.batch_boolean(ubosses + [usb_pad], mf.OpType.Add) ^ outer)) ^ above(zu)
+    cuts = [face, rods]
+    cuts += [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, zu - 0.01)) for x, y, _ in SEAM_SCREWS]  # M3 heat-set, 5.7 long
+    cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
+    cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
+    cuts += [rod((PB_X - 3.0, y, z), (1, 0, 0), 1.1, 6.0) for y, z in PB_HOLES]   # M2.5 self-tap, 6 deep
+    upper = upper - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
+
+    # BASE: closed bottom, skin below the seam, a locating lip, devkit posts, seam-screw columns, intake
+    base = (outer ^ below(FLOOR)) + (skin ^ below(SEAM_Z))
+    lip_out = loft([(z, offset(outline_at(z), WALL + 0.2)) for z in (SEAM_Z - 1.0, SEAM_Z + LIP_H)])
+    lip_in = loft([(z, offset(outline_at(z), WALL + 0.2 + LIP_T)) for z in (SEAM_Z - 2.0, SEAM_Z + LIP_H + 1.0)])
+    base = base + (lip_out - lip_in)
+    posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.5, 3.5, 32).translate((x, y, FLOOR)) for x, y in DK_HOLES]
+    cols = [column(x, y, FLOOR, SEAM_Z, web=w) for x, y, w in SEAM_SCREWS]
+    base = base + (mf.Manifold.batch_boolean(posts + cols, mf.OpType.Add) ^ outer)
+    bcuts = [rods ^ below(SEAM_Z)]
+    bcuts += [rod((x, y, DK_Z - 4.0), (0, 0, 1), 1.1, 8.5) for x, y in DK_HOLES]           # M2.5 self-tap pilots
+    for x, y, _ in SEAM_SCREWS:
+        bcuts.append(mf.Manifold.cylinder(SEAM_Z + 2.0, 1.7, 1.7, 24).translate((x, y, -1.0)))   # M3 clearance
+        bcuts.append(mf.Manifold.cylinder(SEAM_Z - 8.0, 3.2, 3.2, 24).translate((x, y, -1.0)))   # counterbore: an M3 x 12 from z 22 reaches the insert
+    bcuts += [box(-10.0, s * 35.3 - 1.0, -1.0, 10.0, s * 35.3 + 1.0, FLOOR + 1.0) for s in (1, -1)]   # pack strap slots
+    base = base - mf.Manifold.batch_boolean(bcuts, mf.OpType.Add)
+
     os.makedirs(OUT, exist_ok=True)
-    for name, m in (('node-tub', tub), ('node-floor', floor)):
-        mesh = m.to_mesh()
-        tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=True)
-        tm.export(os.path.join(OUT, name + '.stl'))
-        print('%-11s watertight=%s volume=%.0f cm3 bbox=%s holes=%d' % (
-            name, tm.is_watertight, tm.volume / 1000, np.round(tm.extents, 1).tolist(), len(hs) if name == 'node-tub' else 0))
+    export('node-upper', upper, len(hs))
+    export('node-base', base)
 
 if __name__ == '__main__':
     main()

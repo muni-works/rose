@@ -12,7 +12,7 @@ HEAD='node-head:satin_black node-lenses:lens node-glass:glass node-face:face nod
 while IFS='|' read -r name wrap az el; do
   [ -z "$name" ] && continue
   {
-    echo "[use node [node-head node-ears node-intake node-dockboard node-battery node-carrier node-module node-heatsink node-display node-cam-l node-cam-r node-power node-speakers node-floor node-lenses node-glass node-face node-puck node-neck node-torso on-desk]]"
+    echo "[use node [node-head node-ears node-intake node-battery node-dk-board node-dk-io node-dk-stack node-display node-cam-l node-cam-r node-power node-speakers node-base node-lenses node-glass node-face node-puck node-neck node-torso on-desk]]"
     sed -n '/^\[material/p' node.loon
     for p in $HEAD; do
       n=${p%%:*}; m=${p##*:}
@@ -22,7 +22,7 @@ while IFS='|' read -r name wrap az el; do
     [ "$wrap" = desk ] && echo '[root node-puck "puck"]'
     [ "$wrap" = neck ] && echo '[root node-neck "body"] [root node-torso "body"]'
     if [ "$wrap" = cut ]; then
-      for p in floor:aluminium dockboard:pcb_green battery:cell_pack carrier:pcb_green module:pcb_green heatsink:heatsink display:heatsink cam-l:pcb_green cam-r:pcb_green power:pcb_green speakers:heatsink; do
+      for p in floor:aluminium battery:cell_pack dk-board:pcb_green dk-io:heatsink dk-stack:heatsink display:heatsink cam-l:pcb_green cam-r:pcb_green power:pcb_green speakers:heatsink; do
         echo "[root node-${p%%:*} \"${p##*:}\"]"
       done
       echo '[material "pcb_green" 0.05 0.32 0.18 0.1 0.45] [material "cell_pack" 0.13 0.22 0.42 0.1 0.5] [material "heatsink" 0.55 0.57 0.6 0.7 0.4] [material "aluminium" 0.75 0.76 0.78 0.9 0.3]'

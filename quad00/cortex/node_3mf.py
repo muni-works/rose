@@ -5,7 +5,7 @@ import os
 import trimesh
 
 F = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
-PLACE = {'node-tub': (82, 82), 'node-floor': (182, 182)}
+PLACE = {'node-upper': (64, 128), 'node-base': (191, 128)}
 
 scene = trimesh.Scene()
 for name, (x, y) in PLACE.items():
