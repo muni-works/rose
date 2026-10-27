@@ -190,3 +190,28 @@ clashes between parts: none
   - The shell is still a solid massing body. Hollowing, the tub/floor split and the bosses come with print prep.
   - Camera FOV through the brow windows isn't checked.
   - The carrier's I/O edge is now only reachable with the shell off: there's no back cutout.
+
+## v1.5 exhaust + printable shell (2026-10-27)
+
+**Exhaust:** a hex field of Ø1.4 holes on a 2.2 pitch, 90 wide × 16 tall, low on the back of the crown (z 84–100)
+right behind the heatsink's top. About 400 holes, ~620 mm², which roughly matches the intake. It's out of sight from
+the front, side and 3/4 views, and it shows only when you look straight at the back of the head.
+
+**Printable parts:** `python3 node_print.py` builds them straight from the section polygons in manifold3d, without
+vcad booleans. It takes about 1 s, and the output is watertight by construction. It writes `../fab/node/`:
+
+| Part | What | Check |
+|---|---|---|
+| `node-tub.stl` | Hollow 2.5 mm shell, open at the bottom. Cuts: the face window behind the cover glass (86 × 95, R6), 2 ear patches, 3 intake rows on the foot's bottom round angled 45° down and out, and the exhaust field. 849 holes. | watertight, 110 cm³, 122 × 123 × 134 |
+| `node-floor.stl` | 3 mm plate that drops into the bottom opening with 0.2 clearance per side | watertight, 17 cm³ |
+
+Renders: `sh node_print_render.sh` → `renders/node/print-*.png` (3/4, back, under, section).
+
+**Not yet in the print parts:**
+- Floor retention: there are no corner bosses or heat-set inserts yet, and nothing for the floor to sit on. Add 4
+  bosses as in cortex NOTES §3.
+- Dock pads, cone seats and strike pockets in the floor.
+- Glass seat: the cover glass bonds onto the face plane (0.5 mm VHB) round a 2.5 mm land. There's no pocket.
+- Internal mounts for the display, camera, speaker and sled.
+- Print orientation: crown up with the open bottom on the bed is the natural choice. Tree supports inside the crown
+  come out through the bottom, as with the cortex tub.
