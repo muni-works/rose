@@ -8,7 +8,7 @@ import node_skull as sk
 HS = 1.35                                             # plan scale against the mini's design frame
 # height map, design z -> real z (piecewise linear): tight chin round, the flat face stretched to the 7in glass,
 # and a taller dome so the crown rounds over instead of capping the box
-ZMAP = [(0.0, 0.0), (18.0, 18.0), (116.0, 196.0), (134.0, 226.0)]
+ZMAP = [(0.0, 0.0), (18.0, 18.0), (116.0, 196.0), (sk.TOP, 226.0)]
 FACE = sk.FACE * HS                                   # 75.6
 SCR_W, SCR_H, SCR_D = 100.0, 164.9, 9.0               # Waveshare 7in (C): 164.9 x 100 glass; module depth ASSUMED
 SCR_Z = 30.0                                          # glass bottom; top at 194.9, the flat face ends at 196

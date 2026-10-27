@@ -2,17 +2,18 @@
 
 Each section is an egg in plan: a superellipse whose half width runs from `wf` at the face to `wb` at the back,
 and which squares off toward the face so the 84 mm glass sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
-cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck recess under the back."""
+cranium dome to TOP (crown peak behind the face; 138, grown from 134 for the mic array), occiput swell at z 80, neck recess under the back."""
 import math, re
 
 BROW = 116.0                                         # top of the flat face plane (design frame)
+TOP = 138.0                                          # crown peak (design frame); 134 until the mic array grew it ~5 mm
 VS = 1.12                                            # vertical scale: the flat face ends ~4 above the screen (BROW 130)
 FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
 LEAN, FLAT_X = 10.0, 12.0                            # desk lean: the back of the foot is cut on a 10 deg plane that
                                                      # meets the foot's bottom at x 12, ahead of the centre of mass
 
-ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
-                       130.5, 132.5, 133.6, 134.2)]
+ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116)] + [
+    (BROW + (z - BROW) * (TOP - BROW) / 18.0) * VS for z in (119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2)]
 
 def se(u, n):
     u = min(max(u, 0.0), 0.998)
@@ -20,10 +21,10 @@ def se(u, n):
 
 def outline(z):
     z = z / VS
-    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (134 - BROW), 2.2))
-    bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / 54, 2.3)
-    wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / 54, 2.4)   # back (parietal) half width
-    wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (134 - BROW), 2.2))   # face half width
+    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (TOP - BROW), 2.2))
+    bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / (TOP - 80), 2.3)
+    wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / (TOP - 80), 2.4)   # back (parietal) half width
+    wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (TOP - BROW), 2.2))   # face half width
     wf = min(wf, wb)
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))

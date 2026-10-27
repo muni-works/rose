@@ -183,6 +183,12 @@ DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
 TONGUE_SCREWS = [(34.0, 12.0), (34.0, -12.0)]
 # neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (about the centre)
 DOCK_X, DOCK_BCD = -16.0, 14.1
+# ears: reSpeaker XVF3800 (Ø100 x 1.2) flat under the crown, mics up: board bottom XVF_Z, centre XVF_X. Hung from
+# four crown bosses on its 66 square; each mic inlet (ASSUMED just inside a mounting hole) reaches the outside through
+# a sealed printed channel (Ø5, a foam ring between its foot and the board) to a Ø1.6 port in the crown.
+XVF_X, XVF_Z = 1.0, 132.0
+XVF_HOLES = [(XVF_X + sx * 33.0, sy * 33.0) for sx in (1, -1) for sy in (1, -1)]
+XVF_MICS = [(XVF_X + sx * 30.5, sy * 30.5) for sx in (1, -1) for sy in (1, -1)]
 DOCK_FEET = [(-16.0, 32.0), (-16.0, -32.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
@@ -272,7 +278,10 @@ def main():
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.0, 3.0, 32)   # Ø6: clears the stereo board's ends
              .translate((x, y, FLOOR)) for x, y in DK_HOLES]
-    rear = rear + lip + (mf.Manifold.batch_boolean(posts + [usb_pad], mf.OpType.Add) ^ outer)
+    top = XVF_Z + 1.2 + 0.4                                   # board top + a squeezed foam ring
+    xvf = [mf.Manifold.cylinder(60.0, 3.0, 3.0, 32).translate((x, y, top)) for x, y in XVF_HOLES]     # crown bosses
+    xvf += [mf.Manifold.cylinder(60.0, 2.5, 2.5, 32).translate((x, y, top + 0.6)) for x, y in XVF_MICS]  # mic channels
+    rear = rear + lip + (mf.Manifold.batch_boolean(posts + [usb_pad] + xvf, mf.OpType.Add) ^ outer)
     cuts = [rods ^ behind(xr)]
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
     cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
@@ -293,6 +302,8 @@ def main():
     cuts.append(dk(pcyl(0.0, 0.0, 7.0, -1.0, FLOOR + 1.0)))
     cuts += [dk(pcyl(DOCK_BCD * u, DOCK_BCD * v, 2.1, -1.0, 4.2)) for u, v in ((1, 0), (-1, 0), (0, 1), (0, -1))]
     cuts += [dk(pcyl(x, y, 4.1, -1.0, 0.6)) for x, y in DOCK_FEET]
+    cuts += [mf.Manifold.cylinder(70.0, 0.8, 0.8, 16).translate((x, y, top)) for x, y in XVF_MICS]           # mic ports
+    cuts += [mf.Manifold.cylinder(8.0, 1.05, 1.05, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2.5 pilots
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)

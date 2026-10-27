@@ -29,6 +29,17 @@ PARTS = {
     'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
+# Ears: Seeed reSpeaker XVF3800 USB 4-mic array, Ø100 x 1.2 (Seeed 2D drawing), flat under the crown with its mics
+# up and its parts (4.8) down, clear of the display's top. The disc is checked as the two boxes of its inscribed
+# octagon. The crown grew 5 mm (node_skull.TOP) to make room.
+try:
+    from node_print import XVF_X, XVF_Z
+except ImportError:   # node_print needs numpy + manifold3d (the venv); same values
+    XVF_X, XVF_Z = 1.0, 132.0
+for k, (hx, hy) in enumerate([(46.2, 19.1), (19.1, 46.2)]):
+    PARTS['xvf-%d' % k] = (XVF_X - hx, -hy, XVF_Z, XVF_X + hx, hy, XVF_Z + 1.2, 'xvf', 'XVF3800 board, Ø100 x 1.2')
+PARTS['xvf-parts'] = (XVF_X - 30, -30, XVF_Z - 4.8, XVF_X + 30, 30, XVF_Z, 'pcb_green', 'XVF3800 + XIAO side, 4.8 deep')
+PARTS['xvf-usb'] = (XVF_X - 50, -5, XVF_Z - 3.5, XVF_X - 42, 5, XVF_Z, 'heatsink', 'its USB-C at the back edge')
 # devkit posts and the face module's floor tongue from node_print, as boxes, for the clash check
 try:
     from node_print import DK_HOLES, TONGUE_SCREWS, SPLIT_X
@@ -99,7 +110,8 @@ def main():
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)
     report.append(('speakers', CLEAR, 'Visaton K 28 WPC BL, Ø28 x 5.4, outer face at y ±%.1f behind the ear patch' % ys))
-    clashes = [(a, c) for a in PARTS for c in PARTS if a < c and overlap(PARTS[a], PARTS[c])]
+    same = lambda a, c: a.startswith('xvf-') and c.startswith('xvf-')   # one board (and its own parts)
+    clashes = [(a, c) for a in PARTS for c in PARTS if a < c and not same(a, c) and overlap(PARTS[a], PARTS[c])]
     clashes += [(a, 'speaker') for a in PARTS if overlap(PARTS[a], spk) or overlap(PARTS[a], (spk[0], -spk[4], spk[2], spk[3], -spk[1], spk[5]))]
     print('%-10s %7s  %s' % ('part', 'gap', 'note'))
     for name, g, note in report:
