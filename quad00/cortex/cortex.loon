@@ -487,15 +487,22 @@
 [pub let cortex-eyes-j j-eyes]
 [pub let cortex-mouth-j j-mouth]
 [let j-cam-dot [translate xcamf 0.0 zcamf [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.2 32]]]]
-; the ear styling: an orange accent RING around each grille — the design's ONE colour accent. Built
-; along x (the file's loft pattern), then rotated 90 deg about z so the extrusion runs along y (through
-; the ear wall), and placed at the grille.
-[let j-ring-full [loft #[[sketch -4.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [+ gw 1.4] [+ gh 1.4] 8.0]] [sketch 0.8 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [+ gw 1.4] [+ gh 1.4] 8.0]]]]]
-[let j-ring-hole [loft #[[sketch -4.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 gw gh 7.0]] [sketch 0.8 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 gw gh 7.0]]]]]
-[let j-ring-band [difference j-ring-hole j-ring-full]]   ; = full - hole: the 1.4-wide ring band
-[let j-ring-one [translate gx 0.0 zg [rotate 0.0 0.0 90.0 j-ring-band]]]
+; the ear styling: the grille INSERT is orange — the design's ONE colour accent. An oval plate filling
+; the window, 2.2 thick, with the dot grid cut through it. Printed flat, bonded into the window flush
+; with the outer wall.
+[let j-gsec [fn [u r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 gw r 7.0]]]]
+[let grille-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] 7.5 12.0]] r]] [hex-rows 10 3]]]
+[let grille-holes-loc [grid-holes grille-rows [fn [q] [translate [- 0.0 1.1] [nth q 0] [nth q 1] [rotate 0.0 90.0 0.0 [cylinder-n 1.1 3.0 8]]]]]]
+[let j-grille-plate [difference
+    [loft #[[j-gsec [- 0.0 2.2] gh] [j-gsec 0.0 gh]]]
+    grille-holes-loc]]
+; seat: local u=0 face flush with the OUTER wall (y = -hw), extending inward. Left ear at y -hw.
+[let j-grille-left [translate gx [- 0.0 hw] zg j-grille-plate]]
+[let j-grille-right [mirror 0.0 0.0 0.0 0.0 1.0 0.0 j-grille-left]]
+[let j-earrings [union j-grille-left j-grille-right]]
 [pub let cortex-camdots-j j-cam-dot]
-[pub let cortex-earrings-j [union [translate 0.0 [- 0.0 hw] 0.0 j-ring-one] [translate 0.0 hw 0.0 j-ring-one]]]
+[pub let cortex-earrings-j j-earrings]
+
 ; the display proxy, J: fills the panel pocket behind the recessed pane (the pane sits at u -1.5..-0.2)
 
 ; proxy roots for export and renders (the assembly above is the real head)
