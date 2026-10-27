@@ -1,0 +1,5 @@
+{"bed": [256, 256], "plates": [{"index": 0, "name": "node MVP: tub + floor/sled"}],
+ "parts": [
+  {"mesh": "node-tub.stl", "plate": 0, "x": 82, "y": 82},
+  {"mesh": "node-floor.stl", "plate": 0, "x": 182, "y": 182}
+ ]}
