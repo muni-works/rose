@@ -464,3 +464,10 @@ ToF, ambient light and mics get holes in the same field. Fit: camera heads 5.0, 
 - Fit: lenses 0.4 behind the wall (they sit against their windows), display 3.3, devkit board 1.7. No clashes
   against the true shell. Both parts are single watertight bodies on one P1S plate.
 - Open: the panel's top margin is empty now. The head could lose ~10 mm of height.
+
+## v1.21 shorter (2026-10-27)
+
+The empty margin above the screen is gone: vertical scale 1.18 → 1.12, so the flat face ends ~4 mm above the screen
+(brow z 130) and the head is ~150 tall (was 158). The screen, grille, depth camera and devkit didn't move. Screen
+corners are flush within 0.2 mm. Fit unchanged (devkit board 2.0, display 3.3), no clashes. Both parts are
+watertight on one plate.

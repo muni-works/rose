@@ -6,7 +6,7 @@ cranium dome to 134 (crown peak behind the face), occiput swell at z 80, neck re
 import math, re
 
 BROW = 116.0                                         # top of the flat face plane (design frame)
-VS = 1.18                                            # vertical scale: the face module (panel + chin grille) needs ~115 of flat face
+VS = 1.12                                            # vertical scale: the flat face ends ~4 above the screen (BROW 130)
 FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
 
 ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116, 119, 122, 125, 128,
