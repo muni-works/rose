@@ -15,9 +15,9 @@ while IFS='|' read -r name az el extra; do
     echo "[root [import-mesh \"$F/node-rear.stl\" :units \"mm\"] \"satin_black\"]"
     echo "[root [import-mesh \"$F/node-face.stl\" :units \"mm\"] \"petg_grey\"]"
     case "$name" in *fit*)
-      echo '[use node [node-battery node-dk-board node-dk-io node-dk-stack node-display node-cam node-power node-speakers node-usb-c]]'
+      echo '[use node [node-battery node-dk-board node-dk-io node-dk-stack node-display node-stereo-board node-stereo-lens-l node-stereo-lens-r node-power node-speakers node-usb-c]]'
       echo '[material "pcb_green" 0.05 0.32 0.18 0.1 0.45] [material "cell_pack" 0.13 0.22 0.42 0.1 0.5] [material "heatsink" 0.55 0.57 0.6 0.7 0.4]'
-      for p in battery:cell_pack dk-board:pcb_green dk-io:heatsink dk-stack:heatsink display:heatsink cam:pcb_green power:pcb_green speakers:heatsink usb-c:heatsink; do
+      for p in battery:cell_pack dk-board:pcb_green dk-io:heatsink dk-stack:heatsink display:heatsink stereo-board:pcb_green stereo-lens-l:heatsink stereo-lens-r:heatsink power:pcb_green speakers:heatsink usb-c:heatsink; do
         echo "[root node-${p%%:*} \"${p##*:}\"]"; done;;
     esac
   } > "$tmp/$name.loon"

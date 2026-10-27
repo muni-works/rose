@@ -22,7 +22,10 @@ PARTS = {
     'display': (FACE_X - 11.5, -42, 42, FACE_X, 42, 126, 'heatsink', '4in 84 x 84 glass flush in the face panel + module, 11.5 deep'),
     # IMX219 = a 25 x 24 board 5.3 behind the glass + its Ø8 lens barrel to the glass. The board's top corners sit
     # where the face plane curves back into the crown, so only the lens reaches the face plane.
-    'cam': (44, -4.3, 126.4, 49, 4.3, 135.0, 'pcb_green', 'IMX219 spy-camera head 8.6 sq x 5 (ASSUMED), centred in the panel top margin'),
+    # Waveshare IMX219-83 stereo depth camera (STEP 0619.stp) behind the chin grille: board + M12 lens holders
+    'stereo-board': (FACE_X - 2.5 - 18.4, -42.6, 12.85, FACE_X - 2.5 - 12.0, 42.6, 37.75, 'pcb_green', 'IMX219-83 board 85.2 x 24 (+ parts), lenses 60 apart'),
+    'stereo-lens-l': (FACE_X - 2.5 - 12.0, 21.5, 20.0, FACE_X - 2.5, 38.5, 37.0, 'heatsink', 'M12 lens + holder, Ø14 barrel, front 0.5 behind the wall'),
+    'stereo-lens-r': (FACE_X - 2.5 - 12.0, -38.5, 20.0, FACE_X - 2.5, -21.5, 37.0, 'heatsink', 'M12 lens + holder'),
     'power': (-53, -20, 32, -47, 20, 62, 'pcb_green', 'PD sink + 3S charger 40 x 30 x 6 on the back pad; carries the USB-C'),
     'usb-c': (-56.5, -4.6, 35.2, -53, 4.6, 38.8, 'heatsink', 'mid-mount USB-C receptacle on the power board, through the wall'),
 }
@@ -30,7 +33,7 @@ PARTS = {
 try:
     from node_print import DK_HOLES, TONGUE_SCREWS, SPLIT_X
     for k, (px, py) in enumerate(DK_HOLES):
-        PARTS['post-%d' % k] = (px - 3.5, py - 3.5, FLOOR, px + 3.5, py + 3.5, 38.0, 'satin_black', 'devkit post Ø7')
+        PARTS['post-%d' % k] = (px - 3.0, py - 3.0, FLOOR, px + 3.0, py + 3.0, 38.0, 'satin_black', 'devkit post Ø6')
     PARTS['tongue'] = (28.0, -18.0, FLOOR, SPLIT_X + 6.5, 18.0, FLOOR + 6.0, 'satin_black', 'face module floor tongue')
 except ImportError:
     pass
@@ -91,7 +94,7 @@ def overlap(a, b):
 def main():
     report = []
     for name, b in PARTS.items():
-        g = min_gap(box_points(b), skip_face=name in ('display',)) if not name.startswith(('post', 'tongue', 'usb', 'power')) else CLEAR
+        g = min_gap(box_points(b), skip_face=name in ('display', 'stereo-lens-l', 'stereo-lens-r')) if not name.startswith(('post', 'tongue', 'usb', 'power')) else CLEAR
         report.append((name, g, b[7]))
     ys = speaker_y()
     spk = (EAR[0] - SPK_R, ys - SPK_T, EAR[1] - SPK_R, EAR[0] + SPK_R, ys, EAR[1] + SPK_R)

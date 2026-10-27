@@ -13,7 +13,7 @@ import math, os, zipfile
 import trimesh
 
 F = os.path.join(os.path.dirname(__file__) or '.', '..', 'fab', 'node')
-PLACE = {'node-rear': (68, 128), 'node-face': (190, 128), 'node-shutter': (68, 228)}   # the face module lies face-down
+PLACE = {'node-rear': (68, 128), 'node-face': (190, 128)}   # the face module lies face-down
 FAST = {
     'layer_height': '0.28',
     'wall_loops': '2',
@@ -45,7 +45,7 @@ NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='10%', top_shel
 def meshes(face_down=False):
     for name, (x, y) in PLACE.items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
-        if name in ('node-face', 'node-shutter'):
+        if name == 'node-face':
             # the face module always prints face-down: its face plane on the bed (best surface, no supports)
             #
             m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))

@@ -131,12 +131,12 @@ def holes():
             xb = min(q[0] for q in xs) if xs else -60.0
             out.append(rod((xb, y, z), (-1, 0, -RAIN_DROP), 0.7, 12.0))
     # chin grille: a full-width band of fine dots under the face panel (Portal-style), the same side margin as the
-    # panel; mics / ToF behind it. Through along x.
+    # panel. The stereo depth camera looks out through two Ø8 windows in it; mics behind the rest.
     for j in range(-2, 3):
         z = CHIN_Z + j * 2.2 * 0.866
         for i in range(-21, 22):
             y = (i + 0.5 * (j % 2)) * 2.2
-            if abs(y) <= PANEL_HW - 2.0:
+            if abs(y) <= PANEL_HW - 2.0 and all(math.hypot(y - sy * STEREO_Y, z - STEREO_Z) > 6.0 for sy in (1, -1)):
                 out.append(rod((FACE, y, z), (1, 0, 0), 0.7, 10.0))
     return out
 
@@ -150,7 +150,7 @@ def box(x0, y0, z0, x1, y1, z1):
 
 # ---- the split -------------------------------------------------------------------------------------------------
 # Two parts, split on a VERTICAL plane just behind the face (StackChan / Portal): a black FACE MODULE (panel, screen,
-# camera + shutter, chin grille) that prints face-down, and a REAR SHELL (everything else, closed bottom) that prints
+# chin grille + depth camera) that prints face-down, and a REAR SHELL (everything else, closed bottom) that prints
 # upright. The devkit loads from the front through the whole cross-section. The joint is a 1 mm shadow gap framing
 # the face; a lip on the rear shell locates the face module. The face module hooks over that lip at the top (two
 # tabs) and screws to the floor at the bottom (a tongue, 2 x M3 from below into heat-set inserts).
@@ -158,10 +158,13 @@ SPLIT_X, SPLIT_GAP = 40.0, 1.0
 LIP_D, LIP_T = 5.0, 1.4                     # locating lip: reaches LIP_D forward inside the face module's wall
 
 # Face layout (real z). The face flat runs z 21-137.
-PANEL_HW, PANEL_Z0, PANEL_Z1, PANEL_R = 48.0, 37.5, 135.5, 8.0   # the face panel, outlined by a fine groove
+PANEL_HW, PANEL_Z0, PANEL_Z1, PANEL_R = 48.0, 37.5, 135.5, 8.0   # the face panel area (sets the grille's width)
 PANEL_Z, PANEL_D = 84.0, 4.5     # 4in screen centre (glass z 42-126, flush) and its glass + LCD stack depth (ASSUMED)
-CAM_Z = 130.75                   # one camera, centred in the panel's top margin
-CHIN_Z = 29.0                    # chin grille band centre (z ~25-33)
+CHIN_Z = 28.5                    # chin grille band centre (z ~24-33)
+# Depth camera: Waveshare IMX219-83 stereo module (from its STEP, 0619.stp): board 85.2 x 24, two M12 lenses (Ø14
+# barrels) 60 apart, lens axes 3.65 below the board's centre line, 18.4 deep lens-front to back. Mounted upright
+# behind the chin grille, lenses looking out through Ø8 chamfered windows, board hanging down below them.
+STEREO_Y, STEREO_Z = 30.0, 28.5
 
 # Devkit, from the P3768 A04 Allegro extract: board x -4..96, y -17..62 (R0.6), M2.5 holes (Ø2.75 NPTH) at
 # x {0, 92} x y {0, 58}; I/O edge at y -17. In the head: board x -> head y, board y -> head x (I/O aft).
@@ -235,12 +238,12 @@ def main():
             + (band(-0.5, LIP_T + 2.4) ^ bridge))           # bridge: ties each tab to the wall, ahead of the lip
     pocket = rrect_prism(FACE - PANEL_D, FACE + 10.0, 0.0, PANEL_Z, 42.2, 42.2, 1.0)
     window = rrect_prism(FACE - 20.0, FACE - PANEL_D + 0.5, 0.0, PANEL_Z, 36.0, 36.0, 2.0)
-    groove = (rrect_prism(FACE - 0.8, FACE + 5.0, 0.0, (PANEL_Z0 + PANEL_Z1) / 2, PANEL_HW, (PANEL_Z1 - PANEL_Z0) / 2, PANEL_R)
-              - rrect_prism(FACE - 2.0, FACE + 6.0, 0.0, (PANEL_Z0 + PANEL_Z1) / 2, PANEL_HW - 1.0, (PANEL_Z1 - PANEL_Z0) / 2 - 1.0, PANEL_R - 1.0))
-    cam = rod((FACE, 0.0, CAM_Z), (1, 0, 0), 2.5, 24.0)                                   # Ø5 camera window
-    shutter = rrect_prism(FACE - 1.2, FACE + 5.0, 6.0, CAM_Z, 11.0, 3.4, 1.5)          # slider track: slide left to cover
+    # depth-camera windows: Ø8 through, opening to Ø11 at the face (45 deg) so the 83 deg lens isn't vignetted
+    lenses = [rod((FACE, sy * STEREO_Y, STEREO_Z), (1, 0, 0), 4.0, 20.0) for sy in (1, -1)]
+    lenses += [mf.Manifold.cylinder(1.5, 4.0, 5.5, 32).transform(np.array([[0, 0, 1, FACE - 1.5], [0, 1, 0, sy * STEREO_Y], [-1, 0, 0, STEREO_Z]]))
+               for sy in (1, -1)]
     inserts = [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, FLOOR - 0.01)) for x, y in TONGUE_SCREWS]
-    face = face - mf.Manifold.batch_boolean([pocket, window, groove, cam, shutter, rods ^ front(xf)] + inserts, mf.OpType.Add)
+    face = face - mf.Manifold.batch_boolean([pocket, window, rods ^ front(xf)] + lenses + inserts, mf.OpType.Add)
 
     # REAR SHELL ---------------------------------------------------------------------------------------------------
     rear = (skin + floor) ^ behind(xr)
@@ -250,7 +253,8 @@ def main():
     lip = ((band(0.2, 0.2 + LIP_T) ^ box(xr - 1.0, -100.0, 12.0, xr + LIP_D, 100.0, 250.0))
            + (band(-0.5, 0.2 + LIP_T) ^ box(xr - 4.0, -100.0, 12.0, xr, 100.0, 250.0))) - box(-150.0, -100.0, 35.0, 100.0, 100.0, 74.0)
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
-    posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.5, 3.5, 32).translate((x, y, FLOOR)) for x, y in DK_HOLES]
+    posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.0, 3.0, 32)   # Ø6: clears the stereo board's ends
+             .translate((x, y, FLOOR)) for x, y in DK_HOLES]
     rear = rear + lip + (mf.Manifold.batch_boolean(posts + [usb_pad], mf.OpType.Add) ^ outer)
     cuts = [rods ^ behind(xr)]
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
@@ -262,12 +266,10 @@ def main():
         cuts.append(mf.Manifold.cylinder(1.9, 3.4, 1.5, 24).translate((x, y, -0.01)))          # 90-deg countersink
     cuts += [box(-10.0, s_ * 35.3 - 1.0, -1.0, 10.0, s_ * 35.3 + 1.0, FLOOR + 1.0) for s_ in (1, -1)]   # pack strap slots
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
-    shutter_slider = rrect_prism(FACE - 1.1, FACE, 0.0, 0.0, 5.0, 3.2, 1.3)               # printed separately
 
     os.makedirs(OUT, exist_ok=True)
     export('node-face', face, len(hs))
     export('node-rear', rear)
-    export('node-shutter', shutter_slider)
 
 if __name__ == '__main__':
     main()

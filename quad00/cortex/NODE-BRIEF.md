@@ -450,3 +450,17 @@ ToF, ambient light and mics get holes in the same field. Fit: camera heads 5.0, 
 - The head is 18% taller (~158 H) so one flat face holds the panel and the grille. Ears are at the new eye height.
 - Fit: display 3.3, camera 5.0, devkit board 1.7, tongue 1.0. No clashes against the true shell. All three parts
   are single watertight bodies on one P1S plate.
+
+## v1.20 all black, stereo depth camera (2026-10-27)
+
+- **All black.** Both parts are satin black. The renders default to it (`BODY=bone sh node_hero.sh` for the two-tone).
+- **Depth camera: Waveshare IMX219-83** stereo module, from its STEP (`0619.stp`): board 85.2 × 24, two M12
+  lenses (Ø14 barrels) at a **60 mm baseline**, lens axes 3.65 mm below the board's centre line, 18.4 deep. It sits
+  upright **behind the chin grille**, with its lenses looking out through **Ø8 windows chamfered to Ø11** at the face,
+  so the 83° lens isn't vignetted. The board hangs below the lenses, under the screen and the devkit (11 mm to the
+  wall). The devkit posts went to Ø6 to clear the board's ends.
+- **Removed:** the top camera, the privacy shutter and the panel groove (the groove read as a stray bevel). The face is
+  now just the flush screen above the chin grille.
+- Fit: lenses 0.4 behind the wall (they sit against their windows), display 3.3, devkit board 1.7. No clashes
+  against the true shell. Both parts are single watertight bodies on one P1S plate.
+- Open: the panel's top margin is empty now. The head could lose ~10 mm of height.
