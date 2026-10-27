@@ -108,10 +108,10 @@
 ; the ears: a dot grid each side, a rounded slot of 1.1 mm holes on a 2.4 mm hex pitch (laser-drilled, or moulded
 ; with core pins -- no slides). A speaker behind the top of each (stereo), the mic below it.
 ; Both mics sit on the same dot, so the pair is level and symmetric.
-[let gx -20.0]                                  ; grille centre, x
-[let zg 66.0]                                   ;               z
-[let gw 11.0]                                   ; half width (the slot's end radius)
-[let gh 19.0]                                   ; half height
+[let gx -12.0]                                  ; grille centre, x (the ear: speaker + mic)
+[let zg 50.0]                                   ;               z (the speaker band)
+[let gw 9.0]                                    ; half width (the slot's end radius)
+[let gh 14.0]                                   ; half height
 [let dot-p 2.2]                                 ; hex pitch
 [let dot-r 0.7]                                 ; 1.4 mm holes: ~37% open (thermal check, SPEC.md)
 [let dot-h [* dot-p 0.866]]
@@ -209,7 +209,8 @@
 [let d7-cams [tilt [union [bx [- d7-xi 11.0] [- d7-cam-y 12.5] [- ze 12.0] [- d7-xi 0.5] [+ d7-cam-y 12.5] [+ ze 12.0]]
                           [bx [- d7-xi 11.0] [- -12.5 d7-cam-y] [- ze 12.0] [- d7-xi 0.5] [- 12.5 d7-cam-y] [+ ze 12.0]]]]]
 
-[let zcamj [+ zg [- gh 3.0]]]                          ; the camera dot: the grid's top row, centre column
+[let zcamj [+ zg gh 10.0]]                             ; the camera dot: centred ABOVE the grille
+[let xcamj [- x-face [* rake zcamj] 14.0]]             ; the wall's x at that height (the ear band)
 
 ; the back. The I/O window stays in the wall (it is the intake air's way in, SPEC thermal) but is covered by a
 ; perforated insert like the other grilles: closed to the eye, and the carrier's ports are only reached with the tub
@@ -471,10 +472,11 @@
 ; the mouth: a 30 x 6.5 stadium bar, low on the pane (the waveform/mouth animation in firmware; off = dark)
 [let j-mouth-v [- 0.0 [* 0.14 hh]]]
 [let j-mouth [j-tilt [hull [translate 1.6 -8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]] [translate 1.6 8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]]]]]
-; the cameras: a Ø4.4 bore through the ear wall at the grid's top row + a dark glass dot seated in it
-[let j-cam-bore [union [translate gx [- 0.0 hw] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]] [translate gx hw zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.2 [* 2.0 hw] 24]]]]]
-[let j-cam-dot [union [translate gx [- 0.0 [- hw 0.9]] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]
-                      [translate gx [- hw 0.9] zcamj [rotate -90.0 0.0 0.0 [cylinder-n 2.15 1.4 32]]]]]
+; the cameras: in the FACET edge at eye height (flanking the screen, baseline 90), dark glass flush
+[let j-cam-v [+ j-eye-v 2.0]]
+[let j-cam-c [+ j-pw 6.0]]
+[let j-cam-bore [union [j-tilt [translate 1.0 j-cam-c j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.25 6.0 24]]]] [j-tilt [translate 1.0 [- 0.0 j-cam-c] j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.25 6.0 24]]]]]]
+[let j-cam-dot [union [j-tilt [translate [- 0.0 1.1] j-cam-c j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.6 32]]]] [j-tilt [translate [- 0.0 1.1] [- 0.0 j-cam-c] j-cam-v [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.6 32]]]]]]
 ; the tub (J): the skull (facet-cut) minus the openings; the panel pocket included
 [let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-cam-bore] [union j-panel] [union j-chnf]] shell-solid]]
 [pub let cortex-tub-j [difference j-cuts j-skull]]
