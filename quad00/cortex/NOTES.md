@@ -165,3 +165,9 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   dots, not nostrils).
 - **loon lesson (recurring):** top-level forms must be ONE LINE (the reader breaks multi-line forms); fns must
   not take primitives with module-imported args; single-arg [union X] poisons the module; [difference A B] = B-A.
+- **K1-class mini (Cam: "shrink it, the screen is the whole face"):** 98 W x 108 D x 118 H (was 124 x 104 x 126).
+  The pane is now a ROUNDED-RECT loft (r14, matching the skull's plan corners) spanning the whole flat face,
+  edge-to-edge with no bezel reveal; the facet plane sits at the pane's back (u -1.5). The 4" screen (84 wide)
+  vs the face (~94 at the facet): ~5 mm of skull each side. Eyes ±16, dome Ø21.2, mouth bar 30 x 6.5 low on the
+  pane. K1 reference: the bought Booster K1's helmet is ~110 W x 118 D x 125 H; ours is tighter because the
+  screen defines the face.
