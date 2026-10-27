@@ -47,16 +47,34 @@ def main():
     gz = SCR_Z + SCR_H / 2
     out += '[let full-glass [extrude 1.0 0.0 0.0 [sketch %.1f 0.0 %.1f 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 %.1f %.1f 1.5]]]]\n' % (
         FACE - 1, gz, SCR_W / 2, SCR_H / 2)
-    out += '[let lens [fn [s] [translate %.1f [* s %.1f] %.1f [rotate 0.0 90.0 0.0 [cylinder 5.0 0.06]]]]]\n' % (FACE - 0.1, STEREO_Y, CHIN_Z)
+    out += '[let lens [fn [s] [translate %.1f [* s %.1f] %.1f [rotate 0.0 90.0 0.0 [cylinder 5.0 0.1]]]]]\n' % (FACE + 0.02, STEREO_Y, CHIN_Z)
     out += '[let full-lenses [union [lens 1.0] [lens -1.0]]]\n'
     # chin grille: O1.4 dots on a 2.2 hex across the band under the glass, clear of the two lens windows
     dots = [(2.2 * (i + 0.5 * (j % 2)), CHIN_Z + 1.9 * j) for j in range(-2, 3) for i in range(-31, 32)]
-    dots = [(y, z) for y, z in dots if abs(y) < 68 and min(abs(abs(y) - STEREO_Y), 99) ** 2 + (z - CHIN_Z) ** 2 > 8.0 ** 2]
+    dots = [(y, z) for y, z in dots if abs(y) < STEREO_Y - 9.0]   # between the lens windows only: past them the chin turns the corner
     u = None
     for y, z in dots:
         d = '[translate %.2f %.2f %.2f [rotate 0.0 90.0 0.0 [cylinder 0.7 0.3]]]' % (FACE - 0.2, y, z)
         u = d if u is None else '[union %s %s]' % (d, u)
     out += '[let full-grille %s]\n' % u
+
+    # ears: the mini's vertical oval dot patch, scaled, over the speakers just behind mid-depth
+    EAR_X, EAR_Z, EAR_A, EAR_B, P = -10.0, 110.0, 8.4, 15.0, 2.6
+    def surface_y(x, z):
+        pts = sorted(q for q in section(z) if q[1] > 0)
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x0 <= x <= x1:
+                return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+        return max(y for _, y in pts)
+    ears = [(EAR_X + P * (i + 0.5 * (j % 2)), EAR_Z + P * 0.866 * j) for j in range(-8, 9) for i in range(-5, 5)]
+    ears = [(x, z) for x, z in ears if ((x - EAR_X) / EAR_A) ** 2 + ((z - EAR_Z) / EAR_B) ** 2 <= 1.0]
+    u = None
+    for x, z in ears:
+        y = surface_y(x, z)
+        for sgn in (1, -1):
+            d = '[translate %.2f %.2f %.2f [rotate %d 0.0 0.0 [cylinder-n 0.6 0.6 12]]]' % (x, sgn * (y - 0.35), z, -90 if sgn > 0 else 90)
+            u = d if u is None else '[union %s %s]' % (d, u)
+    out += '[let full-ears %s]\n' % u
     out += '[let eye [fn [s] [translate %.2f [* s 22.0] %.1f [rotate 0.0 90.0 0.0 [cylinder 11.0 0.2]]]]]\n' % (FACE + 0.02, gz + 22)
     out += '[let full-face [union [eye 1.0] [union [eye -1.0] [translate %.2f -10.0 %.1f [cube 0.2 20.0 3.2]]]]]\n' % (FACE + 0.02, gz - 14)
 
