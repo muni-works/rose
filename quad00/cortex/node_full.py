@@ -23,7 +23,12 @@ def lerp_map(z, pairs):
 
 def section(z):
     d = lerp_map(z, [(b, a) for a, b in ZMAP])            # real -> design
-    return [(x * HS, y * HS) for x, y in sk.section(d * sk.VS)]
+    pts = [(x * HS, y * HS) for x, y in sk.section(d * sk.VS)]
+    # skull taper: the crown narrows and the back tucks in above the ears, so the box reads as a head
+    t = min(max((z - 110.0) / (226.0 - 110.0), 0.0), 1.0)
+    t = t * t * (3 - 2 * t)
+    ky, kx = 1 - 0.12 * t, 1 - 0.14 * t
+    return [(x * kx if x < 0 else x, y * ky) for x, y in pts]
 
 def bx(name, x0, y0, z0, x1, y1, z1, note):
     return '[let %s [bx %.1f %.1f %.1f %.1f %.1f %.1f]]  ; %s\n' % (name, x0, y0, z0, x1, y1, z1, note)
@@ -44,12 +49,24 @@ def main():
         FACE - 1, gz, SCR_W / 2, SCR_H / 2)
     out += '[let lens [fn [s] [translate %.1f [* s %.1f] %.1f [rotate 0.0 90.0 0.0 [cylinder 5.0 0.06]]]]]\n' % (FACE - 0.1, STEREO_Y, CHIN_Z)
     out += '[let full-lenses [union [lens 1.0] [lens -1.0]]]\n'
+    # chin grille: O1.4 dots on a 2.2 hex across the band under the glass, clear of the two lens windows
+    dots = [(2.2 * (i + 0.5 * (j % 2)), CHIN_Z + 1.9 * j) for j in range(-2, 3) for i in range(-31, 32)]
+    dots = [(y, z) for y, z in dots if abs(y) < 68 and min(abs(abs(y) - STEREO_Y), 99) ** 2 + (z - CHIN_Z) ** 2 > 8.0 ** 2]
+    u = None
+    for y, z in dots:
+        d = '[translate %.2f %.2f %.2f [rotate 0.0 90.0 0.0 [cylinder 0.7 0.3]]]' % (FACE - 0.2, y, z)
+        u = d if u is None else '[union %s %s]' % (d, u)
+    out += '[let full-grille %s]\n' % u
     out += '[let eye [fn [s] [translate %.2f [* s 22.0] %.1f [rotate 0.0 90.0 0.0 [cylinder 11.0 0.2]]]]]\n' % (FACE + 0.02, gz + 22)
     out += '[let full-face [union [eye 1.0] [union [eye -1.0] [translate %.2f -10.0 %.1f [cube 0.2 20.0 3.2]]]]]\n' % (FACE + 0.02, gz - 14)
 
     # internals: AGX devkit (110 x 110 x 71.65 incl. fan/heatsink, from P3730 STEP) on the floor deck, pack under it
     out += bx('full-battery', -46, -45, 8, 30, 45, 30, '4S2P 21700 flat pack 88 x 90 x 22, ~140 Wh, on the floor')
     out += bx('full-agx', -54, -55, 34, 56, 55, 105.65, 'Jetson AGX Orin devkit 110 x 110 x 71.65, fan up')
+    # AGX feet: O6.2 holes in the two base rails, 92 c-c across the rails (measured on the P3730 STEP);
+    # 92 along the rails ASSUMED until measured. Posts are O8 under them.
+    for i, (px, py) in enumerate([(-45, -46), (47, -46), (-45, 46), (47, 46)]):
+        out += bx('full-post-%d' % i, px - 4, py - 4, 30, px + 4, py + 4, 34, 'AGX foot post, M3 into the rail hole')
     out += bx('full-display', FACE - 1 - SCR_D, -SCR_W / 2, SCR_Z, FACE - 1, SCR_W / 2, SCR_Z + SCR_H, '7in panel + driver, 9 deep ASSUMED')
     out += bx('full-stereo', FACE - 12, -58, CHIN_Z - 8, FACE - 2, 58, CHIN_Z + 7, 'stereo pair board(s), 90 baseline')
     out += bx('full-power', -76, -24, 56, -68, 24, 96, 'PD sink + 4S charger, carries the USB-C on the back')
