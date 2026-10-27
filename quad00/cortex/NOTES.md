@@ -194,3 +194,12 @@ Checkpoint log for the 2026-10-26 "print a head case today" push. Newest last.
   spiral the crown; the pane pocket is a flat shelf — printable; the facet overhang at the leaning crown is
   <45 deg from vertical — supportless in PETG; grille dots Ø1.4 print fine; camera bore Ø4.4 with a printed
   dot; no supports anywhere if printed open-side-down.
+- **Detail pass landed (1377179):** (1) grille dots countersunk 45 deg at the outer wall (machined read);
+  (2) a 0.6 mm aperture chamfer band around the pane opening (crisp edge); (3) a 1.2 mm parting-line groove
+  around the shell at the pane's bottom edge (the print seam hides in it); (4) a recessed 3 mm base band
+  (shadow gap at the dock). Back view: the back is one clean satin sweep — the exhaust grille and I/O window
+  are there but the current render shows the head from behind with the pane visible through the body (the
+  pane renders through: the tub's back is open where the pane pokes past — CHECK: the pane depth exceeds the
+  skull depth at the back. Actually that's the pane seen edge-on from behind through the I/O window).
+  Ear color: Cam wants better ear color — the grille reads as a hole; options: orange dot ring (the accent),
+  or a lighter grey cap ring. NOT DONE YET.
