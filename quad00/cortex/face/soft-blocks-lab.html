@@ -346,23 +346,7 @@ function drawMouth(c, t, s, col, opts) {
     c.globalAlpha = 0.95; c.lineWidth = 0.009; lips(); c.stroke();                           // tube
     c.strokeStyle = '#ffffff'; c.globalAlpha = 0.5; c.lineWidth = 0.003; lips(); c.stroke(); // hot core
   } else if (mouth === 'liquid') {
-    // merging blobs of light with surface tension: speaking pulls them apart and stretches them, quiet
-    // draws them back into one soft bead. A metaball field sampled on a grid, edges smoothstepped.
-    const n = 5, span = (0.05 + 0.1 * amp) * k;
-    const balls = Array.from({ length: n }, (_, i) => {
-      const f = i / (n - 1) - 0.5, ph = t / 1000 * (2.2 + i * 0.7) + i * 1.9;
-      return [x + f * span * 2 + Math.sin(ph) * 0.006 * amp, y - smile * 0.03 * (0.25 - f * f) * 4 + Math.sin(ph * 1.3) * (0.004 + 0.03 * amp) * (1 - Math.abs(f)),
-        (0.016 + 0.012 * amp * (1 - Math.abs(f) * 1.4)) * k];
-    });
-    const cell = 0.0035, x0 = x - 0.18 * k, x1 = x + 0.18 * k, y0 = y - 0.08, y1 = y + 0.08;
-    c.fillStyle = col;
-    for (let gy = y0; gy < y1; gy += cell) for (let gx = x0; gx < x1; gx += cell) {
-      let f = 0;
-      for (const [bx, by, r] of balls) { const d2 = (gx - bx) ** 2 + (gy - by) ** 2; f += r * r / (d2 + 1e-6); }
-      if (f < 0.7) continue;
-      const a = Math.min(1, (f - 0.7) / 0.6);
-      c.globalAlpha = 0.9 * a * a * (3 - 2 * a); c.fillRect(gx, gy, cell * 1.05, cell * 1.05);
-    }
+    liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br);
   } else if (mouth === 'aurora') {
     // ~150 motes of light on a lip-shaped orbit, swirling: the voice spreads and brightens them, quiet
     // gathers them into a calm line
@@ -391,6 +375,84 @@ function drawMouth(c, t, s, col, opts) {
     c.strokeStyle = col; c.globalAlpha = 0.35; c.lineWidth = 0.02; c.beginPath(); path(); c.stroke();
     c.globalAlpha = 0.95; c.lineWidth = 0.007; c.beginPath(); path(); c.stroke();
   }
+  c.restore();
+}
+
+// --- the liquid mouth -------------------------------------------------------------------------------------------------
+// Two lips of light, each a chain of droplets, joined at the corners. At rest they overlap into one glossy capsule that
+// breathes; speaking pulls them apart into a lens with darkness between (the opening and width follow the sound, the
+// corners the mood). Every droplet rides a damped spring with surface tension to its neighbours, so syllables kick it
+// and it wobbles and settles like liquid. Drawn per pixel as a metaball field: soft anti-aliased edges, a hotter
+// core where it's thickest, a sheen along the top.
+const LIQ_N = 9;
+const liq = { up: [], dn: [], last: 0, can: null, img: null, pulse: 0, prevAmp: 0 };
+function liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br) {
+  const vis = visemeAt(t, talk, opts);
+  const speaking = talk > 0.05;
+  const amp = speaking ? (opts.still ? 0.6 : voice(t)) : 0;
+  const w = (speaking ? 0.06 + vis[0] * 1.1 : 0.085 + 0.004 * br) * k;
+  const open = speaking ? Math.max(0.002, vis[1] * (0.7 + 0.6 * amp)) * k : 0;
+  // targets: lips bow apart in the middle, meet at the corners; corners ride the mood
+  const target = (i, lower) => {
+    const f = i / (LIQ_N - 1) - 0.5, bell = Math.cos(f * Math.PI);
+    const corner = -smile * 0.02 * (4 * f * f);
+    const ty = y + corner + (lower ? 1.1 : -0.9) * open / 2 * bell + (lower ? 0.004 : -0.004) * (1 - bell * 0.5);
+    return [x + f * w, ty];
+  };
+  if (!liq.up.length || opts.still) {
+    for (const lip of ['up', 'dn']) liq[lip] = Array.from({ length: LIQ_N }, (_, i) => { const [tx, ty] = target(i, lip === 'dn'); return { x: tx, y: ty, vx: 0, vy: 0 }; });
+  }
+  if (!opts.still) {
+    const dt = Math.min(0.04, Math.max(0.001, (t - (liq.last || t)) / 1000)); liq.last = t;
+    if (amp - liq.prevAmp > 0.18) liq.pulse = 1;                 // a syllable onset: kick the surface
+    liq.prevAmp = amp; liq.pulse *= Math.exp(-dt * 8);
+    for (const lip of ['up', 'dn']) {
+      const L = liq[lip], lower = lip === 'dn';
+      for (let i = 0; i < LIQ_N; i++) {
+        const d = L[i], [tx, ty] = target(i, lower);
+        // spring to target + surface tension (pull toward the neighbours' average) + a kick on onsets
+        const nb = (L[Math.max(0, i - 1)].y + L[Math.min(LIQ_N - 1, i + 1)].y) / 2;
+        const kick = liq.pulse * (lower ? 1 : -1) * Math.sin(i / (LIQ_N - 1) * Math.PI) * 0.6;
+        const ay = 260 * (ty - d.y) + 90 * (nb - d.y) - 9 * d.vy + kick * 2.2;
+        const ax = 260 * (tx - d.x) - 9 * d.vx;
+        d.vx += ax * dt; d.vy += ay * dt; d.x += d.vx * dt; d.y += d.vy * dt;
+      }
+    }
+  }
+  // the field, per pixel, into a small offscreen buffer over the mouth's box
+  const bw = 0.42 * k, bh = 0.2 * k, bx = x - bw / 2, by = y - bh / 2;
+  const W = 210, H = 100;
+  if (!liq.can) { liq.can = document.createElement('canvas'); liq.can.width = W; liq.can.height = H; liq.img = liq.can.getContext('2d').createImageData(W, H); }
+  const r0 = (speaking ? 0.0105 : 0.0115) * k * (1 + 0.04 * Math.sin(t / 900));
+  const balls = [];
+  for (const lip of ['up', 'dn']) liq[lip].forEach((d, i) => {
+    const f = i / (LIQ_N - 1) - 0.5;
+    const r = r0 * (1 - 0.35 * Math.abs(f) * 2) * (1 + 0.15 * amp);
+    balls.push([(d.x - bx) / bw * W, (d.y - by) / bh * H, (r / bw * W) ** 2]);
+  });
+  const [cr, cg, cb] = [1, 3, 5].map(o => parseInt(col.slice(o, o + 2), 16));
+  const data = liq.img.data;
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    let f = 0;
+    for (const [qx, qy, r2] of balls) { const dx = px - qx, dy = py - qy; f += r2 / (dx * dx + dy * dy + 0.5); }
+    const o = (py * W + px) * 4;
+    if (f < 0.55) { data[o + 3] = 0; continue; }
+    const edge = Math.min(1, (f - 0.55) / 0.5), a = edge * edge * (3 - 2 * edge);
+    const core = Math.min(1, Math.max(0, (f - 1.2) * 0.35));      // hotter where it's thick
+    data[o] = cr + (255 - cr) * core; data[o + 1] = cg + (255 - cg) * core; data[o + 2] = cb + (255 - cb) * core;
+    data[o + 3] = 255 * a * (0.55 + 0.45 * Math.max(rest, talk));
+  }
+  liq.can.getContext('2d').putImageData(liq.img, 0, 0);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  c.imageSmoothingEnabled = true;
+  c.drawImage(liq.can, bx, by, bw, bh);
+  // a sheen: a soft highlight along the upper lip's top edge
+  c.globalAlpha = 0.25 * Math.max(rest, talk);
+  c.strokeStyle = '#ffffff'; c.lineWidth = 0.003; c.lineCap = 'round';
+  c.beginPath();
+  liq.up.forEach((d, i) => { const f = i / (LIQ_N - 1) - 0.5; if (Math.abs(f) < 0.36) { const yy = d.y - r0 * 0.55; i ? c.lineTo(d.x, yy) : c.moveTo(d.x, yy); } });
+  c.stroke();
   c.restore();
 }
 
