@@ -208,24 +208,45 @@ def surface_z(x, y, lo=100.0, hi=200.0, sec=None):
     return lo
 
 
-def halo(cx, r_mic, mics, rows=5, pitch=2.2):
-    """The crown grille: a ring of dots (Ø1.4 on a 2.2 hex, as the chin and ears) through the mic radius, its middle
-    row landing a dot on each mic so the four ports are four of its dots. Returns (blind dots, ports) as (x, y)."""
-    n = 4 * round(2 * math.pi * r_mic / pitch / 4)
+def halo(cx, half, mics, rows=4, pitch=2.2, n=6.0):
+    """The crown grille: a rounded square of dots (Ø1.4 on a 2.2 hex, as the chin and ears) -- the screen's shape,
+    on top of the head -- whose outer row runs through the four mics (its corners land on them), with rows stepping
+    inward from there so its front edge stays a straight line behind the face module. Returns (blind dots, ports)."""
+    a0 = half * 2 ** (1 / n)                     # the superellipse |x|^n + |y|^n = a^n through (half, half)
+
+    def curve(a, m=2000):
+        pts = []
+        for i in range(m):
+            t = 2 * math.pi * i / m + math.pi / 4
+            c, s = math.cos(t), math.sin(t)
+            pts.append((a * math.copysign(abs(c) ** (2 / n), c), a * math.copysign(abs(s) ** (2 / n), s)))
+        return pts
+
     dots = []
-    for k in range(-(rows // 2), rows // 2 + 1):
-        r = r_mic + k * pitch * 0.866
-        m = 4 * round(2 * math.pi * r / pitch / 4)
-        off = (0.5 if k % 2 else 0.0) * 2 * math.pi / m
-        dots += [(cx + r * math.cos(math.pi / 4 + off + 2 * math.pi * j / m), r * math.sin(math.pi / 4 + off + 2 * math.pi * j / m)) for j in range(m)]
-    ports = [min(dots, key=lambda d: math.hypot(d[0] - mx, d[1] - my)) for mx, my in mics]
-    return [d for d in dots if d not in ports], ports
+    for k in range(rows):
+        a = a0 - k * pitch * 0.866
+        p = curve(a)
+        seg = [math.dist(p[i], p[(i + 1) % len(p)]) for i in range(len(p))]
+        per = sum(seg)
+        m = 4 * round(per / pitch / 4)
+        off = (0.5 if k % 2 else 0.0) * per / m
+        acc, i = 0.0, 0
+        for j in range(m):
+            d = off + j * per / m
+            while acc + seg[i] < d:
+                acc += seg[i]
+                i = (i + 1) % len(p)
+            u = (d - acc) / seg[i]
+            (x0, y0), (x1, y1) = p[i], p[(i + 1) % len(p)]
+            dots.append((cx + x0 + u * (x1 - x0), y0 + u * (y1 - y0)))
+    ports = [min(dots, key=lambda q: math.dist(q, mp)) for mp in mics]
+    return [q for q in dots if q not in ports], ports
 
 
 # Rain: the dots are blind (0.6 deep) so only the four ports go through, and each port's channel is closed at its
 # foot by a hydrophobic acoustic membrane (ePTFE vent, e.g. a 6 mm adhesive disc) over the mic inlet: sound passes,
 # water stops there, on a 0.6 mm lip above the board so nothing wicks onto it.
-CROWN_DOTS, CROWN_PORTS = halo(XVF_X, 30.5 * math.sqrt(2), XVF_MICS)
+CROWN_DOTS, CROWN_PORTS = halo(XVF_X, 30.5, XVF_MICS)
 DOCK_FEET = [(-16.0, 32.0), (-16.0, -32.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside

@@ -119,16 +119,31 @@ def main():
         ports.append('[translate %.2f %.2f %.2f [cylinder 0.8 %.2f]]' % (mx, my, XZ + 1.2, zt - XZ - 1.2 + 0.4))
         bosses.append('[translate %.2f %.2f %.2f [cylinder 3.0 %.2f]]' % (hx, hy, XZ + 1.2, zh - XZ - 1.2 - 1.0))
     out += '[let full-mic-ports [union %s [union %s [union %s %s]]]]\n' % tuple(ports)
-    # the crown grille: a halo of blind dots through the mic radius (as the mini's), the four ports among them
+    # the crown grille: a rounded square of blind dots (the screen's shape, as on the mini) whose outer row runs
+    # through the four mics, its corners on them, rows stepping inward; the four ports are four of its dots
     import math
-    r_mic, rows, pitch, dots = 30.5 * math.sqrt(2), 5, 2.2, []
-    for k in range(-(rows // 2), rows // 2 + 1):
-        r = r_mic + k * pitch * 0.866
-        m = 4 * round(2 * math.pi * r / pitch / 4)
-        off = (0.5 if k % 2 else 0.0) * 2 * math.pi / m
-        for j in range(m):
-            a = math.pi / 4 + off + 2 * math.pi * j / m
-            x, y = XC + r * math.cos(a), r * math.sin(a)
+    n_se, half, rows, pitch, dots = 6.0, 30.5, 4, 2.2, []
+    a0 = half * 2 ** (1 / n_se)
+    for k in range(rows):
+        a = a0 - k * pitch * 0.866
+        p = []
+        for i in range(2000):
+            t = 2 * math.pi * i / 2000 + math.pi / 4
+            c, sn = math.cos(t), math.sin(t)
+            p.append((a * math.copysign(abs(c) ** (2 / n_se), c), a * math.copysign(abs(sn) ** (2 / n_se), sn)))
+        seg = [math.dist(p[i], p[(i + 1) % len(p)]) for i in range(len(p))]
+        per = sum(seg)
+        m = 4 * round(per / pitch / 4)
+        off = (0.5 if k % 2 else 0.0) * per / m
+        acc, i = 0.0, 0
+        for jj in range(m):
+            d = off + jj * per / m
+            while acc + seg[i] < d:
+                acc += seg[i]
+                i = (i + 1) % len(p)
+            u = (d - acc) / seg[i]
+            (x0, y0), (x1, y1) = p[i], p[(i + 1) % len(p)]
+            x, y = XC + x0 + u * (x1 - x0), y0 + u * (y1 - y0)
             lo, hi = 180.0, 240.0
             for _ in range(28):
                 mid = (lo + hi) / 2
