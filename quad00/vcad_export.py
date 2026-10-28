@@ -350,6 +350,8 @@ def main(variant='mini', explodes=(0.0,)):
         mk = mat_of(n)
         if NODE and n.startswith('trim-'):            # design pass 2026-10-28, one accent: the scattered gunmetal bands go satin
             mk = 'accentface' if n.startswith('trim-neckring') else 'cover'   # ...and the yaw seam under the head glows the face's mint
+        if NODE and n.startswith('chassis-hipR'):     # the hip-roll plate shows under the pelvis: black anodize
+            mk = 'cover'
         used_mats.add(mk)
         recs.append((n.replace('.', '_'), b, src, mk, mk not in ('plate', 'motor'), m.bounds.mean(0) - o))
     if has_cx:                                # the cortex module, placed at the dock origin in the head-pitch frame

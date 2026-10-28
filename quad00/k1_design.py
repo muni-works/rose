@@ -285,7 +285,7 @@ def design():
         Hk, ck, rk, Lk = housing(jp(kn) + kshift, ja(kn), KS.V['big'], extra_len=xl)    # encloses the thigh plate pair (the clevis cheeks)
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08 if KS.V['name'] == 'full' else 1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)   # full: a quad swell
+        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.16 if KS.V['name'] == 'full' else 1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)   # full: a quad swell
         ank = jp(an)
         # the calf nests between the thigh plates (a clevis knee): narrower, centred on the shin plates
         if KS.V['name'] == 'mini':
@@ -539,9 +539,11 @@ def design():
             wd = KS.WAIST()['D'] / 2 + 14.0
             bx0, bx1 = min(bx0, -wd), max(bx1, wd)
         bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, (z_ab - 2.0) if KS.waist_layout() is None else z_pt
-        rcp, rfb = 0.32 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
-        bring = lambda z_, d_: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
-        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + [bring(bz1, 0.0)]
+        rcp, rfb = 0.46 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
+        bring = lambda z_, d_, k_=1.0: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by * k_ - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
+        # design pass 2026-10-28: hips, not a box -- widest over the cans, drawing in to meet the waist (plan corners rounder too)
+        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + \
+              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.97), bring(bz1, 0.0, 0.86)]
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
@@ -606,7 +608,7 @@ def design():
     add('cover-necksleeve', hull_rings([rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
                                               kx * r_hub, ky * max(r_hub, yo_ + 3.0), 0.55 * r_hub, k=12) for z_, kx, ky in secs]))
     ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
-                   1.48 * r_hub + 2.5, 1.34 * max(r_hub, yo_ + 3.0) + 2.5, 0.55 * r_hub + 2.5, k=12) for z_ in (z_cr - 1.0, z_cr + 1.6)]
+                   1.48 * r_hub + 3.5, 1.34 * max(r_hub, yo_ + 3.0) + 3.5, 0.55 * r_hub + 3.5, k=12) for z_ in (z_cr - 1.0, z_cr + 4.0)]   # design pass: taller + prouder (was 2.6 tall, 2.5 proud) so the accent reads
     add('trim-neckring', hull_rings(ring_))                      # the yaw seam
     for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
         add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
