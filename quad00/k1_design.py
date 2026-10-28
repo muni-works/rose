@@ -359,9 +359,12 @@ def design():
         fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
         add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
-        if Wr is None:
-            palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
-            add(f'cover-hand.{tag}a', hull_rings(palm))
+        bar = lambda segs, n_=2.4: M_(hull_rings([ring(c_, w, v, a_, b_, n=n_) for c_, a_, b_ in segs]))   # a rounded bar through sections
+        if Wr is None:                                         # design pass 2026-10-28: a parallel gripper -- a palm block and two jaws
+            body_ = bar([(wrist + u * t, 15 * f, 24 * f) for t, f in ((4, 0.9), (14, 1.0), (36, 1.0), (40, 0.94))])
+            jaws = [bar([(wrist + u * t + v * sg * jo, 11.0 * fa, 5.5 * fb) for t, jo, fa, fb in
+                         ((34, 17.0, 1.0, 1.0), (60, 15.5, 1.0, 0.95), (76, 14.0, 0.8, 0.85), (80, 13.5, 0.5, 0.6))]) for sg in (1, -1)]
+            add(f'cover-hand.{tag}a', tm(body_ + jaws[0] + jaws[1]))
             add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
         else:                                                  # round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
             WS = dict(KS.wrist(J, side, M)); g = lambda k: M_(WS[f'{k}.{tag}a'])
@@ -373,9 +376,22 @@ def design():
             cw = np.array([ycw[0] + 4.0, ycw[1], 0])
             crown = [(ycw[2] + rd * math.cos(th), max(rd * math.sin(th), 6.0)) for th in np.linspace(0.0, 1.35, 6)]
             zt = tip[2]
-            body_ = [(ycw[2] - 0.25 * (ycw[2] - zt), 35.0), (ycw[2] - 0.55 * (ycw[2] - zt), 31.0), (ycw[2] - 0.82 * (ycw[2] - zt), 20.0), (zt, 8.0)]
-            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, 40.0 * min(1.0, a_ / 30.0 + 0.3), n=2.4) for z_, a_ in crown + body_]
+            # design pass 2026-10-28: a hand, not a capsule -- the crown and back of the hand still wrap the yaw can, then a palm
+            # that thins to the knuckles, four fingers with a slight curl toward the palm, and an opposed thumb on the front
+            Lh = ycw[2] - zt; zk = ycw[2] - 0.48 * Lh                # the knuckle line
+            body_ = [(ycw[2] - 0.22 * Lh, 34.0), (zk + 0.12 * Lh, 24.0), (zk, 17.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, (40.0 * min(1.0, a_ / 30.0 + 0.3) if z_ > ycw[2] - 0.2 * Lh else 44.0), n=2.4) for z_, a_ in crown + body_]
+            curl = -s * 9.0                                         # fingertips toward the palm (the body side)
+            fingers = []
+            for fx, fl in ((27.0, 0.92), (9.0, 1.0), (-9.0, 0.96), (-27.0, 0.80)):
+                z_t = zk - 0.62 * Lh * fl
+                fingers.append(bar([(np.array([cw[0] + fx, cw[1], zk + 6.0]), 13.0, 8.0), (np.array([cw[0] + fx * 1.04, cw[1] + 0.4 * curl, (zk + z_t) / 2]), 11.0, 7.5),
+                                    (np.array([cw[0] + fx * 1.06, cw[1] + curl, z_t + 4.0]), 9.0, 6.5), (np.array([cw[0] + fx * 1.06, cw[1] + 1.2 * curl, z_t]), 5.0, 4.0)]))
+            th0 = np.array([cw[0] + 36.0, cw[1] - s * 4.0, ycw[2] - 0.30 * Lh])
+            fingers.append(bar([(th0, 12.0, 10.0), (th0 + np.array([12.0, -s * 10.0, -0.22 * Lh]), 10.0, 8.5),
+                                (th0 + np.array([16.0, -s * 18.0, -0.40 * Lh]), 7.0, 6.0)]))
             hand = M_(hull_rings(palm)) - sweep_union(g('wrist-P1') + g('wrist-P0'), ycw, [((1.0, 0, 0), -45, 45)], scale=1.04, step=5.0)
+            hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
             add(f'cover-hand.{tag}a', tm(hand))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         # shoulder, full-size humanoid language (H2/T2): a round pitch disc flush on the chest flank, a deltoid that
