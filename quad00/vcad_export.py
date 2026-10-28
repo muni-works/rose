@@ -42,7 +42,7 @@ def _patch():
     return KD
 
 
-MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
+MATS = {'accentface': ('face_mint', 0.72, 0.95, 0.76, 0.0, 0.45), 'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
         'accent': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
@@ -290,6 +290,7 @@ CX_NECK = [('dock-face', 'gunmetal'), ('dock-pogo', 'gold'), ('dock-pogo-block',
            ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', 'satin_black')]
 # HEAD=node: the node skull (cortex/node.loon on mini, node-full.loon on full) in place of the cortex tub; same dock-origin frame
 NODE = os.environ.get('HEAD') == 'node'
+NODE_FULL_K = 1.12                            # the node-full skull, scaled about its dock origin on the full body
 NODE_HEAD = {'mini': [('node-head', 'satin_black'), ('node-ears', 'dots'), ('node-intake', 'dots'), ('node-lenses', 'lens'),
                       ('node-glass', 'glass'), ('node-face', 'face')],
              'full': [('full-shell', 'satin_black'), ('full-ears', 'dots'), ('full-grille', 'dots'), ('full-crown-grille', 'dots'),
@@ -347,8 +348,8 @@ def main(variant='mini', explodes=(0.0,)):
         else:
             n_native += 1
         mk = mat_of(n)
-        if NODE and n.startswith('trim-neckpuck'):    # the pitch cap reads as a hole in the cowl beside the node: cowl black
-            mk = 'cover'
+        if NODE and n.startswith('trim-'):            # design pass 2026-10-28, one accent: the scattered gunmetal bands go satin
+            mk = 'accentface' if n.startswith('trim-neckring') else 'cover'   # ...and the yaw seam under the head glows the face's mint
         used_mats.add(mk)
         recs.append((n.replace('.', '_'), b, src, mk, mk not in ('plate', 'motor'), m.bounds.mean(0) - o))
     if has_cx:                                # the cortex module, placed at the dock origin in the head-pitch frame
@@ -357,13 +358,16 @@ def main(variant='mini', explodes=(0.0,)):
         for nm, mk in CX_HEAD + CX_NECK:
             dz = -0.5 if nm.startswith('dock-') else 0.0
             k_ = 1.0                                # each body has its own head: cortex.loon (mini), cortex-full.loon (full)
+            if NODE and variant == 'full':
+                k_ = NODE_FULL_K                     # design pass: the 7in head reads small on the full's shoulders
             src_ = nm if abs(k_ - 1.0) < 1e-3 else f'[scale {f(k_)} {f(k_)} {f(k_)} {nm}]'
             recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
         if NODE:
             cheek = next(m for n_, m in D + C if n_.startswith('cover-headcheek'))
             zc = cheek.bounds[1][2] - (HF['zb']) - 3.0      # 3 mm into the cowl
             neck = 'node-neck' if variant == 'mini' else 'full-neck'
-            src_ = f'[intersection {neck} [translate -200 -200 {f(zc)} [cube 400 400 {f(-zc - 0.5)}]]]'
+            kn_ = NODE_FULL_K if variant == 'full' else 1.0
+            src_ = f'[intersection [scale {f(kn_)} {f(kn_)} {f(kn_)} {neck}] [translate -200 -200 {f(zc)} [cube 400 400 {f(-zc - 0.5)}]]]'
             recs.append((neck, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2])} {src_}]', 'cx:satin_black', False, o))
             CX_NECK = [(neck, 'satin_black')]
         mod = 'node' if NODE else 'cortex'

@@ -285,7 +285,7 @@ def design():
         Hk, ck, rk, Lk = housing(jp(kn) + kshift, ja(kn), KS.V['big'], extra_len=xl)    # encloses the thigh plate pair (the clevis cheeks)
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)
+        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.08 if KS.V['name'] == 'full' else 1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)   # full: a quad swell
         ank = jp(an)
         # the calf nests between the thigh plates (a clevis knee): narrower, centred on the shin plates
         if KS.V['name'] == 'mini':
@@ -298,6 +298,9 @@ def design():
         r0c = rk * ck0
         # mini: a sculpted calf -- full just under the knee, slim at the ankle; never thinner than the ankle cans need
         cdep = [(0.0, r0c), (0.16, r0c * 1.14), (0.40, r0c * 0.98), (0.68, r0c * 0.82), (1.0, 26.0)] if KS.V['name'] == 'mini' else None
+        if KS.V['name'] == 'full':                             # design pass 2026-10-28: the full gets a calf too, ending over the ankle cans
+            r_an = max(30.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 2.0)
+            cdep = [(0.0, r0c), (0.18, r0c * 1.12), (0.42, r0c * 1.02), (0.72, max(r0c * 0.86, r_an)), (1.0, r_an)]
         calf = bone(jp(kn) + yo, r0c, ank + yo + np.array([0, 0, 14.0 * max(1.0, KS.R())]), max(30.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 2.0 if KS.R() > 1.5 else 0.0), flat=KS.V['flat'], n=3.0, half_w=chw, depth=cdep)
         cmid = (jp(kn) + ank) / 2 + yo
         add(f'cover-calf.{tag}l', grooved(calf, [('frame', 0, cmid + np.array([0, 0, 18.0]), chw - 9.0, 0.30 * np.linalg.norm(jp(kn) - ank), 10.0)]))   # a shin panel, front and back
@@ -320,8 +323,10 @@ def design():
             if t in (0.0, 1.0):
                 a *= 0.75; h *= 0.85
             yc = (lo[1] + hi[1]) / 2
-            rings.append(ring(np.array([x, yc, z0 + 7 + h / 2]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a, h / 2, n=3.0))
-            sole.append(ring(np.array([x, yc, z0 + 3.5]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a + 1.5, 3.5, n=5.0))
+            # design pass 2026-10-28: toe spring (the last 25 % lifts) and a rounded heel (the first 12 % lifts), so it can roll
+            lift = 7.0 * max(0.0, (t - 0.75) / 0.25) ** 2 * KS.R() + 4.0 * max(0.0, (0.12 - t) / 0.12) ** 2 * KS.R()
+            rings.append(ring(np.array([x, yc, z0 + 7 + h / 2 + lift]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a, h / 2, n=3.0))
+            sole.append(ring(np.array([x, yc, z0 + 3.5 + lift]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a + 1.5, 3.5, n=5.0))
         shoe = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
         lower = (M_(calf) + M_(Ha)) ^ Manifold.cube([400, 400, 200]).translate([ank[0] - 200, ank[1] - 200, ank[2] - 40])
         add(f'cover-shoe.{tag}l', relief(shoe, sweep_union(lower, ank, [(ja(an), -52, 52), ([1.0, 0, 0], -22, 22)], scale=1.07, step=6.0)))   # instep pocket for the ankle
@@ -404,7 +409,7 @@ def design():
         y_out = abs(src[1]) - (rsr + 3.0) - 2.0 * max(1.0, KS.R())
         r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
         dmid = np.array([spc[0], s * (y_in + y_out) / 2, spc[2]])
-        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], KS.V['arm'], pad=r_disc - KS.ARM()['D'] / 2, fil=8.0, extra_len=(y_out - y_in) - KS.ARM()['L'])
+        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], KS.V['arm'], pad=r_disc - KS.ARM()['D'] / 2, fil=14.0, extra_len=(y_out - y_in) - KS.ARM()['L'])   # design pass: rounder, a shoulder not a puck (fil was 8)
         add(f'cover-shoulderyoke.{tag}a', disc)                              # coaxial with the pitch axis: turns in place
         ua_m = dict(out)[f'cover-upperarm.{tag}a']
         ax_ = np.asarray(U['sr'][1], float); c_ = U['sr'][0] + np.array([3.0, 0, 0])
