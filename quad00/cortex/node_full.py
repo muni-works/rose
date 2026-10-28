@@ -119,6 +119,25 @@ def main():
         ports.append('[translate %.2f %.2f %.2f [cylinder 0.8 %.2f]]' % (mx, my, XZ + 1.2, zt - XZ - 1.2 + 0.4))
         bosses.append('[translate %.2f %.2f %.2f [cylinder 3.0 %.2f]]' % (hx, hy, XZ + 1.2, zh - XZ - 1.2 - 1.0))
     out += '[let full-mic-ports [union %s [union %s [union %s %s]]]]\n' % tuple(ports)
+    # the crown grille: a halo of blind dots through the mic radius (as the mini's), the four ports among them
+    import math
+    r_mic, rows, pitch, dots = 30.5 * math.sqrt(2), 5, 2.2, []
+    for k in range(-(rows // 2), rows // 2 + 1):
+        r = r_mic + k * pitch * 0.866
+        m = 4 * round(2 * math.pi * r / pitch / 4)
+        off = (0.5 if k % 2 else 0.0) * 2 * math.pi / m
+        for j in range(m):
+            a = math.pi / 4 + off + 2 * math.pi * j / m
+            x, y = XC + r * math.cos(a), r * math.sin(a)
+            lo, hi = 180.0, 240.0
+            for _ in range(28):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if inside(section(mid), x, y) else (lo, mid)
+            dots.append('[translate %.2f %.2f %.2f [cylinder 0.7 0.5]]' % (x, y, lo - 0.45))
+    u = dots[0]
+    for d in dots[1:]:
+        u = '[union %s %s]' % (d, u)
+    out += '[let full-crown-grille %s]\n' % u
     out += '[let full-xvf-bosses [union %s [union %s [union %s %s]]]]\n' % tuple(bosses)
     out += '[let spk [fn [y] [translate -10.0 y 110.0 [rotate 90.0 0.0 0.0 [cylinder 20.0 8.0]]]]]\n'
     out += '[let full-speakers [union [spk 78.0] [spk -70.0]]]\n'

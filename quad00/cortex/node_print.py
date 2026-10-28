@@ -189,6 +189,43 @@ DOCK_X, DOCK_BCD = -16.0, 14.1
 XVF_X, XVF_Z = 1.0, 132.0
 XVF_HOLES = [(XVF_X + sx * 33.0, sy * 33.0) for sx in (1, -1) for sy in (1, -1)]
 XVF_MICS = [(XVF_X + sx * 30.5, sy * 30.5) for sx in (1, -1) for sy in (1, -1)]
+
+
+def inside_xy(poly, x, y):
+    c = False
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            c = not c
+    return c
+
+
+def surface_z(x, y, lo=100.0, hi=200.0, sec=None):
+    """Height of the outer skin above (x, y): the top of the head there."""
+    sec = sec or (lambda z: section(z, 96))
+    for _ in range(30):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if inside_xy(sec(mid), x, y) else (lo, mid)
+    return lo
+
+
+def halo(cx, r_mic, mics, rows=5, pitch=2.2):
+    """The crown grille: a ring of dots (Ø1.4 on a 2.2 hex, as the chin and ears) through the mic radius, its middle
+    row landing a dot on each mic so the four ports are four of its dots. Returns (blind dots, ports) as (x, y)."""
+    n = 4 * round(2 * math.pi * r_mic / pitch / 4)
+    dots = []
+    for k in range(-(rows // 2), rows // 2 + 1):
+        r = r_mic + k * pitch * 0.866
+        m = 4 * round(2 * math.pi * r / pitch / 4)
+        off = (0.5 if k % 2 else 0.0) * 2 * math.pi / m
+        dots += [(cx + r * math.cos(math.pi / 4 + off + 2 * math.pi * j / m), r * math.sin(math.pi / 4 + off + 2 * math.pi * j / m)) for j in range(m)]
+    ports = [min(dots, key=lambda d: math.hypot(d[0] - mx, d[1] - my)) for mx, my in mics]
+    return [d for d in dots if d not in ports], ports
+
+
+# Rain: the dots are blind (0.6 deep) so only the four ports go through, and each port's channel is closed at its
+# foot by a hydrophobic acoustic membrane (ePTFE vent, e.g. a 6 mm adhesive disc) over the mic inlet: sound passes,
+# water stops there, on a 0.6 mm lip above the board so nothing wicks onto it.
+CROWN_DOTS, CROWN_PORTS = halo(XVF_X, 30.5 * math.sqrt(2), XVF_MICS)
 DOCK_FEET = [(-16.0, 32.0), (-16.0, -32.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
@@ -233,6 +270,15 @@ def export(name, m, holes=0):
     print('%-11s watertight=%s volume=%.0f cm3 bbox=%s holes=%d' % (
         name, tm.is_watertight, tm.volume / 1000, np.round(tm.extents, 1).tolist(), holes))
 
+def crown_dimples():
+    """The halo's blind dots: 0.6 into the skin, straight down."""
+    out = []
+    for x, y in CROWN_DOTS:
+        z = surface_z(x, y)
+        out.append(mf.Manifold.cylinder(6.0, 0.7, 0.7, 12).translate((x, y, z - 0.6)))
+    return out
+
+
 def main():
     # desk lean: everything under the 10 deg plane (node_skull.lean_plane) is cut off the back of the foot, and the
     # floor follows the cut as a FLOOR-thick slab over it
@@ -266,7 +312,8 @@ def main():
     lenses += [mf.Manifold.cylinder(1.5, 4.0, 5.5, 32).transform(np.array([[0, 0, 1, FACE - 1.5], [0, 1, 0, sy * STEREO_Y], [-1, 0, 0, STEREO_Z]]))
                for sy in (1, -1)]
     inserts = [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, FLOOR - 0.01)) for x, y in TONGUE_SCREWS]
-    face = face - mf.Manifold.batch_boolean([pocket, window, rods ^ front(xf)] + lenses + inserts, mf.OpType.Add)
+    dimples = crown_dimples()   # the halo crosses the split: its front dots are the face module's
+    face = face - mf.Manifold.batch_boolean([pocket, window, rods ^ front(xf)] + lenses + inserts + dimples, mf.OpType.Add)
 
     # REAR SHELL ---------------------------------------------------------------------------------------------------
     rear = (skin + floor) ^ behind(xr)
@@ -280,7 +327,7 @@ def main():
              .translate((x, y, FLOOR)) for x, y in DK_HOLES]
     top = XVF_Z + 1.2 + 0.4                                   # board top + a squeezed foam ring
     xvf = [mf.Manifold.cylinder(60.0, 3.0, 3.0, 32).translate((x, y, top)) for x, y in XVF_HOLES]     # crown bosses
-    xvf += [mf.Manifold.cylinder(60.0, 2.5, 2.5, 32).translate((x, y, top + 0.6)) for x, y in XVF_MICS]  # mic channels
+    xvf += [mf.Manifold.cylinder(60.0, 2.5, 2.5, 32).translate((x, y, top + 0.6)) for x, y in CROWN_PORTS]  # mic channels
     rear = rear + lip + (mf.Manifold.batch_boolean(posts + [usb_pad] + xvf, mf.OpType.Add) ^ outer)
     cuts = [rods ^ behind(xr)]
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
@@ -302,7 +349,8 @@ def main():
     cuts.append(dk(pcyl(0.0, 0.0, 7.0, -1.0, FLOOR + 1.0)))
     cuts += [dk(pcyl(DOCK_BCD * u, DOCK_BCD * v, 2.1, -1.0, 4.2)) for u, v in ((1, 0), (-1, 0), (0, 1), (0, -1))]
     cuts += [dk(pcyl(x, y, 4.1, -1.0, 0.6)) for x, y in DOCK_FEET]
-    cuts += [mf.Manifold.cylinder(70.0, 0.8, 0.8, 16).translate((x, y, top)) for x, y in XVF_MICS]           # mic ports
+    cuts += [mf.Manifold.cylinder(70.0, 0.7, 0.7, 16).translate((x, y, top)) for x, y in CROWN_PORTS]        # mic ports
+    cuts += dimples
     cuts += [mf.Manifold.cylinder(8.0, 1.05, 1.05, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2.5 pilots
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
