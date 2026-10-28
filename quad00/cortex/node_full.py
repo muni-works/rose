@@ -48,8 +48,10 @@ def main():
     out += sk.loft('full-loft', [(z, section(z)) for z in zs])
     out += sk.lean_cut('full-shell', 'full-loft', sk.LEAN, FLAT_X)
     foot = section(0)
-    out += sk.loft('full-neck', [(-1.0, sk.scaled(foot, 0.62)), (-8.0, sk.scaled(foot, 0.55)),
-                                 (-22.0, sk.circle(42, 2.0)), (-70.0, sk.circle(40, 4.0))])
+    # the mini's neck trim, at the full's size: the foot 1 mm under it, necking down to a round column (2026-10-28: was
+    # 0.62 of the foot flaring out to a Ø84 column, which read as shards under the jaw tuck)
+    out += sk.loft('full-neck', [(-1.0, sk.scaled(foot, 0.8)), (-8.0, sk.scaled(foot, 0.72)),
+                                 (-22.0, sk.circle(34, 2.0)), (-70.0, sk.circle(36, 4.0))])
     out += '[let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]\n'
 
     # face: the glass flush in the face plane, eyes drawn on it, two lens windows in the chin
