@@ -55,6 +55,7 @@ def hull_rings(rings, **meta):
     return m
 
 
+HAND_SPEC = {}                         # the U-joint hand per side ('l'/'r'), for hand_grasp.py
 JOINT_CAPS = False                     # the orange joint caps (pucks); off since 2026-10-20
 GROOVE_D, GROOVE_W = 1.2, 1.6          # parting lines: depth into the skin, width
 
@@ -416,14 +417,16 @@ def design():
             body_ = [(wz - 0.16 * Lh, 21.0, 40.0), (wz - 0.30 * Lh, 21.0, 44.0), (zk + 0.08 * Lh, 18.0, 44.0), (zk, 14.0, 42.0)]
             palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, b_, n=2.4) for z_, a_, b_ in dome + body_]
             curl = -s * 1.0
-            fingers = []
+            fingers, phal = [], []
             for fx, fl, fw in ((28.0, 0.90, 0.92), (9.5, 1.0, 1.0), (-9.5, 0.96, 0.97), (-28.0, 0.78, 0.86)):
                 Lf = 0.56 * Lh * fl
+                phal.append([])
                 for k_, (t0, t1, c0, c1) in enumerate([(0.0, 0.44, 0.0, 10.0), (0.46, 0.74, 5.0, 14.0), (0.76, 1.0, 14.0, 22.0)]):
                     r0 = fw * (10.2 - 1.8 * k_); r1 = fw * (9.5 - 1.8 * k_ - (1.8 if k_ == 2 else 0.0))
                     p0 = np.array([cw[0] + fx * (1 + 0.04 * t0), cw[1] + curl * c0, zk + 4.0 - Lf * t0])
                     p1 = np.array([cw[0] + fx * (1 + 0.04 * t1), cw[1] + curl * c1, zk + 4.0 - Lf * t1])
                     fingers.append(bar([(p0, r0 * 1.15, r0), ((p0 + p1) / 2, r0 * 1.12, r0 * 0.98), (p1, r1 * 1.1, r1)], n_=2.2))
+                    phal[-1].append((p0, p1, r0, r1))
             th0 = np.array([cw[0] + 34.0, cw[1] - s * 2.0, wz - 0.30 * Lh])
             th1 = th0 + np.array([12.0, curl * 8.0, -0.20 * Lh]); th2 = th1 + np.array([2.0, curl * 16.0, -0.16 * Lh])
             fingers.append(bar([(th0, 11.0, 11.0), (th1, 9.5, 9.0)], n_=2.2))
@@ -433,6 +436,8 @@ def design():
             for k in ('wrist-R1laa', 'wrist-R1lab', 'wrist-R1roda', 'wrist-R1rodb'):
                 fore = fore + M_(WS[f'{k}.{tag}a'])
             hand = M_(hull_rings(palm)) - hullof_(sweep_union(fore, wc, [((0, 1.0, 0), -45, 45), ((1.0, 0, 0), -30, 30)], scale=1.02, step=7.5))
+            HAND_SPEC[tag] = dict(palm=tm(hand), phalanges=phal, thumb=[(th0, th1, 11.0, 9.5), (th1 + (th2 - th1) * 0.08, th2, 8.5, 6.5)],
+                                  s=s, cw=cw, zk=zk, wc=wc, w=w, v=v, Lh=Lh)   # hand_grasp.py articulates these
             hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
             add(f'cover-hand.{tag}a', tm(hand))
         else:                                                  # (pre-2026-10-28) round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
