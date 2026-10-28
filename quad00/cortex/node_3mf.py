@@ -11,6 +11,9 @@
   node-mvp-quality.3mf  for the look (PLA Matte): a variable layer-height profile from the surface slopes (0.08 on the
                      shallow dome, 0.24 on steep walls), slow outer walls, a scarf seam at the back, fewer travels
                      over the grilles. Pick a PLA Matte filament profile; dry it first.
+  node-mvp-tilt.3mf  the quality settings with the rear tilted 30 deg back (crown toward the bed's back, the open face
+                     up): the crown and sides print steep, supports land on the occiput; uniform 0.12 layers (adaptive
+                     goes fine everywhere once tilted). One filament for everything, so no prime tower.
 """
 import math, os, zipfile
 import trimesh
@@ -73,9 +76,11 @@ def layer_profile(m, h_min=0.08, h_max=0.24, cusp=0.045, step=0.5):
     need = np.array([need[max(0, i - k):i + k + 1].min() for i in range(len(zs))])
     return [(float(z), float(round(h, 3))) for z, h in zip(zs, need)]
 
-def meshes(face_down=False):
+def meshes(face_down=False, tilt=0.0):
     for name, (x, y) in PLACE.items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
+        if name == 'node-rear' and tilt:                 # lean the crown back: top toward -x, the open face toward the sky
+            m.apply_transform(trimesh.transformations.rotation_matrix(math.radians(-tilt), [0, 1, 0]))
         if name == 'node-face':
             # the face module always prints face-down: its face plane on the bed (best surface, no supports)
             #
@@ -98,8 +103,8 @@ NS = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
 def uuid(n):
     return '%08x-0000-4000-8000-%012x' % (n, n)
 
-def fast(face_down=False, out='node-mvp-fast.3mf', settings=None, adaptive=False):
-    parts = list(meshes(face_down))
+def fast(face_down=False, out='node-mvp-fast.3mf', settings=None, adaptive=False, tilt=0.0):
+    parts = list(meshes(face_down, tilt))
     prof = []
     files, objs, items, rels, cfg = {}, [], [], [], ['<?xml version="1.0" encoding="UTF-8"?>', '<config>']
     for k, (name, m) in enumerate(parts):
@@ -165,4 +170,9 @@ if __name__ == '__main__':
     fast(face_down=True, out='node-mvp-06.3mf', settings=NOZZLE06)
     fast(face_down=True, out='node-mvp-fastest.3mf', settings=FASTEST)
     fast(face_down=True, out='node-mvp-quality.3mf', settings=QUALITY, adaptive=True)
+    # tilted, every band of the egg has a shallow patch somewhere, so an adaptive profile is fine everywhere (~1960
+    # layers); a uniform 0.12 is the better trade -- and the same height on both parts keeps a prime tower legal
+    fast(face_down=True, out='node-mvp-tilt.3mf', tilt=30.0,
+         settings=dict(QUALITY, layer_height='0.12', support_filament='0', support_interface_filament='0',
+                       brim_type='outer_only', brim_width='5'))
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
