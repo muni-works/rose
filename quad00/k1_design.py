@@ -246,6 +246,23 @@ def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
     return Manifold.batch_boolean(out, OpType.Add)
 
 
+def rounded(m, r, pitch=0.5):
+    """m with every convex edge rounded to radius r: a morphological opening (erode, then dilate, by a ball) on a voxel
+    grid, meshed back with marching cubes. Opening only removes material, so a clearance cut stays clear."""
+    from scipy import ndimage
+    from skimage import measure
+    lo = m.bounds[0] - 2 * r - 2 * pitch
+    vox = m.voxelized(pitch).fill()
+    g = np.pad(vox.matrix, int(2 * r / pitch) + 2)
+    k = int(round(r / pitch)); z, y, x = np.ogrid[-k:k + 1, -k:k + 1, -k:k + 1]; ball = x * x + y * y + z * z <= k * k
+    g = ndimage.binary_dilation(ndimage.binary_erosion(g, ball), ball)
+    g = ndimage.gaussian_filter(g.astype(np.float32), 0.7)
+    v, f, _, _ = measure.marching_cubes(g, 0.5)
+    org = vox.transform[:3, 3] - (int(2 * r / pitch) + 2) * pitch
+    out = trimesh.Trimesh(v * pitch + org, f[:, ::-1], process=True)
+    return tm(M_(out).simplify(0.1))
+
+
 def relief(shell, mover):
     """shell minus a neighbour's swept path: the clearance cut a moving joint needs."""
     return tm((M_(shell) - mover).simplify(0.4))                # sweeps leave thousands of facets; 0.4 mm is invisible
@@ -362,7 +379,9 @@ def design():
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
         low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=ma_['L'] / 2 + g_ + t_ + 3.3)
         fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
-        add(f'cover-elbowfork.{tag}a', relief(low, hullof_(sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0))))   # design pass: one smooth cut (the forearm's 142 deg fold), not a faceted scoop
+        # design pass 2026-10-28: the forearm's full 142 deg fold stays; its cut's edges are rounded (a 4 mm morphological
+        # opening: only removes material, so the clearance holds)
+        add(f'cover-elbowfork.{tag}a', rounded(relief(low, hullof_(sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0))), 4.0))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         bar = lambda segs, n_=2.4: M_(hull_rings([ring(c_, w, v, a_, b_, n=n_) for c_, a_, b_ in segs]))   # a rounded bar through sections
         if Wr is None:                                         # design pass 2026-10-28: a parallel gripper -- a palm block and two jaws
