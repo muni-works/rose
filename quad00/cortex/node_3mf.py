@@ -11,8 +11,8 @@
   node-mvp-quality.3mf  for the look (PLA Matte): a variable layer-height profile from the surface slopes (0.08 on the
                      shallow dome, 0.24 on steep walls), slow outer walls, a scarf seam at the back, fewer travels
                      over the grilles. Pick a PLA Matte filament profile; dry it first.
-  node-mvp-tilt.3mf  the quality settings with the rear tilted 30 deg back (crown toward the bed's back, the open face
-                     up): the crown and sides print steep, supports land on the occiput; uniform 0.12 layers (adaptive
+  node-mvp-tilt.3mf  the quality settings with both parts tilted 30 deg back as assembled (crown toward the bed's back,
+                     the face up): the crown and sides print steep, supports land on the occiput; uniform 0.12 layers (adaptive
                      goes fine everywhere once tilted). One filament for everything, so no prime tower.
 """
 import math, os, zipfile
@@ -76,12 +76,16 @@ def layer_profile(m, h_min=0.08, h_max=0.24, cusp=0.045, step=0.5):
     need = np.array([need[max(0, i - k):i + k + 1].min() for i in range(len(zs))])
     return [(float(z), float(round(h, 3))) for z, h in zip(zs, need)]
 
+PLACE_TILT = {'node-rear': (128, 76), 'node-face': (128, 205)}   # tilted they're bigger: front to back, brims 4.5 clear
+
 def meshes(face_down=False, tilt=0.0):
-    for name, (x, y) in PLACE.items():
+    for name, (x, y) in (PLACE_TILT if tilt else PLACE).items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
-        if name == 'node-rear' and tilt:                 # lean the crown back: top toward -x, the open face toward the sky
-            m.apply_transform(trimesh.transformations.rotation_matrix(math.radians(-tilt), [0, 1, 0]))
-        if name == 'node-face':
+        if tilt:                                         # lean back as assembled: top toward -x, the face toward the sky;
+            m.apply_transform(trimesh.transformations.rotation_matrix(math.radians(-tilt), [0, 1, 0]))   # the face plate too
+            if name == 'node-face':                      # its long side across the bed, so the two stack front to back
+                m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 0, 1]))
+        if name == 'node-face' and not tilt:
             # the face module always prints face-down: its face plane on the bed (best surface, no supports)
             #
             m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
