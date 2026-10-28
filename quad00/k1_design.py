@@ -256,7 +256,7 @@ def rounded(m, r, pitch=0.5):
     g = np.pad(vox.matrix, int(2 * r / pitch) + 2)
     k = int(round(r / pitch)); z, y, x = np.ogrid[-k:k + 1, -k:k + 1, -k:k + 1]; ball = x * x + y * y + z * z <= k * k
     g = ndimage.binary_dilation(ndimage.binary_erosion(g, ball), ball)
-    g = ndimage.gaussian_filter(g.astype(np.float32), 0.7)
+    g = ndimage.gaussian_filter(g.astype(np.float32), 1.2)            # ~0.6 mm of blur: no voxel ripple
     v, f, _, _ = measure.marching_cubes(g, 0.5)
     org = vox.transform[:3, 3] - (int(2 * r / pitch) + 2) * pitch
     out = trimesh.Trimesh(v * pitch + org, f[:, ::-1], process=True)
@@ -385,9 +385,15 @@ def design():
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         bar = lambda segs, n_=2.4: M_(hull_rings([ring(c_, w, v, a_, b_, n=n_) for c_, a_, b_ in segs]))   # a rounded bar through sections
         if Wr is None:                                         # design pass 2026-10-28: a parallel gripper -- a palm block and two jaws
-            body_ = bar([(wrist + u * t, 15 * f, 24 * f) for t, f in ((4, 0.9), (14, 1.0), (36, 1.0), (40, 0.94))])
-            jaws = [bar([(wrist + u * t + v * sg * jo, 11.0 * fa, 5.5 * fb) for t, jo, fa, fb in
-                         ((34, 17.0, 1.0, 1.0), (60, 15.5, 1.0, 0.95), (76, 14.0, 0.8, 0.85), (80, 13.5, 0.5, 0.6))]) for sg in (1, -1)]
+            # hands pass 2026-10-28: a parallel gripper that reads as one -- a palm block, a slide rail across its foot, and
+            # two wide flat pads that close along it (faces 18 apart), each with a raised grip face on the inside
+            body_ = bar([(wrist + u * t, 15 * f, 24 * f) for t, f in ((4, 0.9), (14, 1.0), (32, 1.0), (36, 0.94))])
+            rail = bar([(wrist + u * 38.0 + v * sg * 26.0, 7.0, 4.0) for sg in (1, -1)], n_=3.0)
+            jaws = []
+            for sg in (1, -1):
+                jaws.append(bar([(wrist + u * t + v * sg * 15.0, a_, 5.0) for t, a_ in ((34, 15.0), (44, 15.0), (76, 13.0), (82, 9.0))], n_=4.0))
+                jaws.append(bar([(wrist + u * t + v * sg * 9.6, a_, 1.2) for t, a_ in ((50, 11.0), (76, 10.0))], n_=6.0))   # grip face
+            jaws = Manifold.batch_boolean(jaws, OpType.Add); jaws = [jaws, rail]
             add(f'cover-hand.{tag}a', tm(body_ + jaws[0] + jaws[1]))
             add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
         else:                                                  # round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
@@ -395,25 +401,39 @@ def design():
             z_sl0, z_sl1 = rcw[2] - mw['L'] / 2 - 1.0, pcw[2] + mw['D'] / 2 + 1.0
             add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1 if z_sl0 > z_sl1 else z_sl1 - z_sl0))
             drum = M_(cyl(pcw, [0, 1.0, 0], mw['D'] / 2 + 3.0, mw['L'] + 2 * (KS.G + KS.T) + 2.0))
-            add(f'trim-wristpitch.{tag}a', tm(drum - sweep_union(g('wrist-P0'), pcw, [((0, 1.0, 0), -75, 75)], scale=1.04, step=5.0)))
+            # hands pass 2026-10-28: cheek discs over the wrist plates' outer faces, coaxial with the pitch axis (so the hand
+            # pitches clean), 1 mm under the sleeve's bottom -- the bolt faces stop showing between forearm and hand
+            yp = max(abs(v_ - pcw[1]) for k in ('wrist-P0', 'wrist-P1') for v_ in WS[f'{k}.{tag}a'].bounds[:, 1])
+            r_ch = (z_sl1 - pcw[2]) - 1.0
+            cheeks = Manifold.batch_boolean([M_(cyl(np.array([pcw[0], pcw[1] + sg * (yp + 1.6), pcw[2]]), [0, 1.0, 0], r_ch, 2.4)) for sg in (1, -1)], OpType.Add)
+            add(f'trim-wristpitch.{tag}a', tm(drum + cheeks - sweep_union(g('wrist-P0'), pcw, [((0, 1.0, 0), -75, 75)], scale=1.04, step=5.0)))
             rd = (pcw[2] - mw['D'] / 2 - 3.0) - ycw[2] - 2.0          # the hand's crown: a dome about the yaw axis, under the pitch drum
             cw = np.array([ycw[0] + 4.0, ycw[1], 0])
             crown = [(ycw[2] + rd * math.cos(th), max(rd * math.sin(th), 6.0)) for th in np.linspace(0.0, 1.35, 6)]
             zt = tip[2]
             # design pass 2026-10-28: a hand, not a capsule -- the crown and back of the hand still wrap the yaw can, then a palm
             # that thins to the knuckles, four fingers with a slight curl toward the palm, and an opposed thumb on the front
-            Lh = ycw[2] - zt; zk = ycw[2] - 0.48 * Lh                # the knuckle line
-            body_ = [(ycw[2] - 0.22 * Lh, 34.0), (zk + 0.12 * Lh, 24.0), (zk, 17.0)]
-            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, (40.0 * min(1.0, a_ / 30.0 + 0.3) if z_ > ycw[2] - 0.2 * Lh else 44.0), n=2.4) for z_, a_ in crown + body_]
-            curl = -s * 9.0                                         # fingertips toward the palm (the body side)
+            # hands pass 2026-10-28: human-sized (the tip 50 mm lower: ~165 mm wrist to fingertip, was ~110), fingers in three
+            # phalanges with a 1.2 mm knuckle gap and a taper, the thumb round and opposed (its tip turned in over the palm)
+            zt = tip[2] - 50.0
+            Lh = ycw[2] - zt; zk = ycw[2] - 0.46 * Lh                # the knuckle line
+            body_ = [(ycw[2] - 0.20 * Lh, 33.0), (zk + 0.10 * Lh, 22.0), (zk, 16.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, (40.0 * min(1.0, a_ / 30.0 + 0.3) if z_ > ycw[2] - 0.18 * Lh else 44.0), n=2.4) for z_, a_ in crown + body_]
+            curl = -s * 1.0                                         # +y toward the palm (the body side) per unit curl
             fingers = []
-            for fx, fl in ((27.0, 0.92), (9.0, 1.0), (-9.0, 0.96), (-27.0, 0.80)):
-                z_t = zk - 0.62 * Lh * fl
-                fingers.append(bar([(np.array([cw[0] + fx, cw[1], zk + 6.0]), 13.0, 8.0), (np.array([cw[0] + fx * 1.04, cw[1] + 0.4 * curl, (zk + z_t) / 2]), 11.0, 7.5),
-                                    (np.array([cw[0] + fx * 1.06, cw[1] + curl, z_t + 4.0]), 9.0, 6.5), (np.array([cw[0] + fx * 1.06, cw[1] + 1.2 * curl, z_t]), 5.0, 4.0)]))
-            th0 = np.array([cw[0] + 36.0, cw[1] - s * 4.0, ycw[2] - 0.30 * Lh])
-            fingers.append(bar([(th0, 12.0, 10.0), (th0 + np.array([12.0, -s * 10.0, -0.22 * Lh]), 10.0, 8.5),
-                                (th0 + np.array([16.0, -s * 18.0, -0.40 * Lh]), 7.0, 6.0)]))
+            for fx, fl, fw in ((28.0, 0.90, 0.92), (9.5, 1.0, 1.0), (-9.5, 0.96, 0.97), (-28.0, 0.78, 0.86)):
+                Lf = 0.56 * Lh * fl
+                segs = [(0.0, 0.44, 0.0, 10.0), (0.46, 0.74, 5.0, 14.0), (0.76, 1.0, 14.0, 22.0)]   # phalanges: t0, t1, curl at each end
+                for k_, (t0, t1, c0, c1) in enumerate(segs):
+                    r0 = fw * (10.2 - 1.8 * k_); r1 = fw * (9.5 - 1.8 * k_ - (1.8 if k_ == 2 else 0.0))
+                    p0 = np.array([cw[0] + fx * (1 + 0.04 * t0), cw[1] + curl * c0, zk + 4.0 - Lf * t0])
+                    p1 = np.array([cw[0] + fx * (1 + 0.04 * t1), cw[1] + curl * c1, zk + 4.0 - Lf * t1])
+                    fingers.append(bar([(p0, r0 * 1.15, r0), ((p0 + p1) / 2, r0 * 1.12, r0 * 0.98), (p1, r1 * 1.1, r1)], n_=2.2))
+            th0 = np.array([cw[0] + 34.0, cw[1] - s * 2.0, ycw[2] - 0.26 * Lh])   # the thumb's root on the front of the palm
+            th1 = th0 + np.array([12.0, curl * 8.0, -0.20 * Lh])
+            th2 = th1 + np.array([2.0, curl * 16.0, -0.16 * Lh])                 # turned in, over the palm
+            fingers.append(bar([(th0, 11.0, 11.0), (th1, 9.5, 9.0)], n_=2.2))
+            fingers.append(bar([(th1 + (th2 - th1) * 0.08, 8.5, 8.0), (th2, 6.5, 6.0)], n_=2.2))
             hand = M_(hull_rings(palm)) - sweep_union(g('wrist-P1') + g('wrist-P0'), ycw, [((1.0, 0, 0), -45, 45)], scale=1.04, step=5.0)
             hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
             add(f'cover-hand.{tag}a', tm(hand))
