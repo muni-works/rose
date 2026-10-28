@@ -288,10 +288,21 @@ CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('corte
            ('cortex-amps', 'pcb_green'), ('cortex-cables', 'cable_orange')]
 CX_NECK = [('dock-face', 'gunmetal'), ('dock-pogo', 'gold'), ('dock-pogo-block', 'pcb_green'), ('dock-cones', 'steel'),
            ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', 'satin_black')]
-CX_MATS = {'gold': (1.0, 0.78, 0.34, 1.0, 0.25), 'steel': (0.6, 0.6, 0.62, 0.9, 0.35), 'cable_orange': (1.0, 0.42, 0.05, 0.0, 0.45)}
+# HEAD=node: the node skull (cortex/node.loon on mini, node-full.loon on full) in place of the cortex tub; same dock-origin frame
+NODE = os.environ.get('HEAD') == 'node'
+NODE_HEAD = {'mini': [('node-head', 'satin_black'), ('node-ears', 'dots'), ('node-intake', 'dots'), ('node-lenses', 'lens'),
+                      ('node-glass', 'glass'), ('node-face', 'face')],
+             'full': [('full-shell', 'satin_black'), ('full-ears', 'dots'), ('full-grille', 'dots'), ('full-crown-grille', 'dots'),
+                      ('full-lenses', 'lens'), ('full-glass', 'glass'), ('full-face', 'face')]}
+CX_MATS = {'dots': (0.0, 0.0, 0.0, 0.0, 0.9), 'lens': (0.035, 0.04, 0.045, 0.3, 0.08), 'glass': (0.01, 0.012, 0.014, 0.4, 0.04),
+           'face': (0.72, 0.95, 0.76, 0.0, 0.5),
+           'gold': (1.0, 0.78, 0.34, 1.0, 0.25), 'steel': (0.6, 0.6, 0.62, 0.9, 0.35), 'cable_orange': (1.0, 0.42, 0.05, 0.0, 0.45)}
 
 
 def main(variant='mini', explodes=(0.0,)):
+    global CX_HEAD, CX_NECK
+    if NODE:
+        CX_HEAD, CX_NECK = NODE_HEAD[variant], []
     KS.use(variant)
     KD = _patch()
     import k1 as K
@@ -342,9 +353,10 @@ def main(variant='mini', explodes=(0.0,)):
             k_ = 1.0                                # each body has its own head: cortex.loon (mini), cortex-full.loon (full)
             src_ = nm if abs(k_ - 1.0) < 1e-3 else f'[scale {f(k_)} {f(k_)} {f(k_)} {nm}]'
             recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
-        cx_link = os.path.join(outdir, 'cortex.loon')
+        mod = 'node' if NODE else 'cortex'
+        cx_link = os.path.join(outdir, mod + '.loon')
         cx_src = os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex',
-                                              'cortex-full.loon' if variant == 'full' else 'cortex.loon'), outdir)
+                                              f'{mod}-full.loon' if variant == 'full' else f'{mod}.loon'), outdir)
         if os.path.lexists(cx_link):
             os.remove(cx_link)
         os.symlink(cx_src, cx_link)
@@ -386,7 +398,7 @@ def main(variant='mini', explodes=(0.0,)):
                 ';; frame: x fore, y left, z up, mm; each body is authored about its joint pivot.']
         head += [f'[material "{v[0]}" {v[1]} {v[2]} {v[3]} {v[4]} {v[5]}]' for v in mats.values()]
         if has_cx:
-            head += ['[use cortex [' + ' '.join(nm for nm, _ in CX_HEAD + CX_NECK) + ']]']
+            head += [f'[use {"node" if NODE else "cortex"} [' + ' '.join(nm for nm, _ in CX_HEAD + CX_NECK) + ']]']
         src = '\n'.join(head) + '\n[assembly\n #[' + '\n   '.join(parts) + ']\n #[' + '\n   '.join(inst) + ']\n #[' + \
             '\n   '.join(fixed + jts) + ']\n "' + anchor['torso'] + '"]\n'
         path = os.path.join(outdir, f'{variant}.loon' if not e else f'{variant}-explode-{int(round(e * 100)):03d}.loon')
