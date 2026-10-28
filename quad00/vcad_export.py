@@ -290,6 +290,8 @@ CX_NECK = [('dock-face', 'gunmetal'), ('dock-pogo', 'gold'), ('dock-pogo-block',
            ('dock-magnets', 'motor_dark'), ('dock-pawl', 'steel'), ('dock-release', 'satin_black')]
 # HEAD=node: the node skull (cortex/node.loon on mini, node-full.loon on full) in place of the cortex tub; same dock-origin frame
 NODE = os.environ.get('HEAD') == 'node'
+BARE = os.environ.get('BARE') == '1'          # no plastics: drop every printed cover, trim, sole and the head shell (the frame,
+SHELL_PRE = ('cover-', 'trim-', 'puck-', 'sole', 'accent-', 'estop-')   # motors and electronics stay)
 NODE_FULL_K = 1.12                            # the node-full skull, scaled about its dock origin on the full body
 NODE_HEAD = {'mini': [('node-head', 'satin_black'), ('node-ears', 'dots'), ('node-intake', 'dots'), ('node-lenses', 'lens'),
                       ('node-glass', 'glass'), ('node-face', 'face')],
@@ -323,6 +325,8 @@ def main(variant='mini', explodes=(0.0,)):
     for n, m in D + C:
         if has_cx and n.startswith(CX_PY + NODE_DROP):
             continue
+        if BARE and n.startswith(SHELL_PRE):
+            continue
         b = body_of(n)
         if b is None:
             print('  (skipped, no body)', n)
@@ -354,7 +358,7 @@ def main(variant='mini', explodes=(0.0,)):
             mk = 'cover'
         used_mats.add(mk)
         recs.append((n.replace('.', '_'), b, src, mk, mk not in ('plate', 'motor'), m.bounds.mean(0) - o))
-    if has_cx:                                # the cortex module, placed at the dock origin in the head-pitch frame
+    if has_cx and not BARE:                   # the cortex module, placed at the dock origin in the head-pitch frame
         HF = KS.head_frame(J, M)
         o = np.array([HF['ox'], HF['oy'], HF['zb']]) - P['hpitch']
         for nm, mk in CX_HEAD + CX_NECK:
@@ -416,7 +420,7 @@ def main(variant='mini', explodes=(0.0,)):
                 + (f'; exploded {e:.2f}' if e else '') + '.',
                 ';; frame: x fore, y left, z up, mm; each body is authored about its joint pivot.']
         head += [f'[material "{v[0]}" {v[1]} {v[2]} {v[3]} {v[4]} {v[5]}]' for v in mats.values()]
-        if has_cx:
+        if has_cx and not BARE:
             head += [f'[use {"node" if NODE else "cortex"} [' + ' '.join(nm for nm, _ in CX_HEAD + CX_NECK) + ']]']
         src = '\n'.join(head) + '\n[assembly\n #[' + '\n   '.join(parts) + ']\n #[' + '\n   '.join(inst) + ']\n #[' + \
             '\n   '.join(fixed + jts) + ']\n "' + anchor['torso'] + '"]\n'
