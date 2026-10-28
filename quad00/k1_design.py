@@ -183,7 +183,7 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
     def sec(z):
         zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
-            k = 0.80 + (0.97 - 0.80) * ss(z0, zh, z)
+            k = 0.72 + (0.97 - 0.72) * ss(z0, zh, z)           # design pass: a real waist (was 0.80)
         else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
             u = min(1.0, max(0.0, (z - zh) / (zf - zh)))       # full width by the drum's bottom: the side wraps the whole drum
             k = 0.97 + (flank / CH - 0.97) * u ** 3
@@ -471,7 +471,11 @@ def design():
         WS = dict(KS.waist())
         r_d = math.hypot(mw['L'] / 2 + KS.G + KS.T + 2.0, mw['D'] / 2) + 4.0
         z_d = KS.Z_D0() + KS.T + 1.0                              # on the pelvis top, clear of the deck
-        add('cover-waist', cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d))          # yaw drum (yaw stage), up to the roll axis
+        # yaw stage (design pass 2026-10-28): an abdomen, not a bare can -- full and wide over the pelvis, waisting up to the
+        # roll axis; it turns as one piece on the pelvis top (flat, with a gap), so it needn't be round
+        ab = [rrect(np.array([0, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), r_d * ky_, r_d * kx_, r_d * 0.5 * min(ky_, kx_), k=14)
+              for z_, ky_, kx_ in ((z_d, 1.38, 1.12), (z_d + 0.35 * (rc_[2] - z_d), 1.30, 1.08), (rc_[2], 1.0, 1.0))]
+        add('cover-waist', hull_rings(ab))
         add('cover-waistroll', cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # roll barrel (roll stage)
         hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 10.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
             sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
@@ -538,8 +542,8 @@ def design():
         else:
             pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
 
-    if KS.V['name'] not in ('mini', 'full'):                    # mini + full: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
-        add('cover-pelvis', tm(pel))
+    add('cover-pelvis', tm(pel))                                # design pass 2026-10-28: a pelvis shell over the hip-roll cans again,
+                                                                # so the torso reads as one sculpted body down to the hips
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
     if KS.V['name'] == 'mini':
