@@ -346,7 +346,10 @@ def main(variant='mini', explodes=(0.0,)):
             n_mesh += 1
         else:
             n_native += 1
-        mk = mat_of(n); used_mats.add(mk)
+        mk = mat_of(n)
+        if NODE and n.startswith('trim-neckpuck'):    # the pitch cap reads as a hole in the cowl beside the node: cowl black
+            mk = 'cover'
+        used_mats.add(mk)
         recs.append((n.replace('.', '_'), b, src, mk, mk not in ('plate', 'motor'), m.bounds.mean(0) - o))
     if has_cx:                                # the cortex module, placed at the dock origin in the head-pitch frame
         HF = KS.head_frame(J, M)
