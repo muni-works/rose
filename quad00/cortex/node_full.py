@@ -84,8 +84,9 @@ def main():
             d = '[translate %.2f %.2f %.2f [rotate %d 0.0 0.0 [cylinder-n 0.6 0.6 12]]]' % (x, sgn * (y - 0.35), z, -90 if sgn > 0 else 90)
             u = d if u is None else '[union %s %s]' % (d, u)
     out += '[let full-ears %s]\n' % u
-    out += '[let eye [fn [s] [translate %.2f [* s 22.0] %.1f [rotate 0.0 90.0 0.0 [cylinder 11.0 0.2]]]]]\n' % (FACE + 0.02, gz + 22)
-    out += '[let full-face [union [eye 1.0] [union [eye -1.0] [translate %.2f -10.0 %.1f [cube 0.2 20.0 3.2]]]]]\n' % (FACE + 0.02, gz - 14)
+    # features sized to the 7in portrait panel (2026-10-28; were r 11 at +-22, the mouth 20 wide at gz - 14)
+    out += '[let eye [fn [s] [translate %.2f [* s 27.0] %.1f [rotate 0.0 90.0 0.0 [cylinder 15.0 0.2]]]]]\n' % (FACE + 0.02, gz + 29.5)
+    out += '[let full-face [union [eye 1.0] [union [eye -1.0] [translate %.2f -14.0 %.1f [cube 0.2 28.0 4.0]]]]]\n' % (FACE + 0.02, gz - 0.5)
 
     # internals: AGX devkit (110 x 110 x 71.65 incl. fan/heatsink, from P3730 STEP) on the floor deck, pack under it
     out += bx('full-battery', -46, -45, 14, 30, 45, 36, '4S2P 21700 flat pack 88 x 90 x 22, ~140 Wh, on the floor')

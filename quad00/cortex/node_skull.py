@@ -12,6 +12,9 @@ FACE = 56.0                                          # the face plane (front of 
 LEAN, FLAT_X = 10.0, 12.0                            # desk lean: the back of the foot is cut on a 10 deg plane that
                                                      # meets the foot's bottom at x 12, ahead of the centre of mass
 
+JAW_Z, JAW_W = 38.0, 46.0                            # the jaw draws the half width in to 46 at the foot, from z 38 down (clear of the I/O row)
+OCC_Z, OCC_X = 32.0, 48.0                            # the occiput sweeps the back in to x -48 at the foot, from z 32 down (battery keeps 1 mm)
+
 ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116)] + [
     (BROW + (z - BROW) * (TOP - BROW) / 18.0) * VS for z in (119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2)]
 
@@ -26,6 +29,15 @@ def outline(z):
     wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / (TOP - 80), 2.4)   # back (parietal) half width
     wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (TOP - BROW), 2.2))   # face half width
     wf = min(wf, wb)
+    # jaw + occiput (2026-10-28): below the panel the head draws in toward the neck like a skull -- the sides tuck under
+    # like a jaw line, the back sweeps under from the occiput -- only as far as the stereo board, battery and power board allow
+    if z < JAW_Z:
+        s_ = (lambda u: u * u * (3 - 2 * u))(z / JAW_Z)
+        wf = min(wf, JAW_W + (wf - JAW_W) * s_)
+        wb = min(wb, JAW_W + (wb - JAW_W) * s_)
+    if z < OCC_Z:
+        s_ = (lambda u: u * u * (3 - 2 * u))(z / OCC_Z)
+        bx = max(bx, -(OCC_X + (-bx - OCC_X) * s_))
     if z < 12:
         k = 12 * (1 - se((12 - z) / 12, 2.2))
         wb -= k; wf -= k; bx += k
