@@ -8,6 +8,9 @@
   node-mvp-facedown.3mf  the same, with the upper laid on its face (less support inside the crown).
   node-mvp-fastest.3mf  face-down, 0.4 nozzle, everything turned toward speed (see FASTEST).
   node-mvp-06.3mf    face-down, for a 0.6 mm nozzle: 0.36 layers, 2 walls, no infill, supports at 35 deg.
+  node-mvp-quality.3mf  for the look (PLA Matte): a variable layer-height profile from the surface slopes (0.08 on the
+                     shallow dome, 0.24 on steep walls), slow outer walls, a scarf seam at the back, fewer travels
+                     over the grilles. Pick a PLA Matte filament profile; dry it first.
 """
 import math, os, zipfile
 import trimesh
@@ -42,6 +45,34 @@ FASTEST = dict(FAST, sparse_infill_density='10%', top_shell_layers='6', bottom_s
 NOZZLE06 = dict(FAST, layer_height='0.36', sparse_infill_density='10%', top_shell_layers='5', bottom_shell_layers='3',
                 support_threshold_angle='35')
 
+# For the look (2026-10-28, after the fastest print showed layer lines on the dome and strings over the grilles):
+# a variable layer-height profile does the real work (layer_profile below); the outer wall slows and prints between
+# its inner walls, the seam goes to the back as a scarf joint, and travel avoids crossing walls so it doesn't string
+# across the hundreds of grille holes.
+QUALITY = dict(FAST, layer_height='0.2', wall_loops='3', top_shell_layers='5', bottom_shell_layers='4',
+               outer_wall_speed='80', outer_wall_acceleration='3000', inner_wall_speed='200', top_surface_speed='100',
+               wall_sequence='inner-outer-inner wall', seam_position='back', seam_slope_type='external',
+               reduce_crossing_wall='1', support_threshold_angle='35')
+
+def layer_profile(m, h_min=0.08, h_max=0.24, cusp=0.045, step=0.5):
+    """(z, h) pairs for the slicer's variable layer height: the stair a layer leaves on a surface grows with how
+    flat that surface is, so each 0.5 mm band of the convex skin gets h = cusp / |n_z| of its flattest sloped point (dead-flat faces
+    slice clean and are skipped), clamped, then each band takes the finest h within 1 mm of it."""
+    import numpy as np
+    sk = m.convex_hull                                  # the skin you see: inner posts, hole walls and dots don't count
+    pts, fi = trimesh.sample.sample_surface_even(sk, 60000)
+    nz = np.abs(sk.face_normals[fi, 2]); zc = pts[:, 2]
+    top = m.bounds[1][2]; zs = np.arange(0.0, top + step, step)
+    need = np.full(len(zs), h_max)
+    sloped = (nz > 0.05) & (nz < 0.995)
+    for i, z in enumerate(zs):
+        sel = sloped & (np.abs(zc - z) <= step / 2)
+        if sel.any():
+            need[i] = np.clip(cusp / nz[sel].max(), h_min, h_max)
+    k = int(round(1.0 / step))
+    need = np.array([need[max(0, i - k):i + k + 1].min() for i in range(len(zs))])
+    return [(float(z), float(round(h, 3))) for z, h in zip(zs, need)]
+
 def meshes(face_down=False):
     for name, (x, y) in PLACE.items():
         m = trimesh.load(os.path.join(F, name + '.stl'))
@@ -67,8 +98,9 @@ NS = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
 def uuid(n):
     return '%08x-0000-4000-8000-%012x' % (n, n)
 
-def fast(face_down=False, out='node-mvp-fast.3mf', settings=None):
+def fast(face_down=False, out='node-mvp-fast.3mf', settings=None, adaptive=False):
     parts = list(meshes(face_down))
+    prof = []
     files, objs, items, rels, cfg = {}, [], [], [], ['<?xml version="1.0" encoding="UTF-8"?>', '<config>']
     for k, (name, m) in enumerate(parts):
         mesh_id, obj_id = 2 * k + 1, 2 * k + 2
@@ -89,6 +121,8 @@ def fast(face_down=False, out='node-mvp-fast.3mf', settings=None):
                      % (obj_id, uuid(200 + obj_id), c[0], c[1], c[2]))
         rels.append(' <Relationship Target="/%s" Id="rel-%d" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>'
                     % (path, k + 1))
+        if adaptive:                                    # Metadata/layer_heights_profile.txt: object_id=<n>|z;h;z;h;...
+            prof.append('object_id=%d|%s' % (k + 1, ';'.join('%.3f;%.3f' % zh for zh in layer_profile(m))))
         cfg += ['  <object id="%d">' % obj_id, '    <metadata key="name" value="%s"/>' % name,
                 '    <metadata key="extruder" value="1"/>']
         cfg += ['    <metadata key="%s" value="%s"/>' % kv for kv in (settings or FAST).items()]
@@ -116,6 +150,8 @@ def fast(face_down=False, out='node-mvp-fast.3mf', settings=None):
                                     '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
                                     '<Default Extension="config" ContentType="text/xml"/></Types>')
     files['Metadata/model_settings.config'] = '\n'.join(cfg)
+    if prof:
+        files['Metadata/layer_heights_profile.txt'] = '\n'.join(prof) + '\n'
     with zipfile.ZipFile(os.path.join(F, out), 'w', zipfile.ZIP_DEFLATED) as z:
         for order in ('[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model', '3D/_rels/3dmodel.model.rels'):
             z.writestr(order, files.pop(order))
@@ -128,4 +164,5 @@ if __name__ == '__main__':
     fast(face_down=True, out='node-mvp-facedown.3mf')
     fast(face_down=True, out='node-mvp-06.3mf', settings=NOZZLE06)
     fast(face_down=True, out='node-mvp-fastest.3mf', settings=FASTEST)
+    fast(face_down=True, out='node-mvp-quality.3mf', settings=QUALITY, adaptive=True)
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
