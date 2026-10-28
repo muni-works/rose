@@ -341,7 +341,7 @@ def design():
         add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
         epc = U['ep'][0]
-        add(f'cover-upperarm.{tag}a', bone(U['sr'][0] + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))
+        add(f'cover-upperarm.{tag}a', bone(U['sr'][0] + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, swell=1.12, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))   # design pass 2026-10-28: a bicep swell
         ey_ = U['ey'][0]
         tip = ey_ + KS.hang(J, M, side)
         wrist = ey_ + (tip - ey_) * 0.62
@@ -362,7 +362,7 @@ def design():
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
         low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=ma_['L'] / 2 + g_ + t_ + 3.3)
         fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
-        add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
+        add(f'cover-elbowfork.{tag}a', relief(low, hullof_(sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0))))   # design pass: one smooth cut (the forearm's 142 deg fold), not a faceted scoop
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
         bar = lambda segs, n_=2.4: M_(hull_rings([ring(c_, w, v, a_, b_, n=n_) for c_, a_, b_ in segs]))   # a rounded bar through sections
         if Wr is None:                                         # design pass 2026-10-28: a parallel gripper -- a palm block and two jaws
