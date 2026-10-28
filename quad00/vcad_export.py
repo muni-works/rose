@@ -303,6 +303,9 @@ def main(variant='mini', explodes=(0.0,)):
     global CX_HEAD, CX_NECK
     if NODE:
         CX_HEAD, CX_NECK = NODE_HEAD[variant], []
+    # the node's own neck trim (node.loon: the foot's outline 1 mm under it, flaring out of a column) replaces the cortex
+    # dock collar and plate (and hides the head's spine cable, which runs inside its column); it is cut where the saddle cheeks crown so it tucks into their cowl
+    NODE_DROP = ('cover-dockcollar', 'head-dock', 'cable-hspine') if NODE else ()
     KS.use(variant)
     KD = _patch()
     import k1 as K
@@ -317,7 +320,7 @@ def main(variant='mini', explodes=(0.0,)):
     n_native = n_mesh = 0
     has_cx = variant in ('mini', 'full')       # the cortex head (loon), scaled to the body
     for n, m in D + C:
-        if has_cx and n.startswith(CX_PY):
+        if has_cx and n.startswith(CX_PY + NODE_DROP):
             continue
         b = body_of(n)
         if b is None:
@@ -353,6 +356,13 @@ def main(variant='mini', explodes=(0.0,)):
             k_ = 1.0                                # each body has its own head: cortex.loon (mini), cortex-full.loon (full)
             src_ = nm if abs(k_ - 1.0) < 1e-3 else f'[scale {f(k_)} {f(k_)} {f(k_)} {nm}]'
             recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
+        if NODE:
+            cheek = next(m for n_, m in D + C if n_.startswith('cover-headcheek'))
+            zc = cheek.bounds[1][2] - (HF['zb']) - 3.0      # 3 mm into the cowl
+            neck = 'node-neck' if variant == 'mini' else 'full-neck'
+            src_ = f'[intersection {neck} [translate -200 -200 {f(zc)} [cube 400 400 {f(-zc - 0.5)}]]]'
+            recs.append((neck, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2])} {src_}]', 'cx:satin_black', False, o))
+            CX_NECK = [(neck, 'satin_black')]
         mod = 'node' if NODE else 'cortex'
         cx_link = os.path.join(outdir, mod + '.loon')
         cx_src = os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex',
