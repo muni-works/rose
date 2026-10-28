@@ -55,8 +55,6 @@ def hull_rings(rings, **meta):
     return m
 
 
-TORSO_DEPTH = {'mini': (1.0, 1.0), 'full': (0.74, 0.88)}   # depth at the waist / the chest, of the trunk envelope (torso pass
-                                       # 2026-10-28); the mini's pack, fans and rails fill its depth, so only the full gets thinner
 HAND_SPEC = {}                         # the U-joint hand per side ('l'/'r'), for hand_grasp.py
 JOINT_CAPS = False                     # the orange joint caps (pucks); off since 2026-10-20
 GROOVE_D, GROOVE_W = 1.2, 1.6          # parting lines: depth into the skin, width
@@ -187,11 +185,11 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
         # torso pass 2026-10-28 (K1-sleek): one straight, slightly full taper from the waist to the shoulder drums -- a
         # trapezoid like the K1's -- in place of a pinched waist and a concave funnel flaring late
         u = min(1.0, max(0.0, (z - z0) / (zf - z0)))
-        k = 0.68 + (flank / CH - 0.68) * u ** 1.7             # an athletic V: narrow waist, the lats flaring to broad shoulders
+        k = 0.56 + (flank / CH - 0.56) * u ** 1.9             # an athletic V: a narrow waist, the lats flaring to broad shoulders
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
         xm, h = (x0 + x1) / 2, (x1 - x0) / 2
-        d0, d1 = TORSO_DEPTH.get(KS.V['name'], (1.0, 1.0))
+        d0, d1 = KS.SHELL_DEPTH.get(KS.V['name'], (1.0, 1.0))
         h *= d0 + (d1 - d0) * u                               # shallower front to back: thin at the waist, fuller chest
         return xm, CH * k, h * (1 - lean)
     rf = 18.0 * Rk                                              # crown fillet (torso pass: crisper planes, not a pillow)
@@ -630,7 +628,7 @@ def design():
         bring = lambda z_, d_, k_=1.0: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by * k_ - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
         # design pass 2026-10-28: hips, not a box -- widest over the cans, drawing in to meet the waist (plan corners rounder too)
         prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + \
-              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.97), bring(bz1, 0.0, 0.86)]
+              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.94), bring(bz1, 0.0, max(0.62, min(0.86, KS.CHEST() * 0.60 / by)))]   # torso pass: its top meets the narrow waist
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
