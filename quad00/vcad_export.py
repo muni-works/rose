@@ -42,7 +42,7 @@ def _patch():
     return KD
 
 
-MATS = {'accentface': ('face_mint', 0.72, 0.95, 0.76, 0.0, 0.45), 'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
+MATS = {'cover': ('satin_black', 0.090, 0.094, 0.106, 0.1, 0.55), 'puck': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45),
         'accent': ('municipal_orange', 1.0, 0.353, 0.039, 0.0, 0.45), 'trim': ('gunmetal', 0.30, 0.32, 0.34, 0.8, 0.35),
         'visor': ('visor_glass', 0.02, 0.02, 0.025, 0.2, 0.05), 'sole': ('sole_rubber', 0.17, 0.176, 0.19, 0.0, 0.9),
         'plate': ('aluminium', 0.75, 0.76, 0.78, 0.9, 0.3), 'motor': ('motor_dark', 0.08, 0.085, 0.09, 0.6, 0.4),
@@ -348,8 +348,8 @@ def main(variant='mini', explodes=(0.0,)):
         else:
             n_native += 1
         mk = mat_of(n)
-        if NODE and n.startswith('trim-'):            # design pass 2026-10-28, one accent: the scattered gunmetal bands go satin
-            mk = 'accentface' if n.startswith('trim-neckring') else 'cover'   # ...and the yaw seam under the head glows the face's mint
+        if NODE and n.startswith('trim-'):            # design pass 2026-10-28: the scattered gunmetal bands go satin; no accent
+            mk = 'cover'                              # (the face is the only light on the body)
         if NODE and mk == 'plate' and n.startswith(('chassis-hipR', 'arm-', 'wrist-')):   # plates that show (hip roll, elbow, wrist): black anodize
             mk = 'cover'
         used_mats.add(mk)

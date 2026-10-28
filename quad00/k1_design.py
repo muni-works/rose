@@ -626,8 +626,11 @@ def design():
     secs = [(zb_, 1.48, 1.34), (z_cr + 0.45 * (zt_ - z_cr), 1.24, 1.16), (zt_, 1.08, 1.06)]   # pass 2: wider, fuller
     add('cover-necksleeve', hull_rings([rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
                                               kx * r_hub, ky * max(r_hub, yo_ + 3.0), 0.55 * r_hub, k=12) for z_, kx, ky in secs]))
+    # design pass 2026-10-28: the yaw seam as a 2 mm line inlaid on the sleeve itself -- each ring follows the sleeve's own
+    # taper at its height, 0.3 proud (was a flat collar 2.5 proud on the chest)
+    kxy = lambda z_: [np.interp(z_, [q[0] for q in secs], [q[i] for q in secs]) for i in (1, 2)]
     ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
-                   1.48 * r_hub + 3.5, 1.34 * max(r_hub, yo_ + 3.0) + 3.5, 0.55 * r_hub + 3.5, k=12) for z_ in (z_cr - 1.0, z_cr + 4.0)]   # design pass: taller + prouder (was 2.6 tall, 2.5 proud) so the accent reads
+                   kxy(z_)[0] * r_hub + 0.3, kxy(z_)[1] * max(r_hub, yo_ + 3.0) + 0.3, 0.55 * r_hub + 0.3, k=12) for z_ in (z_cr + 2.0, z_cr + 4.0)]   # design pass: a 2 mm inlaid line, 0.3 proud of the sleeve's foot (was a 2.6 tall collar, 2.5 proud)
     add('trim-neckring', hull_rings(ring_))                      # the yaw seam
     for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
         add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
