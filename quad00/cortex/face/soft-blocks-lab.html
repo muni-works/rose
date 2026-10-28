@@ -102,12 +102,34 @@ const HEADS = {
 };
 const COLORS = [{ id: 'mint', hex: '#b8e8d2' }, { id: 'frog', hex: '#6fe07a' }, { id: 'white', hex: '#f2efe8' }, { id: 'amber', hex: '#ffb347' }];
 // named points in the (valence, arousal) plane, plus where they look and an optional glyph
+// Each emotion is one clear idea. `pose` is the mouth's (w width, open, curve: + smile / - frown, side: shift
+// toward one cheek, tilt: one corner lower, round: an "o" rather than a lens, press: thinner lips) plus `pupil`
+// (size) and an entry motion (`bounce`). Everything eases in on springs, so any change is one smooth gesture.
+const POSE0 = { w: 0.085, open: 0, curve: 0.15, side: 0, tilt: 0, round: 0, press: 0, pupil: 1 };
 const MOODS = {
-  idle: { v: 0, a: 0 }, listening: { v: 0.2, a: 0.5, mode: 'listening' }, thinking: { v: 0, a: 0.2, gx: 0.55, gy: -0.6, mode: 'thinking' },
-  happy: { v: 0.9, a: 0.45 }, delighted: { v: 1, a: 0.9 }, surprised: { v: 0.2, a: 1 }, annoyed: { v: -0.7, a: 0.6 },
-  sad: { v: -0.75, a: -0.4, gy: 0.6 }, sleepy: { v: 0.05, a: -1, gy: 0.3 }, focused: { v: 0, a: -0.2, gy: 0.75 },
-  love: { v: 1, a: 0.4, glyph: 'heart' }, done: { v: 0.7, a: 0.2, glyph: 'check' }, speaking: { v: 0.35, a: 0.25, talk: true },
+  idle:      { v: 0, a: 0, pose: {} },
+  listening: { v: 0.2, a: 0.5, mode: 'listening', pose: { w: 0.075, open: 0.007, curve: 0.1, pupil: 1.15 } },
+  thinking:  { v: 0, a: 0.2, gx: 0.55, gy: -0.6, mode: 'thinking', pose: { w: 0.055, curve: -0.1, side: 0.55, tilt: 0.25, press: 0.5, pupil: 0.95 } },
+  happy:     { v: 0.9, a: 0.45, pose: { w: 0.11, open: 0.006, curve: 0.85, pupil: 1.05 } },
+  delighted: { v: 1, a: 0.9, bounce: 1.6, pose: { w: 0.12, open: 0.03, curve: 1, round: 0.15, pupil: 1.1 } },
+  surprised: { v: 0.2, a: 1, bounce: 1, pose: { w: 0.034, open: 0.034, curve: 0, round: 1, pupil: 0.72 } },
+  annoyed:   { v: -0.7, a: 0.6, pose: { w: 0.07, curve: -0.25, tilt: -0.6, press: 0.8, pupil: 0.9 } },
+  sad:       { v: -0.75, a: -0.4, gy: 0.6, pose: { w: 0.06, curve: -0.9, press: 0.2, pupil: 1.08, quiver: 1 } },
+  sleepy:    { v: 0.05, a: -1, gy: 0.3, pose: { w: 0.05, open: 0.005, curve: 0, round: 0.5, pupil: 0.9 } },
+  focused:   { v: 0, a: -0.2, gy: 0.75, pose: { w: 0.06, curve: -0.05, press: 1, pupil: 0.92 } },
+  love:      { v: 1, a: 0.4, glyph: 'heart', bounce: 0.8, pose: { w: 0.07, curve: 0.7, pupil: 1.2 } },
+  done:      { v: 0.7, a: 0.2, glyph: 'check', bounce: 0.6, pose: { w: 0.09, curve: 0.75 } },
+  speaking:  { v: 0.35, a: 0.25, talk: true, pose: { curve: 0.3 } },
 };
+let curMood = null;          // a named emotion, or null when the face comes from the pad or from Claude
+/** The pose for a state: the named emotion's, or one read off the emotion space. */
+function poseFor(s, name) {
+  if (name && MOODS[name]) return { ...POSE0, ...MOODS[name].pose };
+  const v = s.v || 0, a = s.a || 0, pos = x => Math.max(0, x);
+  return { ...POSE0, w: 0.085 + 0.03 * pos(v) - 0.03 * pos(a - 0.7) * 2, open: 0.02 * pos(a - 0.6) + 0.01 * pos(v) * pos(a),
+    curve: v * 0.9, round: pos(a - 0.75) * 3 * (1 - pos(v)), press: pos(-v) * pos(a) * 1.2 + pos(-a) * 0.3,
+    tilt: -pos(-v) * pos(a) * 0.6, pupil: 1 + 0.1 * v - 0.25 * pos(a - 0.8) * 4 };
+}
 const GLYPHS = ['none', 'heart', 'star', 'check', 'cross', 'diamond'];
 
 let head = 'mini', color = COLORS[0].hex, finish = 'glow', follow = false, pointer = { x: 0, y: 0 };
@@ -218,7 +240,7 @@ function drawFace(c, t, s, col, opts = {}) {
     const pv = 1 - s.g;
     if (pv > 0.02) {
       const ew = e.w * P.size * grow, eh = e.h * P.size * grow;
-      const dil = 1 + 0.45 * listen + 0.15 * (s.hear || 0) - 0.15 * pos(s.v) * 0.5;
+      const dil = (s.pupil || 1) * (1 + 0.3 * listen + 0.15 * (s.hear || 0));
       const scan = think * Math.sin(t / 260 + side * 0.4) * 0.3;
       const pw = ew * 0.52 * dil, ph = eh * 0.4 * dil;   // big soft oval pupil
       const px = cx + (s.gx * 0.3 + scan) * ew, py = cy + s.gy * 0.24 * eh - think * 0.12 * eh;
@@ -268,11 +290,12 @@ function drawMouth(c, t, s, col, opts) {
   const br = 0.5 + 0.5 * Math.sin(t / 1400);
   c.save();
   c.globalCompositeOperation = 'lighter';
-  if (listen > 0.02) for (let i = -2; i <= 2; i++) {            // your voice: soft pills
+  const own = mouth === 'liquid';                                  // the liquid mouth shows these states itself
+  if (listen > 0.02 && !own) for (let i = -2; i <= 2; i++) {      // your voice: soft pills
     const h = 0.022 + (s.hear || 0) * (1 - Math.abs(i) / 3.2) * (0.6 + 0.4 * Math.sin(t / 160 + i * 1.7)) * 0.07;
     glowFill(c, col, listen * 0.85, () => c.roundRect(x + i * 0.035 * k - 0.009, y - h / 2, 0.018, h, 0.009));
   }
-  if (think > 0.02) for (let i = 0; i < 3; i++) {
+  if (think > 0.02 && !own) for (let i = 0; i < 3; i++) {
     const yy = y - Math.max(0, Math.sin(t / 166 - i * 0.9)) * 0.014;
     glowFill(c, col, think * 0.9, () => c.arc(x + (i - 1) * 0.035 * k, yy, 0.011, 0, 7));
   }
@@ -346,7 +369,7 @@ function drawMouth(c, t, s, col, opts) {
     c.globalAlpha = 0.95; c.lineWidth = 0.009; lips(); c.stroke();                           // tube
     c.strokeStyle = '#ffffff'; c.globalAlpha = 0.5; c.lineWidth = 0.003; lips(); c.stroke(); // hot core
   } else if (mouth === 'liquid') {
-    liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br);
+    liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br, s);
   } else if (mouth === 'aurora') {
     // ~150 motes of light on a lip-shaped orbit, swirling: the voice spreads and brightens them, quiet
     // gathers them into a calm line
@@ -386,18 +409,30 @@ function drawMouth(c, t, s, col, opts) {
 // core where it's thickest, a sheen along the top.
 const LIQ_N = 9;
 const liq = { up: [], dn: [], last: 0, can: null, img: null, pulse: 0, prevAmp: 0 };
-function liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br) {
+function liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br, s) {
   const vis = visemeAt(t, talk, opts);
   const speaking = talk > 0.05;
   const amp = speaking ? (opts.still ? 0.6 : voice(t)) : 0;
-  const w = (speaking ? 0.06 + vis[0] * 1.1 : 0.085 + 0.004 * br) * k;
-  const open = speaking ? Math.max(0.002, vis[1] * (0.7 + 0.6 * amp)) * k : 0;
-  // targets: lips bow apart in the middle, meet at the corners; corners ride the mood
+  // the emotion's pose, eased (the thumbnails take it as it is)
+  const want = poseFor(s, s.name ?? curMood);
+  if (!liq.pose) liq.pose = { ...want };
+  if (!opts.still) for (const key in want) liq.pose[key] += (want[key] - liq.pose[key]) * 0.09;
+  const P0 = opts.still ? want : liq.pose;
+  const tt = t / 1000;
+  const breath = speaking ? 0 : 0.004 * Math.sin(tt * 1.3) * (1 - (s.listen || 0));          // listening holds its breath
+  const drift = (s.think || 0) * 0.25 * Math.sin(tt * 0.9);                                    // thinking: a slow sidelong drift
+  const quiver = (P0.quiver || 0) * (Math.sin(tt * 23) * 0.5 + 0.5) * Math.max(0, Math.sin(tt * 0.7)) ** 8 * 0.003;
+  const w = (speaking ? Math.max(P0.w, 0.045 + vis[0] * 1.05) : P0.w * (1 + breath * 3)) * k;
+  const open = (speaking ? Math.max(0.002, vis[1] * (0.7 + 0.6 * amp)) + P0.open * 0.5 : P0.open) * k;
+  const cx = x + (P0.side + drift) * 0.02 * k;
+  // lips: bow apart in the middle (a lens, or toward an ellipse when round), meet at the corners; the corners carry
+  // the curve (smile/frown), the tilt lowers one of them
   const target = (i, lower) => {
-    const f = i / (LIQ_N - 1) - 0.5, bell = Math.cos(f * Math.PI);
-    const corner = -smile * 0.02 * (4 * f * f);
-    const ty = y + corner + (lower ? 1.1 : -0.9) * open / 2 * bell + (lower ? 0.004 : -0.004) * (1 - bell * 0.5);
-    return [x + f * w, ty];
+    const f = i / (LIQ_N - 1) - 0.5;
+    const bell = (1 - P0.round) * Math.cos(f * Math.PI) + P0.round * Math.sqrt(Math.max(0, 1 - 4 * f * f));
+    const corner = -(P0.curve * 0.022) * (4 * f * f) + P0.tilt * 0.012 * f + quiver * Math.sign(f) * 4 * f * f;
+    const ty = y + corner + (lower ? 1.1 : -0.9) * open / 2 * bell + (lower ? 0.004 : -0.004) * (1 - bell * 0.5) * (1 - 0.6 * P0.press);
+    return [cx + f * w, ty];
   };
   if (!liq.up.length || opts.still) {
     for (const lip of ['up', 'dn']) liq[lip] = Array.from({ length: LIQ_N }, (_, i) => { const [tx, ty] = target(i, lip === 'dn'); return { x: tx, y: ty, vx: 0, vy: 0 }; });
@@ -423,7 +458,7 @@ function liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br) {
   const bw = 0.42 * k, bh = 0.2 * k, bx = x - bw / 2, by = y - bh / 2;
   const W = 210, H = 100;
   if (!liq.can) { liq.can = document.createElement('canvas'); liq.can.width = W; liq.can.height = H; liq.img = liq.can.getContext('2d').createImageData(W, H); }
-  const r0 = (speaking ? 0.0105 : 0.0115) * k * (1 + 0.04 * Math.sin(t / 900));
+  const r0 = (speaking ? 0.0105 : 0.0115) * k * (1 + 0.04 * Math.sin(t / 900)) * (1 - 0.32 * P0.press) * (1 - 0.25 * P0.round * (speaking ? 0 : 1));
   const balls = [];
   for (const lip of ['up', 'dn']) liq[lip].forEach((d, i) => {
     const f = i / (LIQ_N - 1) - 0.5;
@@ -559,6 +594,7 @@ pad.addEventListener('keydown', e => {
   if (d) { e.preventDefault(); setEmotion(tgt.v + d[0], tgt.a + d[1]); }
 });
 function setEmotion(v, a, look) {
+  curMood = null;
   tgt.v = Math.max(-1, Math.min(1, v)); tgt.a = Math.max(-1, Math.min(1, a));
   tgt.gx = look?.gx ?? null; tgt.gy = look?.gy ?? null; tgt.mode = 'idle';
   pressed('moods', null);
@@ -578,6 +614,7 @@ function chips(id, items, label, onPick, swatch, first = 0) {
   });
 }
 const goMood = k => { const m = MOODS[k];
+  setTimeout(() => { curMood = k; if (m.bounce) liq.pulse = m.bounce; }, 0);
   if (m.talk) { // the lab has no voice: say a sample line so the mouths have something to speak
     caption = ''; setCaption("Hi, I'm frog. Want me to run the tests and tell you what broke?");
     st.talk = 1; clearTimeout(goMood.t); goMood.t = setTimeout(() => { st.talk = 0; setCaption('', true); }, 5200);
@@ -665,7 +702,7 @@ function paintThumbs() {
     const m = MOODS[k], c = cv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#07090b'; c.fillRect(0, 0, 220, 220);
     c.setTransform(220, 0, 0, 220, 0, 0);
-    drawFace(c, 0, { v: m.v, a: m.a, gx: m.gx || 0, gy: m.gy || 0, vgx: 0, vgy: 0, g: m.glyph ? 1 : 0, glyph: m.glyph || 'none', talk: m.talk ? 1 : 0, listen: +(m.mode === 'listening'), think: +(m.mode === 'thinking') }, color, { still: true });
+    drawFace(c, 0, { v: m.v, a: m.a, gx: m.gx || 0, gy: m.gy || 0, vgx: 0, vgy: 0, g: m.glyph ? 1 : 0, glyph: m.glyph || 'none', talk: m.talk ? 1 : 0, listen: +(m.mode === 'listening'), think: +(m.mode === 'thinking'), name: k, pupil: poseFor(m, k).pupil }, color, { still: true });
   }
 }
 
@@ -692,6 +729,7 @@ function frame(now) {
     [st.a, st.va] = spring(st.a, st.va, tgt.a, dt, 90, 16);
     [st.listen, st.vl] = spring(st.listen, st.vl, tgt.mode === 'listening' ? 1 : 0, dt, 120, 14);
     [st.think, st.vt] = spring(st.think, st.vt, tgt.mode === 'thinking' ? 1 : 0, dt, 120, 16);
+    st.pupil = (st.pupil || 1) + (poseFor(st, curMood).pupil - (st.pupil || 1)) * Math.min(1, dt * 7);
     [st.gx, st.vgx] = spring(st.gx, st.vgx, gx, dt, 520, 38);    // saccades: fast, a touch of overshoot
     [st.gy, st.vgy] = spring(st.gy, st.vgy, gy, dt, 520, 38);
     const gTo = tgt.glyph === 'none' ? 0 : 1;
