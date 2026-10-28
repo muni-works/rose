@@ -35,7 +35,7 @@ VARIANTS = {
     # 2 m, full/SIZING.md) -- this is a packaging/kinematics/look model until the rana actuators exist.
     'full': dict(scale=170.3 / 94.0, big='rs04', yaw='rs04', arm='rs04', ankle='rs04', head='rs02', arm_out=32.0,
                  ankle_f=None, head_z=395.5, flat=1.3, shin_gap=6.4, web_x=None, hub_bore=None, elbow_dz=0.0,
-                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', ky=0.85, trunk_kx=0.88, leg_in=30.0, torso_lean=0.25),
+                 foot_drop=0.0, pocket=(68.0, 79.0), plate_t=6.35, waist='rs04', waist_dz=100.0, wrist='rs00', wrist_ujoint=True, ky=0.85, trunk_kx=0.88, leg_in=30.0, torso_lean=0.25),
 }
 V = dict(VARIANTS['mini'], name='mini')
 
@@ -108,7 +108,10 @@ def wrist_layout(J, side, M=None):
     wz = ey[2] + hang(J, M, side)[2] * 0.62
     rz = (ey[2] - ma['D'] / 2 + wz) / 2                                    # roll mid-forearm
     yz = wz - mw['D'] / 2 - 12.0 - mw['D'] / 2                              # yaw under the pitch, 12 mm apart (the P0/P1 corner)
-    return dict(s=s, r_sl=r_sl, roll=(np.array([ey[0], yc, rz]), np.array([0, 0, -1.0])), pitch=(np.array([ey[0], yc, wz]), np.array([0, s * 1.0, 0])),
+    if V.get('wrist_ujoint'):                                              # hands pass 2026-10-28: the yaw can leaves the palm --
+        rz = ey[2] - ma['D'] / 2 - G - T - mw['L'] / 2 - 4.0                # the roll goes up under the elbow, and pitch + yaw
+        yz = wz                                                            # become one U-joint at the wrist, driven from the forearm
+    return dict(s=s, r_sl=r_sl, ujoint=bool(V.get('wrist_ujoint')), roll=(np.array([ey[0], yc, rz]), np.array([0, 0, -1.0])), pitch=(np.array([ey[0], yc, wz]), np.array([0, s * 1.0, 0])),
                 yaw=(np.array([ey[0], yc, yz]), np.array([1.0, 0, 0])))
 
 
@@ -127,6 +130,9 @@ def wrist(J, side, M):
     F2 = L.unary_union([L.circle(rc[0], rc[1], mw['D'] / 2), Rr(rc[0] - 22, rc[1], rc[0] + 22, s * (y_f1 + T))])
     out.append((f'wrist-F2.{tag}a', plate(F2.difference(holes(mw, 'back', (rc[0], rc[1]), 45)), 'xy', z_f2)))
     z_r0 = rc[2] - mw['L'] / 2 - G - T
+    if W.get('ujoint'):
+        return out[:1] + [out_ for out_ in [(f'wrist-F2.{tag}a', plate(F2.difference(holes(mw, 'back', (rc[0], rc[1]), 45)), 'xy', z_f2))]] + \
+            ujoint_wrist(W, mw, s, tag, z_r0, ey + hang(J, M, side))
     yr1 = abs(pc[1]) - mw['L'] / 2 - G - T                                # pitch stator back (inboard)
     R0 = L.unary_union([L.circle(rc[0], rc[1], mw['D'] / 2), Rr(rc[0] - 12, rc[1], rc[0] + 12, s * yr1)])
     out.append((f'wrist-R0.{tag}a', plate(R0.difference(holes(mw, 'out', (rc[0], rc[1]))), 'xy', z_r0)))
@@ -143,6 +149,56 @@ def wrist(J, side, M):
     tip = ey + hang(J, M, side)
     H0 = L.unary_union([L.circle(yc[1], yc[2], mw['out'][0] / 2 + 14), Rr(yc[1] - 16, yc[2], yc[1] + 16, tip[2] + 40.0 * R())])
     out.append((f'wrist-H0.{tag}a', plate(H0.difference(holes(mw, 'out', (yc[1], yc[2]))), 'yz', x_h0)))
+    return out
+
+
+LA_WRIST = dict(D=20.0, L=70.0, stroke=24.0, N=300.0)      # forearm linear actuators (ASSUMED: a 20 mm micro leadscrew class)
+LA_HAND = dict(D=10.0, L=42.0, stroke=10.0, N=60.0)         # palm linear actuators (ASSUMED: the dexterous-hand micro class)
+HAND_FX = (28.0, 9.5, -9.5, -28.0)                           # finger centres along x from the palm centre (k1_design)
+
+
+def _rod(p0, p1, r):
+    return trimesh.creation.cylinder(radius=r, segment=[np.asarray(p0, float), np.asarray(p1, float)], sections=32)
+
+
+def ujoint_wrist(W, mw, s, tag, z_r0, tip):
+    """the 7-DoF arm's wrist with nothing in the palm (hands pass 2026-10-28): roll under the elbow -> R0 -> a yoke down to
+    one U-joint (pitch y, yaw x, the same centre) -> the hand frame. Pitch and yaw are differential: two linear actuators
+    in the rolling forearm, aft of the axis and +-16 in y, push rods to the hand frame -- together they pitch, against
+    each other they yaw. The palm carries six more: one per finger (a four-bar curls its three phalanges together) and
+    two for the thumb (flex, and the swing across the palm)."""
+    rc, wc = W['roll'][0], W['pitch'][0]
+    x0, yc, wz = wc[0], wc[1], wc[2]
+    out = []
+    R0 = L.unary_union([L.circle(rc[0], rc[1], mw['D'] / 2), Rr(rc[0] - 30, rc[1] - 26, rc[0] + 22, rc[1] + 26)])
+    out.append((f'wrist-R0.{tag}a', plate(R0.difference(holes(mw, 'out', (rc[0], rc[1]))), 'xy', z_r0)))
+    for k, sy in (('a', 1), ('b', -1)):                                    # the yoke: two lugs either side of the cross
+        yl = yc + sy * 16.0
+        lug = L.unary_union([L.circle(x0, wz, 13.0), Rr(x0 - 13, wz, x0 + 13, z_r0)])
+        out.append((f'wrist-R1{k}.{tag}a', plate(lug.difference(L.circle(x0, wz, 3.0)), 'xz', yl if sy > 0 else yl - T, t=T)))
+    out.append((f'wrist-P0x.{tag}a', trimesh.creation.box(extents=[18.0, 18.0, 18.0]).apply_translation([x0, yc, wz])))   # the cross
+    zla0 = z_r0 - 2.0
+    zb = zla0 - LA_WRIST['L']
+    for k, sy in (('a', 1), ('b', -1)):                                    # the differential pair, aft of the axis
+        c = np.array([x0 - 24.0, yc + sy * 14.0])
+        out.append((f'wrist-R1la{k}.{tag}a', _rod([c[0], c[1], zla0], [c[0], c[1], zb], LA_WRIST['D'] / 2)))
+        out.append((f'wrist-R1rod{k}.{tag}a', _rod([c[0], c[1], zb], [c[0], c[1], wz - 16.0], 3.0)))
+    zh = wz - 24.0                                                         # the hand frame, under the cross
+    for k, sx in (('a', 1), ('b', -1)):
+        lug = L.unary_union([L.circle(yc, wz, 11.0), Rr(yc - 11, wz, yc + 11, zh)])
+        out.append((f'wrist-H0{k}.{tag}a', plate(lug.difference(L.circle(yc, wz, 3.0)), 'yz', x0 + sx * 12.0 if sx > 0 else x0 - 12.0 - 4.0, t=4.0)))
+    out.append((f'wrist-H0f.{tag}a', trimesh.creation.box(extents=[40.0, 30.0, 4.0]).apply_translation([x0 - 2.0, yc, zh - 6.0])))
+    zt = tip[2] - 50.0; Lh = (wz - 0.0) - zt; zk = wz - 0.50 * Lh             # the knuckle line (k1_design draws the shell)
+    palm = Rr(x0 + 4 - 36, zh - 8, x0 + 4 + 32, zk + 8, 10.0)
+    out.append((f'wrist-H0palm.{tag}a', plate(palm, 'xz', yc + s * 6.0 if s > 0 else yc + s * 6.0 - 3.0, t=3.0)))
+    yla = yc - s * 4.0                                                     # on the palm side of the frame
+    for i, fx in enumerate(HAND_FX):
+        x = x0 + 4.0 + fx * 0.96
+        out.append((f'wrist-H0la{i}.{tag}a', _rod([x, yla, zh - 8.0], [x, yla, zh - 8.0 - LA_HAND['L']], LA_HAND['D'] / 2)))
+        out.append((f'wrist-H0link{i}.{tag}a', _rod([x, yla, zh - 8.0 - LA_HAND['L']], [x, yla - s * 2.0, zk + 2.0], 1.6)))   # to the MCP crank
+    xt = x0 + 4.0 + 34.0
+    out.append((f'wrist-H0la4.{tag}a', _rod([xt, yla - s * 2.0, zh - 6.0], [xt, yla - s * 2.0, zh - 6.0 - 32.0], LA_HAND['D'] / 2)))   # thumb flex
+    out.append((f'wrist-H0la5.{tag}a', _rod([xt - 34.0, yla + s * 3.0, zh - 12.0], [xt - 2.0, yla + s * 3.0, zh - 12.0], LA_HAND['D'] / 2)))   # thumb swing
     return out
 
 

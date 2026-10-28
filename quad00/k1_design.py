@@ -55,6 +55,7 @@ def hull_rings(rings, **meta):
     return m
 
 
+HAND_SPEC = {}                         # the U-joint hand per side ('l'/'r'), for hand_grasp.py
 JOINT_CAPS = False                     # the orange joint caps (pucks); off since 2026-10-20
 GROOVE_D, GROOVE_W = 1.2, 1.6          # parting lines: depth into the skin, width
 
@@ -183,7 +184,7 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
     def sec(z):
         zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
-            k = 0.80 + (0.97 - 0.80) * ss(z0, zh, z)
+            k = 0.72 + (0.97 - 0.72) * ss(z0, zh, z)           # design pass: a real waist (was 0.80)
         else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
             u = min(1.0, max(0.0, (z - zh) / (zf - zh)))       # full width by the drum's bottom: the side wraps the whole drum
             k = 0.97 + (flank / CH - 0.97) * u ** 3
@@ -246,6 +247,23 @@ def sweep_union(parts, center, axes_ranges, scale=1.0, step=5.0):
     return Manifold.batch_boolean(out, OpType.Add)
 
 
+def rounded(m, r, pitch=0.5):
+    """m with every convex edge rounded to radius r: a morphological opening (erode, then dilate, by a ball) on a voxel
+    grid, meshed back with marching cubes. Opening only removes material, so a clearance cut stays clear."""
+    from scipy import ndimage
+    from skimage import measure
+    lo = m.bounds[0] - 2 * r - 2 * pitch
+    vox = m.voxelized(pitch).fill()
+    g = np.pad(vox.matrix, int(2 * r / pitch) + 2)
+    k = int(round(r / pitch)); z, y, x = np.ogrid[-k:k + 1, -k:k + 1, -k:k + 1]; ball = x * x + y * y + z * z <= k * k
+    g = ndimage.binary_dilation(ndimage.binary_erosion(g, ball), ball)
+    g = ndimage.gaussian_filter(g.astype(np.float32), 1.2)            # ~0.6 mm of blur: no voxel ripple
+    v, f, _, _ = measure.marching_cubes(g, 0.5)
+    org = vox.transform[:3, 3] - (int(2 * r / pitch) + 2) * pitch
+    out = trimesh.Trimesh(v * pitch + org, f[:, ::-1], process=True)
+    return tm(M_(out).simplify(0.1))
+
+
 def relief(shell, mover):
     """shell minus a neighbour's swept path: the clearance cut a moving joint needs."""
     return tm((M_(shell) - mover).simplify(0.4))                # sweeps leave thousands of facets; 0.4 mm is invisible
@@ -285,7 +303,7 @@ def design():
         Hk, ck, rk, Lk = housing(jp(kn) + kshift, ja(kn), KS.V['big'], extra_len=xl)    # encloses the thigh plate pair (the clevis cheeks)
         add(f'cover-knee.{tag}l', Hk); add(f'puck-knee.{tag}l', ck)
         add(f'trim-yawring.{tag}l', cyl(yaw_bot, [0, 0, 1.0], ry_ - 2, 4.0))
-        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)
+        thigh = bone(yaw_bot + np.array([0, 0, 12.0]), ry_ * 0.92, jp(kn), rk * 0.86, swell=1.16 if KS.V['name'] == 'full' else 1.0, flat=KS.V['flat'], n=3.0, half_w=Lk / 2)   # full: a quad swell
         ank = jp(an)
         # the calf nests between the thigh plates (a clevis knee): narrower, centred on the shin plates
         if KS.V['name'] == 'mini':
@@ -298,6 +316,9 @@ def design():
         r0c = rk * ck0
         # mini: a sculpted calf -- full just under the knee, slim at the ankle; never thinner than the ankle cans need
         cdep = [(0.0, r0c), (0.16, r0c * 1.14), (0.40, r0c * 0.98), (0.68, r0c * 0.82), (1.0, 26.0)] if KS.V['name'] == 'mini' else None
+        if KS.V['name'] == 'full':                             # design pass 2026-10-28: the full gets a calf too, ending over the ankle cans
+            r_an = max(30.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 2.0)
+            cdep = [(0.0, r0c), (0.18, r0c * 1.12), (0.42, r0c * 1.02), (0.72, max(r0c * 0.86, r_an)), (1.0, r_an)]
         calf = bone(jp(kn) + yo, r0c, ank + yo + np.array([0, 0, 14.0 * max(1.0, KS.R())]), max(30.0 * max(1.0, KS.R()), KS.ANK()['D'] / 2 + 2.0 if KS.R() > 1.5 else 0.0), flat=KS.V['flat'], n=3.0, half_w=chw, depth=cdep)
         cmid = (jp(kn) + ank) / 2 + yo
         add(f'cover-calf.{tag}l', grooved(calf, [('frame', 0, cmid + np.array([0, 0, 18.0]), chw - 9.0, 0.30 * np.linalg.norm(jp(kn) - ank), 10.0)]))   # a shin panel, front and back
@@ -320,8 +341,10 @@ def design():
             if t in (0.0, 1.0):
                 a *= 0.75; h *= 0.85
             yc = (lo[1] + hi[1]) / 2
-            rings.append(ring(np.array([x, yc, z0 + 7 + h / 2]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a, h / 2, n=3.0))
-            sole.append(ring(np.array([x, yc, z0 + 3.5]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a + 1.5, 3.5, n=5.0))
+            # design pass 2026-10-28: toe spring (the last 25 % lifts) and a rounded heel (the first 12 % lifts), so it can roll
+            lift = 7.0 * max(0.0, (t - 0.75) / 0.25) ** 2 * KS.R() + 4.0 * max(0.0, (0.12 - t) / 0.12) ** 2 * KS.R()
+            rings.append(ring(np.array([x, yc, z0 + 7 + h / 2 + lift]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a, h / 2, n=3.0))
+            sole.append(ring(np.array([x, yc, z0 + 3.5 + lift]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), a + 1.5, 3.5, n=5.0))
         shoe = tm(Manifold.hull_points(np.concatenate(rings).astype(np.float32)))
         lower = (M_(calf) + M_(Ha)) ^ Manifold.cube([400, 400, 200]).translate([ank[0] - 200, ank[1] - 200, ank[2] - 40])
         add(f'cover-shoe.{tag}l', relief(shoe, sweep_union(lower, ank, [(ja(an), -52, 52), ([1.0, 0, 0], -22, 22)], scale=1.07, step=6.0)))   # instep pocket for the ankle
@@ -336,7 +359,7 @@ def design():
         add(f'trim-upperarm.{tag}a', Hue)              # the upper-arm rotation: a gunmetal drum mid-arm
         add(f'cover-elbow.{tag}a', Hel); add(f'puck-elbow.{tag}a', cel)
         epc = U['ep'][0]
-        add(f'cover-upperarm.{tag}a', bone(U['sr'][0] + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))
+        add(f'cover-upperarm.{tag}a', bone(U['sr'][0] + np.array([0, 0, -rsr * 0.5]), rsr * 0.8, epc, rue * 0.9, swell=1.12, lateral=(0, 1.0, 0), half_w=Lsr / 2 - 8))   # design pass 2026-10-28: a bicep swell
         ey_ = U['ey'][0]
         tip = ey_ + KS.hang(J, M, side)
         wrist = ey_ + (tip - ey_) * 0.62
@@ -357,25 +380,106 @@ def design():
         # lower upper arm: rotation drum down to the elbow, full width, with the forearm's fold cut out of it (a clevis, like the knee)
         low = bone(np.array([epc[0], epc[1], Hue.bounds[0][2] - 1.0]), rue * 0.9, ey_, rel * 0.85, flat=1.25, lateral=(0, 1.0, 0), half_w=ma_['L'] / 2 + g_ + t_ + 3.3)
         fat = M_(bone(ey_ + fo, rel * 0.8 + 3, wrist + fo, 21.0, lateral=(0, 1.0, 0), half_w=f_half + 1.5, depth=[(t, r + 3.0) for t, r in fdep]))
-        add(f'cover-elbowfork.{tag}a', relief(low, sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0)))
+        # design pass 2026-10-28: the forearm's full 142 deg fold stays; its cut's edges are rounded (a 4 mm morphological
+        # opening: only removes material, so the clearance holds)
+        add(f'cover-elbowfork.{tag}a', rounded(relief(low, hullof_(sweep_union(fat, ey_, [(U['ey'][1], -142, 2)], step=4.0))), 4.0))
         u = unit(tip - wrist); v = unit(np.cross(u, [0, 1.0, 0])) if abs(u[1]) < 0.9 else unit(np.cross(u, [1.0, 0, 0])); w = np.cross(u, v)
-        if Wr is None:
-            palm = [ring(wrist + u * t, w, v, 13 * f, 22 * f, n=2.4) for t, f in ((4, 0.9), (18, 1.0), (40, 1.0), (56, 0.85), (66, 0.55), (71, 0.25))]
-            add(f'cover-hand.{tag}a', hull_rings(palm))
+        bar = lambda segs, n_=2.4: M_(hull_rings([ring(c_, w, v, a_, b_, n=n_) for c_, a_, b_ in segs]))   # a rounded bar through sections
+        if Wr is None:                                         # design pass 2026-10-28: a parallel gripper -- a palm block and two jaws
+            # hands pass 2026-10-28: a parallel gripper that reads as one -- a palm block, a slide rail across its foot, and
+            # two wide flat pads that close along it (faces 18 apart), each with a raised grip face on the inside
+            body_ = bar([(wrist + u * t, 15 * f, 24 * f) for t, f in ((4, 0.9), (14, 1.0), (32, 1.0), (36, 0.94))])
+            rail = bar([(wrist + u * 38.0 + v * sg * 26.0, 7.0, 4.0) for sg in (1, -1)], n_=3.0)
+            jaws = []
+            for sg in (1, -1):
+                jaws.append(bar([(wrist + u * t + v * sg * 15.0, a_, 5.0) for t, a_ in ((34, 15.0), (44, 15.0), (76, 13.0), (82, 9.0))], n_=4.0))
+                jaws.append(bar([(wrist + u * t + v * sg * 9.6, a_, 1.2) for t, a_ in ((50, 11.0), (76, 10.0))], n_=6.0))   # grip face
+            jaws = Manifold.batch_boolean(jaws, OpType.Add); jaws = [jaws, rail]
+            add(f'cover-hand.{tag}a', tm(body_ + jaws[0] + jaws[1]))
             add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
-        else:                                                  # round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
+        elif Wr.get('ujoint'):                                 # hands pass 2026-10-28: the U-joint wrist, nothing but actuators in the palm
+            WS = dict(KS.wrist(J, side, M))
+            wc = Wr['pitch'][0]; wz = wc[2]
+            z_sl0, z_sl1 = rcw[2] + mw['L'] / 2 + 1.0, wz + 30.0              # the sleeve: roll can + the differential pair, to above the U-joint
+            add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1))
+            add(f'trim-wristpitch.{tag}a', cyl(np.array([rcw[0], rcw[1], z_sl1 + 2.0]), [0, 0, 1.0], r_sl + 0.8, 4.0))   # the cuff's lip
+            # a ribbed rubber boot over the U-joint and the rods, sleeve to hand (it flexes; drawn at rest)
+            zb0, zb1 = z_sl1 + 0.5, wz - 36.0                                 # down into the hand: over its frame plate
+            boot = [rrect(np.array([wc[0] - 4.0, wc[1], z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), r_, r_ * 0.86, r_ * 0.8, k=12)
+                    for z_, r_ in [(zb0 + (zb1 - zb0) * t_, (r_sl - 4.0) - 8.0 * t_ + (2.0 if i_ % 2 else 0.0)) for i_, t_ in enumerate(np.linspace(0, 1, 9))]]
+            add(f'cover-wristboot.{tag}a', tm(Manifold.batch_boolean([Manifold.hull_points(np.concatenate([a_, b_]).astype(np.float32)) for a_, b_ in zip(boot, boot[1:])], OpType.Add)))
+            cw = np.array([wc[0] + 4.0, wc[1], 0])
+            zt = tip[2] - 50.0
+            Lh = wz - zt; zk = wz - 0.50 * Lh                               # the knuckle line (matches KS.ujoint_wrist)
+            # the palm, no can in it: a 26 mm dome over the U-joint, then the back of the hand at 21 half-thick over the frame
+            # and the six actuators, thinning to the knuckles
+            dome = [(wz + 26.0 * math.cos(th), max(26.0 * math.sin(th), 6.0), max(26.0 * math.sin(th), 6.0)) for th in np.linspace(0.15, 1.45, 6)]
+            body_ = [(wz - 0.16 * Lh, 21.0, 40.0), (wz - 0.30 * Lh, 21.0, 44.0), (zk + 0.08 * Lh, 18.0, 44.0), (zk, 14.0, 42.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, b_, n=2.4) for z_, a_, b_ in dome + body_]
+            curl = -s * 1.0
+            fingers, phal = [], []
+            for fx, fl, fw in ((28.0, 0.90, 0.92), (9.5, 1.0, 1.0), (-9.5, 0.96, 0.97), (-28.0, 0.78, 0.86)):
+                Lf = 0.56 * Lh * fl
+                phal.append([])
+                for k_, (t0, t1, c0, c1) in enumerate([(0.0, 0.44, 0.0, 10.0), (0.46, 0.74, 5.0, 14.0), (0.76, 1.0, 14.0, 22.0)]):
+                    r0 = fw * (10.2 - 1.8 * k_); r1 = fw * (9.5 - 1.8 * k_ - (1.8 if k_ == 2 else 0.0))
+                    p0 = np.array([cw[0] + fx * (1 + 0.04 * t0), cw[1] + curl * c0, zk + 4.0 - Lf * t0])
+                    p1 = np.array([cw[0] + fx * (1 + 0.04 * t1), cw[1] + curl * c1, zk + 4.0 - Lf * t1])
+                    fingers.append(bar([(p0, r0 * 1.15, r0), ((p0 + p1) / 2, r0 * 1.12, r0 * 0.98), (p1, r1 * 1.1, r1)], n_=2.2))
+                    phal[-1].append((p0, p1, r0, r1))
+            th0 = np.array([cw[0] + 34.0, cw[1] - s * 2.0, wz - 0.30 * Lh])
+            th1 = th0 + np.array([12.0, curl * 8.0, -0.20 * Lh]); th2 = th1 + np.array([2.0, curl * 16.0, -0.16 * Lh])
+            fingers.append(bar([(th0, 11.0, 11.0), (th1, 9.5, 9.0)], n_=2.2))
+            fingers.append(bar([(th1 + (th2 - th1) * 0.08, 8.5, 8.0), (th2, 6.5, 6.0)], n_=2.2))
+            # the hand pitches +-45 and yaws +-30 about the U-joint: carve what the sleeve, its lip and the forearm pair sweep
+            fore = M_(cyl(np.array([rcw[0], rcw[1], (z_sl1 + wz + 80.0) / 2 + 2.0]), [0, 0, 1.0], r_sl + 1.5, 80.0 - z_sl1 + wz + 6.0))
+            for k in ('wrist-R1laa', 'wrist-R1lab', 'wrist-R1roda', 'wrist-R1rodb'):
+                fore = fore + M_(WS[f'{k}.{tag}a'])
+            hand = M_(hull_rings(palm)) - hullof_(sweep_union(fore, wc, [((0, 1.0, 0), -45, 45), ((1.0, 0, 0), -30, 30)], scale=1.02, step=7.5))
+            HAND_SPEC[tag] = dict(palm=tm(hand), phalanges=phal, thumb=[(th0, th1, 11.0, 9.5), (th1 + (th2 - th1) * 0.08, th2, 8.5, 6.5)],
+                                  s=s, cw=cw, zk=zk, wc=wc, w=w, v=v, Lh=Lh)   # hand_grasp.py articulates these
+            hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
+            add(f'cover-hand.{tag}a', tm(hand))
+        else:                                                  # (pre-2026-10-28) round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
             WS = dict(KS.wrist(J, side, M)); g = lambda k: M_(WS[f'{k}.{tag}a'])
             z_sl0, z_sl1 = rcw[2] - mw['L'] / 2 - 1.0, pcw[2] + mw['D'] / 2 + 1.0
             add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1 if z_sl0 > z_sl1 else z_sl1 - z_sl0))
             drum = M_(cyl(pcw, [0, 1.0, 0], mw['D'] / 2 + 3.0, mw['L'] + 2 * (KS.G + KS.T) + 2.0))
-            add(f'trim-wristpitch.{tag}a', tm(drum - sweep_union(g('wrist-P0'), pcw, [((0, 1.0, 0), -75, 75)], scale=1.04, step=5.0)))
+            # hands pass 2026-10-28: cheek discs over the wrist plates' outer faces, coaxial with the pitch axis (so the hand
+            # pitches clean), 1 mm under the sleeve's bottom -- the bolt faces stop showing between forearm and hand
+            yp = max(abs(v_ - pcw[1]) for k in ('wrist-P0', 'wrist-P1') for v_ in WS[f'{k}.{tag}a'].bounds[:, 1])
+            r_ch = (z_sl1 - pcw[2]) - 1.0
+            cheeks = Manifold.batch_boolean([M_(cyl(np.array([pcw[0], pcw[1] + sg * (yp + 1.6), pcw[2]]), [0, 1.0, 0], r_ch, 2.4)) for sg in (1, -1)], OpType.Add)
+            add(f'trim-wristpitch.{tag}a', tm(drum + cheeks - sweep_union(g('wrist-P0'), pcw, [((0, 1.0, 0), -75, 75)], scale=1.04, step=5.0)))
             rd = (pcw[2] - mw['D'] / 2 - 3.0) - ycw[2] - 2.0          # the hand's crown: a dome about the yaw axis, under the pitch drum
             cw = np.array([ycw[0] + 4.0, ycw[1], 0])
             crown = [(ycw[2] + rd * math.cos(th), max(rd * math.sin(th), 6.0)) for th in np.linspace(0.0, 1.35, 6)]
             zt = tip[2]
-            body_ = [(ycw[2] - 0.25 * (ycw[2] - zt), 35.0), (ycw[2] - 0.55 * (ycw[2] - zt), 31.0), (ycw[2] - 0.82 * (ycw[2] - zt), 20.0), (zt, 8.0)]
-            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, 40.0 * min(1.0, a_ / 30.0 + 0.3), n=2.4) for z_, a_ in crown + body_]
+            # design pass 2026-10-28: a hand, not a capsule -- the crown and back of the hand still wrap the yaw can, then a palm
+            # that thins to the knuckles, four fingers with a slight curl toward the palm, and an opposed thumb on the front
+            # hands pass 2026-10-28: human-sized (the tip 50 mm lower: ~165 mm wrist to fingertip, was ~110), fingers in three
+            # phalanges with a 1.2 mm knuckle gap and a taper, the thumb round and opposed (its tip turned in over the palm)
+            zt = tip[2] - 50.0
+            Lh = ycw[2] - zt; zk = ycw[2] - 0.46 * Lh                # the knuckle line
+            body_ = [(ycw[2] - 0.20 * Lh, 33.0), (zk + 0.10 * Lh, 22.0), (zk, 16.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, (40.0 * min(1.0, a_ / 30.0 + 0.3) if z_ > ycw[2] - 0.18 * Lh else 44.0), n=2.4) for z_, a_ in crown + body_]
+            curl = -s * 1.0                                         # +y toward the palm (the body side) per unit curl
+            fingers = []
+            for fx, fl, fw in ((28.0, 0.90, 0.92), (9.5, 1.0, 1.0), (-9.5, 0.96, 0.97), (-28.0, 0.78, 0.86)):
+                Lf = 0.56 * Lh * fl
+                segs = [(0.0, 0.44, 0.0, 10.0), (0.46, 0.74, 5.0, 14.0), (0.76, 1.0, 14.0, 22.0)]   # phalanges: t0, t1, curl at each end
+                for k_, (t0, t1, c0, c1) in enumerate(segs):
+                    r0 = fw * (10.2 - 1.8 * k_); r1 = fw * (9.5 - 1.8 * k_ - (1.8 if k_ == 2 else 0.0))
+                    p0 = np.array([cw[0] + fx * (1 + 0.04 * t0), cw[1] + curl * c0, zk + 4.0 - Lf * t0])
+                    p1 = np.array([cw[0] + fx * (1 + 0.04 * t1), cw[1] + curl * c1, zk + 4.0 - Lf * t1])
+                    fingers.append(bar([(p0, r0 * 1.15, r0), ((p0 + p1) / 2, r0 * 1.12, r0 * 0.98), (p1, r1 * 1.1, r1)], n_=2.2))
+            th0 = np.array([cw[0] + 34.0, cw[1] - s * 2.0, ycw[2] - 0.26 * Lh])   # the thumb's root on the front of the palm
+            th1 = th0 + np.array([12.0, curl * 8.0, -0.20 * Lh])
+            th2 = th1 + np.array([2.0, curl * 16.0, -0.16 * Lh])                 # turned in, over the palm
+            fingers.append(bar([(th0, 11.0, 11.0), (th1, 9.5, 9.0)], n_=2.2))
+            fingers.append(bar([(th1 + (th2 - th1) * 0.08, 8.5, 8.0), (th2, 6.5, 6.0)], n_=2.2))
             hand = M_(hull_rings(palm)) - sweep_union(g('wrist-P1') + g('wrist-P0'), ycw, [((1.0, 0, 0), -45, 45)], scale=1.04, step=5.0)
+            hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
             add(f'cover-hand.{tag}a', tm(hand))
                 # shoulder yoke: the shoulder-pitch drum, out of the chest flank into the shoulder drum (the arm hangs from it)
         # shoulder, full-size humanoid language (H2/T2): a round pitch disc flush on the chest flank, a deltoid that
@@ -388,7 +492,7 @@ def design():
         y_out = abs(src[1]) - (rsr + 3.0) - 2.0 * max(1.0, KS.R())
         r_disc = 42.0 * max(KS.R(), 0.8)                                     # covers the yoke plates (40 mm from the axis)
         dmid = np.array([spc[0], s * (y_in + y_out) / 2, spc[2]])
-        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], KS.V['arm'], pad=r_disc - KS.ARM()['D'] / 2, fil=8.0, extra_len=(y_out - y_in) - KS.ARM()['L'])
+        disc, _, _, _ = housing(dmid, [0, s * 1.0, 0], KS.V['arm'], pad=r_disc - KS.ARM()['D'] / 2, fil=14.0, extra_len=(y_out - y_in) - KS.ARM()['L'])   # design pass: rounder, a shoulder not a puck (fil was 8)
         add(f'cover-shoulderyoke.{tag}a', disc)                              # coaxial with the pitch axis: turns in place
         ua_m = dict(out)[f'cover-upperarm.{tag}a']
         ax_ = np.asarray(U['sr'][1], float); c_ = U['sr'][0] + np.array([3.0, 0, 0])
@@ -471,7 +575,11 @@ def design():
         WS = dict(KS.waist())
         r_d = math.hypot(mw['L'] / 2 + KS.G + KS.T + 2.0, mw['D'] / 2) + 4.0
         z_d = KS.Z_D0() + KS.T + 1.0                              # on the pelvis top, clear of the deck
-        add('cover-waist', cyl(np.array([0, 0, (z_d + rc_[2]) / 2]), [0, 0, 1.0], r_d, rc_[2] - z_d))          # yaw drum (yaw stage), up to the roll axis
+        # yaw stage (design pass 2026-10-28): an abdomen, not a bare can -- full and wide over the pelvis, waisting up to the
+        # roll axis; it turns as one piece on the pelvis top (flat, with a gap), so it needn't be round
+        ab = [rrect(np.array([0, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), r_d * ky_, r_d * kx_, r_d * 0.5 * min(ky_, kx_), k=14)
+              for z_, ky_, kx_ in ((z_d, 1.38, 1.12), (z_d + 0.35 * (rc_[2] - z_d), 1.30, 1.08), (rc_[2], 1.0, 1.0))]
+        add('cover-waist', hull_rings(ab))
         add('cover-waistroll', cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # roll barrel (roll stage)
         hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 10.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
             sweep_union(M_(WS['waist-W3']), pc_, [((0, 1.0, 0), -65, 65)], scale=1.03, step=5.0)   # W3's pocket, inside the hub
@@ -514,9 +622,11 @@ def design():
             wd = KS.WAIST()['D'] / 2 + 14.0
             bx0, bx1 = min(bx0, -wd), max(bx1, wd)
         bz0, bz1 = rl[2] - m06['D'] / 2 - 4.0, (z_ab - 2.0) if KS.waist_layout() is None else z_pt
-        rcp, rfb = 0.32 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
-        bring = lambda z_, d_: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
-        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + [bring(bz1, 0.0)]
+        rcp, rfb = 0.46 * min(by, (bx1 - bx0) / 2), m06['D'] / 2 + 4.0     # bottom radius = the cans': concentric, clear of the drums
+        bring = lambda z_, d_, k_=1.0: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by * k_ - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
+        # design pass 2026-10-28: hips, not a box -- widest over the cans, drawing in to meet the waist (plan corners rounder too)
+        prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + \
+              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.97), bring(bz1, 0.0, 0.86)]
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):
@@ -538,8 +648,8 @@ def design():
         else:
             pel = pel - roll_arch(got[f'cover-hip.{t}l'], lay['roll'][0], (-24, 48), pel, rmin=m06['D'] / 2 + 7.0)            # the drum: one clean round arch
 
-    if KS.V['name'] not in ('mini', 'full'):                    # mini + full: no pelvis cover -- the hip-roll cans are the pelvis (Cam)
-        add('cover-pelvis', tm(pel))
+    add('cover-pelvis', tm(pel))                                # design pass 2026-10-28: a pelvis shell over the hip-roll cans again,
+                                                                # so the torso reads as one sculpted body down to the hips
     # ---- neck + head: a graphite neck drum, an egg helmet with a visor band
     Hl = KS.head_layout(J)
     if KS.V['name'] == 'mini':
@@ -580,8 +690,11 @@ def design():
     secs = [(zb_, 1.48, 1.34), (z_cr + 0.45 * (zt_ - z_cr), 1.24, 1.16), (zt_, 1.08, 1.06)]   # pass 2: wider, fuller
     add('cover-necksleeve', hull_rings([rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
                                               kx * r_hub, ky * max(r_hub, yo_ + 3.0), 0.55 * r_hub, k=12) for z_, kx, ky in secs]))
+    # design pass 2026-10-28: the yaw seam as a 2 mm line inlaid on the sleeve itself -- each ring follows the sleeve's own
+    # taper at its height, 0.3 proud (was a flat collar 2.5 proud on the chest)
+    kxy = lambda z_: [np.interp(z_, [q[0] for q in secs], [q[i] for q in secs]) for i in (1, 2)]
     ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
-                   1.48 * r_hub + 2.5, 1.34 * max(r_hub, yo_ + 3.0) + 2.5, 0.55 * r_hub + 2.5, k=12) for z_ in (z_cr - 1.0, z_cr + 1.6)]
+                   kxy(z_)[0] * r_hub + 0.3, kxy(z_)[1] * max(r_hub, yo_ + 3.0) + 0.3, 0.55 * r_hub + 0.3, k=12) for z_ in (z_cr + 2.0, z_cr + 4.0)]   # design pass: a 2 mm inlaid line, 0.3 proud of the sleeve's foot (was a 2.6 tall collar, 2.5 proud)
     add('trim-neckring', hull_rings(ring_))                      # the yaw seam
     for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
         add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
