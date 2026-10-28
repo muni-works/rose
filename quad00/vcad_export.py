@@ -278,7 +278,7 @@ def body_of(n):
 # the Python checks load (k1_structure.cx_parts: cortex-*, dock-*, cable-hcortex) are skipped here.
 CX_PY = ('cortex-', 'dock-', 'cable-hcortex')
 CX_HEAD = [('cortex-tub', 'satin_black'), ('cortex-floor', 'aluminium'), ('cortex-ear-grilles', 'satin_black'),
-           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
+           ('cortex-exhaust-grille', 'satin_black'), ('cortex-glass', 'visor_glass'), ('cortex-glass-face', 'visor_glass'), ('cortex-padboard', 'pcb_green'),
            ('cortex-pads', 'gold'), ('cortex-strikes', 'steel'), ('cortex-keeper', 'steel'), ('cortex-display', 'heatsink'),
            ('cortex-cams', 'pcb_green'), ('cortex-dockboard', 'pcb_green'), ('cortex-power', 'pcb_green'),
            ('cortex-battery', 'cell_pack'), ('cortex-sled', 'aluminium'), ('cortex-compute', 'pcb_green'),
@@ -302,7 +302,7 @@ def main(variant='mini', explodes=(0.0,)):
     recs = []                                 # (part name, body, source, material, shell?, local centroid)
     used_mats = set()
     n_native = n_mesh = 0
-    has_cx = KS.VARIANT.get('cortex', variant == 'mini') if hasattr(KS, 'VARIANT') else variant == 'mini'
+    has_cx = variant in ('mini', 'full')       # the cortex head (loon), scaled to the body
     for n, m in D + C:
         if has_cx and n.startswith(CX_PY):
             continue
@@ -337,10 +337,15 @@ def main(variant='mini', explodes=(0.0,)):
         o = np.array([HF['ox'], HF['oy'], HF['zb']]) - P['hpitch']
         for nm, mk in CX_HEAD + CX_NECK:
             dz = -0.5 if nm.startswith('dock-') else 0.0
-            recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz)} {nm}]', 'cx:' + mk, False, o))
+            k_ = 1.0                                # each body has its own head: cortex.loon (mini), cortex-full.loon (full)
+            src_ = nm if abs(k_ - 1.0) < 1e-3 else f'[scale {f(k_)} {f(k_)} {f(k_)} {nm}]'
+            recs.append((nm, 'hpitch', f'[translate {f(o[0])} {f(o[1])} {f(o[2] + dz * k_)} {src_}]', 'cx:' + mk, False, o))
         cx_link = os.path.join(outdir, 'cortex.loon')
-        if not os.path.lexists(cx_link):
-            os.symlink(os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex', 'cortex.loon'), outdir), cx_link)
+        cx_src = os.path.relpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cortex',
+                                              'cortex-full.loon' if variant == 'full' else 'cortex.loon'), outdir)
+        if os.path.lexists(cx_link):
+            os.remove(cx_link)
+        os.symlink(cx_src, cx_link)
     z0 = -min(m.bounds[0][2] for _, m in D)  # the torso sits this high, so the soles stand on z = 0
     ankle_drop = abs(P['ankle.l'][2])
     jl = joints(J)

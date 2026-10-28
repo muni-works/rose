@@ -1,0 +1,19 @@
+; cortex FULL head: print set for FDM (Bambu, PLA or PETG). Geometry comes from cortex.loon unchanged except:
+;   - the floor gets a 2.5 mm registration lip that drops into the tub (clearance c per side, from the lip coupon);
+;   - the floor prints in plastic for the fit test (the product floor is 3 mm aluminium).
+; Print orientation is noted per part; export each [root] to its own STL (make_print.sh).
+[use cortex-full [head-sec wall tf rb cortex-tub cortex-floor cortex-sled cortex-glass cortex-glass-face cortex-ear-grilles cortex-exhaust-grille cortex-keeper]]
+[material "pla" 0.12 0.12 0.13 0.0 0.6]
+[let c 0.15]                                     ; lip clearance per side: "medium-rare" (Cam), one step tighter than the 0.25 middle
+; the tub's inner wall curls in along the bottom round: at the floor line it is inset d0 (wall + the round's sagitta)
+[let rr [- rb wall]]
+[let d0 [+ wall [- rr [sqrt [- [* rr rr] [* [- [+ wall rr] tf] [- [+ wall rr] tf]]]]]]]
+[let lip [difference [loft #[[head-sec tf [+ d0 [+ c 2.0]]] [head-sec [+ tf 2.5] [+ d0 [+ c 2.0]]]]]
+                     [loft #[[head-sec tf [+ d0 c]] [head-sec [+ tf 2.5] [+ d0 c]]]]]]
+[let floor-print [union cortex-floor lip]]       ; print: flat, dock face down, no supports
+[root cortex-tub "pla"]                          ; print: upright on its open bottom; tree supports INSIDE only (crown roof, face-opening top edge)
+[root floor-print "pla"]
+[root cortex-sled "pla"]                         ; print: flat (product: 2 mm folded aluminium)
+[root cortex-ear-grilles "pla"]                  ; print: each insert on its flat inner side, 0.12 mm layers for the 1.4 mm holes
+[root cortex-exhaust-grille "pla"]               ; print: on its inner face, 0.12 mm layers
+[root [union cortex-glass cortex-glass-face] "pla"]   ; optional: clear/smoke PETG, face down; or skip and tape a smoked acrylic sheet

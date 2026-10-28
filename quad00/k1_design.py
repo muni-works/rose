@@ -175,11 +175,11 @@ def block(x0, x1, y, z0, z1, n=2.8, taper=(1.0, 1.0), dome=0.0, RC=22.0, taper_t
     return hull_rings(rings)
 
 
-def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk):
+def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
     """the sleek one-piece torso (head language): near-vertical sides that funnel out late to the shoulder line,
     big plan radii and a head-style crown fillet. Piecewise hulls, so the concave flanks survive (export lofts the rings)."""
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
-    zf = zs - 40.0 * Rk                                         # the armpit: the flare ends at the shoulder drum's bottom edge
+    zf = zs - max(40.0 * Rk, r_corner)                         # the armpit: the flare ends at the shoulder drum's bottom edge
     def sec(z):
         zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
         if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
@@ -418,7 +418,26 @@ def design():
         z_ch = z_w1                                             # (the panel groove spans the chest)
     else:                                                       # full: the same sleek shell, from the waist-pitch hub up
         y_cap = dict(out)['cover-shoulderyoke.la'].bounds[1][1] + 2.0   # the mini's shaping: corners just over the shoulder drums
-        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk)
+        y_cap = 186.6                                           # lymb v10.3 interface: J1's output face = the flank
+        r_corner = 85.0 + 3.0                                   # lymb v10.3: J1 + its chest adapter (120 sq, corners r 85) + skin gap
+        zc1 = max(zc1, zs + 36.0 * Rk, zs + r_corner - 10.0 * Rk)  # the crown clears it (crown = zc1 + 10)
+        chest = torso_shell(lo, hi, KS.CHEST(), z_ch, z_ch + 20.0 * Rk, zc1, zs, y_cap, Rk, r_corner)
+        for t_, sy_ in (('l', 1.0), ('r', -1.0)):                # lymb v10's J1 output face sits flush on the flank: a gunmetal
+            r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs                    # bezel ring frames it, like the arm's pucks
+            add(f'trim-j1ring.{t_}', tm(Manifold.cylinder(1.2, r_j1 + 2.0, r_j1 + 2.0, 96).translate((0, 0, -0.6))
+                                        .__sub__(Manifold.cylinder(2.0, r_j1 - 3.0, r_j1 - 3.0, 96).translate((0, 0, -1.0)))
+                                        .rotate((-90.0 * sy_, 0, 0)).translate((0.0, sy_ * (y_cap - 0.6), zs))))   # inlaid flush
+        # J1 cooling (Cam: no fans): J1 conducts into the chest frame through its adapter (gap pad); the arm's open ring on
+        # the J1 face breathes through an opening in the flank, framed by the inlaid gunmetal bezel
+        r_j1 = dict(out)['cover-shoulderyoke.la'].bounds[1][2] - zs
+        cuts_ = []
+        for t_, sy_ in (('l', 1.0), ('r', -1.0)):
+            cuts_.append(Manifold.cylinder(1.3, r_j1 + 2.05, r_j1 + 2.05, 128).rotate((-90.0 * sy_, 0, 0))      # the bezel's inlay pocket
+                         .translate((0.0, sy_ * (y_cap - 1.25), zs)))
+            cuts_.append(Manifold.cylinder(54.0, 67.5, 67.5, 128).rotate((-90.0 * sy_, 0, 0))               # the J1 face opening: the arm's
+                         .translate((0.0, sy_ * (y_cap - 53.0), zs)))                                          # open ring breathes through it
+        C_ = Manifold(Mesh(vert_properties=np.asarray(chest.vertices, np.float32), tri_verts=np.asarray(chest.faces, np.uint32)))
+        chest = tm(C_ - Manifold.batch_boolean(cuts_, OpType.Add))
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
     chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
     E = KS.ELEC
@@ -551,7 +570,42 @@ def design():
             for dz_ in (-1.0, KS.T + 0.4)]
     win = [('box', [hp[0] + a, b, KS.DOCK_Z(J) - 3.0], [c - a, d - b, KS.T + 6.0]) for a, b, c, d in KS.DOCK_WIN]
     win += [('box', [hp[0] + x - r, y - r, KS.DOCK_Z(J) - 3.0], [2 * r, 2 * r, KS.T + 6.0]) for x, y, r in KS.DOCK_HOLES]
-    add('trim-headdock', cut_shell(hull_rings(dock), win))   # the dock face (gunmetal): pogo + latch windows, cone studs (magnets pull through the skin)
+    if KS.V['name'] not in ('mini', 'full'):                       # mini/full: the pedestal saddle is the dock (neck pass 2)
+        add('trim-headdock', cut_shell(hull_rings(dock), win))   # the dock face (gunmetal): pogo + latch windows, cone studs (magnets pull through the skin)
+    # the neck, in the torso/cortex language (Cam: "work on the neck"): a soft yaw sleeve grows out of the crown and
+    # cradles the pitch drum; a gunmetal parting ring marks the yaw seam; gunmetal pucks on the drum ends are the joint;
+    # a satin saddle under the head carries the dock face (no bare plates or stalk)
+    z_cr = dict(out)['cover-chest'].bounds[1][2]                 # the chest crown
+    zb_, zt_ = z_cr - 3.0, hp[2] - 6.0
+    secs = [(zb_, 1.48, 1.34), (z_cr + 0.45 * (zt_ - z_cr), 1.24, 1.16), (zt_, 1.08, 1.06)]   # pass 2: wider, fuller
+    add('cover-necksleeve', hull_rings([rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
+                                              kx * r_hub, ky * max(r_hub, yo_ + 3.0), 0.55 * r_hub, k=12) for z_, kx, ky in secs]))
+    ring_ = [rrect(np.array([hp[0], 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]),
+                   1.48 * r_hub + 2.5, 1.34 * max(r_hub, yo_ + 3.0) + 2.5, 0.55 * r_hub + 2.5, k=12) for z_ in (z_cr - 1.0, z_cr + 1.6)]
+    add('trim-neckring', hull_rings(ring_))                      # the yaw seam
+    for t_, yf in (('r', y0_ - 0.6), ('l', yo_ + 0.6)):
+        add(f'trim-neckpuck.{t_}', cyl(np.array([hp[0], yf, hp[2]]), [0, 1.0, 0], r_hub - 5.0, 1.2))   # the pitch joint, flush
+    zdk = KS.DOCK_Z(J)
+    # pass 2 (Cam: "the head is still not attached"): the saddle is a pedestal that meets the head floor flush across
+    # most of its flat area and flares down to the pitch drum, enclosing the dock plates -- the head visibly sits on it
+    zhf = HF['zb']                                               # the head floor = the dock mating face
+    top_a, top_b = (50.0, 70.0) if KS.V['name'] == 'full' else (32.0, 48.0)   # inside the head floor's flat (cortex-full / cortex)
+    z_lo = max(zdk - 10.0, hp[2] + r_hub + 3.0)                  # just clear of the pitch drum's crown
+    dk_ = next((m for n, m in KS.head(J) if n == 'head-dock'), None)          # the structural dock plate under the head
+    xs0, xs1 = (dk_.bounds[0][0], dk_.bounds[1][0]) if dk_ is not None else (hp[0] - top_a, hp[0] + top_a)
+    xt_, at_ = (xs0 + xs1) / 2.0, max(top_a, (xs1 - xs0) / 2.0 + 3.0)            # the pedestal top covers it, +3 mm
+    sad = [rrect(np.array([hp[0], 0, z_lo]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), 0.95 * r_hub, 0.80 * r_hub, 0.45 * r_hub, k=14)] + \
+          [rrect(np.array([xt_, 0, z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), at_ - d_, top_b - d_, 0.45 * top_a - d_, k=14)
+           for z_, d_ in ((zhf - 4.0, 4.0), (zhf, 0.0))]
+    # cheeks (Cam: "zero daylight at every pitch"): a cowl concentric with the pitch axis wraps the drum crown by 5 mm,
+    # so it rides the drum at every pitch; +-40 deg keeps it above the yaw sleeve even at full pitch (49 deg)
+    r_in, r_out, ycw = r_hub + 0.6, r_hub + 5.6, min(0.80 * r_hub, yo_ - 1.0)
+    ang = np.radians(np.linspace(-40.0, 40.0, 9))
+    wedge = Manifold.hull_points(np.array([[hp[0], y_, hp[2]] for y_ in (-ycw, ycw)] +
+                                          [[hp[0] + 2.0 * r_out * np.sin(a), y_, hp[2] + 2.0 * r_out * np.cos(a)]
+                                           for a in ang for y_ in (-ycw, ycw)], dtype=np.float32))
+    cowl = M_(cyl(np.array([hp[0], 0, hp[2]]), [0, 1.0, 0], r_out, 2 * ycw)) - M_(cyl(np.array([hp[0], 0, hp[2]]), [0, 1.0, 0], r_in, 2 * ycw + 2.0))
+    add('cover-dockcollar', tm(M_(hull_rings(sad)) + (cowl ^ wedge)))   # the pedestal the head seats on, plus its cheeks
     # ear caps: the head-pitch axis, orange, both sides
     hp_ = J['Head_pitch']['p']
     for s in (1, -1):

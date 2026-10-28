@@ -20,8 +20,32 @@
 ;   dock      8 flush gold pads (2 x 4, 4 mm pitch) on a 12 x 20 pad board in the floor, pogo pins on the neck (Mill-Max
 ;             0906 class, 3 A each); 2 cone seats; 2 steel strike discs over the neck magnets; a latch keeper slot
 
+; ------------------------------------------------------------------ colorways (CMF) ----
+; Each head carries its own personality, and its color says what it's for. Palette = the master plan's tokens:
+; Cam 2026-10-21: no brown. Two body tones, black or white plastic, and ONE family neon accent, kept small: the
+; ear panels only. Release 1 is minimal: no decorative perforation; the ear panels are solid accent plates (sound
+; and the mic port use a hidden 0.8 mm gap round the panel), the exhaust is three plain slots in shell colour.
+;   name     shell                  accent (ear panels)       floor (anodized Al: black / clear)
+[let colorways #[
+  #["mind"    #[0.071 0.071 0.075] #[1.000 0.373 0.000] #[0.035 0.035 0.038]]   ; black + Mind orange #ff5f00 -- flagship
+  #["make"    #[0.071 0.071 0.075] #[0.224 1.000 0.078] #[0.035 0.035 0.038]]   ; black + Make green #39ff14
+  #["body"    #[0.071 0.071 0.075] #[1.000 0.125 0.322] #[0.035 0.035 0.038]]   ; black + Body red #ff2052
+  #["world"   #[0.925 0.925 0.918] #[0.000 0.941 1.000] #[0.780 0.784 0.792]]   ; white + World cyan #00f0ff
+  #["power"   #[0.925 0.925 0.918] #[1.000 0.831 0.000] #[0.780 0.784 0.792]]   ; white + Power amber #ffd400
+  #["silicon" #[0.925 0.925 0.918] #[0.300 0.302 0.310] #[0.780 0.784 0.792]]]] ; white + graphite (the quiet one)
+[let colorway "mind"]
+[let cw [nth [filter [fn [c] [= [nth c 0] colorway]] colorways] 0]]
+[let cw-shell [nth cw 1]]
+[let cw-accent [nth cw 2]]
+[let cw-floor [nth cw 3]]
+[let shell-rough 0.55]                          ; satin (textured PC/ABS)
+[let accent-rough 0.35]                         ; the grille insert finish: semi-gloss
+[material "cx_shell" [nth cw-shell 0] [nth cw-shell 1] [nth cw-shell 2] 0.0 shell-rough]
+[material "cx_accent" [nth cw-accent 0] [nth cw-accent 1] [nth cw-accent 2] 0.0 accent-rough]
+[material "cx_floor" [nth cw-floor 0] [nth cw-floor 1] [nth cw-floor 2] 0.7 0.4]
+
 [material "satin_black" 0.09 0.094 0.106 0.1 0.55]
-[material "visor_glass" 0.02 0.02 0.025 0.2 0.05]
+[material "visor_glass" 0.02 0.02 0.025 0.0 0.35]
 [material "gunmetal" 0.3 0.32 0.34 0.8 0.35]
 [material "heatsink" 0.55 0.57 0.6 0.7 0.4]
 [material "pcb_green" 0.05 0.32 0.18 0.1 0.45]
@@ -32,14 +56,16 @@
 [material "steel" 0.6 0.6 0.62 0.9 0.35]
 [material "cable_orange" 1.0 0.42 0.05 0.0 0.45]
 
-; ------------------------------------------------------------------ size ----
-; The shell size comes from size.loon (mini default, full for the 7-inch face): one source, every size. See size.loon.
-[use size [hh hw x-face x-back size-full d7-w d7-h d7-t d7-act-w d7-act-h d7-dz d7-cam-y]]
+; ------------------------------------------------------------------ size (mini) ----
+[let hh 120.6]                 ; height
+[let hw 81.8]                  ; half width
+[let x-face 46.0]              ; the flat face plane
+[let x-back -73.0]             ; the mini of record (Cam 2026-10-21): +15 mm deeper than v1 so the Waveshare IO base fits at 100+
 [let hd [/ [- x-face x-back] 2.0]]
 [let xc [- x-face hd]]
-[let rc [* 0.30 hd]]           ; plan corner radius
-[let rf [* 0.42 hd]]           ; crown round
-[let rb [* 0.24 hd]]           ; bottom round (it still sits flat)
+[let rc 15.6]           ; plan corner radius
+[let rf 21.84]           ; crown round
+[let rb 12.48]           ; bottom round (it still sits flat)
 [let zf [/ [+ rb [- hh rf]] 2.0]]               ; the face's flat band centre: the display sits on it
 [let ze [- [- hh rf] 16.0]]                     ; eye height: the top of the flat band (cam half-height 12 + 4)
 [let baseline 106.0]
@@ -49,14 +75,14 @@
 [let C0 1.0] [let C1 0.965926] [let C2 0.866025] [let C3 0.707107] [let C4 0.5] [let C5 0.258819] [let C6 0.0]
 
 ; a rounded-rectangle loop as line segments, in a sketch plane's (u, v): centre (cu, cv), half sizes a, b, radius r
-[let CS #[C0 C1 C2 C3 C4 C5 C6]]
+[let CS #[1.000000 0.991445 0.965926 0.923880 0.866025 0.793353 0.707107 0.608761 0.500000 0.382683 0.258819 0.130526 0.000000]]                       ; cos of 0, 7.5, ... 90 deg (sin = reversed)
 [let rr-segs [fn [cu cv a b r]
   [let ua [- [+ cu a] r]] [let ub [+ [- cu a] r]] [let va [- [+ cv b] r]] [let vb [+ [- cv b] r]]
   ; a 90-degree corner about (ox, oy): CCW from (sx*r, 0) to (0, sy*r) when fwd, else from (0, sy*r) to (sx*r, 0)
-  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 6 k]]]]]]]
-  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 6 k] k]]]]]]
+  [let pu [fn [ox sx k fwd] [+ ox [* sx r [nth CS [if fwd k [- 12 k]]]]]]]
+  [let pv [fn [oy sy k fwd] [+ oy [* sy r [nth CS [if fwd [- 12 k] k]]]]]]
   [let q [fn [ox oy sx sy fwd]
-    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] #[0 1 2 3 4 5]]]]
+    [map [fn [k] [line [pu ox sx k fwd] [pv oy sy k fwd] [pu ox sx [+ k 1] fwd] [pv oy sy [+ k 1] fwd]]] [range 0 12]]]]
   [flatten #[
     #[[line [+ cu a] vb [+ cu a] va]] [q ua va 1.0 1.0 true]
     #[[line ua [+ cv b] ub [+ cv b]]] [q ub va -1.0 1.0 false]
@@ -67,10 +93,7 @@
 [let rake 0.14]                                 ; the face leans back ~8 deg: on a desk it looks a little up
 ; the back: full depth up to zk, then it sweeps forward and down like a Braun clock's back -- the crown over the
 ; Jetson's fan was empty. xb(z) = x-back + kb * ((z - zk) / (hh - zk))^2
-[let zk 40.0][let zfj [* 0.49 hh]]                                  ; the facet's centre height
-[let xfj [- x-face [* rake zfj] 2.0]]                  ; the facet plane: 2 mm behind the crown front (no bezel)
-[let j-tilt [fn [s] [translate xfj 0.0 zfj [rotate 0.0 -8.0 0.0 s]]]]   ; s is built ABOUT THE ORIGIN (u,v,w)
-
+[let zk 40.0]
 [let kb 38.0]
 [let xb [fn [z] [if [> z zk] [+ x-back [* kb [* [/ [- z zk] [- hh zk]] [/ [- z zk] [- hh zk]]]]] x-back]]]
 [let head-sec [fn [z d]
@@ -80,10 +103,7 @@
   [sketch 0.0 0.0 z 1.0 0.0 0.0 0.0 1.0 0.0 [rr-segs [- xf hdz] 0.0 [- hdz d] [- hw d] [max #[[- rc d] 2.0]]]]]]
 
 ; the quarter-round stations (rise, inset) of a round of radius r: (r(1-cos t), r(1-sin t)), t = 0..90
-[let round-st [fn [r] #[
-  #[0.0 r]
-  #[[* r [- 1.0 C1]] [* r [- 1.0 C5]]] #[[* r [- 1.0 C2]] [* r [- 1.0 C4]]] #[[* r [- 1.0 C3]] [* r [- 1.0 C3]]]
-  #[[* r [- 1.0 C4]] [* r [- 1.0 C2]]] #[[* r [- 1.0 C5]] [* r [- 1.0 C1]]] #[r 0.0]]]]
+[let round-st [fn [r] [map [fn [k] #[[* r [- 1.0 [nth CS k]]] [* r [- 1.0 [nth CS [- 12 k]]]]]] [range 0 13]]]]
 
 [let bx [fn [x0 y0 z0 x1 y1 z1] [translate x0 y0 z0 [cube [- x1 x0] [- y1 y0] [- z1 z0]]]]]
 
@@ -103,15 +123,15 @@
     [map [fn [st] [head-sec [+ wall [nth st 0]] [+ wall [nth st 1]]]] [round-st [- rb wall]]]
     [map [fn [z] [head-sec z wall]] #[zk 52.0 64.0 76.0 88.0]]
     [map [fn [st] [head-sec [- [- hh wall] [nth st 0]] [+ wall [nth st 1]]]] [reverse [round-st [- rf wall]]]]]]]]
-[let below-floor [bx -200.0 -200.0 -1.0 200.0 200.0 tf]]
+[let below-floor [bx -100.0 -100.0 -1.0 100.0 100.0 tf]]
 
 ; the ears: a dot grid each side, a rounded slot of 1.1 mm holes on a 2.4 mm hex pitch (laser-drilled, or moulded
 ; with core pins -- no slides). A speaker behind the top of each (stereo), the mic below it.
 ; Both mics sit on the same dot, so the pair is level and symmetric.
-[let gx -12.0]                                  ; grille centre, x (the ear: speaker + mic)
-[let zg 50.0]                                   ;               z (the speaker band)
-[let gw 9.0]                                    ; half width (the slot's end radius)
-[let gh 14.0]                                   ; half height
+[let gx -20.0]                                  ; grille centre, x
+[let zg 66.0]                                   ;               z
+[let gw 11.0]                                   ; half width (the slot's end radius)
+[let gh 19.0]                                   ; half height
 [let dot-p 2.2]                                 ; hex pitch
 [let dot-r 0.7]                                 ; 1.4 mm holes: ~37% open (thermal check, SPEC.md)
 [let dot-h [* dot-p 0.866]]
@@ -122,7 +142,7 @@
 ; inside a rounded slot of half length a along u, end radius b
 [let in-pill [fn [u v a b]
   [let uu [max #[0.0 [- [abs u] [- a b]]]]]
-  [< [+ [* uu uu] [* v v]] [* [- b 0.8] [- b 0.8]]]]]
+  [< [+ [* uu uu] [* v v]] [* [- b [+ dot-r 1.4]] [- b [+ dot-r 1.4]]]]]]   ; a solid 1.4 mm rim, no partial holes
 ; union a list of solids as a balanced tree (a running fold is quadratic in the hole count)
 [let tree-union [fn [xs]
   [let n [len xs]]
@@ -132,15 +152,14 @@
            [tree-union [map [fn [i] [nth xs i]] [range h n]]]]]]]
 [let grid-holes [fn [rows hole] [tree-union [map hole [flatten rows]]]]]
 [let ear-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 1] [nth q 0] gh gw]] r]] [hex-rows 6 5]]]
-[let dot-hole [fn [q] [union [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 8]]]
-                             [translate [+ gx [nth q 0]] [- 0.0 [- hw 0.8]] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cone-n dot-r 2.2 1.0 16]]]]]]   ; 45 deg csk at the outer face
+[let dot-hole [fn [q] [translate [+ gx [nth q 0]] [- -4.0 hw] [+ zg [nth q 1]] [rotate -90.0 0.0 0.0 [cylinder-n dot-r [+ [* 2.0 hw] 8.0] 16]]]]]
 [let ear-holes [grid-holes ear-rows dot-hole]]
 ; the exhaust: a wide matching dot grid on the back sweep, right behind the heatsink's aft fins
 [let zx 76.0]                                   ; exhaust grille centre, z
 [let xa 45.0]                                   ; half width (y)
 [let xr 11.0]                                   ; half height (the slot's end radius)
 [let x-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] xa xr]] r]] [hex-rows 21 3]]]
-[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]
+[let xdot-hole [fn [q] [translate [- x-back 6.0] [nth q 0] [+ zx [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 16]]]]]
 [let exhaust-holes [grid-holes x-rows xdot-hole]]
 ; The tub only gets plain rounded windows; the perforated grilles are separate thin inserts that fill them flush
 ; (moulds without side actions, and the tub evaluates in seconds -- the holes live in their own parts).
@@ -171,99 +190,27 @@
 ; dead-front: the back of the glass is printed black except an IR/visible window over each camera and the active
 ; area, so the face reads as one dark pane -- the eyes are drawn on the screen, the cameras are invisible
 [let cortex-glass [tilt [loft #[[glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 0.4] 0.0] [glass-sec [+ xfz 0.8] 0.4]]]]]
+; render workaround (vcad-render smooths shading across a flat loft cap): two crossed flat plates carry the face
+[let gr [* 0.55 [min #[sw sh]]]]
+[let cortex-glass-face [tilt [union [bx [+ xfz 0.75] [- 0.0 [- sw 0.4]] [- zf [- sh gr]] [+ xfz 0.85] [- sw 0.4] [+ zf [- sh gr]]]
+                                   [bx [+ xfz 0.75] [- 0.0 [- sw gr]] [- zf [- sh 0.4]] [+ xfz 0.85] [- sw gr] [+ zf [- sh 0.4]]]]]]
 [let face-opening [tilt [loft #[[glass-sec [- xfz 8.0] 2.0] [glass-sec [- xfz 3.0] 2.0] [glass-sec [- xfz 3.0] 0.0] [glass-sec [+ xfz 3.0] 0.0]]]]]
-; ---- the 4-inch square face (Waveshare 4inch HDMI LCD (C), 720x720; numbers from its own STEP: 84 x 84 x 1 glass
-; over a ~69 x 58 PCB, ~12 deep to the connector backs). Alternative to the 3.5 + glass: the display's own tempered
-; glass IS the dead front, sitting proud in the same opening (a 4.9 mm step, one VHB bead). Same eye height, centre.
-; The cameras move outboard to +-55 (still on the 110 baseline, behind the wall) with Ø7.5 lens holes in the wall;
-; their FFCs reach the A603 at x 18 (run-x style: out along the wall, then aft).
-[let d4 84.0]
-[let d4w 79.0]
-[let d4t 10.0]
-[let d4-glass [tilt [bx xfz -42.0 [- zf 42.0] [+ xfz 1.0] 42.0 [+ zf 42.0]]]]
-[let d4-body [tilt [bx [- xfz d4t] -34.5 [- zf 34.5] [- xfz 1.0] 34.5 [+ zf 34.5]]]]
-[let d4-open-sec [fn [x h] [sketch x 0.0 zf 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 h h 2.0]]]]
-[let d4-open [tilt [loft #[[d4-open-sec [- xfz 8.0] [/ d4w 2.0]] [d4-open-sec [+ xfz 3.0] [/ d4w 2.0]]]]]]
-[let d4-cam-y 55.0]
-[let d4-cam-hole [fn [sy] [translate [- xfz 10.0] [* sy d4-cam-y] ze [rotate 0.0 90.0 0.0 [cylinder-n 3.75 50.0 16]]]]]
-[let d4-cam-holes [tilt [union [d4-cam-hole 1.0] [d4-cam-hole -1.0]]]]
-[let d4-cams [tilt [union [bx [- xfz 14.5] [- d4-cam-y 12.5] [- ze 12.0] [- xfz 3.5] [+ d4-cam-y 12.5] [+ ze 12.0]]
-                          [bx [- xfz 14.5] [- -12.5 d4-cam-y] [- ze 12.0] [- xfz 3.5] [- 12.5 d4-cam-y] [+ ze 12.0]]]]]
-; ---- the 7-inch face (full size): Waveshare 7inch HDMI LCD (C), 164.9 x 107 x 8 outline, active 154.21 x 85.92.
-; Mounted from BEHIND the face wall (its PCB is bigger than any window with a bond land, so it can't sit proud like
-; the 4"): its glass bonds (VHB) to the wall's inner face, and the window shows the active area + 2 mm. The tub is the
-; bezel. Active area centred on the outline: ASSUMED (the wiki gives no offset; check on the panel).
-; The cameras sit behind the wall too, looking through lens holes.
-[let d7-y [/ d7-w 2.0]]
-[let d7-z [/ d7-h 2.0]]
-[let d7-zc [+ zf d7-dz]]                           ; display centre (size.loon moves it down when the eyes go above)
-[let d7-xi [- xfz wall]]                           ; the face wall's inner plane (tilted frame)
-[let d7-win-w [+ d7-act-w 4.0]]                    ; the window: active area + 2 mm all round
-[let d7-win-h [+ d7-act-h 4.0]]
-[let d7-glass [tilt [bx [- d7-xi 1.0] [- 0.0 d7-y] [- d7-zc d7-z] d7-xi d7-y [+ d7-zc d7-z]]]]                 ; its glass, on the inner face
-[let d7-body [tilt [bx [- d7-xi d7-t] [- 0.0 d7-y] [- d7-zc d7-z] [- d7-xi 1.0] d7-y [+ d7-zc d7-z]]]]       ; PCB + parts behind it
-[let d7-open-sec [fn [x w h] [sketch x 0.0 d7-zc 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 [/ w 2.0] [/ h 2.0] 3.0]]]]
-[let d7-open [tilt [loft #[[d7-open-sec [- xfz 8.0] d7-win-w d7-win-h] [d7-open-sec [+ xfz 3.0] d7-win-w d7-win-h]]]]]
-[let d7-cam-hole [fn [sy] [translate [- xfz 10.0] [* sy d7-cam-y] ze [rotate 0.0 90.0 0.0 [cylinder-n 3.75 50.0 16]]]]]   ; +x, through the face wall
-[let d7-cam-holes [tilt [union [d7-cam-hole 1.0] [d7-cam-hole -1.0]]]]
-[let d7-cams [tilt [union [bx [- d7-xi 11.0] [- d7-cam-y 12.5] [- ze 12.0] [- d7-xi 0.5] [+ d7-cam-y 12.5] [+ ze 12.0]]
-                          [bx [- d7-xi 11.0] [- -12.5 d7-cam-y] [- ze 12.0] [- d7-xi 0.5] [- 12.5 d7-cam-y] [+ ze 12.0]]]]]
-
-[let zcamj [+ zg gh 10.0]]                             ; the camera dot: centred ABOVE the grille
-[let xcamj [- x-face [* rake zcamj] 14.0]]             ; the wall's x at that height (the ear band)
-
-; the back. The I/O window stays in the wall (it is the intake air's way in, SPEC thermal) but is covered by a
-; perforated insert like the other grilles: closed to the eye, and the carrier's ports are only reached with the tub
-; off (the head charges and talks on the desk dock through the floor). A fully solid back fails 25 W: with it solid,
-; intake is only the ear grids' 80 mm2 open area.
+; the back: no panel of its own. The carrier's I/O edge (power button, USB, Ethernet, DC) sits right behind a plain
+; rounded cutout, so a different Jetson / carrier drops in without touching the tub (a thin per-carrier I/O shield
+; can clip in if wanted)
 [let io-sec [fn [x] [sketch x 0.0 49.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 42.0 11.0 4.0]]]]
 [let io-cut [loft #[[io-sec [- x-back 4.0]] [io-sec [+ x-back 8.0]]]]]
-[let back-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] 42.0 4.0]] r]] [hex-rows 19 3]]]
-[let back-holes [grid-holes back-rows [fn [q] [translate [- x-back 6.0] [nth q 0] [+ 49.0 [nth q 1]] [rotate 0.0 90.0 0.0 [cylinder-n dot-r 30.0 8]]]]]]
 [let wall-band [difference shell-inner shell-solid]]
-[pub let cortex-ear-grilles [difference ear-holes [intersection ear-windows wall-band]]]
-[pub let cortex-exhaust-grille [difference exhaust-holes [intersection exhaust-window wall-band]]]
-[pub let cortex-back-grille [difference back-holes [intersection io-cut wall-band]]]
-; Interior only (the exterior is frozen, SPEC.md). Each is taken out of the cavity before the cavity is taken out of
-; the solid, so nothing is unioned face-to-face with the skin.
-; Floor fixing (SPEC Mounting): a corner block at each bottom corner, on the plan-corner centre, with a heat-set
-; insert for an M3 countersunk screw up through the floor. The screw sits fix-in past the corner centre, along the
-; diagonal, so its head clears the floor's bottom round.
-[let fix-in 3.5]
-[let fix-k [* fix-in 0.707107]]
-[let fix-cx #[[- [- x-face [* rake tf]] rc] [+ x-back rc]]]                     ; plan-corner centres, x (front, back)
-[let fix-cy [- hw rc]]
-[let fix-xy #[#[[- [nth fix-cx 0] fix-k] [- fix-cy fix-k]] #[[- [nth fix-cx 0] fix-k] [- fix-k fix-cy]]
-              #[[+ [nth fix-cx 1] fix-k] [- fix-cy fix-k]] #[[+ [nth fix-cx 1] fix-k] [- fix-k fix-cy]]]]
-[let fix-blocks [tree-union [map [fn [c] [translate [nth c 0] [nth c 1] 1.0 [cylinder 9.0 13.0]]]
-  #[#[[nth fix-cx 0] fix-cy] #[[nth fix-cx 0] [- 0.0 fix-cy]] #[[nth fix-cx 1] fix-cy] #[[nth fix-cx 1] [- 0.0 fix-cy]]]]]]
-[let insert-holes [tree-union [map [fn [q] [union [translate [nth q 0] [nth q 1] 1.0 [cylinder 2.0 9.0]]       ; M3 heat-set, 4.0 x 7 above the floor
-                                                  [translate [nth q 0] [nth q 1] [+ tf 6.0] [cylinder 1.6 3.0]]]] fix-xy]]]  ; screw tip, to z 12
-; Glass seat (SPEC: "0.5 mm VHB in the stepped face opening"). face-opening steps to a 2 mm lip at xfz-3, but that
-; is behind the 2.5 mm wall, in air; this band behind the face gives the lip something to be cut from. Notched
-; 0.5 mm round the display and the cameras, which sit up to the glass.
-[let glass-band [difference [tilt [union [bx [- xfz 14.7] -38.8 [- zf 26.3] [- xfz 2.7] 38.8 [+ zf 38.3]]          ; display (zd = zf + 6)
-                                         [union [bx [- xfz 15.0] [- [/ baseline 2.0] 13.0] [- ze 12.5] [- xfz 2.7] [+ [/ baseline 2.0] 13.0] [+ ze 12.5]]
-                                                [bx [- xfz 15.0] [- -13.0 [/ baseline 2.0]] [- ze 12.5] [- xfz 2.7] [- 13.0 [/ baseline 2.0]] [+ ze 12.5]]]]]
-                            [tilt [loft #[[glass-sec [- xfz 4.5] -3.0] [glass-sec [- xfz 1.0] -3.0]]]]]]
-[let cavity [pipe shell-inner [difference fix-blocks] [difference glass-band]]]
-[let cortex-tub [difference [pipe cavity [union below-floor] [union vents] [union face-opening] [union io-cut] [union insert-holes]] shell-solid]]
-; the 4-inch-face tub variant: the display's own glass is the face, so its window replaces the glass opening, and the
-; outboard cameras get lens holes through the wall
-[let cortex-tub-d4 [difference [pipe cavity [union below-floor] [union vents] [union d4-open] [union d4-cam-holes] [union io-cut] [union insert-holes]] shell-solid]]
-; the 7-inch-face tub (full size): same scheme, the display's own bezel is the dead front
-[let cavity-bare [pipe shell-inner [difference fix-blocks]]]   ; no mini glass seat: the 7-inch bonds to the plain inner face
-[let cortex-tub-full [difference [pipe cavity-bare [union below-floor] [union vents] [union d7-open] [union d7-cam-holes] [union io-cut] [union insert-holes]] shell-solid]]
+[let ear-panel-sec [fn [y] [sketch 0.0 y 0.0 1.0 0.0 0.0 0.0 0.0 1.0 [rr-segs gx zg [- gw 0.8] [- gh 0.8] [- gw 0.81]]]]]
+[let ear-panels [loft #[[ear-panel-sec [- -6.0 hw]] [ear-panel-sec [+ hw 6.0]]]]]   ; solid accent plates, 0.8 mm hidden gap all round
+[let cortex-ear-grilles [intersection ear-panels wall-band]]
+[let x-slots [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 6.0] 300.0 [- xa xr] [- zx 4.0]]
+                [union [bx -300.0 [- 0.0 [- xa xr]] [- zx 1.0] 300.0 [- xa xr] [+ zx 1.0]]
+                       [bx -300.0 [- 0.0 [- xa xr]] [+ zx 4.0] 300.0 [- xa xr] [+ zx 6.0]]]]]   ; three 2 mm slots, no dot field
+[let cortex-exhaust-grille [difference x-slots [intersection exhaust-window wall-band]]]
+[let cortex-tub [difference [pipe shell-inner [union below-floor] [union vents] [union face-opening] [union io-cut]] shell-solid]]
 [let cone-bosses [union [translate 0.0 cone-y tf [cylinder 7.0 6.0]] [translate 0.0 [- 0.0 cone-y] tf [cylinder 7.0 6.0]]]]
-; M3 countersunk (90 deg, head 6.6) up into the tub inserts; M2.5 countersunk (head 4.8) up through each sled foot
-[let csk [fn [x y rh rs] [union [translate x y -1.0 [cone [+ rh 1.0] rs [+ [- rh rs] 1.0]]] [translate x y -2.0 [cylinder rs [+ tf 3.0]]]]]]   ; 90 deg, from 1 below the face
-[let sled-hole-x #[-37.5 -5.5]]
-[let sled-hole-y 50.0]
-[let floor-holes [tree-union [flatten #[
-  [map [fn [q] [csk [nth q 0] [nth q 1] 3.3 1.7]] fix-xy]
-  [map [fn [x] [csk x sled-hole-y 2.4 1.35]] sled-hole-x]
-  [map [fn [x] [csk x [- 0.0 sled-hole-y] 2.4 1.35]] sled-hole-x]]]]]
-[let cortex-floor [difference [union dock-cuts floor-holes] [union [intersection below-floor shell-solid] cone-bosses]]]
+[let cortex-floor [difference dock-cuts [union [intersection below-floor shell-solid] cone-bosses]]]
 [let cortex-padboard [bx -6.0 -10.0 0.3 6.0 10.0 1.3]]
 [let cortex-pads [fold [translate -100.0 0.0 0.0 [cube 0.1 0.1 0.1]] [fn [acc q] [union acc [translate [nth q 0] [nth q 1] 0.0 [cylinder 1.25 0.3]]]] pad-xy]]
 [let cortex-strikes [union [translate 0.0 30.0 0.0 [cylinder 4.0 1.0]] [translate 0.0 -30.0 0.0 [cylinder 4.0 1.0]]]]   ; steel discs
@@ -278,6 +225,9 @@
 [let ear-x gx]             ; the vent field's centre (speaker, mic, duct)
 ; ---------------------------------------------------------------------- insides ----
 [let zd [+ zf 6.0]]                            ; the screen sits a little above the face centre
+[let cortex-display [tilt [bx [- xfz 14.2] -38.3 [- zd 31.8] [- xfz 3.2] 38.3 [+ zd 31.8]]]]
+[let cortex-cams [tilt [union [bx [- xfz 14.5] [- [/ baseline 2.0] 12.5] [- ze 12.0] [- xfz 3.5] [+ [/ baseline 2.0] 12.5] [+ ze 12.0]]
+                              [bx [- xfz 14.5] [- -12.5 [/ baseline 2.0]] [- ze 12.0] [- xfz 3.5] [- 12.5 [/ baseline 2.0]] [+ ze 12.0]]]]]
 ; THE SLED: everything mounts to the floor plate, so the head assembles open on the bench and drops into the tub.
 ; Heaviest part lowest and over the neck: the pack lies flat right above the dock, the Jetson rides over it on two
 ; side brackets, fan up into the open crown. The heatsink's fins exhaust aft: a short duct carries it to the dot
@@ -287,24 +237,23 @@
 [let zb0 14.0]
 [let cortex-battery [bx -41.0 -37.0 zb0 25.0 37.0 [+ zb0 22.0]]]               ; 3S1P 21700, flat, over the dock
 [let zj0 38.0]
-[let jxa -51.5]                                 ; carrier back edge just inside the back wall: its I/O at the cutout
-[let jxb 0.5]
-[let cortex-compute [union [bx jxa -43.5 zj0 jxb 43.5 [+ zj0 18.0]]                  ; carrier + its I/O edge
-                          [bx [+ jxa 5.0] -43.5 [+ zj0 18.0] jxb 43.5 [+ zj0 28.0]]]]     ; module stack, clear of the back sweep                   ; A603 + Orin NX
-[let cortex-heatsink [bx [+ jxa 6.0] -31.5 [+ zj0 28.0] [+ jxa 46.0] 31.5 [+ zj0 36.0]]]     ; ATS fan heatsink 63 x 40 x 8
-[let cortex-sled [union [bx [+ jxa 8.0] -46.0 tf jxb -44.0 zj0] [bx [+ jxa 8.0] 44.0 tf jxb 46.0 zj0]]]  ; 2 mm Al side brackets
-; The printed v1 sled (cortex-sled stays the 2 mm Al production part): 3 mm walls, an outward foot with 2 x M2.5 up
-; through the floor (nut on top, reached from above with the tub off), and an inward 3 mm top flange under the
-; carrier's edge, left blank: drill it to the A603's holes (MEASURE.md #5). The flange clears the pack by 1 mm.
-[let sled-print-side [fn [s]
-  [let yy [fn [a b] #[[min #[[* s a] [* s b]]] [max #[[* s a] [* s b]]]]]]
-  [let w [yy 43.0 46.0]] [let f [yy 46.0 54.0]] [let t [yy 38.0 46.0]]
-  [difference [union [translate [nth sled-hole-x 0] [* s sled-hole-y] [- tf 0.01] [cylinder 1.35 4.0]]
-                     [translate [nth sled-hole-x 1] [* s sled-hole-y] [- tf 0.01] [cylinder 1.35 4.0]]]
-    [pipe [bx [+ jxa 8.0] [nth w 0] tf jxb [nth w 1] zj0]
-          [union [bx [+ jxa 8.0] [nth f 0] tf jxb [nth f 1] [+ tf 3.0]]]
-          [union [bx [+ jxa 8.0] [nth t 0] [- zj0 3.0] jxb [nth t 1] zj0]]]]]]
-[let cortex-sled-print [union [sled-print-side 1.0] [sled-print-side -1.0]]]
+; COMPUTE (Cam 2026-10-21): the bay takes the Waveshare JETSON-ORIN-IO-BASE (90.5 x 103) at 100+; the MVP carries a
+; decased Seeed J3011 (Mini J401, 87.8 x 56.7, M2.5 holes 81 x 49, from Seeed's STEP) on a carrier plate in the same
+; sled, port edge (the 87.8 side) aft at the I/O cutout. Swap the plate, not the sled.
+[let jxa -66.5]                                 ; plate back edge, just inside the back wall
+[let jxb [+ jxa 90.5]]                          ; the sled / plate is sized for the Waveshare
+[let jd 56.7]                                   ; J3011 board depth (x); 87.8 along y
+[let cortex-compute [union [bx [+ jxa 2.5] -43.9 zj0 [+ [+ jxa 2.5] jd] 43.9 [+ zj0 12.0]]                ; J3011 carrier + its I/O edge
+                          [bx [+ jxa 6.0] -34.8 [+ zj0 2.0] [+ jxa 51.0] 34.8 [+ zj0 8.0]]]]   ; Orin Nano on the SO-DIMM
+[let cortex-heatsink [union [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] -43.5 [+ zj0 12.0] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 29.35] 43.5 [+ zj0 28.7]]   ; stock finned heatsink 87 x 58.7 x 16.7
+                            [bx [- [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] -23.4 [+ zj0 28.7] [+ [+ [+ jxa 2.5] [/ jd 2.0]] 23.4] 23.4 [+ zj0 36.0]]]]  ; fan 47 x 47 x 7.3
+[let jcx [+ [+ jxa 2.5] [/ jd 2.0]]]          ; J3011 board centre (x)
+[let j-pilot [fn [x y] [translate [+ jcx x] y [- zj0 8.0] [cylinder-n 1.1 10.0 16]]]]   ; M2.5 self-tap pilot, 2.2 (no inserts)
+[let j-boss [fn [x y] [translate [+ jcx x] y [- zj0 6.0] [cylinder-n 3.5 4.0 24]]]]     ; 7 mm boss under the plate: 6 mm of thread
+[let cortex-plate [difference [union [j-pilot -24.5 -40.5] [union [j-pilot -24.5 40.5] [union [j-pilot 24.5 -40.5] [j-pilot 24.5 40.5]]]]
+                              [union [bx [+ jxa 8.0] -54.0 [- zj0 2.0] jxb 54.0 zj0]
+                                     [union [j-boss -24.5 -40.5] [union [j-boss -24.5 40.5] [union [j-boss 24.5 -40.5] [j-boss 24.5 40.5]]]]]]]   ; J3011 holes 49 x 81; Waveshare holes later
+[let cortex-sled [union cortex-plate [union [bx [+ jxa 8.0] -54.0 tf jxb -52.0 zj0] [bx [+ jxa 8.0] 52.0 tf jxb 54.0 zj0]]]]  ; plate + 2 mm Al side brackets
 [let zh0 [+ zj0 28.0]]
 [let zh1 [+ zj0 40.0]]
 ; the heatsink's aft fins sit 3 mm off the back wall, right behind the exhaust grid (foam gasket, no duct)
@@ -336,19 +285,6 @@
     [union [run-z [+ tf 7.0] 22.0 -43.0 20.0 1.75]] [union [run-x -43.0 -41.0 20.0 22.0 1.75]]      ; pack -> charger
     [union [run-y 0.0 -41.0 9.0 8.0 1.75]] [union [run-z 8.0 40.0 9.0 -41.0 1.75]] [union [run-x 9.0 jxb -41.0 40.0 1.75]]]]  ; dock T1 Ethernet + USB 2 -> A603
 
-[pub let cortex-display [j-tilt [bx [- 0.0 13.0] -37.0 [- 0.0 25.0] [- 0.0 2.6] 37.0 25.0]]]
-; the camera proxies, J: behind each ear grille (the Ø4.4 dot at the grid's top row), an IMX219-sized box
-; the camera proxies, J: BEHIND THE PANE at its outer corners (the glass is clear there — the eyes' mask
-; leaves the corners transparent). Baseline 60 (the 4" pane limits it; SPEC's 106 was for the old face).
-; the camera, v1: ONE mono sensor in the forehead band, above the pane (Vector-style). Ø9.5 bore through
-; the crown wall at z 95.5, dark glass dot flush with the outer wall. Stereo returns later with a custom
-; flex board in the panel's side margins (the CAD says there's 7.5 mm beside the 4" PCB — not enough for
-; the stock IMX219, enough for a custom micro board).
-[let zcamf 95.5]
-[let xcamf 30.0]
-[pub let cortex-cams [union [bx 18.0 -4.75 [- zcamf 4.75] 40.0 4.75 [+ zcamf 4.75]]
-                            [rotate 0.0 90.0 0.0 [translate xcamf 0.0 zcamf [cylinder-n 4.25 26.0 32]]]]]
-
 ; ------------------------------------------------------------------ the dock: body side ----
 ; What a BODY carries, its neck's dock face at the origin (z up into the head). A desk dock is the same parts in a
 ; weighted puck. Lower the head: the cones seat it (+-0.1 mm), the magnets pull it flat, the pogo pins compress onto
@@ -366,16 +302,15 @@
                          [translate -36.0 0.0 -6.0 [rotate 0.0 -90.0 0.0 [cylinder 4.0 3.0]]]]]     ; button, back of the neck
 
 [assembly
- #[[part "cortex-tub" cortex-tub "satin_black"]
-   [part "cortex-floor" cortex-floor "aluminium"]
-   [part "cortex-exhaust-grille" cortex-exhaust-grille "satin_black"]
-   [part "cortex-back-grille" cortex-back-grille "satin_black"]
-   [part "cortex-ear-grilles" cortex-ear-grilles "satin_black"]
+ #[[part "cortex-tub" cortex-tub "cx_shell"]
+   [part "cortex-floor" cortex-floor "cx_floor"]
+   [part "cortex-exhaust-grille" cortex-exhaust-grille "cx_shell"]
+   [part "cortex-ear-grilles" cortex-ear-grilles "cx_accent"]
    [part "cortex-keeper" cortex-keeper "steel"]
    [part "cortex-strikes" cortex-strikes "steel"]
    [part "cortex-pads" cortex-pads "gold"]
    [part "cortex-padboard" cortex-padboard "pcb_green"]
-   [part "cortex-glass" cortex-glass "visor_glass"]
+   [part "cortex-glass" [union cortex-glass cortex-glass-face] "visor_glass"]
    [part "cortex-display" cortex-display "heatsink"]
    [part "cortex-cams" cortex-cams "pcb_green"]
    [part "cortex-dockboard" cortex-dockboard "pcb_green"]
@@ -391,7 +326,6 @@
  #[[instance "cortex-tub_i" "cortex-tub" 0.0 0.0 0.0]
    [instance "cortex-floor_i" "cortex-floor" 0.0 0.0 0.0]
    [instance "cortex-exhaust-grille_i" "cortex-exhaust-grille" 0.0 0.0 0.0]
-   [instance "cortex-back-grille_i" "cortex-back-grille" 0.0 0.0 0.0]
    [instance "cortex-ear-grilles_i" "cortex-ear-grilles" 0.0 0.0 0.0]
    [instance "cortex-keeper_i" "cortex-keeper" 0.0 0.0 0.0]
    [instance "cortex-strikes_i" "cortex-strikes" 0.0 0.0 0.0]
@@ -411,7 +345,6 @@
    [instance "cortex-amps_i" "cortex-amps" 0.0 0.0 0.0]
    [instance "cortex-cables_i" "cortex-cables" 0.0 0.0 0.0]]
  #[[fixed-joint "fix_cortex-exhaust-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-exhaust-grille_i" 0.0 0.0 0.0]
-   [fixed-joint "fix_cortex-back-grille" "cortex-floor_i" 0.0 0.0 0.0 "cortex-back-grille_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-ear-grilles" "cortex-floor_i" 0.0 0.0 0.0 "cortex-ear-grilles_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-keeper" "cortex-floor_i" 0.0 0.0 0.0 "cortex-keeper_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-strikes" "cortex-floor_i" 0.0 0.0 0.0 "cortex-strikes_i" 0.0 0.0 0.0]
@@ -432,90 +365,3 @@
    [fixed-joint "fix_cortex-amps" "cortex-floor_i" 0.0 0.0 0.0 "cortex-amps_i" 0.0 0.0 0.0]
    [fixed-joint "fix_cortex-cables" "cortex-floor_i" 0.0 0.0 0.0 "cortex-cables_i" 0.0 0.0 0.0]]
  "cortex-floor_i"]
-
-; ==========================================================================
-; J -- the Figure architecture (the direction, NOTES.md 6): the egg skull IS
-; the face. A flat face facet leaning back with the face's 8 deg rake, the
-; panel flush in it behind a 1.2 mm reveal, the eyes = Ø21.2 smoked cabochon
-; domes over Ø18 lit discs (the drawn eyes), the mouth = a 30 x 6.5 emissive
-; bar (the waveform/mouth animation in firmware), and the cameras as clear
-; Ø4.3 dots centred in the ear grids' top row (baseline ~115; the 7" has no
-; room behind it). Off-state: a black monolith with glass catchlights.
-; Everything below is defined in the TILTED face frame (j-tilt: u = the face
-; normal, v = y, w = z along the face), so the pane is flush everywhere.
-; ==========================================================================
-[let face-plane [j-tilt [bx -1.5 -400.0 -400.0 400.0 400.0 400.0]]]  ; the facet: cuts u > -1.5 (the pane's back)
-[pub let j-skull0 [difference face-plane shell-solid]]
-; the pane: flush in the facet (the tilted frame's u = 0 plane), 1.2 mm reveal all round
-[let j-pw [if size-full [/ d7-w 2.0] 42.0]]            ; the pane: the WHOLE face (4": 84 wide; 7": 166)
-[let j-ph [if size-full [/ d7-h 2.0] 42.5]]            ; the pane height (4": 85; 7": 108)
-[let j-pr [if size-full 20.0 14.0]]                    ; the pane's corner radius: the skull's plan corner
-[let j-sec [fn [u h r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h r]]]]
-[let j-pane [j-tilt [loft #[[j-sec [- 0.0 1.5] j-ph 3.0] [j-sec [- 0.0 0.2] j-ph j-pr]]]]]
-[let j-panel [j-tilt [loft #[[j-sec 0.5 [+ j-ph 0.5] 3.0] [j-sec [- 0.0 13.0] [+ j-ph 0.8] 18.0]]]]]           ; the pocket, through the facet
-; the aperture chamfer: a 0.6 mm band at the pane opening's edge, cut 0.3 deep at 45 deg (crisp machined edge)
-[let j-chnf-sec [fn [u h] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 j-pw h j-pr]]]]
-[let j-chnf-outer [j-tilt [loft #[[j-chnf-sec 0.1 [+ j-ph 0.6]] [j-chnf-sec 0.4 [+ j-ph 0.3]]]]]]
-[let j-chnf-inner [j-tilt [loft #[[j-chnf-sec 0.1 [+ j-ph 0.3]] [j-chnf-sec 0.4 j-ph]]]]]
-[let j-chnf [j-tilt [difference j-chnf-inner j-chnf-outer]]]   ; A-B = B-A: the chamfer band
-[let j-skull [difference j-panel j-skull0]]
-; the parting line: a 1.2 mm tall, 0.5 mm deep groove band around the shell at the pane's bottom edge —
-; a designed shadow line (and the print seam hides in it)
-[let j-part-z 30.0]
-[let j-part-groove [difference [bx -60.0 -60.0 29.4 60.0 60.0 30.6] [bx -58.5 -58.5 29.4 58.5 58.5 30.6]]]
-[let j-skull2 [difference j-part-groove j-skull]]
-; the base band: the bottom 3 mm recessed 1 mm (a shadow gap; the head floats off the dock line)
-[let j-base-band [difference [bx -60.0 -60.0 0.0 60.0 60.0 3.0] [bx -58.5 -58.5 0.0 58.5 58.5 3.0]]]
-[let j-skull3 [difference j-base-band j-skull2]]
-[let j-skull j-skull3]
-; the eyes: the lit disc (Ø18) flush with the pane (u = -0.15), the cabochon cap (Ø21.2) seated on the pane
-[let j-eye-r 10.0]
-[let j-dome-r 10.6]
-[let j-eye-cy 16.0]                                    ; the eye centres: ±16 (1.5 eye-widths apart)
-[let j-eye-v [+ 10.0 0.0]]                             ; the eyes: 10 above the facet centre
-[let j-eye-lens [rotate 0.0 90.0 0.0 [cylinder-n j-eye-r 0.08 32]]]
-; the domes are gone (Cam): the eyes are the lit discs directly on the pane
-[let j-eyes [union [j-tilt [translate [- 0.0 0.10] j-eye-cy j-eye-v j-eye-lens]]
-                   [j-tilt [translate [- 0.0 0.10] [- 0.0 j-eye-cy] j-eye-v j-eye-lens]]]]
-; the mouth: a 30 x 6.5 stadium bar, low on the pane (the waveform/mouth animation in firmware; off = dark)
-[let j-mouth-v [- 0.0 [* 0.14 hh]]]
-[let j-mouth [j-tilt [hull [translate 1.6 -8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]] [translate 1.6 8.25 j-mouth-v [scale 0.5 1.0 1.0 [sphere 3.25]]]]]]
-; the tub (J): the skull (facet-cut) minus the openings; the panel pocket included
-[let j-cuts [intersection [pipe below-floor [union vents] [union io-cut] [union insert-holes] [union j-panel] [union j-chnf] [union [rotate 0.0 90.0 0.0 [translate xcamf 0.0 zcamf [cylinder-n 4.25 60.0 32]]]]] shell-solid]]
-[pub let cortex-tub-j [difference j-cuts j-skull]]
-[pub let cortex-face-j j-pane]
-[pub let cortex-eyes-j j-eyes]
-[pub let cortex-mouth-j j-mouth]
-[let j-cam-dot [translate xcamf 0.0 zcamf [rotate 0.0 90.0 0.0 [cylinder-n 4.1 1.2 32]]]]
-; the ear styling: the grille INSERT is orange — the design's ONE colour accent. An oval plate filling
-; the window, 2.2 thick, with the dot grid cut through it. Printed flat, bonded into the window flush
-; with the outer wall.
-[let j-gsec [fn [u r] [sketch u 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 [rr-segs 0.0 0.0 gw r 7.0]]]]
-[let grille-rows [map [fn [r] [filter [fn [q] [in-pill [nth q 0] [nth q 1] 7.5 12.0]] r]] [hex-rows 10 3]]]
-[let grille-holes-loc [grid-holes grille-rows [fn [q] [translate [- 0.0 1.1] [nth q 0] [nth q 1] [rotate 0.0 90.0 0.0 [cylinder-n 1.1 3.0 8]]]]]]
-[let j-grille-plate [difference
-    [loft #[[j-gsec [- 0.0 2.2] gh] [j-gsec 0.0 gh]]]
-    grille-holes-loc]]
-; seat: local u=0 face flush with the OUTER wall (y = -hw), extending inward. Left ear at y -hw.
-[let j-grille-left [translate gx [- 0.0 hw] zg j-grille-plate]]
-[let j-grille-right [mirror 0.0 0.0 0.0 0.0 1.0 0.0 j-grille-left]]
-[let j-earrings [union j-grille-left j-grille-right]]
-[pub let cortex-camdots-j j-cam-dot]
-[pub let cortex-earrings-j j-earrings]
-
-; the display proxy, J: fills the panel pocket behind the recessed pane (the pane sits at u -1.5..-0.2)
-
-; proxy roots for export and renders (the assembly above is the real head)
-[root cortex-back-grille "satin_black"]
-[root cortex-tub-d4 "satin_black"]
-[root d4-glass "visor_glass"]
-[root d4-body "pcb_green"]
-[material "screen_glass" 0.014 0.015 0.019 0.0 0.055]
-[material-emissive "eye_lit" 0.02 0.025 0.04 0.0 0.35 0.30 0.36 0.52 1.0 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
-[material "dome_smoke" 0.03 0.035 0.045 0.0 0.06]
-[material-emissive "mouth_glow" 0.05 0.06 0.09 0.0 0.3 0.28 0.34 0.50 1.0 "" 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0]
-[root cortex-tub-j "satin_black"]
-[root cortex-face-j "screen_glass"]
-[root cortex-eyes-j "eye_lit"]
-[root cortex-mouth-j "mouth_glow"]
-[root cortex-camdots-j "lens"]

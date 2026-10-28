@@ -44,12 +44,17 @@ def masses():
             c = tuple(sum(q[i] for q in pts) / len(pts) for i in range(3))
         rows.append((link, max(m, 0.0), c[0]))
     rows.append(('harness', 0.20, 0.35 * F.W / 0.48))   # spread along the arm; 0.35 m on the full arm
+    if F.V10 and os.environ.get('ROSE_ARM_BARE') != '1':    # v10.3: the skin, Al flank panels and gap pad (skin_v10.py --mass)
+        import json
+        f = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'skin_mass_v10.json')
+        if os.path.exists(f):
+            rows += [(l, kg, x) for l, kg, x in json.load(open(f))]
     import fab
     for name, where, qty, m, sp, bush, ring, bore in fab.SLEEVES:
         kg = fab.sleeve_kg(fab.sleeve_dims(m, sp, bush, ring, bore))
         xs = [('turret', 0.0), ('upper', F.UPPER)] if name == 'RS04' else [('yoke', F.W)]
         for link, x in xs:            # J2's sleeve is on the upper arm's axis at the shoulder; J4's at the elbow
-            rows.append(('upper' if name == 'RS04' else link, kg, x))
+            rows.append(('upper' if name == 'RS04' else link, kg, x) if not (F.V10 and x == F.UPPER) else ('upperd', kg, x))
     _MASS_CACHE[key] = rows
     return rows
 
@@ -58,11 +63,52 @@ def flange_x():
     return F.flange_x()
 
 
-MOVING = ('upper', 'fore', 'yoke', 'wrist', 'tool', 'harness')
+MOVING = ('upper', 'upperd', 'fore', 'yoke', 'wrist', 'tool', 'harness')
+# Gripper v2 (485 g, jaw tips 55 mm past the model's: 786 vs 731 mm on v9) in place of the model's
+# EL05 + jaws: a lump at GRIP_V2_CX past the J7 output, the payload at its jaw tips.
+GRIP_V2_KG, GRIP_V2_REACH = 0.485, 0.055
+GRIP_V2_CX = 0.050
+GRIPPER = ['model']
+
+
+def _rows():
+    if GRIPPER[0] == 'model':
+        return masses()
+    xt = F.stations()['xt']
+    return [r for r in masses() if r[0] != 'tool'] + [('tool', GRIP_V2_KG, xt + GRIP_V2_CX)]
+
+
+def flange_x():
+    return F.flange_x() + (GRIP_V2_REACH if GRIPPER[0] == 'v2' else 0.0)
 
 
 def moment(x0, payload=PAYLOAD):
-    return G * (sum(m * (x - x0) for l, m, x in masses() if l in MOVING and x > x0) + payload * (flange_x() - x0))
+    return G * (sum(m * (x - x0) for l, m, x in _rows() if l in MOVING and x > x0) + payload * (flange_x() - x0))
+
+
+def derate(j):
+    """v10.3: the skin's thermal derating of joint j's continuous rating (thermal_v10.py writes
+    thermal_v10.json; design of record = open-ring pucks + Al flank panels). 1.0 for v9 / no table."""
+    if not F.V10:
+        return 1.0
+    import json
+    f = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'thermal_v10.json')
+    return json.load(open(f)).get(j, 1.0) if os.path.exists(f) else 1.0
+
+
+def holds():
+    """{joint: kg held straight out, continuously} for the current GRIPPER. J3 (v10 upper-arm roll) and
+    J1 (when it is the humanoid's shoulder pitch) are the worst pose: the load's lever about their axis."""
+    R = lambda m: F.RATING[id(m)][1] * (2 if (m is F.J2M and F.TWIN_SH) else 1)
+    out = {}
+    for j, x0, m in (('J2', 0.0, F.J2M), ('J4', F.UPPER, F.J4M), ('J6', F.W, F.J6M)):
+        out[j] = (R(m) * derate(j) - moment(x0, 0.0)) / (G * (flange_x() - x0))
+    if F.V10:
+        # J3 rolls the elbow: with the upper arm level and the forearm swung out level to the side, the
+        # forearm + hand moment about the upper-arm axis is exactly the elbow's load
+        out['J3'] = (F.RATING[id(F.J3M)][1] * derate('J3') - moment(F.UPPER, 0.0)) / (G * (flange_x() - F.UPPER))
+        out['J1 body'] = out['J2']     # J1 as the humanoid's shoulder pitch: the whole arm, same lever as J2
+    return out
 
 
 def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
@@ -84,9 +130,11 @@ def section(h, W, t=F.T_PL, tc=F.T_CV, hw=None, window_frac=0.55):
 def stiffness():
     U, Fo = F.UPPER, F.FORE
     hu, Wu = 2 * F.R_LOBE_EL, 2 * F.Y_UPPER_DIST
+    if F.V10:
+        hu = 2 * F.H_UD          # v10: the distal upper arm's box is its holder plates' depth
     hf, Wf = 2 * F.R_LOBE0 + 0.016, 2 * F.Y_FORE_DIST
     Iu, Ju = section(hu, Wu)
-    If, Jf = section(hf, Wf)
+    If, Jf = section(hf, Wf, hw=max(0.0, hf - 2 * F.FLANGE_D) if F.V10 else None)
     xF = flange_x()
     m_e, m_w = moment(U), moment(U + Fo)
     F_e, F_w = m_e / (xF - U), m_w / (xF - U - Fo)
@@ -106,7 +154,18 @@ def stiffness():
         th_lobe += M * 2 * r_a * (1 / I_lobe - 1 / Iu) / E
     th_u += th_lobe
     d_u += th_lobe * U / 2
+    if F.V10:
+        # the proximal upper arm is two open plates (2 H_UP deep, no covers) out to the J3 end plate;
+        # J3's own bearing tilt is NOT modelled (RobStride gives no moment stiffness)
+        I_p = 2 * F.T_PL * (2 * F.H_UP) ** 3 / 12
+        th_p = moment(0.0) * F.X3_CP * (1 / I_p - 1 / Iu) / E
+        th_u += th_p
+        d_u += th_p * (U - F.X3_CP / 2)
     sag = d_u + th_u * (xF - U) + d_f + th_f * (xF - U - Fo)
+    if F.V10:   # v10.3: the keyhole tower's neck bends in its own plane under the J2 moment
+        h_t = F.Z_SH - (F.T_FOOT + F.J1M['L'] + F.T_PL)
+        I_n = 2 * F.T_PL * (2 * F.TOWER_NECK) ** 3 / 12
+        sag += moment(0.0) * h_t / (E * I_n) * xF
     # twist: wrist pitched 90 puts the hand's moment into the forearm as torque; elbow at 90 the same for the upper arm
     twist = m_w * Fo / (Gs * Jf) * (xF - U - Fo) + m_e * U / (Gs * Ju) * (xF - U) * 0.0 + \
         moment(U, 0) * 0 + (m_e * U / (Gs * Ju)) * (xF - U)
@@ -171,6 +230,31 @@ def fold(joint, lo, hi, step=5):
     return a, b, first_hit
 
 
+def cable_roll_clearance(step=10):
+    """v10: the harness against the roll cartridges (J3, J7) across the full +/-180 deg of roll. The cable's
+    surface to the motor's can (a cylinder in the stator link's frame); min over all segments and angles."""
+    out = {}
+    S = F.stations()
+    for j, link, m, x0, x1 in (('J3_upper_roll', 'upper', F.J3M, F.X3_CP + F.T_PL, F.X3_OUT),
+                               ('J7_tool_roll', 'wrist', F.J7M, S['x_ep'] + F.T_PL, S['xt'])):
+        worst = (1.0, None)
+        for a in range(-180, 181, step):
+            T = F.fk({j: math.radians(a)})
+            R, t = T[link]
+            o = F.ORIGIN[link]
+            pts = F.cable_points(T)
+            loc = [add(tuple(sum(R[k][i] * (p[k] - t[k]) for k in range(3)) for i in range(3)), o) for p in pts]
+            for p, q in zip(loc, loc[1:]):
+                for s in range(11):
+                    c = tuple(p[i] + (q[i] - p[i]) * s / 10 for i in range(3))
+                    if x0 - 0.001 <= c[0] <= x1 + 0.001:
+                        d = math.hypot(c[1], c[2] - F.Z_SH) - m['d'] / 2 - F.R_CABLE
+                        if d < worst[0]:
+                            worst = (d, a)
+        out[j] = worst
+    return out
+
+
 def main():
     by = {}
     for l, m, x in masses():
@@ -186,9 +270,19 @@ def main():
         m = moment(x0)
         print('  %-20s %5.1f N.m   %3.0f%% of peak   %.2fx stall-continuous' % (name, m, 100 * m / peak, m / stall))
     for name, x0, stall in (('J2', 0.0, R(F.J2M, 'J2')[1]), ('J4', F.UPPER, R(F.J4M)[1]), ('J6', F.W, R(F.J6M)[1])):
-        free = stall - moment(x0, 0.0)
+        free = stall * derate(name) - moment(x0, 0.0)
         print('  %s holds %.2f kg straight out, continuously, no spring' % (name, free / (G * (flange_x() - x0))))
+    if F.V10:
+        h = holds()
+        print('  J3 upper-arm roll (%s) holds %.2f kg, worst pose (upper arm level, forearm level out to the side)' % (F.NAME[id(F.J3M)], h['J3']))
+    GRIPPER[0] = 'v2'
+    h = holds()
+    print('  with gripper v2 (%.0f g, jaw tips at %.0f mm): ' % (GRIP_V2_KG * 1e3, flange_x() * 1e3) + ', '.join('%s %.2f kg' % kv for kv in h.items()))
+    GRIPPER[0] = 'model'
 
+    if F.V10:
+        for j, (d, a) in cable_roll_clearance().items():
+            print('  harness vs %s cartridge over +/-180 deg roll: min clearance %.1f mm (at %s deg)' % (j, d * 1e3, a))
     sag, tw, secs = stiffness()
     print('\nflange deflection from structure: %.2f mm sag, %.2f mm twist   (budget 0.5 / 0.5)' % (sag * 1e3, tw * 1e3))
     print('\njoint ranges: run audit.py - the old surface-distance fold check here missed buried overlaps')

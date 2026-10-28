@@ -47,7 +47,7 @@ def toM(m):
     return Manifold(Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
 
 
-CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'trim-neckbase', 'torso-', 'motor-sp.', 'motor-headyaw')
+CHEST_PRE = ('waist-W4', 'trim-waisthub', 'elec-', 'estop-', 'cover-chest', 'trim-neckbase', 'torso-', 'motor-sp.', 'motor-headyaw', 'trim-j1ring')
 
 
 def body_of(name):
@@ -57,6 +57,12 @@ def body_of(name):
         return 'hyaw'
     if name.startswith('cable-t'):
         return 'torso'
+    if name.startswith(('cover-necksleeve', 'trim-neckring', 'trim-neckpuck')):
+        return 'hyaw'                                   # the neck rides the head yaw
+    if name.startswith('cover-dockcollar'):
+        return 'hpitch'
+    if name.startswith(('trim-j1ring', 'trim-j1grille')):
+        return TOP()                                    # the J1 bezel rides the torso flank
     b = _body_of(name)
     if b and b.startswith('ey.') and name.startswith('cover-hand') and KS.WRIST() is not None:
         return 'wy.' + b.split('.')[1]                  # 7-DoF arm: the hand rides the wrist yaw
