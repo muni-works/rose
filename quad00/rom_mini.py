@@ -22,7 +22,7 @@ BODIES = {
     'sp.{t}': ['arm-yokeP', 'motor-sr.{t}a', 'cover-shoulderyoke.{t}a', 'cover-shoulder.{t}a', 'puck-shoulder.{t}a'],
     'sr.{t}': ['arm-upperU', 'motor-ep.{t}a', 'cover-upperarm.{t}a', 'cover-deltoid.{t}a', 'trim-upperarm.{t}a'],
     'ep.{t}': ['arm-elbowE', 'motor-ey.{t}a', 'cover-elbowfork.{t}a', 'cover-elbow.{t}a', 'puck-elbow.{t}a'],
-    'wr.{t}': ['wrist-R0', 'wrist-R1', 'motor-wristpitch', 'cover-wristsleeve', 'trim-wristpitch'],
+    'wr.{t}': ['wrist-R0', 'wrist-R1', 'motor-wristpitch', 'cover-wristsleeve', 'trim-wristpitch', 'cover-wristboot'],
     'wp.{t}': ['wrist-P0', 'wrist-P1', 'motor-wristyaw'],
     'wy.{t}': ['wrist-H0'],
     'ey.{t}': ['wrist-F2', 'motor-wristroll', 'arm-forearmF1', 'cover-forearm.{t}a', 'cover-hand.{t}a', 'trim-wrist.{t}a'],
@@ -39,7 +39,7 @@ NEED = {'Hip_Roll': (-10, 40),   # inward -10 (walking ~8): legs 20 mm in, H2/T2
         'Elbow_Pitch': (-90, 90), 'Elbow_Yaw': (-130, 0), 'Head_yaw': (-57, 57), 'Head_pitch': (-20, 40),
         'Wrist_roll': (-90, 90), 'Wrist_pitch': (-45, 45), 'Wrist_yaw': (-30, 30),
         'Waist_yaw': (-45, 45), 'Waist_roll': (-15, 15), 'Waist_pitch': (-15, 40)}
-WRIST_LIM = {'Wrist_roll': (-150, 150), 'Wrist_pitch': (-70, 70), 'Wrist_yaw': (-45, 45)}   # ours, deg
+WRIST_LIM = {'Wrist_roll': (-150, 150), 'Wrist_pitch': (-45, 45), 'Wrist_yaw': (-30, 30)}   # ours, deg; the U-joint wrist's hand clears the sleeve to exactly this (was +-70 / +-45)
 WAIST_LIM = {'Waist_yaw': (-90, 90), 'Waist_roll': (-25, 25), 'Waist_pitch': (-25, 60)}     # ours (no K1 joint), deg
 
 

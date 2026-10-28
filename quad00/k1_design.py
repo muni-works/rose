@@ -396,7 +396,46 @@ def design():
             jaws = Manifold.batch_boolean(jaws, OpType.Add); jaws = [jaws, rail]
             add(f'cover-hand.{tag}a', tm(body_ + jaws[0] + jaws[1]))
             add(f'trim-wrist.{tag}a', cyl(wrist, u, 15.0, 5.0))
-        else:                                                  # round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
+        elif Wr.get('ujoint'):                                 # hands pass 2026-10-28: the U-joint wrist, nothing but actuators in the palm
+            WS = dict(KS.wrist(J, side, M))
+            wc = Wr['pitch'][0]; wz = wc[2]
+            z_sl0, z_sl1 = rcw[2] + mw['L'] / 2 + 1.0, wz + 30.0              # the sleeve: roll can + the differential pair, to above the U-joint
+            add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1))
+            add(f'trim-wristpitch.{tag}a', cyl(np.array([rcw[0], rcw[1], z_sl1 + 2.0]), [0, 0, 1.0], r_sl + 0.8, 4.0))   # the cuff's lip
+            # a ribbed rubber boot over the U-joint and the rods, sleeve to hand (it flexes; drawn at rest)
+            zb0, zb1 = z_sl1 + 0.5, wz - 36.0                                 # down into the hand: over its frame plate
+            boot = [rrect(np.array([wc[0] - 4.0, wc[1], z_]), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), r_, r_ * 0.86, r_ * 0.8, k=12)
+                    for z_, r_ in [(zb0 + (zb1 - zb0) * t_, (r_sl - 4.0) - 8.0 * t_ + (2.0 if i_ % 2 else 0.0)) for i_, t_ in enumerate(np.linspace(0, 1, 9))]]
+            add(f'cover-wristboot.{tag}a', tm(Manifold.batch_boolean([Manifold.hull_points(np.concatenate([a_, b_]).astype(np.float32)) for a_, b_ in zip(boot, boot[1:])], OpType.Add)))
+            cw = np.array([wc[0] + 4.0, wc[1], 0])
+            zt = tip[2] - 50.0
+            Lh = wz - zt; zk = wz - 0.50 * Lh                               # the knuckle line (matches KS.ujoint_wrist)
+            # the palm, no can in it: a 26 mm dome over the U-joint, then the back of the hand at 21 half-thick over the frame
+            # and the six actuators, thinning to the knuckles
+            dome = [(wz + 26.0 * math.cos(th), max(26.0 * math.sin(th), 6.0), max(26.0 * math.sin(th), 6.0)) for th in np.linspace(0.15, 1.45, 6)]
+            body_ = [(wz - 0.16 * Lh, 21.0, 40.0), (wz - 0.30 * Lh, 21.0, 44.0), (zk + 0.08 * Lh, 18.0, 44.0), (zk, 14.0, 42.0)]
+            palm = [ring(np.array([cw[0], cw[1], z_]), w, v, a_, b_, n=2.4) for z_, a_, b_ in dome + body_]
+            curl = -s * 1.0
+            fingers = []
+            for fx, fl, fw in ((28.0, 0.90, 0.92), (9.5, 1.0, 1.0), (-9.5, 0.96, 0.97), (-28.0, 0.78, 0.86)):
+                Lf = 0.56 * Lh * fl
+                for k_, (t0, t1, c0, c1) in enumerate([(0.0, 0.44, 0.0, 10.0), (0.46, 0.74, 5.0, 14.0), (0.76, 1.0, 14.0, 22.0)]):
+                    r0 = fw * (10.2 - 1.8 * k_); r1 = fw * (9.5 - 1.8 * k_ - (1.8 if k_ == 2 else 0.0))
+                    p0 = np.array([cw[0] + fx * (1 + 0.04 * t0), cw[1] + curl * c0, zk + 4.0 - Lf * t0])
+                    p1 = np.array([cw[0] + fx * (1 + 0.04 * t1), cw[1] + curl * c1, zk + 4.0 - Lf * t1])
+                    fingers.append(bar([(p0, r0 * 1.15, r0), ((p0 + p1) / 2, r0 * 1.12, r0 * 0.98), (p1, r1 * 1.1, r1)], n_=2.2))
+            th0 = np.array([cw[0] + 34.0, cw[1] - s * 2.0, wz - 0.30 * Lh])
+            th1 = th0 + np.array([12.0, curl * 8.0, -0.20 * Lh]); th2 = th1 + np.array([2.0, curl * 16.0, -0.16 * Lh])
+            fingers.append(bar([(th0, 11.0, 11.0), (th1, 9.5, 9.0)], n_=2.2))
+            fingers.append(bar([(th1 + (th2 - th1) * 0.08, 8.5, 8.0), (th2, 6.5, 6.0)], n_=2.2))
+            # the hand pitches +-45 and yaws +-30 about the U-joint: carve what the sleeve, its lip and the forearm pair sweep
+            fore = M_(cyl(np.array([rcw[0], rcw[1], (z_sl1 + wz + 80.0) / 2 + 2.0]), [0, 0, 1.0], r_sl + 1.5, 80.0 - z_sl1 + wz + 6.0))
+            for k in ('wrist-R1laa', 'wrist-R1lab', 'wrist-R1roda', 'wrist-R1rodb'):
+                fore = fore + M_(WS[f'{k}.{tag}a'])
+            hand = M_(hull_rings(palm)) - hullof_(sweep_union(fore, wc, [((0, 1.0, 0), -45, 45), ((1.0, 0, 0), -30, 30)], scale=1.02, step=7.5))
+            hand = Manifold.batch_boolean([hand] + fingers, OpType.Add)
+            add(f'cover-hand.{tag}a', tm(hand))
+        else:                                                  # (pre-2026-10-28) round sleeve (rolls) -> gunmetal pitch drum -> a hand around the yaw can
             WS = dict(KS.wrist(J, side, M)); g = lambda k: M_(WS[f'{k}.{tag}a'])
             z_sl0, z_sl1 = rcw[2] - mw['L'] / 2 - 1.0, pcw[2] + mw['D'] / 2 + 1.0
             add(f'cover-wristsleeve.{tag}a', cyl(np.array([rcw[0], rcw[1], (z_sl0 + z_sl1) / 2]), [0, 0, 1.0], r_sl, z_sl0 - z_sl1 if z_sl0 > z_sl1 else z_sl1 - z_sl0))
