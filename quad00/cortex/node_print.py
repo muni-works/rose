@@ -162,10 +162,26 @@ def box(x0, y0, z0, x1, y1, z1):
 # Two parts, split on a VERTICAL plane just behind the face (StackChan / Portal): a black FACE MODULE (panel, screen,
 # chin grille + depth camera) that prints face-down, and a REAR SHELL (everything else, closed bottom) that prints
 # upright. The devkit loads from the front through the whole cross-section. The joint is a 1 mm shadow gap framing
-# the face; a lip on the rear shell locates the face module. The face module hooks over that lip at the top (two
-# tabs) and screws to the floor at the bottom (a tongue, 2 x M3 from below into heat-set inserts).
-SPLIT_X, SPLIT_GAP = 40.0, 1.0
+# the face; a lip on the rear shell locates the face module. The face module snaps on at the top (two
+# cantilever hooks) and screws to the floor at the bottom (a tongue, 2 x M3 from below into heat-set inserts).
+#
+# Print 1 feedback: the old top tabs overlapped the rear lip by 0.17 cm3 when assembled (their ridge sat inside the
+# lip's root and the tab had 0.1 mm clearance), so they snapped when forced. The seam also gapped at the sides,
+# where the lip is cut for the devkit, and the two prints' skins never quite met flush. Changes:
+# - hooks: a 20 mm beam, 1.8 thick, with 0.3 clearance under the lip. The 0.7 hook takes 0.45 % strain at the root,
+#   under the interlayer limit, because the face prints face-down and its layers cross the beam. A 30 deg lead-in
+#   and a 45 deg return let it snap on and pull off. It catches behind a keeper strip that is solid with the
+#   rear's crown.
+# - x stop: the hook bridges bear on the lip's front edge, which sets the shadow gap.
+# - the face module carries its own side lips across the devkit's slot (z 35-74), so the seam is keyed all round.
+# - the seam is a V reveal: both skins are chamfered 0.6 at the split, so a print-to-print step of a few tenths
+#   reads as part of the groove, not as a ledge.
+SPLIT_X, SPLIT_GAP = 40.0, 0.5
 LIP_D, LIP_T = 5.0, 1.4                     # locating lip: reaches LIP_D forward inside the face module's wall
+SEAM_CH = 0.6                               # the 45 deg chamfer on each skin edge at the split
+HOOK_Y, HOOK_HW = 16.0, 7.0                 # hook beams at y +-16, 14 wide
+HOOK_CL, HOOK_T, HOOK_H = 0.3, 1.8, 0.7     # beam clearance under the lip, beam thickness, hook height
+KEEPER_X = 28.0                             # the keeper's back face: the hook catches behind it
 
 # Face layout (real z). The face flat runs z 21-137.
 PANEL_HW, PANEL_Z0, PANEL_Z1, PANEL_R = 48.0, 37.5, 135.5, 8.0   # the face panel area (sets the grille's width)
@@ -284,7 +300,7 @@ def cavity(w=WALL):
 
 def export(name, m, holes=0):
     mesh = m.to_mesh()
-    tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=True)
+    tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=False)   # manifold3d already shares verts; merging by position pinches edges that touch
     parts = [b for b in tm.split(only_watertight=False) if abs(b.volume) > 1.0]   # drop zero-volume boolean slivers
     tm = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
     tm.export(os.path.join(OUT, name + '.stl'))
@@ -319,13 +335,34 @@ def main():
     face = (skin + floor) ^ front(xf)
     # bottom tongue: lies on the rear shell's floor, 2 heat-set inserts for the M3s from below
     tongue = box(28.0, -18.0, FLOOR, xf + 6.0, 18.0, FLOOR + 6.0) ^ outer
-    # top tabs: hook behind the rear shell's lip (a ridge reaches out behind the lip's back face)
-    band = lambda w0, w1: cavity(WALL + w0) - cavity(WALL + w1)
-    tabs = mf.Manifold.batch_boolean([box(32.0, sy * 16.0 - 8.0, 120.0, xf + 9.0, sy * 16.0 + 8.0, 200.0) for sy in (1, -1)], mf.OpType.Add)
-    ridge = mf.Manifold.batch_boolean([box(34.0, sy * 16.0 - 8.0, 120.0, xr - 0.3, sy * 16.0 + 8.0, 200.0) for sy in (1, -1)], mf.OpType.Add)
-    bridge = mf.Manifold.batch_boolean([box(xr + LIP_D + 0.3, sy * 16.0 - 8.0, 120.0, xf + 9.0, sy * 16.0 + 8.0, 200.0) for sy in (1, -1)], mf.OpType.Add)
-    face = (face + tongue + (band(LIP_T + 0.3, LIP_T + 2.4) ^ tabs) + (band(0.3, LIP_T + 0.6) ^ ridge)
-            + (band(-0.5, LIP_T + 2.4) ^ bridge))           # bridge: ties each tab to the wall, ahead of the lip
+    cavs = {}
+    def cav(w):
+        w = round(w, 3)
+        if w not in cavs:
+            cavs[w] = cavity(w)
+        return cavs[w]
+    band = lambda w0, w1: cav(WALL + w0) - cav(WALL + w1)      # depths below the skin, measured from the wall's inside
+    hook_zone = lambda x0, x1, grow=0.0: mf.Manifold.batch_boolean(
+        [box(x0, sy * HOOK_Y - HOOK_HW - grow, 120.0, x1, sy * HOOK_Y + HOOK_HW + grow, 200.0) for sy in (1, -1)], mf.OpType.Add)
+    # top hooks. Each beam runs back from a bridge on the face wall, under the lip and the keeper, with HOOK_CL
+    # clearance. At its tip a hook rises HOOK_H into the space behind the keeper. Ramps are stepped in 4 bands.
+    lip_in = 0.2 + LIP_T                                      # the lip's (and keeper's) inner face
+    b0 = lip_in + HOOK_CL                                     # the beam's outer face
+    catch = KEEPER_X - 0.15                                   # the hook's catch face, 0.15 behind the keeper
+    lead, top, ret = HOOK_H / math.tan(math.radians(30)), 0.8, HOOK_H   # lead-in 30 deg, flat, return 45 deg
+    tip = catch - ret - top - lead
+    hooks = band(b0, b0 + HOOK_T) ^ hook_zone(tip, xf + 9.0)
+    for k in range(4):
+        d = b0 - HOOK_H * (k + 1) / 4                         # this step's outer face
+        x0 = tip + lead * (k + 0.5) / 4
+        x1 = catch - ret * (k + 0.5) / 4
+        hooks = hooks + (band(d, b0 + 0.01) ^ hook_zone(x0, x1))
+    # bridge: ties each beam root to the wall ahead of the lip; its back face is the x stop on the lip's front edge
+    bridge = band(-0.5, b0 + HOOK_T) ^ hook_zone(xr + LIP_D, xf + 9.0)
+    # side lips across the devkit's slot, where the rear has none: inside the rear wall, merged with the face wall
+    side = (((band(0.2, lip_in) ^ box(xr - LIP_D, -100.0, 35.0, xf + 1.0, 100.0, 74.0))
+             + (band(-0.5, lip_in) ^ box(xf, -100.0, 35.0, xf + 4.0, 100.0, 74.0))) ^ outer)
+    face = face + tongue + hooks + bridge + side
     pocket = rrect_prism(FACE - PANEL_D, FACE + 10.0, 0.0, PANEL_Z, 42.2, 42.2, 1.0)
     window = rrect_prism(FACE - 20.0, FACE - PANEL_D + 0.5, 0.0, PANEL_Z, 36.0, 36.0, 2.0)
     # depth-camera windows: Ø8 through, opening to Ø11 at the face (45 deg) so the 83 deg lens isn't vignetted
@@ -335,6 +372,7 @@ def main():
     inserts = [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, FLOOR - 0.01)) for x, y in TONGUE_SCREWS]
     dimples = crown_dimples()   # the halo crosses the split: its front dots are the face module's
     face = face - mf.Manifold.batch_boolean([pocket, window, rods ^ front(xf)] + lenses + inserts + dimples, mf.OpType.Add)
+    face_ch = []
 
     # REAR SHELL ---------------------------------------------------------------------------------------------------
     rear = (skin + floor) ^ behind(xr)
@@ -343,13 +381,18 @@ def main():
     # it's cut away across the devkit's height (z 35-74) so the 100 wide carrier slides in from the front
     lip = ((band(0.2, 0.2 + LIP_T) ^ box(xr - 1.0, -100.0, 12.0, xr + LIP_D, 100.0, 250.0))
            + (band(-0.5, 0.2 + LIP_T) ^ box(xr - 4.0, -100.0, 12.0, xr, 100.0, 250.0))) - box(-150.0, -100.0, 35.0, 100.0, 100.0, 74.0)
+    # keepers: over each hook beam the lip's root runs back, solid with the crown, to KEEPER_X; the hooks catch there
+    lip = lip + (band(-0.5, lip_in) ^ hook_zone(KEEPER_X, xr, 1.0))
+    # under the jaw the skin turns flat and the lip's band ran into the face wall: keep it 0.2 clear in front
+    lip = lip - ((outer - cav(WALL + 0.2)) ^ front(xr))
     usb_pad = box(-80.0, -PB_Y - 2.0, PB_Z0 - 1.0, PB_X, PB_Y + 2.0, PB_Z1 + 0.5)
     posts = [mf.Manifold.cylinder(DK_Z - FLOOR, 3.0, 3.0, 32)   # Ø6: clears the stereo board's ends
              .translate((x, y, FLOOR)) for x, y in DK_HOLES]
     top = XVF_Z + 1.2 + 0.4                                   # board top + a squeezed foam ring
     xvf = [mf.Manifold.cylinder(60.0, 3.0, 3.0, 32).translate((x, y, top)) for x, y in XVF_HOLES]     # crown bosses
     xvf += [mf.Manifold.cylinder(60.0, 2.5, 2.5, 32).translate((x, y, top + 0.6)) for x, y in CROWN_PORTS]  # mic channels
-    rear = rear + lip + (mf.Manifold.batch_boolean(posts + [usb_pad] + xvf, mf.OpType.Add) ^ outer)
+    # the front devkit posts (x 35-41) crossed the split into the face jaw and held the seam open: cut 0.2 behind it
+    rear = rear + lip + ((mf.Manifold.batch_boolean(posts + [usb_pad] + xvf, mf.OpType.Add) ^ outer) - front(xr - 0.2))
     cuts = [rods ^ behind(xr)]
     cuts.append(rrect_prism(-85.0, -50.0, 0.0, USB_Z, 4.6, 1.8, 1.6))      # USB-C receptacle opening 9.2 x 3.6
     cuts.append(rrect_prism(-85.0, -56.2, 0.0, USB_Z, 6.4, 3.6, 3.0))      # plug overmold pocket 12.8 x 7.2
@@ -373,7 +416,13 @@ def main():
     cuts += [mf.Manifold.cylinder(70.0, 0.7, 0.7, 16).translate((x, y, top)) for x, y in CROWN_PORTS]        # mic ports
     cuts += dimples
     cuts += [mf.Manifold.cylinder(8.0, 1.05, 1.05, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2.5 pilots
+    # seam: a 45 deg chamfer on each skin edge at the split, stepped in 4 offsets of the skin
+    for k in range(4):
+        s_, w_ = SEAM_CH * (k + 1) / 4, SEAM_CH * (4 - k) / 4
+        cuts.append((outer - cav(s_)) ^ box(xr - w_, -100.0, -5.0, xr + 1.0, 100.0, 250.0))
+        face_ch.append((outer - cav(s_)) ^ box(xf - 1.0, -100.0, -5.0, xf + w_, 100.0, 250.0))
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
+    face = face - mf.Manifold.batch_boolean(face_ch, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)
     export('node-face', face, len(hs))
