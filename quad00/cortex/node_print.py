@@ -178,7 +178,7 @@ def box(x0, y0, z0, x1, y1, z1):
 #   pinched, so the gap stays a plain butt joint.
 SPLIT_X, SPLIT_GAP = 40.0, 0.5
 LIP_D, LIP_T = 5.0, 1.4                     # locating lip: reaches LIP_D forward inside the face module's wall
-HOOK_Y, HOOK_HW = 16.0, 7.0                 # hook beams at y +-16, 14 wide
+HOOK_Y, HOOK_HW = 10.0, 6.0                 # hook beams at y +-10, 12 wide (inboard of the ears' front bosses)
 HOOK_CL, HOOK_T, HOOK_H = 0.3, 1.8, 0.7     # beam clearance under the lip, beam thickness, hook height
 KEEPER_X = 28.0                             # the keeper's back face: the hook catches behind it
 
@@ -198,12 +198,17 @@ DK_HOLES = [(by + DK_X0, bx - 46.0) for bx in (0.0, 92.0) for by in (0.0, 58.0)]
 TONGUE_SCREWS = [(34.0, 12.0), (34.0, -12.0)]
 # neck dock on the lean flat (plan x -48..12, ~100 wide): centre, insert circle radius, desk bumpons (about the centre)
 DOCK_X, DOCK_BCD = -16.0, 14.1
-# ears: reSpeaker XVF3800 (Ø100 x 1.2) flat under the crown, mics up: board bottom XVF_Z, centre XVF_X. Hung from
-# four crown bosses on its 66 square; each mic inlet (ASSUMED just inside a mounting hole) reaches the outside through
-# a sealed printed channel (Ø5, a foam ring between its foot and the board) to a Ø1.6 port in the crown.
-XVF_X, XVF_Z = 1.0, 132.0
-XVF_HOLES = [(XVF_X + sx * 33.0, sy * 33.0) for sx in (1, -1) for sy in (1, -1)]
-XVF_MICS = [(XVF_X + sx * 30.5, sy * 30.5) for sx in (1, -1) for sy in (1, -1)]
+# ears: reSpeaker XVF3800 (Ø100 x 1.2) flat under the crown, mics up: board bottom XVF_Z, centre XVF_X. From Seeed's
+# STEP (respeaker_mic_array_xvf3800_1_with-xiao-0820.stp) and 2D drawing, board frame (centre, top view, USB-C at -y):
+# 3 x Ø2.2 (M2) mounting holes at (0, -34) and (+-21.35, 24.5); bottom-port mics under Ø1.0 ports at (+-33, +-33).
+# Every part is on the underside, down to 6.7 below it (XIAO, USB-C, 3.5 jack, edge buttons). The top has only the
+# LED ring, 1.2 proud at r ~40. Turned so the USB-C faces aft (cable down the back to the devkit), the board maps
+# (bx, by) -> head (XVF_X + by, -bx). Print 1 had the holes on the 66 square, which is where the mics are.
+# Hung from three crown bosses (M2 self-tapping from below). Each mic port reaches the outside through a sealed
+# printed channel (Ø5, a foam ring between its foot and the board) to a Ø1.6 port in the crown.
+XVF_X, XVF_Z = 1.0, 120.0   # at 132 the edge buttons and USB-C hit the walls: 120 leaves ~4 per side and 6.6 behind the USB-C for a right-angle plug
+XVF_HOLES = [(XVF_X + by, -bx) for bx, by in ((0.0, -34.0), (21.35, 24.5), (-21.35, 24.5))]
+XVF_MICS = [(XVF_X + sx * 33.0, sy * 33.0) for sx in (1, -1) for sy in (1, -1)]
 
 
 def inside_xy(poly, x, y):
@@ -261,7 +266,7 @@ def halo(cx, half, mics, rows=4, pitch=2.2, n=6.0):
 # Rain: the dots are blind (0.6 deep) so only the four ports go through, and each port's channel is closed at its
 # foot by a hydrophobic acoustic membrane (ePTFE vent, e.g. a 6 mm adhesive disc) over the mic inlet: sound passes,
 # water stops there, on a 0.6 mm lip above the board so nothing wicks onto it.
-CROWN_DOTS, CROWN_PORTS = halo(XVF_X, 30.5, XVF_MICS)
+CROWN_DOTS, CROWN_PORTS = halo(XVF_X, 33.0, XVF_MICS)
 DOCK_FEET = [(-16.0, 32.0), (-16.0, -32.0), (24.0, 24.0), (24.0, -24.0)]   # front pair inside the strap slots
 
 # USB-C on the back: power in AND data, on the PD sink + 3S charger board (40 W x 30 H), screwed flat to a pad inside
@@ -414,7 +419,7 @@ def main():
     cuts += [dk(pcyl(x, y, 4.1, -1.0, 0.6)) for x, y in DOCK_FEET]
     cuts += [mf.Manifold.cylinder(70.0, 0.7, 0.7, 16).translate((x, y, top)) for x, y in CROWN_PORTS]        # mic ports
     cuts += dimples
-    cuts += [mf.Manifold.cylinder(8.0, 1.05, 1.05, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2.5 pilots
+    cuts += [mf.Manifold.cylinder(8.0, 0.8, 0.8, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2 self-tap pilots
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)
