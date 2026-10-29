@@ -104,26 +104,13 @@ Cam's call: take the board out of its enclosure to save weight, and keep the sto
 
 Write the measurements here or in a note, and the next pass folds them in.
 
-## Node in ASA, with PLA support interface (OrcaSlicer, P1S)
+## Node in ASA (OrcaSlicer, P1S)
 
 `fab/node/node-mvp-asa.3mf` (from `node_3mf.py`): both parts tilted 30 deg, uniform 0.2 layers, 3 walls, 8 mm
-outer brim. Supports are ASA (filament 1) with a 2-layer interface of Bambu Support For PLA (filament 2) at a 0 mm
-top/bottom gap. PLA doesn't bond to ASA, so the interface peels clean. Purges go into the infill and the support.
+outer brim, one filament (Generic ASA or Bambu ASA). The tree supports are tuned to peel clean: 0.2 top/bottom gap
+(one layer), 3 interlaced interface layers at 0.3 spacing, 0.6 xy gap from the walls, 60 mm/s interface.
 
-Orca refuses the pair by default ("Selected nozzle temperatures are incompatible"): each filament's print
-temperature must sit inside the other's range, and PLA is 190-240 while ASA is 240-280. Fix it once, in the
-filament preset rather than the global preference:
+A PLA interface (it doesn't bond to ASA) would peel cleaner. Orca blocks the pair on its nozzle-temperature
+check unless you turn on Preferences -> Control -> Slicing -> Remove mixed temperature restriction.
 
-1. Filament 2 = Bambu Support For PLA, edit (pencil) -> Filament -> Print temperature:
-   - Nozzle 240 (first layer 240): PLA support interface is fine hot, and 240 is inside ASA's range
-   - Recommended nozzle temperature range: 190-270, so ASA's 260 is inside it
-   Save as "Support For PLA (ASA interface)".
-2. Plate type: Textured PEI (Cool Plate rejects ASA).
-3. Filament 1 = Generic ASA (or Bambu ASA). Keep the door and lid closed. PLA in a hot chamber can heat-creep, but
-   it only runs for 2 interface layers at a time, which is fine in practice. Dry the ASA.
-
-The global alternative (Preferences -> Control -> Slicing -> Remove mixed temperature restriction) also works but
-turns the check off for every project.
-
-Time: slice and read the estimate. To bring it under a day, raise the layer height before cutting walls or
-support (0.2 -> 0.24 cuts about a sixth).
+Keep the door and lid closed, dry the ASA, and use Textured PEI or the Smooth/High Temp plate (not the Cool Plate).

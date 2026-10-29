@@ -181,13 +181,14 @@ if __name__ == '__main__':
     fast(face_down=True, out='node-mvp-tilt.3mf', tilt=30.0,
          settings=dict(QUALITY, layer_height='0.12', support_filament='0', support_interface_filament='0',
                        brim_type='outer_only', brim_width='5'))
-    # ASA body (filament 1) with Support For PLA (filament 2) as the interface only: PLA doesn't bond to ASA, so the
-    # support peels clean at 0 top gap; the bulk of the support stays ASA, so few swaps. Bambu refuses the pair
-    # (PLA 190-240 vs ASA 240-280 nozzle ranges) until the support preset is set up for it: see print/PRINT.md (ASA).
+    # ASA, one filament (a PLA interface needs a preset Orca kept refusing). The interface is tuned to peel clean:
+    # one layer of air above it (0.2 at 0.2 layers), 3 interlaced interface layers at 0.3 spacing so the underside
+    # is flat without welding, a 0.6 xy gap so tree branches stay off the walls, and slow interface lines.
     fast(face_down=True, out='node-mvp-asa.3mf', tilt=30.0,
-         settings=dict(QUALITY, layer_height=ASA_LAYER, support_filament='1', support_interface_filament='2',
-                       support_top_z_distance='0', support_bottom_z_distance='0', support_interface_top_layers='2',
-                       support_interface_bottom_layers='2', support_interface_spacing='0.2',
-                       flush_into_infill='1', flush_into_support='1',
+         settings=dict(QUALITY, layer_height=ASA_LAYER, support_filament='0', support_interface_filament='0',
+                       support_top_z_distance='0.2', support_bottom_z_distance='0.2',
+                       support_interface_top_layers='3', support_interface_bottom_layers='2',
+                       support_interface_spacing='0.3', support_interface_pattern='rectilinear_interlaced',
+                       support_object_xy_distance='0.6', support_interface_speed='60',
                        brim_type='outer_only', brim_width='8'))
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
