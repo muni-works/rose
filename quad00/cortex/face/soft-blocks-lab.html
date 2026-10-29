@@ -1,0 +1,772 @@
+<title>Soft Blocks Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Single dark studio look (the face lives on a black LCD). Left: the live head, a caption, and a loupe onto the real
+   panel pixels. Right: talk to it, steer it on the emotion pad, morph the eyes into glyphs, tune the shape. */
+:root {
+  --wall: #0e1012; --ink: #e8ece9; --muted: #8b928e; --line: #262a2e; --chip: #171a1d; --field: #121417;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { background: var(--wall); color: var(--ink); margin: 0; }
+body { font-family: var(--mono); font-size: 13px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 4vw, 42px); margin: 0; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 70ch; line-height: 1.55; }
+.stage { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 36px; margin-top: 26px; align-items: start; }
+@media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+.left { display: grid; gap: 14px; min-width: 0; }
+canvas#big { width: 100%; max-width: 480px; aspect-ratio: 5 / 6; display: block; touch-action: none; }
+.caption { min-height: 3.2em; font-family: var(--display); font-size: 19px; line-height: 1.4; text-wrap: pretty; }
+.caption.dim { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.loupe-row { display: flex; gap: 14px; align-items: center; }
+canvas#loupe { width: 120px; height: 120px; border-radius: 10px; border: 1px solid var(--line); flex: none; }
+.panel { display: grid; gap: 20px; min-width: 0; }
+.group { display: grid; gap: 8px; }
+.label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button.chip { font: inherit; color: var(--ink); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+button.chip[aria-pressed="true"] { background: var(--ink); color: var(--wall); border-color: var(--ink); }
+button.chip:disabled { opacity: .45; cursor: default; }
+button.chip:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+form.talk { display: flex; gap: 8px; }
+form.talk input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.padwrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+canvas#pad { width: 200px; height: 200px; border-radius: 12px; border: 1px solid var(--line); cursor: crosshair; touch-action: none; flex: none; }
+.slider { display: grid; grid-template-columns: 92px minmax(0, 1fr) 44px; gap: 10px; align-items: center; }
+.slider span:last-child { color: var(--muted); text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--ink); }
+.note { color: var(--muted); line-height: 1.6; margin: 0; max-width: 62ch; }
+.note b { color: var(--ink); font-weight: 600; }
+.strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 14px; margin-top: 34px; border-top: 1px solid var(--line); padding-top: 24px; }
+.strip figure { margin: 0; display: grid; gap: 6px; cursor: pointer; }
+.strip canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 10px; }
+.strip figcaption { color: var(--muted); font-size: 11px; text-align: center; }
+</style>
+
+<div class="wrap">
+  <h1>Soft Blocks Lab</h1>
+  <p class="sub">Pip's face as a real character: frog eyes with horizontal pupils and a blink membrane, one continuous emotion space instead of a list of moods, eyes that saccade and squash like they have mass, shapes that morph into glyphs, rendered at the panel's true resolution. Talk to it and Claude answers in Pip's voice, choosing the face as it speaks.</p>
+
+  <div class="stage">
+    <div class="left">
+      <canvas id="big" width="960" height="1152" aria-label="Pip's face, live"></canvas>
+      <div class="caption dim" id="caption" aria-live="polite">Say something to Pip, or drag on the emotion pad.</div>
+      <div class="loupe-row">
+        <canvas id="loupe" width="240" height="240" aria-label="Magnified panel pixels at the edge of the left eye"></canvas>
+        <p class="note">Loupe: 20 × 20 real panel pixels at the edge of the left eye, drawn as RGB subpixels. This is the face at the panel's own resolution, not a vector mock.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="group" id="talkgroup">
+        <span class="label">Talk to Pip</span>
+        <form class="talk" id="talk"><input id="say" autocomplete="off" placeholder="the build passed!" aria-label="Message to Pip"><button class="chip" type="submit" id="send">Send</button></form>
+        <p class="note" id="talknote">Claude replies as Pip and picks the face for its own words. Uses your Claude account; asks once.</p>
+      </div>
+      <div class="group">
+        <span class="label">Emotion</span>
+        <div class="padwrap">
+          <canvas id="pad" width="400" height="400" tabindex="0" aria-label="Emotion pad: left to right unhappy to happy, bottom to top calm to excited. Arrow keys move."></canvas>
+          <div class="row" id="moods" style="max-width: 300px"></div>
+        </div>
+      </div>
+      <div class="group"><span class="label">Glyph</span><div class="row" id="glyphs"></div></div>
+      <div class="group"><span class="label">Head</span><div class="row" id="heads"></div></div>
+      <div class="group"><span class="label">Mouth</span><div class="row" id="mouths"></div></div>
+      <div class="group"><span class="label">Finish · glow</span><div class="row"><span class="row" id="finishes"></span><span class="row" id="colors"></span></div></div>
+      <div class="group"><span class="label">Shape</span>
+        <label class="slider"><span>size</span><input type="range" id="size" min="0.75" max="1.3" step="0.01" value="1"><span id="size-v">1.00</span></label>
+        <label class="slider"><span>spacing</span><input type="range" id="spacing" min="0.12" max="0.26" step="0.005" value="0.18"><span id="spacing-v">0.18</span></label>
+        <label class="slider"><span>roundness</span><input type="range" id="round" min="0.15" max="0.5" step="0.01" value="0.38"><span id="round-v">0.38</span></label>
+      </div>
+      <div class="group"><div class="row"><button class="chip" id="follow" type="button" aria-pressed="false">Eyes follow pointer</button></div></div>
+    </div>
+  </div>
+
+  <div class="strip" id="strip" aria-label="Named points in the emotion space"></div>
+</div>
+
+<script>
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const N = 64;                                              // points per eye outline: blocks and glyphs share it, so they morph
+const HEADS = {
+  mini: { fw: 112, fh: 124, r: 26, sw: 84, sh: 84, top: 10, gap: 13, lens: 30, px: [720, 720], name: 'mini · 4" 720²' },
+  full: { fw: 150, fh: 206, r: 34, sw: 100, sh: 165, top: 12, gap: 9, lens: 45, px: [600, 1024], name: 'full · 7" 600×1024' },
+};
+const COLORS = [{ id: 'mint', hex: '#b8e8d2' }, { id: 'frog', hex: '#6fe07a' }, { id: 'white', hex: '#f2efe8' }, { id: 'amber', hex: '#ffb347' }];
+// named points in the (valence, arousal) plane, plus where they look and an optional glyph
+// Each emotion is one clear idea. `pose` is the mouth's (w width, open, curve: + smile / - frown, side: shift
+// toward one cheek, tilt: one corner lower, round: an "o" rather than a lens, press: thinner lips) plus `pupil`
+// (size) and an entry motion (`bounce`). Everything eases in on springs, so any change is one smooth gesture.
+const POSE0 = { w: 0.085, open: 0, curve: 0.15, side: 0, tilt: 0, round: 0, press: 0, pupil: 1 };
+const MOODS = {
+  idle:      { v: 0, a: 0, pose: {} },
+  listening: { v: 0.2, a: 0.5, mode: 'listening', pose: { w: 0.075, open: 0.007, curve: 0.1, pupil: 1.15 } },
+  thinking:  { v: 0, a: 0.2, gx: 0.55, gy: -0.6, mode: 'thinking', pose: { w: 0.055, curve: -0.1, side: 0.55, tilt: 0.25, press: 0.5, pupil: 0.95 } },
+  happy:     { v: 0.9, a: 0.45, pose: { w: 0.11, open: 0.006, curve: 0.85, pupil: 1.05 } },
+  delighted: { v: 1, a: 0.9, bounce: 1.6, pose: { w: 0.12, open: 0.03, curve: 1, round: 0.15, pupil: 1.1 } },
+  surprised: { v: 0.2, a: 1, bounce: 1, pose: { w: 0.034, open: 0.034, curve: 0, round: 1, pupil: 0.72 } },
+  annoyed:   { v: -0.7, a: 0.6, pose: { w: 0.07, curve: -0.25, tilt: -0.6, press: 0.8, pupil: 0.9 } },
+  sad:       { v: -0.75, a: -0.4, gy: 0.6, pose: { w: 0.06, curve: -0.9, press: 0.2, pupil: 1.08, quiver: 1 } },
+  sleepy:    { v: 0.05, a: -1, gy: 0.3, pose: { w: 0.05, open: 0.005, curve: 0, round: 0.5, pupil: 0.9 } },
+  focused:   { v: 0, a: -0.2, gy: 0.75, pose: { w: 0.06, curve: -0.05, press: 1, pupil: 0.92 } },
+  love:      { v: 1, a: 0.4, glyph: 'heart', bounce: 0.8, pose: { w: 0.07, curve: 0.7, pupil: 1.2 } },
+  done:      { v: 0.7, a: 0.2, glyph: 'check', bounce: 0.6, pose: { w: 0.09, curve: 0.75 } },
+  speaking:  { v: 0.35, a: 0.25, talk: true, pose: { curve: 0.3 } },
+};
+let curMood = null;          // a named emotion, or null when the face comes from the pad or from Claude
+/** The pose for a state: the named emotion's, or one read off the emotion space. */
+function poseFor(s, name) {
+  if (name && MOODS[name]) return { ...POSE0, ...MOODS[name].pose };
+  const v = s.v || 0, a = s.a || 0, pos = x => Math.max(0, x);
+  return { ...POSE0, w: 0.085 + 0.03 * pos(v) - 0.03 * pos(a - 0.7) * 2, open: 0.02 * pos(a - 0.6) + 0.01 * pos(v) * pos(a),
+    curve: v * 0.9, round: pos(a - 0.75) * 3 * (1 - pos(v)), press: pos(-v) * pos(a) * 1.2 + pos(-a) * 0.3,
+    tilt: -pos(-v) * pos(a) * 0.6, pupil: 1 + 0.1 * v - 0.25 * pos(a - 0.8) * 4 };
+}
+const GLYPHS = ['none', 'heart', 'star', 'check', 'cross', 'diamond'];
+
+let head = 'mini', color = COLORS[0].hex, finish = 'glow', follow = false, pointer = { x: 0, y: 0 };
+const P = { size: 1, spacing: 0.18, round: 0.38 };
+// target (what the face wants) and state (springs chase it)
+const tgt = { v: 0, a: 0, gx: null, gy: null, glyph: 'none', mode: 'idle' };   // mode: idle | listening | thinking
+const st = { v: 0, a: 0, gx: 0, gy: 0, vgx: 0, vgy: 0, vv: 0, va: 0, g: 0, vg: 0, glyph: 'none', talk: 0, listen: 0, vl: 0, think: 0, vt: 0, hear: 0 };
+
+// --- shapes ---------------------------------------------------------------------------------------------------------
+function resample(pts) {                                   // closed polygon -> N points by arc length, same start + winding
+  let area = 0; for (let i = 0; i < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; area += x0 * y1 - x1 * y0; }
+  if (area < 0) pts = pts.slice().reverse();
+  let cx = 0, cy = 0; for (const [x, y] of pts) { cx += x; cy += y; } cx /= pts.length; cy /= pts.length;
+  let s = 0, best = 9; pts.forEach(([x, y], i) => { const d = Math.abs(Math.atan2(y - cy, x - cx) + Math.PI / 2); if (d < best) { best = d; s = i; } });
+  pts = pts.slice(s).concat(pts.slice(0, s));
+  const L = [0]; for (let i = 1; i <= pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i % pts.length]; L.push(L[i - 1] + Math.hypot(x1 - x0, y1 - y0)); }
+  const out = [], tot = L[pts.length];
+  for (let k = 0, j = 0; k < N; k++) {
+    const d = tot * k / N; while (L[j + 1] < d) j++;
+    const f = (d - L[j]) / (L[j + 1] - L[j] || 1), [x0, y0] = pts[j], [x1, y1] = pts[(j + 1) % pts.length];
+    out.push([x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]);
+  }
+  return out;
+}
+// the eye body: a soft superellipse, just a touch narrower across the top. roundness 0.15 (n 3.4) .. 0.5 (n 2.0,
+// a true oval): kawaii, not a squircle
+function squirclePts(w, h, round) {
+  const n = 3.4 - (round - 0.15) / 0.35 * 1.4, p = [];
+  for (let i = 0; i < 160; i++) {
+    const t = 2 * Math.PI * i / 160, c = Math.cos(t), s = Math.sin(t);
+    const y = h / 2 * Math.sign(s) * Math.abs(s) ** (2 / n);
+    const x = w / 2 * Math.sign(c) * Math.abs(c) ** (2 / n) * (1 - 0.05 * (0.5 - y / h));
+    p.push([x, y]);
+  }
+  return p;
+}
+function rrectPts(w, h, r) {
+  r = Math.min(r, w / 2, h / 2); const p = [], seg = 12;
+  const corners = [[w / 2 - r, -h / 2 + r, -Math.PI / 2], [w / 2 - r, h / 2 - r, 0], [-w / 2 + r, h / 2 - r, Math.PI / 2], [-w / 2 + r, -h / 2 + r, Math.PI]];
+  for (const [cx, cy, a0] of corners) for (let i = 0; i <= seg; i++) { const a = a0 + Math.PI / 2 * i / seg; p.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  return p;
+}
+const GLYPH_PTS = (() => {
+  const g = {}, dense = (f, n = 240) => Array.from({ length: n }, (_, i) => f(2 * Math.PI * i / n));
+  g.heart = resample(dense(t => [0.5 * Math.sin(t) ** 3, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 32 - 0.02]));
+  g.star = resample(Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.21 : 0.52; return [r * Math.cos(a), r * Math.sin(a) + 0.04]; }));
+  g.check = resample([[-0.44, 0.02], [-0.3, -0.12], [-0.1, 0.08], [0.3, -0.36], [0.44, -0.22], [-0.1, 0.34]]);
+  g.cross = resample([[-0.34, -0.44], [0, -0.1], [0.34, -0.44], [0.44, -0.34], [0.1, 0], [0.44, 0.34], [0.34, 0.44], [0, 0.1], [-0.34, 0.44], [-0.44, 0.34], [-0.1, 0], [-0.44, -0.34]]);
+  g.diamond = resample([[0, -0.5], [0.36, 0], [0, 0.5], [-0.36, 0]]);
+  return g;
+})();
+
+// emotion -> eye numbers. One function, so every point of the pad is a face (not just the named ones).
+const pos = x => Math.max(0, x), sat = x => Math.max(0, Math.min(1, x));
+function eyeParams(v, a, side) {
+  const h = 0.34 + 0.07 * pos(a) - 0.05 * pos(-v) * pos(-a);   // tall, round eyes
+  const w = 0.215 - 0.02 * pos(a) + 0.01 * pos(v);
+  const sleep = pos(-a) ** 1.6 * 0.82;                     // both lids fall as arousal drops
+  return {
+    w, h,
+    lidIn: sat(sleep + pos(-v) * pos(a) * 0.75),           // annoyed: the inner corners cut down
+    lidOut: sat(sleep + pos(-v) * pos(0.4 - a) * 0.55),    // sad: the outer corners droop
+    cheek: sat(pos(v) * (0.32 + 0.3 * pos(a)) - 0.08),     // happy: a cheek pushes up into a crescent
+  };
+}
+
+function eyeOutline(e, cx, cy, side, bl, g, glyph, sx, sy) {
+  const w = e.w * P.size * sx, h = e.h * P.size * sy;
+  let pts = resample(squirclePts(w, h, P.round)).map(([x, y]) => [x + cx, y + cy]);
+  const x0 = cx - w / 2, y0 = cy - h / 2;
+  const inX = side < 0 ? x0 + w : x0;
+  const lidIn = sat(e.lidIn + bl * 0.2), lidOut = sat(e.lidOut + bl * 0.2);   // the blink itself is the membrane (drawFace)
+  const lid = x => y0 + h * (lidIn + (lidOut - lidIn) * Math.abs(x - inX) / w) * 0.97;
+  pts = pts.map(([x, y]) => [x, Math.max(y, lid(x))]);
+  if (e.cheek > 0.01) {
+    const R = w * 0.75, ccy = y0 + h + R - h * e.cheek * (1 - bl);
+    pts = pts.map(([x, y]) => { const dx = x - cx; if (Math.abs(dx) >= R) return [x, y]; const top = ccy - Math.sqrt(R * R - dx * dx); return [x, Math.min(y, top)]; });
+  }
+  if (g > 0.001 && GLYPH_PTS[glyph]) {
+    const S = Math.max(e.w, e.h) * P.size * 1.05, G = GLYPH_PTS[glyph];
+    pts = pts.map(([x, y], i) => [x + (cx + G[i][0] * S * (side < 0 && glyph === 'check' ? 1 : 1) - x) * g, y + (cy + G[i][1] * S - y) * g]);
+  }
+  return pts;
+}
+
+// --- the face, drawn in unit coordinates (1 = screen width) into the native-resolution panel buffer -----------------
+const voice = t => 0.5 + 0.5 * Math.abs(Math.sin(t / 95) * Math.sin(t / 233));
+function blinkAt(t) { const p = (t / 1000) % 4.4; return p < 0.16 ? Math.sin(p / 0.16 * Math.PI) : 0; }
+function drawFace(c, t, s, col, opts = {}) {
+  const bl = opts.still ? 0 : blinkAt(t);
+  const breathe = opts.still ? 0 : Math.sin(t / 2600) * 0.006;
+  const speedX = Math.min(1, Math.abs(s.vgx) / 6), speedY = Math.min(1, Math.abs(s.vgy) / 6);
+  const sx = 1 + 0.18 * speedX - 0.08 * speedY, sy = 1 - 0.1 * speedX + 0.16 * speedY;   // squash along the saccade
+  const talkH = 1 + (s.talk > 0 ? 0.08 * (voice(t) - 0.5) * s.talk : 0);
+  const listen = s.listen || 0, think = s.think || 0;
+  const grow = 1 + 0.1 * listen + 0.05 * (s.hear || 0);                      // listening: the eyes open up toward you
+  for (const side of [-1, 1]) {
+    const e = eyeParams(s.v, s.a, side);
+    e.h *= talkH * (1 + 0.6 * breathe);
+    e.lidIn = sat(e.lidIn + 0.06 * think); e.lidOut = sat(e.lidOut + 0.06 * think);   // thinking: a level, barely-there lid (an inner cut reads angry)
+    const near = 1 + 0.06 * s.gx * side;
+    const cx = 0.5 + side * P.spacing + s.gx * 0.04, cy = 0.49 + s.gy * 0.035 + breathe - 0.012 * s.talk * voice(t);
+    const pts = eyeOutline(e, cx, cy, side, 0, s.g, s.glyph, sx * near * grow, sy * near * grow);
+    const path = () => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
+    c.fillStyle = col; path(); c.fill();
+    // pupil: a dark horizontal bar, like a frog's. It travels further than the eye does, which is what reads as
+    // looking AT something; it dilates while listening and sweeps side to side while thinking.
+    const pv = 1 - s.g;
+    if (pv > 0.02) {
+      const ew = e.w * P.size * grow, eh = e.h * P.size * grow;
+      const dil = (s.pupil || 1) * (1 + 0.3 * listen + 0.15 * (s.hear || 0));
+      const scan = think * Math.sin(t / 260 + side * 0.4) * 0.3;
+      const pw = ew * 0.52 * dil, ph = eh * 0.4 * dil;   // big soft oval pupil
+      const px = cx + (s.gx * 0.3 + scan) * ew, py = cy + s.gy * 0.24 * eh - think * 0.12 * eh;
+      c.save(); path(); c.clip();
+      c.globalAlpha = pv; c.fillStyle = '#05070a'; rr(c, px - pw / 2, py - ph / 2, pw, ph, ph / 2); c.fill();
+      c.restore(); c.globalAlpha = 1;
+    }
+    if (bl > 0.01) {                                          // blink: a translucent membrane sweeps up from below, frog-style
+      c.save(); path(); c.clip(); c.fillStyle = 'rgba(5,7,10,.72)';
+      const ys = pts.map(p => p[1]), top = Math.min(...ys), bot = Math.max(...ys);
+      c.fillRect(0, bot - (bot - top) * bl, 1, (bot - top) * bl + 0.01); c.restore();
+    }
+  }
+  drawBlush(c, s, col);
+  if (think > 0.02) {                                         // thinking, loudly: three motes orbit above the eyes
+    for (let i = 0; i < 3; i++) {
+      const a = t / 420 + i * 2.094, r = 0.07;
+      c.globalAlpha = think * (0.45 + 0.4 * Math.sin(t / 300 + i));
+      c.fillStyle = col; c.beginPath(); c.arc(0.5 + Math.cos(a) * r * 1.6, 0.2 + Math.sin(a) * r * 0.5, 0.012 + 0.006 * Math.sin(a), 0, 7); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+  drawMouth(c, t, s, col, opts);
+}
+
+// --- blush --------------------------------------------------------------------------------------------------------
+// Light, not paint: a wide faint halo and a smaller warmer core, its colour carrying a little of the eyes' glow, shaped
+// like a cheek (long, tilted up at the outer end) just under each eye and rising with the cheek when the eyes smile.
+// `s.blush` (0..1) blooms in over ~half a second and fades slower (see the loop); emotions set how much.
+function blushTarget(s, name) {
+  const by = { love: 1, delighted: 0.8, happy: 0.55, done: 0.35 };
+  if (name && name in by) return by[name];
+  if (name) return 0;
+  return Math.max(0, Math.min(0.8, (s.v || 0) - 0.35) * 1.3) * (1 - Math.max(0, -(s.a || 0)));
+}
+function hexRgb(h) { return [1, 3, 5].map(o => parseInt(h.slice(o, o + 2), 16)); }
+function drawBlush(c, s, col) {
+  const b = s.blush ?? blushTarget(s, s.name);
+  if (b < 0.01) return;
+  const [pr, pg, pb] = [255, 128, 150], [gr, gg, gb] = hexRgb(col);
+  const tint = (m, a) => `rgba(${Math.round(pr + (gr - pr) * m)},${Math.round(pg + (gg - pg) * m)},${Math.round(pb + (gb - pb) * m)},${a})`;
+  const cheek = Math.max(0, s.v || 0);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (const side of [-1, 1]) {
+    const bx = 0.5 + side * (P.spacing + 0.062) + (s.gx || 0) * 0.025, by = 0.49 + (0.205 - 0.03 * cheek) * P.size + (s.gy || 0) * 0.02;
+    c.save(); c.translate(bx, by); c.rotate(side * 0.16); c.scale(1, 0.5);
+    for (const [r, a, m] of [[0.095, 0.16, 0.3], [0.055, 0.3, 0.12], [0.028, 0.22, 0.0]]) {   // halo, body, warm core
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, tint(m, a * b)); g.addColorStop(0.55, tint(m, a * b * 0.45)); g.addColorStop(1, tint(m, 0));
+      c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill();
+    }
+    c.restore();
+  }
+  c.restore();
+}
+
+// --- mouths ---------------------------------------------------------------------------------------------------------
+// Every style shares the quiet states (a breathing rest, pills that bounce with your voice while listening, dots
+// while thinking) and differs in how it speaks and smiles. The lab has no audio, so loudness is a stand-in envelope.
+let mouth = 'ribbon', speakT0 = 0;
+const MOUTHS = ['ribbon', 'neon lips', 'liquid', 'aurora', 'ring', 'line', 'kawaii', 'visemes', 'none'];
+const mouthState = { w: 0.056, h: 0.01 };
+function glowFill(c, col, a, path) { c.save(); c.globalAlpha = a; c.fillStyle = col; c.beginPath(); path(); c.fill(); c.restore(); }
+function drawMouth(c, t, s, col, opts) {
+  if (mouth === 'none') return;
+  const x = 0.5, y = 0.49 + 0.33 * P.size, k = P.size;
+  const talk = Math.min(1, s.talk || 0), listen = (s.listen || 0) * (1 - talk), think = (s.think || 0) * (1 - talk) * (1 - listen);
+  const rest = Math.max(0, 1 - talk - listen - think);
+  const amp = talk * (opts.still ? 0.6 : voice(t));
+  const smile = Math.max(-1, Math.min(1, s.v || 0));
+  const br = 0.5 + 0.5 * Math.sin(t / 1400);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  const own = mouth === 'liquid';                                  // the liquid mouth shows these states itself
+  if (listen > 0.02 && !own) for (let i = -2; i <= 2; i++) {      // your voice: soft pills
+    const h = 0.022 + (s.hear || 0) * (1 - Math.abs(i) / 3.2) * (0.6 + 0.4 * Math.sin(t / 160 + i * 1.7)) * 0.07;
+    glowFill(c, col, listen * 0.85, () => c.roundRect(x + i * 0.035 * k - 0.009, y - h / 2, 0.018, h, 0.009));
+  }
+  if (think > 0.02 && !own) for (let i = 0; i < 3; i++) {
+    const yy = y - Math.max(0, Math.sin(t / 166 - i * 0.9)) * 0.014;
+    glowFill(c, col, think * 0.9, () => c.arc(x + (i - 1) * 0.035 * k, yy, 0.011, 0, 7));
+  }
+  if (mouth === 'ribbon') {
+    if (rest > 0.02) glowFill(c, col, rest * (0.5 + 0.3 * br), () => c.roundRect(x - 0.028 * k, y - 0.009, 0.056 * k, 0.018, 0.009));
+    if (talk > 0.02) {
+      // three lens-shaped ribbons drifting against each other, summed as light, around a bright core
+      const half = 0.17 * k, A = 0.004 + 0.075 * Math.pow(amp, 0.8);
+      [[1, 1.3, 0, 1, col, 0.3], [1.6, -2.1, 1.7, 0.75, '#ff8ca5', 0.22], [2.4, 3.2, 4.1, 0.55, '#ffffff', 0.16]].forEach(([cyc, sp, ph, hk, cc, al]) => {
+        const edge = (f, sgn) => { const env = Math.pow(Math.sin(f * Math.PI), 1.4); return y + sgn * A * hk * env * (0.55 + 0.45 * Math.sin(f * cyc * 6.283 + t / 1000 * sp + ph)); };
+        glowFill(c, cc, talk * al, () => {
+          for (let i = 0; i <= 48; i++) c.lineTo(x - half + 2 * half * i / 48, edge(i / 48, -1));
+          for (let i = 48; i >= 0; i--) c.lineTo(x - half + 2 * half * i / 48, edge(i / 48, 1));
+        });
+      });
+      glowFill(c, '#ffffff', talk * 0.55, () => c.roundRect(x - half, y - 0.003, 2 * half, 0.006, 0.003));
+    }
+  } else if (mouth === 'line') {
+    // one soft stroke that smiles or frowns with the mood, and opens into a lens to speak
+    const half = 0.07 * k, bend = smile * 0.03, open = amp * 0.06;
+    c.globalAlpha = 0.9; c.strokeStyle = col; c.lineCap = 'round'; c.lineWidth = 0.014;
+    c.beginPath(); c.moveTo(x - half, y - bend); c.quadraticCurveTo(x, y + bend - open, x + half, y - bend); c.stroke();
+    if (open > 0.004) { c.beginPath(); c.moveTo(x - half, y - bend); c.quadraticCurveTo(x, y + bend + open * 1.6, x + half, y - bend); c.stroke(); }
+  } else if (mouth === 'kawaii') {
+    // a tiny cat mouth at rest (a small frown when sad), a small round "o" that grows to speak
+    c.strokeStyle = col; c.fillStyle = col; c.lineCap = 'round'; c.lineWidth = 0.011; c.globalAlpha = 0.9;
+    if (talk > 0.05) {
+      const r = 0.012 + amp * 0.03;
+      glowFill(c, col, talk * 0.9, () => c.ellipse(x, y, r * 0.95, r * (0.8 + amp * 0.5), 0, 0, 7));
+    } else if (smile < -0.2) {
+      c.beginPath(); c.arc(x, y + 0.03, 0.028, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+    } else {
+      c.beginPath(); c.arc(x - 0.018, y - 0.004, 0.018, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+      c.beginPath(); c.arc(x + 0.018, y - 0.004, 0.018, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+    }
+  } else if (mouth === 'visemes') {
+    // lip-sync from the words being said: open vowels tall, o/u round, e/i wide, m/b/p shut, f/v a slit
+    const text = (caption || '').toLowerCase();
+    const ch = talk > 0.05 ? (text[Math.floor((t - speakT0) / 1000 * 13)] || ' ') : ' ';
+    const V = { a: [0.07, 0.06], o: [0.04, 0.05], u: [0.03, 0.04], e: [0.08, 0.035], i: [0.08, 0.025], y: [0.07, 0.03],
+      m: [0.06, 0.004], b: [0.06, 0.004], p: [0.06, 0.004], f: [0.065, 0.01], v: [0.065, 0.01], w: [0.03, 0.03],
+      r: [0.045, 0.03], l: [0.06, 0.03], ' ': [0.055, 0.006] };
+    const tg = V[ch] || [0.06, 0.025];
+    if (!opts.still) {
+      mouthState.w += (tg[0] * k - mouthState.w) * 0.35;
+      mouthState.h += (tg[1] * k - mouthState.h) * 0.35;
+    }
+    const speaking = talk > 0.05;
+    const w = speaking ? mouthState.w : 0.056 * k, h = speaking ? Math.max(0.005, mouthState.h) : 0.009 + 0.003 * br;
+    glowFill(c, col, 0.85 * (speaking ? 1 : rest), () => c.roundRect(x - w / 2, y - h / 2, w, h, Math.min(w, h) / 2));
+  } else if (mouth === 'neon lips') {
+    // an upper lip with a cupid's bow and a lower lip, as neon strokes: they part, round and spread per sound
+    // (the same letter timing as visemes), and the corners lift or fall with the mood
+    const vis = visemeAt(t, talk, opts);
+    const open = talk > 0.05 ? vis[1] * 1.1 : 0.0015 + 0.0015 * br;
+    const w = (talk > 0.05 ? vis[0] * 1.4 : 0.085) * k;
+    const lift = smile * 0.018, lx = x - w / 2, rx = x + w / 2, cy = y - lift;
+    const up = y - open * 0.45, dn = y + open * 0.55 + 0.004;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const lips = () => {
+      c.beginPath(); c.moveTo(lx, cy);                                                       // upper lip, cupid's bow
+      c.bezierCurveTo(lx + w * 0.18, up - 0.012, x - w * 0.12, up - 0.016, x, up - 0.006);
+      c.bezierCurveTo(x + w * 0.12, up - 0.016, rx - w * 0.18, up - 0.012, rx, cy);
+      c.moveTo(lx, cy);                                                                      // lower lip
+      c.bezierCurveTo(lx + w * 0.2, dn + 0.012, rx - w * 0.2, dn + 0.012, rx, cy);
+    };
+    if (open > 0.012) glowFill(c, col, 0.12 * talk, () => {                                   // the light inside
+      c.moveTo(lx, cy); c.bezierCurveTo(lx + w * 0.2, up, rx - w * 0.2, up, rx, cy); c.bezierCurveTo(rx - w * 0.2, dn, lx + w * 0.2, dn, lx, cy);
+    });
+    c.strokeStyle = col; c.globalAlpha = 0.35; c.lineWidth = 0.024; lips(); c.stroke();     // halo
+    c.globalAlpha = 0.95; c.lineWidth = 0.009; lips(); c.stroke();                           // tube
+    c.strokeStyle = '#ffffff'; c.globalAlpha = 0.5; c.lineWidth = 0.003; lips(); c.stroke(); // hot core
+  } else if (mouth === 'liquid') {
+    liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br, s);
+  } else if (mouth === 'aurora') {
+    // ~150 motes of light on a lip-shaped orbit, swirling: the voice spreads and brightens them, quiet
+    // gathers them into a calm line
+    const w = 0.15 * k, open = 0.004 + 0.07 * amp, tt = t / 1000;
+    for (let i = 0; i < 150; i++) {
+      const h1 = Math.sin(i * 12.9898) * 43758.5453, rnd = h1 - Math.floor(h1);
+      const h2 = Math.sin(i * 78.233) * 12543.21, rnd2 = h2 - Math.floor(h2);
+      const u = rnd * 6.283 + tt * (0.3 + rnd2 * 0.8) * (i % 2 ? 1 : -1);
+      const px = x + Math.cos(u) * w * (0.85 + 0.15 * Math.sin(tt * 2 + i));
+      const py = y - smile * 0.02 * (1 - Math.cos(u) ** 2) + Math.sin(u) * open * (0.6 + 0.6 * rnd2) + Math.sin(tt * 3 + i) * 0.002;
+      c.globalAlpha = (0.25 + 0.6 * rnd2) * (0.5 + 0.5 * Math.max(amp, rest * (0.4 + 0.3 * br)));
+      c.fillStyle = i % 9 === 0 ? '#ffffff' : (i % 7 === 0 ? '#ff8ca5' : col);
+      c.beginPath(); c.arc(px, py, 0.0025 + 0.003 * rnd, 0, 7); c.fill();
+    }
+  } else if (mouth === 'ring') {
+    // an O of light whose outline ripples with layered harmonics of the voice; at rest a small calm ring
+    const R = (0.016 + 0.035 * amp + 0.002 * br) * k, tt = t / 1000;
+    const path = () => {
+      for (let i = 0; i <= 96; i++) {
+        const th = i / 96 * 6.283;
+        const r = R * (1 + amp * (0.12 * Math.sin(3 * th + tt * 5) + 0.08 * Math.sin(5 * th - tt * 7) + 0.05 * Math.sin(8 * th + tt * 11)));
+        c.lineTo(x + Math.cos(th) * r * 1.25, y + Math.sin(th) * r * (0.9 - smile * 0.15));
+      }
+    };
+    glowFill(c, col, 0.12 + 0.2 * amp, path);
+    c.strokeStyle = col; c.globalAlpha = 0.35; c.lineWidth = 0.02; c.beginPath(); path(); c.stroke();
+    c.globalAlpha = 0.95; c.lineWidth = 0.007; c.beginPath(); path(); c.stroke();
+  }
+  c.restore();
+}
+
+// --- the liquid mouth -------------------------------------------------------------------------------------------------
+// Two lips of light, each a chain of droplets, joined at the corners. At rest they overlap into one glossy capsule that
+// breathes; speaking pulls them apart into a lens with darkness between (the opening and width follow the sound, the
+// corners the mood). Every droplet rides a damped spring with surface tension to its neighbours, so syllables kick it
+// and it wobbles and settles like liquid. Drawn per pixel as a metaball field: soft anti-aliased edges, a hotter
+// core where it's thickest, a sheen along the top.
+const LIQ_N = 9;
+const liq = { up: [], dn: [], last: 0, can: null, img: null, pulse: 0, prevAmp: 0 };
+function liquidMouth(c, t, talk, rest, smile, opts, col, x, y, k, br, s) {
+  const vis = visemeAt(t, talk, opts);
+  const speaking = talk > 0.05;
+  const amp = speaking ? (opts.still ? 0.6 : voice(t)) : 0;
+  // the emotion's pose, eased (the thumbnails take it as it is)
+  const want = poseFor(s, s.name ?? curMood);
+  if (!liq.pose) liq.pose = { ...want };
+  if (!opts.still) for (const key in want) liq.pose[key] += (want[key] - liq.pose[key]) * 0.09;
+  const P0 = opts.still ? want : liq.pose;
+  const tt = t / 1000;
+  const breath = speaking ? 0 : 0.004 * Math.sin(tt * 1.3) * (1 - (s.listen || 0));          // listening holds its breath
+  const drift = (s.think || 0) * 0.25 * Math.sin(tt * 0.9);                                    // thinking: a slow sidelong drift
+  const quiver = (P0.quiver || 0) * (Math.sin(tt * 23) * 0.5 + 0.5) * Math.max(0, Math.sin(tt * 0.7)) ** 8 * 0.003;
+  const w = (speaking ? Math.max(P0.w, 0.045 + vis[0] * 1.05) : P0.w * (1 + breath * 3)) * k;
+  const open = (speaking ? Math.max(0.002, vis[1] * (0.7 + 0.6 * amp)) + P0.open * 0.5 : P0.open) * k;
+  const cx = x + (P0.side + drift) * 0.02 * k;
+  // lips: bow apart in the middle (a lens, or toward an ellipse when round), meet at the corners; the corners carry
+  // the curve (smile/frown), the tilt lowers one of them
+  const target = (i, lower) => {
+    const f = i / (LIQ_N - 1) - 0.5;
+    const bell = (1 - P0.round) * Math.cos(f * Math.PI) + P0.round * Math.sqrt(Math.max(0, 1 - 4 * f * f));
+    const corner = -(P0.curve * 0.022) * (4 * f * f) + P0.tilt * 0.012 * f + quiver * Math.sign(f) * 4 * f * f;
+    const ty = y + corner + (lower ? 1.1 : -0.9) * open / 2 * bell + (lower ? 0.004 : -0.004) * (1 - bell * 0.5) * (1 - 0.6 * P0.press);
+    return [cx + f * w, ty];
+  };
+  if (!liq.up.length || opts.still) {
+    for (const lip of ['up', 'dn']) liq[lip] = Array.from({ length: LIQ_N }, (_, i) => { const [tx, ty] = target(i, lip === 'dn'); return { x: tx, y: ty, vx: 0, vy: 0 }; });
+  }
+  if (!opts.still) {
+    const dt = Math.min(0.04, Math.max(0.001, (t - (liq.last || t)) / 1000)); liq.last = t;
+    if (amp - liq.prevAmp > 0.18) liq.pulse = 1;                 // a syllable onset: kick the surface
+    liq.prevAmp = amp; liq.pulse *= Math.exp(-dt * 8);
+    for (const lip of ['up', 'dn']) {
+      const L = liq[lip], lower = lip === 'dn';
+      for (let i = 0; i < LIQ_N; i++) {
+        const d = L[i], [tx, ty] = target(i, lower);
+        // spring to target + surface tension (pull toward the neighbours' average) + a kick on onsets
+        const nb = (L[Math.max(0, i - 1)].y + L[Math.min(LIQ_N - 1, i + 1)].y) / 2;
+        const kick = liq.pulse * (lower ? 1 : -1) * Math.sin(i / (LIQ_N - 1) * Math.PI) * 0.6;
+        const ay = 260 * (ty - d.y) + 90 * (nb - d.y) - 9 * d.vy + kick * 2.2;
+        const ax = 260 * (tx - d.x) - 9 * d.vx;
+        d.vx += ax * dt; d.vy += ay * dt; d.x += d.vx * dt; d.y += d.vy * dt;
+      }
+    }
+  }
+  // the field, per pixel, into a small offscreen buffer over the mouth's box
+  const bw = 0.42 * k, bh = 0.2 * k, bx = x - bw / 2, by = y - bh / 2;
+  const W = 210, H = 100;
+  if (!liq.can) { liq.can = document.createElement('canvas'); liq.can.width = W; liq.can.height = H; liq.img = liq.can.getContext('2d').createImageData(W, H); }
+  const r0 = (speaking ? 0.0105 : 0.0115) * k * (1 + 0.04 * Math.sin(t / 900)) * (1 - 0.32 * P0.press) * (1 - 0.25 * P0.round * (speaking ? 0 : 1));
+  const balls = [];
+  for (const lip of ['up', 'dn']) liq[lip].forEach((d, i) => {
+    const f = i / (LIQ_N - 1) - 0.5;
+    const r = r0 * (1 - 0.35 * Math.abs(f) * 2) * (1 + 0.15 * amp);
+    balls.push([(d.x - bx) / bw * W, (d.y - by) / bh * H, (r / bw * W) ** 2]);
+  });
+  const [cr, cg, cb] = [1, 3, 5].map(o => parseInt(col.slice(o, o + 2), 16));
+  const data = liq.img.data;
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    let f = 0;
+    for (const [qx, qy, r2] of balls) { const dx = px - qx, dy = py - qy; f += r2 / (dx * dx + dy * dy + 0.5); }
+    const o = (py * W + px) * 4;
+    if (f < 0.55) { data[o + 3] = 0; continue; }
+    const edge = Math.min(1, (f - 0.55) / 0.5), a = edge * edge * (3 - 2 * edge);
+    const core = Math.min(1, Math.max(0, (f - 1.2) * 0.35));      // hotter where it's thick
+    data[o] = cr + (255 - cr) * core; data[o + 1] = cg + (255 - cg) * core; data[o + 2] = cb + (255 - cb) * core;
+    data[o + 3] = 255 * a * (0.55 + 0.45 * Math.max(rest, talk));
+  }
+  liq.can.getContext('2d').putImageData(liq.img, 0, 0);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  c.imageSmoothingEnabled = true;
+  c.drawImage(liq.can, bx, by, bw, bh);
+  // a sheen: a soft highlight along the upper lip's top edge
+  c.globalAlpha = 0.25 * Math.max(rest, talk);
+  c.strokeStyle = '#ffffff'; c.lineWidth = 0.003; c.lineCap = 'round';
+  c.beginPath();
+  liq.up.forEach((d, i) => { const f = i / (LIQ_N - 1) - 0.5; if (Math.abs(f) < 0.36) { const yy = d.y - r0 * 0.55; i ? c.lineTo(d.x, yy) : c.moveTo(d.x, yy); } });
+  c.stroke();
+  c.restore();
+}
+
+// The mouth shape [width, opening] for the letter being said now (the lab times captions at 13 letters/s).
+function visemeAt(t, talk, opts) {
+  const text = (caption || '').toLowerCase();
+  const ch = talk > 0.05 ? (text[Math.floor((t - speakT0) / 1000 * 13)] || ' ') : ' ';
+  const V = { a: [0.07, 0.06], o: [0.04, 0.05], u: [0.03, 0.04], e: [0.08, 0.035], i: [0.08, 0.025], y: [0.07, 0.03],
+    m: [0.06, 0.004], b: [0.06, 0.004], p: [0.06, 0.004], f: [0.065, 0.01], v: [0.065, 0.01], w: [0.03, 0.03],
+    r: [0.045, 0.03], l: [0.06, 0.03], ' ': [0.055, 0.006] };
+  const tg = V[ch] || [0.06, 0.025];
+  if (!opts.still) { visemeAt.w += (tg[0] - visemeAt.w) * 0.35; visemeAt.h += (tg[1] - visemeAt.h) * 0.35; }
+  return [visemeAt.w, visemeAt.h];
+}
+visemeAt.w = 0.056; visemeAt.h = 0.01;
+
+// --- the head around the panel --------------------------------------------------------------------------------------
+const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, Math.max(0, Math.min(r, w / 2, h / 2))); };
+function drawHead(c, W, H) {
+  const h = HEADS[head], k = Math.min(W / (h.fw + 12), H / (h.fh + 8));
+  const ox = (W - h.fw * k) / 2, oy = (H - h.fh * k) / 2;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = '#050607'; rr(c, ox, oy, h.fw * k, h.fh * k, h.r * k); c.fill();
+  c.strokeStyle = '#1b1e22'; c.lineWidth = Math.max(1, 0.6 * k); c.stroke();
+  const s = { x: W / 2 - h.sw / 2 * k, y: oy + h.top * k, w: h.sw * k, h: h.sh * k };
+  const gy = s.y + s.h + h.gap * k, lim = (h.lens - 9.5) * k;
+  c.fillStyle = '#000';
+  for (let j = -2; j <= 2; j++) for (let i = -30; i <= 30; i++) {
+    const x = W / 2 + (i + 0.5 * (j & 1)) * 2.2 * k;
+    if (Math.abs(x - W / 2) <= lim) { c.beginPath(); c.arc(x, gy + j * 1.9 * k, 0.7 * k, 0, 7); c.fill(); }
+  }
+  for (const sx of [-h.lens, h.lens]) {
+    c.fillStyle = '#000'; c.beginPath(); c.arc(W / 2 + sx * k, gy, 5.5 * k, 0, 7); c.fill();
+    c.fillStyle = '#0b1220'; c.beginPath(); c.arc(W / 2 + sx * k, gy, 2.6 * k, 0, 7); c.fill();
+  }
+  return s;
+}
+
+// --- panel buffer: the face at the screen's native pixels, then shown in the head with bloom + a glass sheen --------
+const panel = document.createElement('canvas');
+let caption = '';
+function paintPanel(t) {
+  const [pw, ph] = HEADS[head].px;
+  if (panel.width !== pw || panel.height !== ph) { panel.width = pw; panel.height = ph; }
+  const c = panel.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#05070a'; c.fillRect(0, 0, pw, ph);
+  c.setTransform(pw, 0, 0, pw, 0, (ph - pw) * 0.32);
+  drawFace(c, t, st, color);
+  if (head === 'full' && caption) {                        // the portrait panel's lower third carries the words
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = color; c.globalAlpha = 0.8;
+    c.font = '600 34px "JetBrains Mono", monospace'; c.textAlign = 'center';
+    const words = caption.split(/\s+/), lines = []; let line = '';
+    for (const w of words) { if ((line + ' ' + w).trim().length > 26) { lines.push(line.trim()); line = w; } else line += ' ' + w; }
+    if (line.trim()) lines.push(line.trim());
+    lines.slice(-4).forEach((l, i) => c.fillText(l, pw / 2, ph * 0.79 + i * 46));
+    c.globalAlpha = 1;
+  }
+}
+function show(cv) {
+  const c = cv.getContext('2d'), s = drawHead(c, cv.width, cv.height);
+  c.save(); rr(c, s.x, s.y, s.w, s.h, 3); c.clip();
+  c.imageSmoothingQuality = 'high'; c.drawImage(panel, s.x, s.y, s.w, s.h);
+  if (finish === 'glow') {
+    const t = performance.now(), loud = 1 + st.listen * (0.5 + 0.25 * Math.sin(t / 420)) + st.hear * 0.4 + st.think * (0.35 + 0.35 * Math.sin(t / 260));
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha = Math.min(1, 0.55 * loud); c.filter = `blur(${Math.round(s.w * 0.025)}px)`;
+    c.drawImage(panel, s.x, s.y, s.w, s.h); c.filter = 'none'; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  }
+  const sheen = c.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);   // the glass: a faint diagonal reflection
+  sheen.addColorStop(0, 'rgba(255,255,255,.05)'); sheen.addColorStop(0.35, 'rgba(255,255,255,0)'); sheen.addColorStop(1, 'rgba(255,255,255,.015)');
+  c.fillStyle = sheen; c.fillRect(s.x, s.y, s.w, s.h);
+  c.restore();
+}
+const loupe = document.getElementById('loupe');
+function showLoupe() {
+  const [pw, ph] = HEADS[head].px, cx = Math.round(pw * (0.5 - P.spacing + eyeParams(st.v, st.a, -1).w * P.size / 2 + st.gx * 0.055)) - 10;
+  const cy = Math.round(pw * (0.49 + st.gy * 0.035) + (ph - pw) * 0.32) - 10;
+  const d = panel.getContext('2d').getImageData(Math.max(0, cx), Math.max(0, cy), 20, 20).data, c = loupe.getContext('2d'), k = 12;
+  c.fillStyle = '#000'; c.fillRect(0, 0, 240, 240);
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) {
+    const i = (y * 20 + x) * 4;
+    ['r', 'g', 'b'].forEach((ch, j) => { const v = d[i + j]; c.fillStyle = `rgb(${j === 0 ? v : 0},${j === 1 ? v : 0},${j === 2 ? v : 0})`; c.fillRect(x * k + j * 4 + 0.5, y * k + 1, 3, k - 2); });
+  }
+}
+
+// --- emotion pad ----------------------------------------------------------------------------------------------------
+const pad = document.getElementById('pad');
+function drawPad() {
+  const c = pad.getContext('2d'), W = 400;
+  c.fillStyle = '#121417'; c.fillRect(0, 0, W, W);
+  c.strokeStyle = '#262a2e'; c.lineWidth = 2; c.beginPath(); c.moveTo(W / 2, 0); c.lineTo(W / 2, W); c.moveTo(0, W / 2); c.lineTo(W, W / 2); c.stroke();
+  c.fillStyle = '#8b928e'; c.font = '22px "JetBrains Mono", monospace';
+  c.textAlign = 'center'; c.fillText('excited', W / 2, 30); c.fillText('calm', W / 2, W - 14);
+  c.save(); c.translate(20, W / 2); c.rotate(-Math.PI / 2); c.fillText('unhappy', 0, 8); c.restore();
+  c.save(); c.translate(W - 20, W / 2); c.rotate(Math.PI / 2); c.fillText('happy', 0, 8); c.restore();
+  for (const [name, m] of Object.entries(MOODS)) { c.fillStyle = '#3a4046'; c.beginPath(); c.arc((m.v + 1) / 2 * W, (1 - m.a) / 2 * W, 5, 0, 7); c.fill(); }
+  c.fillStyle = color; c.beginPath(); c.arc((tgt.v + 1) / 2 * W, (1 - tgt.a) / 2 * W, 14, 0, 7); c.fill();
+  c.strokeStyle = color; c.globalAlpha = 0.4; c.beginPath(); c.arc((st.v + 1) / 2 * W, (1 - st.a) / 2 * W, 22, 0, 7); c.stroke(); c.globalAlpha = 1;
+}
+function padAt(e) { const r = pad.getBoundingClientRect(); setEmotion(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2); }
+pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); padAt(e); });
+pad.addEventListener('pointermove', e => { if (e.buttons) padAt(e); });
+pad.addEventListener('keydown', e => {
+  const d = { ArrowLeft: [-0.1, 0], ArrowRight: [0.1, 0], ArrowUp: [0, 0.1], ArrowDown: [0, -0.1] }[e.key];
+  if (d) { e.preventDefault(); setEmotion(tgt.v + d[0], tgt.a + d[1]); }
+});
+function setEmotion(v, a, look) {
+  curMood = null;
+  tgt.v = Math.max(-1, Math.min(1, v)); tgt.a = Math.max(-1, Math.min(1, a));
+  tgt.gx = look?.gx ?? null; tgt.gy = look?.gy ?? null; tgt.mode = 'idle';
+  pressed('moods', null);
+}
+
+// --- controls -------------------------------------------------------------------------------------------------------
+function pressed(id, match) { document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', b.dataset.k === match ? 'true' : 'false')); }
+function chips(id, items, label, onPick, swatch, first = 0) {
+  const row = document.getElementById(id);
+  items.forEach((it, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.k = swatch ? it.id : it;
+    b.className = swatch ? 'swatch' : 'chip';
+    if (swatch) { b.style.background = it.hex; b.setAttribute('aria-label', it.id); } else b.textContent = label(it);
+    b.setAttribute('aria-pressed', i === first ? 'true' : 'false');
+    b.addEventListener('click', () => { onPick(it); pressed(id, b.dataset.k); });
+    row.append(b);
+  });
+}
+const goMood = k => { const m = MOODS[k];
+  setTimeout(() => { curMood = k; if (m.bounce) liq.pulse = m.bounce; }, 0);
+  if (m.talk) { // the lab has no voice: say a sample line so the mouths have something to speak
+    caption = ''; setCaption("Hi, I'm frog. Want me to run the tests and tell you what broke?");
+    st.talk = 1; clearTimeout(goMood.t); goMood.t = setTimeout(() => { st.talk = 0; setCaption('', true); }, 5200);
+  } setEmotion(m.v, m.a, m.gx != null || m.gy != null ? { gx: m.gx ?? 0, gy: m.gy ?? 0 } : null); tgt.glyph = m.glyph || 'none'; tgt.mode = m.mode || 'idle'; pressed('glyphs', tgt.glyph); };
+chips('moods', Object.keys(MOODS), k => k, goMood, false, -1);
+chips('glyphs', GLYPHS, k => k, k => { tgt.glyph = k; });
+chips('heads', Object.keys(HEADS), k => HEADS[k].name, k => { head = k; });
+chips('finishes', ['glow', 'solid'], k => k, k => { finish = k; });
+chips('mouths', MOUTHS, k => k, k => { mouth = k; paintThumbs(); });
+chips('colors', COLORS, null, c => { color = c.hex; }, true);
+for (const id of ['size', 'spacing', 'round']) {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { P[id] = +el.value; document.getElementById(id + '-v').textContent = (+el.value).toFixed(2); });
+}
+document.getElementById('follow').addEventListener('click', e => { follow = !follow; e.currentTarget.setAttribute('aria-pressed', follow); });
+const big = document.getElementById('big');
+document.addEventListener('pointermove', e => { const r = big.getBoundingClientRect(); pointer = { x: ((e.clientX - r.left) / r.width - 0.5) * 2.6, y: ((e.clientY - r.top) / r.height - 0.4) * 2.6, at: performance.now() }; });
+
+// --- talking to Pip through Claude ----------------------------------------------------------------------------------
+const RULES = `You are Pip, the face of a small satin-black desk robot called a frog node: a local AI computer with a screen for a face, two eyes and no mouth. You are warm, dry, a little wry, and brief.
+Reply format, exactly: first line is one JSON object choosing your face for this reply, then a newline, then what you say aloud (at most two short sentences, plain text, no emoji).
+JSON fields: "v" valence -1 (unhappy) to 1 (happy); "a" arousal -1 (sleepy) to 1 (excited); "glyph" one of "none","heart","star","check","cross","diamond" (use rarely, only when it lands); "look" one of "center","up","down","left","right","away".
+Example:
+{"v":0.8,"a":0.5,"glyph":"check","look":"center"}
+Nice, green across the board.`;
+const LOOK = { center: [0, 0], up: [0, -0.8], down: [0, 0.8], left: [-0.8, 0], right: [0.8, 0], away: [0.7, -0.4] };
+const turns = []; let sample = null, busy = false, settleAt = 0;
+const capEl = document.getElementById('caption');
+const sayEl = document.getElementById('say');
+sayEl.addEventListener('focus', () => { if (!busy) { setEmotion(0.2, 0.5); tgt.mode = 'listening'; } });
+sayEl.addEventListener('input', () => { st.hear = 1; if (!busy) tgt.mode = 'listening'; });   // every keystroke is heard
+sayEl.addEventListener('blur', () => { if (!busy && !sayEl.value) { setEmotion(0, 0); } });
+function setCaption(text, dim) { if (!dim && !caption) speakT0 = performance.now(); caption = dim ? '' : text; capEl.textContent = text; capEl.classList.toggle('dim', !!dim); }
+document.getElementById('talk').addEventListener('submit', async e => {
+  e.preventDefault();
+  const say = document.getElementById('say'), msg = say.value.trim();
+  if (!msg || busy || !sample) return;
+  busy = true; document.getElementById('send').disabled = true; say.value = '';
+  turns.push({ role: 'user', content: msg });
+  setEmotion(0.05, 0.2, { gx: 0.55, gy: -0.6 }); tgt.mode = 'thinking'; tgt.glyph = 'none'; setCaption('thinking…', true);
+  let faceSet = false, spoken = '';
+  try {
+    const { text } = await sample([{ role: 'user', content: RULES }, ...turns.slice(-8)], {
+      modelTier: 'quick', cache: false,
+      onText: ({ text }) => {
+        const nl = text.indexOf('\n');
+        if (!faceSet && nl > 0) {
+          try {
+            const f = JSON.parse(text.slice(0, nl)), l = LOOK[f.look] || LOOK.center;
+            setEmotion(+f.v || 0, +f.a || 0, { gx: l[0], gy: l[1] }); tgt.glyph = GLYPHS.includes(f.glyph) ? f.glyph : 'none'; pressed('glyphs', tgt.glyph);
+          } catch { setEmotion(0.3, 0.2); }
+          faceSet = true;
+        }
+        if (nl > 0) { spoken = text.slice(nl + 1).trim(); if (spoken) { st.talk = 1; tgt.mode = 'idle'; setCaption(spoken); } }
+      },
+    });
+    turns.push({ role: 'assistant', content: text });
+  } catch (err) {
+    turns.pop();
+    if (err.code === 'not_granted' || err.code === 'sampling_disabled' || err.code === 'not_declared' || err.code === 'capability_disabled') { hideTalk(); setCaption('Talking needs Claude access for this page.', true); }
+    else if (err.code !== 'cancelled') { setEmotion(-0.3, -0.1, { gx: 0, gy: 0.4 }); setCaption(err.code === 'rate_limited' ? 'Pip needs a breather. Try again in a bit.' : 'Lost the thread there. Try again?', true); }
+  } finally {
+    busy = false; document.getElementById('send').disabled = false;
+    setTimeout(() => { st.talk = 0; }, Math.min(6000, 600 + spoken.length * 45));   // eyes keep "talking" while the words read
+    settleAt = performance.now() + 9000;                                            // then drift back to idle
+  }
+});
+function hideTalk() { document.getElementById('talkgroup').hidden = true; }
+(async () => {
+  try { sample = window.claude ? await window.claude.use('sample') : null; } catch { sample = null; }
+  if (!sample) hideTalk();
+})();
+if (!window.claude) hideTalk();
+
+// --- the strip: named points, settled ------------------------------------------------------------------------------
+const strip = document.getElementById('strip'), thumbs = [];
+for (const k of Object.keys(MOODS)) {
+  const f = document.createElement('figure'), cv = document.createElement('canvas'); cv.width = 220; cv.height = 220;
+  const cap = document.createElement('figcaption'); cap.textContent = k; f.append(cv, cap);
+  f.addEventListener('click', () => { goMood(k); pressed('moods', k); });
+  strip.append(f); thumbs.push([cv, k]);
+}
+function paintThumbs() {
+  for (const [cv, k] of thumbs) {
+    const m = MOODS[k], c = cv.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#07090b'; c.fillRect(0, 0, 220, 220);
+    c.setTransform(220, 0, 0, 220, 0, 0);
+    drawFace(c, 0, { v: m.v, a: m.a, gx: m.gx || 0, gy: m.gy || 0, vgx: 0, vgy: 0, g: m.glyph ? 1 : 0, glyph: m.glyph || 'none', talk: m.talk ? 1 : 0, listen: +(m.mode === 'listening'), think: +(m.mode === 'thinking'), name: k, pupil: poseFor(m, k).pupil, blush: blushTarget(m, k) }, color, { still: true });
+  }
+}
+
+// --- loop: springs, saccades, life ----------------------------------------------------------------------------------
+function spring(x, v, to, dt, k, d) { const a = k * (to - x) - d * v; v += a * dt; return [x + v * dt, v]; }
+let last = performance.now(), nextSaccade = 0, sac = { x: 0, y: 0 }, lastColor = '';
+function frame(now) {
+  const dt = Math.min(0.04, (now - last) / 1000); last = now;
+  if (settleAt && now > settleAt && !busy) { settleAt = 0; setEmotion(0, 0); tgt.glyph = 'none'; pressed('glyphs', 'none'); }
+  if (now > nextSaccade) {                                  // idle life: glance somewhere new every 0.8-2.6 s
+    sac = { x: (Math.random() - 0.5) * 1.1, y: (Math.random() - 0.5) * 0.6 };
+    nextSaccade = now + 800 + Math.random() * 1800;
+  }
+  let gx = tgt.gx ?? sac.x * (1 - 0.6 * Math.abs(tgt.a)), gy = tgt.gy ?? sac.y;
+  if (tgt.mode === 'listening') {                         // eye contact: straight at you, or at your pointer while it moves
+    const live = pointer.at && now - pointer.at < 2500;
+    gx = live ? Math.max(-1, Math.min(1, pointer.x)) : 0; gy = live ? Math.max(-1, Math.min(1, pointer.y)) : 0;
+  }
+  st.hear = Math.max(0, st.hear - dt * 2.5);
+  if (follow) { gx = Math.max(-1, Math.min(1, pointer.x)); gy = Math.max(-1, Math.min(1, pointer.y)); }
+  if (reduced) { Object.assign(st, { v: tgt.v, a: tgt.a, gx, gy, vgx: 0, vgy: 0, g: tgt.glyph === 'none' ? 0 : 1, listen: +(tgt.mode === 'listening'), think: +(tgt.mode === 'thinking') }); if (tgt.glyph !== 'none') st.glyph = tgt.glyph; }
+  else {
+    [st.v, st.vv] = spring(st.v, st.vv, tgt.v, dt, 90, 16);
+    [st.a, st.va] = spring(st.a, st.va, tgt.a, dt, 90, 16);
+    [st.listen, st.vl] = spring(st.listen, st.vl, tgt.mode === 'listening' ? 1 : 0, dt, 120, 14);
+    [st.think, st.vt] = spring(st.think, st.vt, tgt.mode === 'thinking' ? 1 : 0, dt, 120, 16);
+    st.pupil = (st.pupil || 1) + (poseFor(st, curMood).pupil - (st.pupil || 1)) * Math.min(1, dt * 7);
+    { const bt = blushTarget(st, curMood), b0 = st.blush || 0;          // a blush blooms quickly and fades slowly
+      st.blush = b0 + (bt - b0) * Math.min(1, dt * (bt > b0 ? 4 : 1.2)); }
+    [st.gx, st.vgx] = spring(st.gx, st.vgx, gx, dt, 520, 38);    // saccades: fast, a touch of overshoot
+    [st.gy, st.vgy] = spring(st.gy, st.vgy, gy, dt, 520, 38);
+    const gTo = tgt.glyph === 'none' ? 0 : 1;
+    if (tgt.glyph !== 'none' && tgt.glyph !== st.glyph) { if (st.g < 0.05) st.glyph = tgt.glyph; }   // morph back to a block before a new glyph
+    [st.g, st.vg] = spring(st.g, st.vg, tgt.glyph !== 'none' && tgt.glyph !== st.glyph ? 0 : gTo, dt, 140, 17);
+  }
+  const t = reduced ? 1500 : now;
+  paintPanel(t); show(big); showLoupe(); drawPad();
+  if (color !== lastColor || P.size + P.spacing + P.round !== paintThumbs.k) { paintThumbs(); lastColor = color; paintThumbs.k = P.size + P.spacing + P.round; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>

@@ -1,0 +1,135 @@
+"""Generate the skull sections for node.loon (between the BEGIN/END skull markers). Run: python3 node_skull.py
+
+Each section is an egg in plan: a superellipse whose half width runs from `wf` at the face to `wb` at the back,
+and which squares off toward the face so the 84 mm glass sits on a flat. Heights: face plane chin 18 to brow 116 (the glass covers the panel and the cameras),
+cranium dome to TOP (crown peak behind the face; 138, grown from 134 for the mic array), occiput swell at z 80, neck recess under the back."""
+import math, re
+
+BROW = 116.0                                         # top of the flat face plane (design frame)
+TOP = 138.0                                          # crown peak (design frame); 134 until the mic array grew it ~5 mm
+VS = 1.12                                            # vertical scale: the flat face ends ~4 above the screen (BROW 130)
+FACE = 56.0                                          # the face plane (front of the 4in panel's own glass)
+LEAN, FLAT_X = 10.0, 12.0                            # desk lean: the back of the foot is cut on a 10 deg plane that
+                                                     # meets the foot's bottom at x 12, ahead of the centre of mass
+
+JAW_Z, JAW_W = 38.0, 46.0                            # the jaw draws the half width in to 46 at the foot, from z 38 down (clear of the I/O row)
+OCC_Z, OCC_X = 32.0, 48.0                            # the occiput sweeps the back in to x -48 at the foot, from z 32 down (battery keeps 1 mm)
+
+ZS = [z * VS for z in (0, 1.5, 3.5, 6, 9, 13, 18, 26, 36, 48, 60, 70, 80, 88, 96, 104, 112, 116)] + [
+    (BROW + (z - BROW) * (TOP - BROW) / 18.0) * VS for z in (119, 122, 125, 128, 130.5, 132.5, 133.6, 134.2)]
+
+def se(u, n):
+    u = min(max(u, 0.0), 0.998)
+    return (1 - u ** n) ** (1 / n)
+
+def outline(z):
+    z = z / VS
+    fx = FACE if 18 <= z <= BROW else (FACE - 12 + 12 * se((18 - z) / 18, 2.2) if z < 18 else -4 + (FACE + 4) * se((z - BROW) / (TOP - BROW), 2.2))
+    bx = -(42 + 24 * se((80 - z) / 80, 1.6)) if z <= 80 else -4 - 62 * se((z - 80) / (TOP - 80), 2.3)
+    wb = 58 + 6 * se((80 - z) / 80, 1.8) if z <= 80 else 64 * se((z - 80) / (TOP - 80), 2.4)   # back (parietal) half width
+    wf = min(wb, 55.0) * (1 if z <= BROW else se((z - BROW) / (TOP - BROW), 2.2))   # face half width
+    wf = min(wf, wb)
+    # jaw + occiput (2026-10-28): below the panel the head draws in toward the neck like a skull -- the sides tuck under
+    # like a jaw line, the back sweeps under from the occiput -- only as far as the stereo board, battery and power board allow
+    if z < JAW_Z:
+        s_ = (lambda u: u * u * (3 - 2 * u))(z / JAW_Z)
+        wf = min(wf, JAW_W + (wf - JAW_W) * s_)
+        wb = min(wb, JAW_W + (wb - JAW_W) * s_)
+    if z < OCC_Z:
+        s_ = (lambda u: u * u * (3 - 2 * u))(z / OCC_Z)
+        bx = max(bx, -(OCC_X + (-bx - OCC_X) * s_))
+    if z < 12:
+        k = 12 * (1 - se((12 - z) / 12, 2.2))
+        wb -= k; wf -= k; bx += k
+    return fx, bx, wf, wb
+
+def section(z, n=48):
+    fx, bx, wf, wb = outline(z)
+    xc, a = (fx + bx) / 2, (fx - bx) / 2
+    pts = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        c, s = math.cos(t), math.sin(t)
+        e = 12.0 if c > 0 else 2.6                      # squarer toward the face
+        x = xc + a * math.copysign(abs(c) ** (2 / e), c)
+        u = min(max((x - bx) / (fx - bx), 0.0), 1.0)    # 0 back .. 1 face
+        w = wb + (wf - wb) * u ** 1.6
+        y = w * math.copysign(abs(s) ** (2 / e), s)
+        pts.append((x, y))
+    return pts
+
+def sk(z, pts):
+    segs = ' '.join('[line %.2f %.2f %.2f %.2f]' % (*pts[i], *pts[(i + 1) % len(pts)]) for i in range(len(pts)))
+    return '[sketch 0.0 0.0 %.2f 1.0 0.0 0.0 0.0 1.0 0.0 #[%s]]' % (z, segs)
+
+def scaled(pts, k, cx=None):
+    cx = sum(x for x, _ in pts) / len(pts) if cx is None else cx
+    return [(cx + (x - cx) * k, y * k) for x, y in pts]
+
+def circle(r, cx=0.0, n=48):
+    return [(cx + r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+def lean_plane(lean, flat_x):
+    """(sin, cos, c) of the desk plane x*sin + z*cos = c: below it is cut off, and it rests on the desk."""
+    a = math.radians(lean)
+    return math.sin(a), math.cos(a), flat_x * math.sin(a)
+
+def lean_cut(name, solid, lean, flat_x):
+    s, c, d = lean_plane(lean, flat_x)
+    return ('[let %s [intersection %s [translate %.3f 0.0 %.3f [rotate 0.0 %.1f 0.0 [translate -500.0 -500.0 0.0 [cube 1000.0 1000.0 1000.0]]]]]]\n'
+            % (name, solid, d * s, d * c, lean))
+
+def loft(name, rows):
+    return '[let %s [loft #[\n%s]]]\n' % (name, '\n'.join('  ' + sk(z, p) for z, p in rows))
+
+def main():
+    zs = ZS
+    block = loft('node-shell', [(z, section(z)) for z in zs])
+
+    # Neck join: the neck's top trim is the foot's flat (the dock face) 1 mm under it, then it necks down to a round
+    # column. It stops inside the foot's bottom round, so the intake band on that round stays open on the neck too.
+    foot = section(0)
+    block += loft('node-neck', [(-1.0, scaled(foot, 0.8)), (-6.0, scaled(foot, 0.72)), (-16.0, circle(30, 2.0)),
+                                (-30.0, circle(25, 4.0)), (-58.0, circle(27, 4.0))])
+
+    block += lean_cut('node-head', 'node-shell', LEAN, FLAT_X)
+
+    # Intake: a perforated band on the foot's bottom round (z 1.5-7), facing down and out. On the neck and on the puck it
+    # sits in the shadow under the head, so it's hidden from any normal view. Ø1.4 on 2.2 hex, 3 rows round the whole
+    # perimeter: ~3 x 150 = 450 holes, ~690 mm² (SPEC wants ~650 at 25 W). Drawn as a dark band; print prep cuts holes.
+    block += loft('intake-out', [(1.5, scaled(section(1.5), 1.01)), (7.0, scaled(section(7.0), 1.006))])
+    block += loft('intake-in', [(1.5, scaled(section(1.5), 0.985)), (7.0, scaled(section(7.0), 0.99))])
+    block += '[let node-intake [difference intake-in intake-out]]\n'
+
+    # Ear grilles: where a human ear sits -- at eye height, just behind the middle of the head's depth -- a vertical
+    # oval patch of dots (Ø1.2 on a 2.6 hex, ~12 x 22) on each side, like the ear's own outline. The mic ports and the
+    # speaker sit behind it. Massing only: the dots are drawn as dark discs on the surface (each at the local surface y);
+    # print prep cuts them as real holes.
+    EAR_X, EAR_Z, EAR_A, EAR_B, P = -6.0, 66.0, 6.2, 11.2, 2.6
+
+    def surface_y(x, z):
+        pts = [q for q in section(z, 96) if q[1] > 0]
+        pts.sort()
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x0 <= x <= x1:
+                return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+        return max(y for _, y in pts)
+
+    dots = [(EAR_X + P * (i + 0.5 * (j % 2)), EAR_Z + P * 0.866 * j) for j in range(-6, 7) for i in range(-4, 4)]
+    dots = [(x, z) for x, z in dots if ((x - EAR_X) / EAR_A) ** 2 + ((z - EAR_Z) / EAR_B) ** 2 <= 1.0]
+    discs = []
+    for x, z in dots:
+        y = surface_y(x, z)
+        for s in (1, -1):
+            discs.append('[translate %.2f %.2f %.2f [rotate %d 0.0 0.0 [cylinder-n 0.6 0.6 12]]]' % (x, s * (y - 0.35), z, -90 if s > 0 else 90))
+    u = discs[0]
+    for d in discs[1:]:
+        u = '[union %s %s]' % (d, u)
+    block += '[let node-ears %s]\n' % u
+    src = open('node.loon').read()
+    src = re.sub(r'; BEGIN skull\n.*?; END skull\n', '; BEGIN skull\n' + block + '; END skull\n', src, flags=re.S)
+    open('node.loon', 'w').write(src)
+
+
+if __name__ == '__main__':
+    main()

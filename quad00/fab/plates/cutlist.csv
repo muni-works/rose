@@ -1,0 +1,32 @@
+part,qty,size mm,is (model names; a mirror pair is one part flipped),thickness mm,sheet
+arm-elbowE1_la,2,58.2 x 57.0,arm-elbowE1.la arm-elbowE1.ra,3.2,4
+arm-elbowE2_la,2,112.6 x 60.0,arm-elbowE2.la arm-elbowE2.ra,3.2,3
+arm-forearmF1_la,1,175.3 x 54.6,arm-forearmF1.la,3.2,2
+arm-forearmF1_ra,1,175.3 x 54.6,arm-forearmF1.ra,3.2,3
+arm-upperU1_la,2,58.0 x 57.0,arm-upperU1.la arm-upperU1.ra,3.2,4
+arm-upperU2_la,2,53.2 x 51.4,arm-upperU2.la arm-upperU2.ra,3.2,4
+arm-yokeP1_la,2,58.9 x 57.0,arm-yokeP1.la arm-yokeP1.ra,3.2,4
+arm-yokeP2_la,1,101.1 x 60.0,arm-yokeP2.la,3.2,3
+arm-yokeP2_ra,1,101.1 x 60.0,arm-yokeP2.ra,3.2,3
+chassis-hipA_ll,2,78.9 x 78.9,chassis-hipA.ll chassis-hipA.rl,3.2,3
+chassis-hipB2_ll,2,78.5 x 76.2,chassis-hipB2.ll chassis-hipB2.rl,3.2,4
+chassis-hipR_ll,2,115.1 x 66.0,chassis-hipR.ll chassis-hipR.rl,3.2,1 3
+chassis-hipinner_ll,2,85.0 x 82.0,chassis-hipinner.ll chassis-hipinner.rl,3.2,3
+chassis-rollmount_ll,1,89.0 x 87.0,chassis-rollmount.ll,3.2,2
+chassis-rollmount_rl,1,89.0 x 87.0,chassis-rollmount.rl,3.2,3
+chassis-thightop_ll,2,81.6 x 76.5,chassis-thightop.ll chassis-thightop.rl,3.2,3
+head-H1,1,59.1 x 57.0,head-H1,3.2,4
+head-dock,1,68.0 x 59.4,head-dock,3.2,4
+neck-N0,1,57.0 x 57.0,neck-N0,3.2,4
+neck-N1,1,60.0 x 59.5,neck-N1,3.2,4
+shin-inner_ll,2,234.1 x 76.8,shin-inner.ll shin-inner.rl,3.2,2
+shin-outer_ll,2,322.1 x 92.0,shin-outer.ll shin-outer.rl,3.2,1
+shin-web_ll,2,53.0 x 16.0,shin-web.ll shin-web.rl,3.2,2
+thigh-inner_ll,2,117.0 x 92.0,thigh-inner.ll thigh-inner.rl,3.2,1 2
+thigh-outer_ll,2,114.2 x 86.8,thigh-outer.ll thigh-outer.rl,3.2,2
+torso-deck0,1,120.0 x 79.6,torso-deck0,3.2,3
+torso-deck1,1,85.0 x 79.6,torso-deck1,3.2,3
+torso-dock,1,79.6 x 73.0,torso-dock,3.2,4
+torso-latch,1,16.0 x 12.0,torso-latch,3.0,2
+torso-rail_l,2,94.0 x 8.0,torso-rail.l torso-rail.r,3.0,2
+torso-side_l,2,210.3 x 120.0,torso-side.l torso-side.r,3.2,1 2

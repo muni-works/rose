@@ -1,0 +1,19 @@
+; cortex size, FULL: the 7-inch face (Waveshare 7inch HDMI LCD (C)). Copy this over size.loon (export.sh does) to
+; build the full-size head. Same dock interface as the mini; the shell plan is the mini's x 1.4.
+[pub let size-mini false]
+[pub let size-full true]
+
+[pub let hh 126.0]                                 ; height (the 7" is the whole face, mini ratios)
+[pub let hw 96.5]                                  ; half width (193 W: the 7" panel edge-to-edge)
+[pub let x-face 55.0]                              ; the flat face plane (depth ~118)
+[pub let x-back -63.0]                             ; the flat back plane
+
+[pub let d7-w 166.0]                               ; the display's outline + 1 mm margin each side
+[pub let d7-h 108.0]
+[pub let d7-t 8.0]                                 ; outline to the connector backs (wiki Dimension)
+[pub let d7-act-w 154.21]
+[pub let d7-act-h 85.92]
+
+; placement of the 7-inch display and the eye cameras (full only)
+[pub let d7-dz 0.0]                                ; display centre, up from the face band's centre
+[pub let d7-cam-y 96.0]                            ; eye cameras at +-this (z: ze, the top of the flat band)
