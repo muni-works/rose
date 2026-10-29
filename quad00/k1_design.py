@@ -182,31 +182,32 @@ def torso_shell(lo, hi, CH, z0, z_ch, zc1, zs, flank, Rk, r_corner=0.0):
     ss = lambda a, b, z: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (z - a) / (b - a))))
     zf = zs - max(40.0 * Rk, r_corner)                         # the armpit: the flare ends at the shoulder drum's bottom edge
     def sec(z):
-        zh = min(z0 + 88.0 * Rk, z0 + 0.6 * (zf - z0))          # full width from here up (the side bays); short chests scale it
-        if z < zh:                                              # a skinnier waist, swelling smoothly to the chest
-            k = 0.72 + (0.97 - 0.72) * ss(z0, zh, z)           # design pass: a real waist (was 0.80)
-        else:                                                   # a concave funnel: near-vertical, flaring late out over the shoulder drums
-            u = min(1.0, max(0.0, (z - zh) / (zf - zh)))       # full width by the drum's bottom: the side wraps the whole drum
-            k = 0.97 + (flank / CH - 0.97) * u ** 3
+        # torso pass 2026-10-28 (K1-sleek): one straight, slightly full taper from the waist to the shoulder drums -- a
+        # trapezoid like the K1's -- in place of a pinched waist and a concave funnel flaring late
+        u = min(1.0, max(0.0, (z - z0) / (zf - z0)))
+        k = 0.56 + (flank / CH - 0.56) * u ** 1.9             # an athletic V: a narrow waist, the lats flaring to broad shoulders
         x0 = lo[0] + 10 - 6 * ss(z0, z_ch, z); x1 = hi[0] - 12 + 6 * ss(z0, z_ch, z)
         lean = KS.V.get('torso_lean', 0.0) * ss(zs - 30.0 * Rk, zc1 + 10.0 * Rk, z)   # front + back lean in toward the top
         xm, h = (x0 + x1) / 2, (x1 - x0) / 2
+        d0, d1 = KS.SHELL_DEPTH.get(KS.V['name'], (1.0, 1.0))
+        h *= d0 + (d1 - d0) * u                               # shallower front to back: thin at the waist, fuller chest
         return xm, CH * k, h * (1 - lean)
-    rf = 16.0 * Rk                                              # crown fillet, like the head's
+    rf = 18.0 * Rk                                              # crown fillet (torso pass: crisper planes, not a pillow)
     zt = zc1 + 10.0 * Rk
     rings = []
-    rbt = 14.0 * Rk                                             # bottom round-off, like the crown
+    rbt = 14.0 * Rk                                             # bottom round-off
+    rpl = 18.0 * Rk                                             # plan corner radius (was 24): flat front, sides and back meet crisply
     xc, a_, b_ = sec(z0 + rbt)
     for th in np.linspace(0, np.pi / 2, 7)[:-1]:
         d_ = rbt * (1 - math.sin(th))
-        rings.append(rrect(np.array([xc, 0, z0 + rbt - rbt * math.cos(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
+        rings.append(rrect(np.array([xc, 0, z0 + rbt - rbt * math.cos(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(rpl - d_, 3.0), k=14))
     for z_ in np.linspace(z0 + rbt, zt - rf, 16):
         xc, a_, b_ = sec(z_)
-        rings.append(rrect(np.array([xc, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, 24.0 * Rk, k=14))
+        rings.append(rrect(np.array([xc, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_, b_, rpl, k=14))
     xc, a_, b_ = sec(zt - rf)
     for th in np.linspace(0, np.pi / 2, 7)[1:]:
         d_ = rf * (1 - math.cos(th))
-        rings.append(rrect(np.array([xc, 0, zt - rf + rf * math.sin(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(24.0 * Rk - d_, 3.0), k=14))
+        rings.append(rrect(np.array([xc, 0, zt - rf + rf * math.sin(th)]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), a_ - d_, b_ - d_, max(rpl - d_, 3.0), k=14))
     # concave sides: a hull of each ring pair (a hull of all of them would fill the funnel back to a V)
     m = tm(Manifold.batch_boolean([Manifold.hull_points(np.concatenate([a, b]).astype(np.float32)) for a, b in zip(rings, rings[1:])], OpType.Add))
     m.metadata['loft'] = [np.asarray(r, float) for r in rings]
@@ -543,7 +544,7 @@ def design():
         C_ = Manifold(Mesh(vert_properties=np.asarray(chest.vertices, np.float32), tri_verts=np.asarray(chest.faces, np.uint32)))
         chest = tm(C_ - Manifold.batch_boolean(cuts_, OpType.Add))
     zc_mid = z_ch + (zc1 - z_ch) * 0.52
-    chest_m = chest if Wl is not None else grooved(chest, [('frame', 0, np.array([0, 0, zc_mid]), KS.CHEST() * 0.56, (zc1 - z_ch) * 0.34, 14.0 * KS.R())])   # (full: plain -- its pocket cut sends it out as a mesh)   # chest panel, front + back
+    chest_m = chest                                             # torso pass: no panel groove -- one clean volume, like the K1
     E = KS.ELEC
     if KS.V['name'] == 'mini':
         xb = chest_m.bounds[0][0]
@@ -553,7 +554,8 @@ def design():
             vy0, vy1 = E['vent_in']['y']; vz0, vz1 = E['vent_in']['z']
             for sy in (1, -1):                                   # one per side bay: the pack blocks the middle
                 for zc in np.arange(vz0 + 2.0, vz1 - 1.0, 7.0):  # 3.5 mm slots on a 7 mm pitch: 50 % open
-                    cuts.append(('box', [Mc.slice(zc).bounds()[2] - 12.0, vy0 if sy > 0 else -vy1, zc - 1.75], [14.0, vy1 - vy0, 3.5]))
+                    bb = Mc.slice(zc).bounds(); xc_ = (bb[0] + bb[2]) / 2     # torso pass: on the flank, under the arm, not the chest
+                    cuts.append(('box', [xc_ - (vy1 - vy0) / 2, (bb[3] - 12.0) if sy > 0 else (bb[1] - 2.0), zc - 1.75], [vy1 - vy0, 14.0, 3.5]))
         if E['estop']:
             cuts.append(('xcyl', [xb, 0.0, E['estop']['z'] * KS.R()], 8.1, 6.0))      # e-stop: 16.2 mm hole in the back
         chest_m = cut_shell(chest_m, cuts)
@@ -578,7 +580,7 @@ def design():
         # yaw stage (design pass 2026-10-28): an abdomen, not a bare can -- full and wide over the pelvis, waisting up to the
         # roll axis; it turns as one piece on the pelvis top (flat, with a gap), so it needn't be round
         ab = [rrect(np.array([0, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), r_d * ky_, r_d * kx_, r_d * 0.5 * min(ky_, kx_), k=14)
-              for z_, ky_, kx_ in ((z_d, 1.38, 1.12), (z_d + 0.35 * (rc_[2] - z_d), 1.30, 1.08), (rc_[2], 1.0, 1.0))]
+              for z_, ky_, kx_ in ((z_d, 1.14, 0.96), (z_d + 0.35 * (rc_[2] - z_d), 1.06, 0.94), (rc_[2], 0.98, 0.92))]   # torso pass: slim, not a bean
         add('cover-waist', hull_rings(ab))
         add('cover-waistroll', cyl(rc_, [1.0, 0, 0], mw['D'] / 2 + 9.0, 2 * (mw['L'] / 2 + KS.G + KS.T + 4.0)))   # roll barrel (roll stage)
         hub = M_(cyl(pc_, [0, 1.0, 0], mw['D'] / 2 + 10.0, 0.62 * 2 * KS.CHEST() * 0.90)) - \
@@ -626,7 +628,7 @@ def design():
         bring = lambda z_, d_, k_=1.0: rrect(np.array([(bx0 + bx1) / 2, 0, z_]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]), by * k_ - d_, (bx1 - bx0) / 2 - min(d_, 6.0), max(rcp - min(d_, 6.0), 3.0), k=14)
         # design pass 2026-10-28: hips, not a box -- widest over the cans, drawing in to meet the waist (plan corners rounder too)
         prs = [bring(bz0 + rfb * (1 - math.sin(th)), rfb * (1 - math.cos(th))) for th in np.linspace(np.pi / 2, 0, 11)] + \
-              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.97), bring(bz1, 0.0, 0.86)]
+              [bring(rl[2] + 0.5 * (bz1 - rl[2]), 0.0, 0.94), bring(bz1, 0.0, max(0.62, min(0.86, KS.CHEST() * 0.60 / by)))]   # torso pass: its top meets the narrow waist
         pel = Manifold.hull_points(np.concatenate(prs).astype(np.float32))
     got = dict(out)
     for side in ('Left', 'Right'):

@@ -489,6 +489,9 @@ def torso(J):
     z_d1 = hy[2] - mh['L'] / 2 - G - T
     z_d0 = Z_CD()
     x0, x1 = -55.0 * R(), 65.0 * R()
+    if V['name'] == 'mini':                                                # inside the slimmer shell (3 mm wall + clearance)
+        xm_, hw_, _ = shell_x(J)
+        x0, x1 = max(x0, xm_ - hw_ + 5.0), min(x1, xm_ + hw_ - 5.0)
     for s, tag in ((1, 'l'), (-1, 'r')):
         S = L.unary_union([L.circle(sp[0], sp[2], m['back'][0] + 22), Rr(x0, z_d0, x1, max(sp[2], z_d1))]).intersection(L.box(-1e3, -1e3, 1e3, z_d1 if z_d1 > sp[2] else 1e3))
         S = S.difference(holes(m, 'back', (sp[0], sp[2]), 45))
@@ -657,7 +660,7 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             # hatch, whose face IS the pack's back (flush with the shell). Cells lie in 3 (y) x 4 (x) x 2 tiers, upright.
             # (Retired: the back-mounted option C. Option D (12S3P) no longer fits the bay.)
             pack=dict(cells=(4, 3, 2), kg=2.0),                     # cells x, y, z
-            monitor=10.0,                                           # BQ76952 slab on the pack's dock (front) face
+            monitor=6.0,                                            # BQ76952 board on the pack's dock (front) face (was a 10 mm slab)
             jetson=(50.0, 52.0, 87.0), jetson_kg=0.40,              # Seeed A603 + Orin NX 16 GB, upright (x, y, z); height ESTIMATE
             fan=(10.0, 30.0, 30.0), brake=(28.0, 50.0, 20.0),       # 30 mm exhaust fan (blowing out, above the pack, under the leaning back); brake resistor (size TBD)
             estop=None,                                             # no hard e-stop (the K1 has none): wireless ELRS e-stop instead
@@ -668,6 +671,20 @@ ELEC = dict(cell_d=21.0, cell_h=70.0, cell_kg=0.070, S=12, P=2,     # 12S2P 2170
             board=(110.0, 88.0, 15.0), board_kg=0.12)   # 110 x 88 (claude/limbic-spec 0a00f7b), tall parts outboard               # limbic board 110 x 74 (LIMBIC.md), with parts (x, y, z)
 
 
+SHELL_DEPTH = {'mini': (0.88, 0.90), 'full': (0.70, 0.84)}   # torso depth at the waist / the chest, of the trunk envelope
+                                                                # (torso pass 2026-10-28; the mini's is the repacked bay's)
+
+
+def shell_x(J=None, M=None):
+    """the torso shell's x centre and its outer half-depths at the waist and the chest (k1_design.torso_shell)."""
+    if M is None:
+        J, M = world()
+    lo, hi = M['Trunk'].bounds
+    xm, h = ((lo[0] + 10.0) + (hi[0] - 12.0)) / 2, ((hi[0] - 12.0) - (lo[0] + 10.0)) / 2
+    d0, d1 = SHELL_DEPTH.get(V['name'], (1.0, 1.0))
+    return xm, h * d0, h * d1
+
+
 def pack_box(J=None):
     """the pack's envelope in the bay (mini): ((x0, y0, z0), (x1, y1, z1)) incl. the 2 mm PA12 case."""
     E = ELEC
@@ -676,7 +693,8 @@ def pack_box(J=None):
     sp = upper_layout(J, 'Left')['sp'][0]
     y_s = abs(sp[1]) - ARM()['L'] / 2 - G - T                 # side plate inner face
     cx, cy, cz = E['pack']['cells']
-    x1 = -61.0 * R()                                          # the hatch: flush with the abdomen's back skin (6 mm in from the chest's)
+    xm, hw, _ = shell_x()
+    x1 = xm - hw + 0.5                                        # the hatch: flush with the (slimmer) back skin at the waist
     x0 = x1 + 2.0 + cx * E['cell_d'] + E['monitor'] + 2.0
     z0 = Z_D0() + T + 3.0                                     # on 3 mm guide strips on deck0
     return (np.array([x1, -(y_s - 1.0), z0]), np.array([x0, y_s - 1.0, z0 + 4.0 + cz * E['cell_h'] + 4.0]))
@@ -704,16 +722,17 @@ def electronics(J):
     y_o = y_s + T + 2.0
     # (the Jetson lives in the cortex head now: the left side bay is free)
     bx_, by_, bz_ = E['board']
-    out.append(('elec-limbic', trimesh.creation.box(bounds=[[-50.0, -(y_o + bz_), 78.0], [-50.0 + bx_, -y_o, 78.0 + by_]])))   # on edge, z 78..166
-    rx, ry, rz = E['brake']                                   # below the board, lying flat (clear of its outboard parts)
-    out.append(('elec-brake', trimesh.creation.box(bounds=[[-50.0, -(y_o + 2.0 + 20.0), 50.0], [-50.0 + ry, -(y_o + 2.0), 50.0 + rx - 2.0]])))
+    xm_, hw_, _ = shell_x(J)
+    out.append(('elec-limbic', trimesh.creation.box(bounds=[[xm_ - by_ / 2, -(y_o + bz_), 56.0], [xm_ + by_ / 2, -y_o, 56.0 + bx_]])))   # on end, z 56..166
+    rx, ry, rz = E['brake']                                   # the left bay (free since the Jetson went to the head), lying flat
+    out.append(('elec-brake', trimesh.creation.box(bounds=[[xm_ - ry / 2, y_o + 2.0, 118.0], [xm_ + ry / 2, y_o + 2.0 + 20.0, 118.0 + rx - 2.0]])))   # up where the V is wide
     fx, fy, fz = E['fan']; zo = E['vent_out']['z']
-    x_wall = -65.0 * R() + 8.0                                # inside the chest back wall (which leans in up here), over the hatch
+    x_wall = shell_x(J)[0] - shell_x(J)[2] + 4.0               # inside the chest back wall, over the hatch
     for i, yf in enumerate((-(fy / 2 + 1.0), fy / 2 + 1.0)):  # 2 x 30 mm, side by side (>= 4 CFM with the front intake)
         out.append((f'elec-fan.{"r" if yf < 0 else "l"}', trimesh.creation.box(extents=[fx, fy, fz]).apply_translation([x_wall + 2 + fx / 2, yf, (zo[0] + zo[1]) / 2])))
     ex, ey_, ez = E['elrs']
     z_d1 = head_layout(J)['yaw'][0][2] - HEAD()['L'] / 2 - G - T
-    out.append(('elec-elrs', trimesh.creation.box(extents=[ex, ey_, ez]).apply_translation([45.0, 0.0, z_d1 - 6.0 - ez / 2])))
+    out.append(('elec-elrs', trimesh.creation.box(extents=[ex, ez, ey_]).apply_translation([xm_, y_o + 2.0 + ez / 2, 160.0])))   # on end, top of the left bay
     return out
 
 
