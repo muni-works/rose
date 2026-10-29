@@ -103,3 +103,14 @@ Cam's call: take the board out of its enclosure to save weight, and keep the sto
 6. **Feel.** Weight in the hand, how it sits on the desk, whether the face rake reads right at desk height.
 
 Write the measurements here or in a note, and the next pass folds them in.
+
+## Node in ASA (OrcaSlicer, P1S)
+
+`fab/node/node-mvp-asa.3mf` (from `node_3mf.py`): both parts tilted 30 deg, uniform 0.2 layers, 3 walls, 8 mm
+outer brim, one filament (Generic ASA or Bambu ASA). The tree supports are tuned to peel clean: 0.2 top/bottom gap
+(one layer), 3 interlaced interface layers at 0.3 spacing, 0.6 xy gap from the walls, 60 mm/s interface.
+
+A PLA interface (it doesn't bond to ASA) would peel cleaner. Orca blocks the pair on its nozzle-temperature
+check unless you turn on Preferences -> Control -> Slicing -> Remove mixed temperature restriction.
+
+Keep the door and lid closed, dry the ASA, and use Textured PEI or the Smooth/High Temp plate (not the Cool Plate).

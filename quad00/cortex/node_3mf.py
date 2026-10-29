@@ -57,6 +57,8 @@ QUALITY = dict(FAST, layer_height='0.2', wall_loops='3', top_shell_layers='5', b
                wall_sequence='inner-outer-inner wall', seam_position='back', seam_slope_type='external',
                reduce_crossing_wall='1', support_threshold_angle='35')
 
+ASA_LAYER = '0.2'                # ASA plate: uniform, so the prime tower stays legal
+
 def layer_profile(m, h_min=0.08, h_max=0.24, cusp=0.045, step=0.5):
     """(z, h) pairs for the slicer's variable layer height: the stair a layer leaves on a surface grows with how
     flat that surface is, so each 0.5 mm band of the convex skin gets h = cusp / |n_z| of its flattest sloped point (dead-flat faces
@@ -179,4 +181,14 @@ if __name__ == '__main__':
     fast(face_down=True, out='node-mvp-tilt.3mf', tilt=30.0,
          settings=dict(QUALITY, layer_height='0.12', support_filament='0', support_interface_filament='0',
                        brim_type='outer_only', brim_width='5'))
+    # ASA, one filament (a PLA interface needs a preset Orca kept refusing). The interface is tuned to peel clean:
+    # one layer of air above it (0.2 at 0.2 layers), 3 interlaced interface layers at 0.3 spacing so the underside
+    # is flat without welding, a 0.6 xy gap so tree branches stay off the walls, and slow interface lines.
+    fast(face_down=True, out='node-mvp-asa.3mf', tilt=30.0,
+         settings=dict(QUALITY, layer_height=ASA_LAYER, support_filament='0', support_interface_filament='0',
+                       support_top_z_distance='0.2', support_bottom_z_distance='0.2',
+                       support_interface_top_layers='3', support_interface_bottom_layers='2',
+                       support_interface_spacing='0.3', support_interface_pattern='rectilinear_interlaced',
+                       support_object_xy_distance='0.6', support_interface_speed='60',
+                       brim_type='outer_only', brim_width='8'))
     print('node-mvp.3mf (plain), node-mvp-fast.3mf + node-mvp-facedown.3mf (Bambu projects, fast settings):', ', '.join(PLACE))
