@@ -174,11 +174,10 @@ def box(x0, y0, z0, x1, y1, z1):
 #   rear's crown.
 # - x stop: the hook bridges bear on the lip's front edge, which sets the shadow gap.
 # - the face module carries its own side lips across the devkit's slot (z 35-74), so the seam is keyed all round.
-# - the seam is a V reveal: both skins are chamfered 0.6 at the split, so a print-to-print step of a few tenths
-#   reads as part of the groove, not as a ledge.
+# - the shadow gap goes 1.0 -> 0.5. A reveal cut from offsets of the skin left sliver edges that the slicer
+#   pinched, so the gap stays a plain butt joint.
 SPLIT_X, SPLIT_GAP = 40.0, 0.5
 LIP_D, LIP_T = 5.0, 1.4                     # locating lip: reaches LIP_D forward inside the face module's wall
-SEAM_CH = 0.6                               # the 45 deg chamfer on each skin edge at the split
 HOOK_Y, HOOK_HW = 16.0, 7.0                 # hook beams at y +-16, 14 wide
 HOOK_CL, HOOK_T, HOOK_H = 0.3, 1.8, 0.7     # beam clearance under the lip, beam thickness, hook height
 KEEPER_X = 28.0                             # the keeper's back face: the hook catches behind it
@@ -300,7 +299,7 @@ def cavity(w=WALL):
 
 def export(name, m, holes=0):
     mesh = m.to_mesh()
-    tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=False)   # manifold3d already shares verts; merging by position pinches edges that touch
+    tm = trimesh.Trimesh(mesh.vert_properties[:, :3], mesh.tri_verts, process=True)
     parts = [b for b in tm.split(only_watertight=False) if abs(b.volume) > 1.0]   # drop zero-volume boolean slivers
     tm = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
     tm.export(os.path.join(OUT, name + '.stl'))
@@ -331,16 +330,17 @@ def main():
     xf, xr = SPLIT_X + SPLIT_GAP / 2, SPLIT_X - SPLIT_GAP / 2
     floor = outer ^ (box(-150.0, -100.0, -5.0, 100.0, 100.0, FLOOR) + (above_plane(ld) - above_plane(ld + FLOOR)))
 
-    # FACE MODULE --------------------------------------------------------------------------------------------------
-    face = (skin + floor) ^ front(xf)
-    # bottom tongue: lies on the rear shell's floor, 2 heat-set inserts for the M3s from below
-    tongue = box(28.0, -18.0, FLOOR, xf + 6.0, 18.0, FLOOR + 6.0) ^ outer
     cavs = {}
     def cav(w):
         w = round(w, 3)
         if w not in cavs:
             cavs[w] = cavity(w)
         return cavs[w]
+
+    # FACE MODULE --------------------------------------------------------------------------------------------------
+    face = (skin + floor) ^ front(xf)
+    # bottom tongue: lies on the rear shell's floor, 2 heat-set inserts for the M3s from below
+    tongue = box(28.0, -18.0, FLOOR, xf + 6.0, 18.0, FLOOR + 6.0) ^ outer
     band = lambda w0, w1: cav(WALL + w0) - cav(WALL + w1)      # depths below the skin, measured from the wall's inside
     hook_zone = lambda x0, x1, grow=0.0: mf.Manifold.batch_boolean(
         [box(x0, sy * HOOK_Y - HOOK_HW - grow, 120.0, x1, sy * HOOK_Y + HOOK_HW + grow, 200.0) for sy in (1, -1)], mf.OpType.Add)
@@ -372,7 +372,6 @@ def main():
     inserts = [mf.Manifold.cylinder(5.8, 2.0, 2.0, 24).translate((x, y, FLOOR - 0.01)) for x, y in TONGUE_SCREWS]
     dimples = crown_dimples()   # the halo crosses the split: its front dots are the face module's
     face = face - mf.Manifold.batch_boolean([pocket, window, rods ^ front(xf)] + lenses + inserts + dimples, mf.OpType.Add)
-    face_ch = []
 
     # REAR SHELL ---------------------------------------------------------------------------------------------------
     rear = (skin + floor) ^ behind(xr)
@@ -416,13 +415,7 @@ def main():
     cuts += [mf.Manifold.cylinder(70.0, 0.7, 0.7, 16).translate((x, y, top)) for x, y in CROWN_PORTS]        # mic ports
     cuts += dimples
     cuts += [mf.Manifold.cylinder(8.0, 1.05, 1.05, 16).translate((x, y, top - 0.1)) for x, y in XVF_HOLES]  # M2.5 pilots
-    # seam: a 45 deg chamfer on each skin edge at the split, stepped in 4 offsets of the skin
-    for k in range(4):
-        s_, w_ = SEAM_CH * (k + 1) / 4, SEAM_CH * (4 - k) / 4
-        cuts.append((outer - cav(s_)) ^ box(xr - w_, -100.0, -5.0, xr + 1.0, 100.0, 250.0))
-        face_ch.append((outer - cav(s_)) ^ box(xf - 1.0, -100.0, -5.0, xf + w_, 100.0, 250.0))
     rear = rear - mf.Manifold.batch_boolean(cuts, mf.OpType.Add)
-    face = face - mf.Manifold.batch_boolean(face_ch, mf.OpType.Add)
 
     os.makedirs(OUT, exist_ok=True)
     export('node-face', face, len(hs))
