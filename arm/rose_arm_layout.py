@@ -30,8 +30,8 @@ import math
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from full.rose_full_layout import cloud   # noqa: E402  (main renamed pro -> full)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'sizing'))
+from rose_full_layout import cloud   # noqa: E402
 
 G = 9.81
 PAYLOAD = 2.5          # kg at the flange, full reach - reBot's number, matched
