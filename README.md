@@ -140,13 +140,16 @@ arm, 2 in the neck. Proportions scale from rose full's first 1130 mm layout.
 Single leg is the case that matters. Two-legged standing halves the load, but
 walking spends most of its time on one foot and every landing lands on one.
 
-Renders of the `mini/`, `full/` and `mega/` geometry as committed. None is at its
-ladder height, and the three do not yet share one design language:
+The current pass is in `quad00/`: mini and full in one design language, with the
+cortex head (renders from 2026-10-28; mega has no render in this pass yet):
 
-| | | |
-|---|---|---|
-| ![rose mini](mini/render/rose-mini-iso.png) | ![rose full](full/render/rose-full-iso.png) | ![rose mega](mega/render/rose-mega-iso.png) |
-| **mini**: massed volumes, sheet torso, cube head. The oldest geometry here. | **full**: bent plates that wrap their actuators, pushrod ankle. | **mega**: the rose-1 study, rana actuator bodies, pushrod ankle four-bar. |
+| | |
+|---|---|
+| ![rose mini](quad00/renders/body-node/mini-34.png) | ![rose full](quad00/renders/body-node/full-34.png) |
+| **mini** (`quad00/renders/body-node/mini-34.png`) | **full** (`quad00/renders/body-node/full-34.png`) |
+
+The older `mini/`, `full/` and `mega/` geometry has its own renders in each
+folder's `render/`; those predate this pass.
 
 ### Actuator envelopes
 
