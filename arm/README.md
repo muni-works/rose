@@ -1,140 +1,275 @@
-# rose arm — a RobStride table arm that is also rose's arm
+# rose arm — fork concept
 
-7 DOF + gripper on RobStride integrated actuators, structure in **flat** 5052
-cut on the Anolex 4040. No press brake. Sold as a table arm; laid out as a
-humanoid arm. The reBot B601-RS is the reference to beat.
+The design the box / bone iterations in `arm/` led to. Same RobStride actuators,
+same flat-sheet-on-the-4040 manufacturing, a different kinematic idea.
 
 ```bash
-python3 arm/rose_arm_layout.py      # links, mass, torque, stiffness, clearance, fold limit, cut list, BOM
-python3 arm/rose_arm_loon.py        # -> cad/rose-arm.loon
-python3 arm/rose_arm_export.py      # -> sim/*.urdf, sim/rose_arm_params.json, cad/rose-arm-assembly.loon
-(cd arm/sim && cargo run --release) # phyz: hold, power cut, reach, roll, duty sweep -> sim/out/
+python3 arm/rose_fork.py --summary                 # quick numbers
+python3 arm/fork_checks.py                         # mass, torque, stiffness
+python3 arm/audit.py                               # interference, pinch points, joint ranges
+python3 arm/dfm.py                                 # process, bed fit, webs, unique parts
+python3 arm/fab.py                                 # fab package: DXFs, nests, BOM, sleeves -> fab/
+python3 arm/rose_fork.py '{"J2_sho_pitch": -55}' > pose.loon   # posed world geometry for vcad-render
 ```
 
-![rose arm](render/rose-arm-rounded-posed.png)
+![fork v9](render/fork-v9-lines.png)
 
-## Architecture: links never overlap
+## The idea
 
-Each pancake is the node. Its stator bolts to one box, its output to the next,
-so the only moving interface between two links is the actuator's own output
-circumference — a gap nothing fits in. Pitch pancakes stand **beside** the
-boxes (offset elbow, the UR / G1 pattern). Roll pancakes sit **inline** as drums
-between two box segments, the box sized to the drum so link and joint read as
-one body.
+**Every pitch joint is a fork.** The parent holds the motor's stator ring
+between its two side plates. The child straddles the parent: one plate bolts to
+the output flange, the other rides a plain bearing on a hollow sleeve on the
+joint axis. Parent and child share one centreline, so there are no offsets, no
+zig-zag and no twist lever from an offset elbow.
 
-The first cut was open U channels with the forearm riding inside the upper-arm
-channel. That was a scissor through the whole elbow range and had no torsional
-stiffness. Closed boxes fix both.
+**Links taper wide to narrow.** A link is wide at the joint behind it, where it
+straddles, and narrow at the joint ahead, where it holds the next motor. That is
+a constraint of the nesting that turned out to be the look.
 
-Links are **closed boxes of flat plates**, tab-and-slot: 1.5 mm skins with 30 %
-windows, plus a 3 mm doubler riveted inside each wall under a bolt circle. The
-roll drums split every link into short boxes, so every plate fits the 4040.
+**Cables never loop outside.**
 
-## The look (2026-10-12, third cut)
+- Pitch joints: the harness passes through the hollow sleeve on the axis. It only
+  twists, so there is nothing to pinch or snag.
+- Roll joints (forearm, tool) and base yaw: a clock-spring cassette in a collar
+  coaxial with the joint. Collar halves are fixed / turning; the seam is the only
+  moving interface and the cable is inside it.
+- Inside links: in the inner slot of the bottom 2020 bars.
 
-Each link side is a profile, not a rectangle. An end that meets a pitch motor
-is a round lobe concentric with it, so the motor disc sits in a cradle of its
-own radius. An end that meets a roll drum is flat at the drum's height. Long
-segments waist to 72 % of their smaller end mid-span, where bending is lowest.
-Tapers run tangent into the lobes, the waist is a 120 mm curve, and every
-corner where a link meets a roll drum has an 8 mm radius. Base plate, column
-and gripper plate are plan-rounded. All of it is 2D - the profile outline -
-so it costs nothing on the router. The long edges along each link are still
-square: vcad's 3D fillet drops sketch-extruded solids (tested 2026-10-12), and
-the real answer is a kerf-bent wrap strip, which needs a test coupon first.
-Still flat sheet: two profile plates plus one wrap strip per segment. Mass fell
-6.2 → 5.8 kg; flange sag 0.43 mm (conservative: waist section assumed over the
-whole span).
+**Structure.** Two windowed 3 mm side plates, two 2020 bars along the bottom
+corners, recessed 1.5 mm covers top and bottom. That closes the section for
+torsion while the side plates are what you see.
 
-## Numbers (2026-10-12, boxes - superseded by the tapered cut above for mass)
+## mini (2026-10-16): K1-scale, same three motor models
 
-| | rose arm 7-DOF | reBot B601-RS |
+`ROSE_ARM=mini` in front of any script above builds the mini arm.
+
+![mini vs full](render/mini-vs-full.png)
+
+| joint | full | mini |
+|---|---|---|
+| J1 base yaw | RS04 | RS02 |
+| J2 shoulder | RS04 | RS04 |
+| J4 elbow | RS04 | RS02 |
+| J5 forearm roll | RS02 | — (5 DOF) |
+| J6 wrist pitch | RS02 | RS00 |
+| J7 tool roll | RS00 | RS00 |
+
+| | full | mini |
 |---|---:|---:|
-| DOF | 7 + gripper | 6 + gripper |
-| reach from shoulder | 798 mm | 754 mm |
-| payload | 2.5 kg | 2.5 kg |
-| mass | 6.2 kg | 6.7 kg |
-| structural deflection at the flange | 0.2 mm sag, 0.2 mm twist | — |
-| motors | RS06 ×4, RS00 ×3, EduLite ×1 | RS06 ×3, RS00 ×4 |
-| motors at amazon retail | $1,645 | ~$1,440 |
-| plates | 51, all flat, all under 390 mm | sheet + prints |
-| moving-link overlap | none | — |
+| upper / fore | 260 / 220 mm | 150 / 110 mm |
+| jaw tips from the shoulder | 731 mm | 476 mm |
+| mass | 8.3 kg | 4.8 kg |
+| holds straight out, continuously | 1.44 kg | **0.72 kg** (elbow binds; shoulder 4.24) |
+| sag / twist | 0.13 / 0.10 mm | 0.05 / 0.04 mm |
+| interference, 209 poses / DFM web violations | none / none | none / none |
 
-Skin thickness sweep (7-DOF): 2.0 mm → 6.6 kg / 0.15 mm, **1.5 → 6.2 / 0.21**,
-1.2 → 6.0 / 0.27, 1.0 → 5.8 / 0.33. Structure stays under the actuators'
-own backlash down to 1.2 mm; 1.5 is chosen for tab bearing and window buckling.
+Why this selection, from the sweeps (`ROSE_ARM_MOTORS`, `ROSE_ARM_LEN`, `ROSE_ARM_TWIN_SH`,
+`ROSE_ARM_NO_J5` override it):
 
-## The shoulder needs the spring
+- **An RS02 shoulder can't hold the arm at any length.** Even 100 / 90 mm holds only 0.16 kg: the
+  wrist, gripper and base are about 2.2 kg whatever the link lengths. Every joint has one motor, so
+  the shoulder is an RS04. Its mass sits on the axis, so it costs almost no torque.
+- **The elbow sets the payload.** An RS06 shoulder would hold about the same 0.7 kg, but it would add a
+  fourth motor model.
+- **No forearm roll.** J5 sat inside the elbow lobe at these lengths. Dropping it is what lets the
+  forearm come down to 110 mm.
 
-Shoulder pitch at full reach with 2.5 kg is **37 N·m against an RS06's 36
-peak** — the arm cannot hold its rated payload bare. A gas spring across J2
-cancels the self-weight moment (~295 N at 60 mm) and the shoulder sees
-19.6 N·m, SF 1.8. Payload at full reach for SF 1.5: 0.8 kg bare, 3.1 kg with
-the spring. The spring is not yet placed: it has to live **inside** the column
-or the upper-arm box, never in free air, or it is the pinch point.
+![mini vs full, posed](render/mini-vs-full-posed.png)
 
-## Sim (phyz, 2026-10-12)
+What changed in the model to get there:
 
-`sim/` loads the exported URDF with phyz-urdf and runs it at 4 kHz. Motors are
-torque sources on a linear torque-speed line from RobStride peak to no-load.
-The controller is PD plus RNEA gravity feed-forward. The J2 gas spring is a
-passive force from its real anchor geometry, so it is imperfect off horizontal.
-Static hold matches the hand calc: 19.7 N·m simulated vs 19.6 predicted.
+- **Flat, parallel upper-arm plates with a shorter elbow motor.** The RS02 elbow backs onto plate B
+  at the shoulder's spacing. The forearm reaches its output through a 13.9 mm turned spacer instead
+  of the 3 mm disc.
+- **Holes sized per motor.** The plate-B centre hole and the nose bores follow each end's motor. The
+  turret's slots and windows scale with the yaw disc. The foot is Ø170 mm with bolts on Ø140.
+- **Higher shoulder.** The shoulder axis is at 150 mm, so the upper arm clears the base at +40°.
 
-| test | spring | no spring |
-|---|---|---|
-| hold 2.5 kg straight out | 19.7 N·m, 55 % of peak | saturates at 36 for the whole hold, sags 2.7 mm |
-| reach and return, 2.5 kg | 64 % peak, 0.6° worst error | shoulder saturated 1.6 s of 3, flange sags 150 mm off path |
-| power cut, phases open | elbow slams to its stop in 0.24 s, shoulder flung up | whole arm falls, 5.2 m/s at the flange |
-| power cut, phases shorted | **glides, 0.9 m/s peak, settles** | falls at 2.8 m/s |
+Open, beyond the full arm's list: the RS02 base yaw carries the whole tipping moment through a smaller
+output bearing than the RS04's (check it against the manual). The checks still count RS04 sleeve
+masses. The fab package (`fab.py`) has not been run for mini.
 
-**Continuous payload is about 1.5 kg, not 2.5.** On a reach-and-return every
-3 s, RMS torque reaches the rated torque at 1.5 kg on both the shoulder and the
-elbow. 2.5 kg runs the shoulder at 1.66× rated, which is a thermal clock. reBot
-quotes 2.5 kg on the same motors with no spring; the same physics applies.
+## v9 (2026-10-13): complete - every part ready to cut
 
-**The spring alone is not a failsafe.** With phases open it holds the shoulder
-but the elbow folds, and the now-overbalanced shoulder throws the folded arm
-upward. Spring plus shorted phases is the only gentle power loss. Whether
-RobStride's driver shorts phases on fault is unconfirmed, and the shorted-phase
-damping uses estimated Kt and phase resistance.
+![fork v9 back](render/fork-v9-back.png)
 
-Not modelled: self-collision, the table, gear backlash, motor thermal model
-(RMS against rated is the proxy). Rotor inertia, joint friction and shorted-phase
-damping are estimates, marked in `rose_arm_export.py`.
+**Stock: 1/8" (3.175 mm) 5052 for every plate, 1/4" for the foot** - what SendCutSend and local
+suppliers carry. Nests are for 15 x 15 in sheets: three of 1/8" (one 24 x 48 in sheet cuts into
+three with a strip left over) and one 12 x 12 in of 1/4". Re-run with `SHEET_MM=390` for bed size.
 
-## Joints
+**Fab package in `fab/`**, generated from the model by `fab.py`:
 
-| joint | motor | why |
-|---|---|---|
-| J1 base yaw | RS06 | no gravity moment; carries the arm's bending moment on its output bearing |
-| J2 shoulder pitch | RS06 + gas spring | governs |
-| J3 upper-arm roll | RS06 | elbow bent 90°, it carries the forearm + payload moment |
-| J4 elbow | RS06 | 17 N·m, SF 2.1 |
-| J5 forearm roll | RS00 | 5 N·m, SF 2.8 |
-| J6 wrist pitch | RS00 | 5 N·m, SF 2.8 |
-| J7 tool roll | RS00 | |
-| gripper | EduLite 05 | parallel jaw (to design) |
+- `parts/`: one DXF per unique router part (20), with outline, bolt patterns, bores, windows and slots
+- `nest/`: one arm's parts on the 390 mm bed, three 3 mm sheets and one 6 mm. The 392 mm
+  upper-arm plates go on at 21°.
+- `BOM.md`: motors, stock, purchased parts, and 88 screws listed by interface. Each screw length is
+  checked against the motor's thread depth.
+- `SLEEVES.md` and `sleeve_*.svg`: the two turned sleeves, RS04 (3 off with the rig) and RS02
 
-Elbow folds to 160° before the hand meets the upper-arm roll drum.
+What changed to get there:
 
-## Costs of this layout
+- **Real interfaces.** RS04, RS02 and RS00 come from their manual drawings (INTERFACES.md). Every
+  motor is **mounted by its back face**. Plate A is a clearance plate round the nose, and the
+  straddler bolts to the output through a 3 mm spacer disc. Every gap in the stack is 4 mm.
+- **Every plate is flat and parallel.** v8's forearm flared 7° to reach round the J5 motor, so its
+  plate could not sit flat on the elbow spacer. Now both roll motors are **cartridges**: the
+  forearm and the wrist end in a cross plate, and the RS02 or RS00 back-mounts on its far face.
+- **Tabs and slots** locate the covers, both end plates, the yoke bridge and the turret towers.
+  The side plates' flat ends tab through the end plates.
+- **One 3 mm stock** for every plate, covers included (6 mm foot only). Hub caps are closed cups.
+- **Stiffness sees the lobe bores.** At each upper-arm lobe only the ring round the Ø102 / Ø90
+  bores bends: 0.03 → 0.13 mm sag, still inside the 0.5 mm budget.
+- **Sleeves are in the mass**, at 70 g each (RS04) and 22 g (RS02).
 
-- **The offsets make it wide.** The forearm box sits 133 mm to the side of the
-  upper arm, the hand comes back to +34. Top view is a zig-zag, ~260 mm across.
-  That offset is also a lever that twists the upper arm in the zero pose.
-- **6-DOF variant** needs a splice: its upper-arm box is 420 mm, over the bed.
-- **Router, not laser.** Inside corners need dogbones; 1.5 mm sheet needs real
-  workholding. Bed size assumed 390 mm usable — confirm on the machine.
+| | v8 | v9 |
+|---|---:|---:|
+| mass | 8.23 kg | 8.21 kg |
+| moving mass | 5.59 kg | 5.64 kg |
+| jaw tips from the shoulder | 693 mm | 731 mm |
+| holds straight out, continuously | 1.49 kg | **1.49 kg** (wrist and shoulder bind together) |
+| sag / twist | 0.03 / 0.10 mm | 0.13 / 0.11 mm |
+| elbow / wrist range | ±110° / ±125° | −120…115° / ±135° |
+| interference, 209 poses | none | none |
+| DFM web violations | — | none (upper plates nest diagonally) |
+
+Open:
+
+- RS02 back-face and output thread depths are assumed at 6 mm, so measure before ordering screws.
+- The yoke bridge turns about 1 mm in front of the stationary RS02 nose face. That is a safe pinch
+  gap, but the flange proud height needs checking on a real motor.
+- The crush points from `audit.py` still need a policy: soft limits, or force limiting.
+- The cable loops under the two roll cartridges are drawn, but the clock-spring turns for roll
+  are not designed yet.
+
+## v8 (2026-10-13): DFM and efficiency pass
+
+`dfm.py` classifies every part by process and checks router rules (bed fit,
+webs >= 1.5 t and >= 4 mm, tool access); `audit.py` checks interference.
+
+| | v7 (hybrid wrist) | v8 |
+|---|---:|---:|
+| mass | 9.54 kg | **8.23 kg** |
+| moving mass | 6.49 kg | 5.59 kg |
+| holds straight out, continuously | 1.13 kg | **1.49 kg** (shoulder binds; wrist 1.66) |
+| plate stock | 1.5 / 3 / 4 / 6 mm | 3 mm (+ 1.5 mm upper covers, 6 mm foot) |
+| unique router parts | 18 | 13 |
+| turned parts | 6 | 1 (the steel sleeve, hidden) |
+
+What moved the numbers: holder plates get a hole inside the motor's bolt circle
+(that face only covers the motor); span-fitted windows; hub caps as thin cups
+(117 g → 5 g each - they had been modelled as solid steel); a flat 3 mm yoke
+bridge instead of an 8 mm disc (177 g → 24 g); B plates 4 → 3 mm with a 4 mm
+single-layer cable gap; turret disc 6 → 3 mm windowed; the tower foot trimmed to
+the disc it stands on (it overhung); forearm cover slivers removed; jaws and tool
+flange 3 mm. The base collar is a printed part.
+
+Still open from DFM: the upper-arm plates are 392 mm - they nest diagonally on
+the 390 mm bed, not square; the RS02 stator bolt circle (lobe hole size) is an
+estimate until its drawing is read; tabs and slots for the covers and bridge are
+not yet modelled; the stiffness model does not yet see the lobe holes.
+
+## v7 (2026-10-13): hybrid wrist
+
+RS02 at forearm roll and wrist pitch, RS00 at the tool roll. Three motor models.
+
+## v6 (2026-10-13): one plate family, flat sheet only
+
+Same two motor models as v5. What changed is how few kinds of thing there are:
+
+- **The shoulder motor is flipped onto the upper arm.** The upper arm now holds
+  identical RS04s at both ends between parallel plates: a constant-width bone
+  with the same lobe at each end. The turret straddles it from outside. The
+  motor's mass is on the shoulder axis, so the flip costs no gravity torque.
+- **Roll motors live inside the links.** The forearm-roll RS00 sits inside the
+  forearm's far end, the tool-roll RS00 inside the wrist link. No collars.
+- **No 2020 bars.** Plates and flat covers only — the arm is all 3 mm sheet.
+- **The base is a flat foot** with the yaw RS04 standing on it in a slim collar.
+- **Cables are drawn honestly.** At each pitch joint the cable leaves the holder
+  through plate B just outside the motor (under the other link's lobe), crosses
+  an 18 mm gap with each leg flat on its own plate, meets the other leg on the
+  axis inside the hollow sleeve, and turns under an orange **hub cap** — the one
+  accent on the arm, and the only length of cable that twists. Inside the upper
+  arm it runs down the centreline, seen through the windows.
+
+| | v6 |
+|---|---:|
+| holds straight out, continuously, no spring | **1.28 kg** (wrist binds; shoulder 1.41, elbow 4.7) |
+| shoulder / elbow / wrist range | −150…+120° / −170…+150° / ±150° |
+| deflection | 0.04 mm sag, 0.09 mm twist |
+| mass | 8.9 kg |
+
+## v5 (2026-10-13): two motor models
+
+RS03 is not available (RobStride sells RS00, 01, 02, 04, 05, 06). The search
+in `size_actuators.py --available` ranks every selection by continuous hold,
+then by number of distinct models: **RS04 at base yaw, shoulder and elbow;
+RS00 for the three wrist joints.** No third model helps. The base yaw is an
+RS04 for its large output bearing — it carries the arm's whole tipping moment.
+Shoulder and elbow are now the same joint, same lobes and bolt pattern.
+
+| | v5 |
+|---|---:|
+| motor models | 2 (RS04 x3, RS00 x3) |
+| flange from shoulder | 703 mm |
+| holds straight out, continuously, no spring | **1.24 kg** (wrist binds; shoulder 1.32, elbow 4.6) |
+| peak payload | ~6 kg (wrist pitch) |
+| mass | 8.9 kg (4.7 kg moving) |
+| deflection | 0.03 mm sag, 0.09 mm twist |
+| shoulder / elbow / wrist range | −150…+65° / −170…+125° / ±120° |
+
+The elbow rig (`rig/`) is now an RS04 joint, so it qualifies the shoulder too.
+
+## v4 (2026-10-13): bigger motors, no springs — superseded (RS03 unavailable)
+
+Holding a pose is a stall, and the vendor's stall-continuous ratings
+(INTERFACES.md) left v3 unable to hold anything without the gas spring. v4
+sizes up instead of adding parts: **shoulder RS04, elbow RS03**, wrist RS00 x3,
+reach 783 → 743 mm. `size_actuators.py` searches every combination with the
+arm's own weight re-computed.
+
+| | v4 |
+|---|---:|
+| flange from shoulder | 743 mm |
+| holds straight out, continuously, no spring | **1.24 kg** (wrist binds; shoulder 1.28, elbow 1.71) |
+| peak payload | ~6 kg (wrist pitch) |
+| mass | 7.5 kg (4.2 kg moving; the extra is in base and turret) |
+| deflection | 0.04 mm sag, 0.11 mm twist |
+| shoulder / elbow / wrist range | −150…+75° / −165…+140° / ±120° |
+
+Ceiling: with RobStride's ratings, ~1.25 kg continuous straight out is about the
+limit at this reach without springs — the shoulder RS04 carries the whole arm.
+Straight out is the worst case; bent working poses hold more.
+
+## Numbers (v3, 2026-10-12) — superseded by v4
+
+| | fork v3 | reBot B601-RS |
+|---|---:|---:|
+| DOF | 6 + gripper | 6 + gripper |
+| flange from shoulder | 783 mm | 754 mm |
+| mass | 6.3 kg | 6.7 kg |
+| shoulder, 2.5 kg straight out | 35.1 N·m bare (98 % peak), 19.2 with spring | — |
+| elbow | 17.5 N·m (48 %) | — |
+| wrist pitch | 6.4 N·m (45 %) | — |
+| flange deflection | 0.05 mm sag, 0.13 mm twist | — |
+| shoulder range | −150° … +120° | |
+| elbow range | −170° … +125° (both ways) | |
+| wrist pitch range | ±120° | |
+
+Masses come from true plate areas minus windows; actuators from the vendor
+table. Fold ranges are swept against every primitive; pairs that touch by
+design (collar halves, a plate on its sleeve) only count if they get closer than
+they sit at zero.
+
+## Iterations
+
+- v1: the idea. 4 mm plates, four bars, solid base. 852 mm reach, ~8 kg.
+- v2: 3 mm windowed plates, two bars, collar cassettes on the roll joints, hollow base, jaw gripper.
+- v3: reach 853 → 783 mm, shell collars, turret windows. Shoulder back under peak bare.
 
 ## Open
 
-- confirm RobStride fault behaviour: do the drivers short phases on power loss / fault?
-- spring rebalance: size it so the folded arm is not overbalanced, or add an elbow spring
-- rate the product at ~1.5 kg continuous / 2.5 kg peak, or move the shoulder to an RS04
-- gas spring placement, inside a box
-- real plates: tabs, slots, windows, doublers, RobStride bolt circles from the STEP
-- 4th axis: turned spacers between pitch outputs and the next box, and the yaw bearing housing
-- RobStride direct pricing. reBot's early bird is within $60 of amazon motor cost.
-- gripper, flange, wrist camera
-- MJCF (URDF exists: sim/rose_arm.urdf)
+- gas spring placement (inside the turret, acting on a crank on the upper arm's inner plate)
+- the sleeve bearing: flanged bushing on a turned boss (4th axis)
+- clock-spring cassette design: flat-ribbon or loose spiral, sized to ±180°
+- plate edge chamfers (vcad 3D fillet drops sketch-extruded solids today)
+- sim: URDF from this geometry, rerun hold / power-cut / duty
