@@ -86,9 +86,9 @@ Code: `ipse` branch `claude/brain-bench`, `crates/ipse-sim/examples/brain_bench.
 -> `place.py` -> `fanout.py` -> `route.sh` (vcad HDI route, KiCad DRC). Every pin is looked up by
 name in a datasheet table or a KiCad symbol; nothing is typed per pin.
 
-**References** (`reference/`): RK3588S datasheet Rev 1.6, Radxa ROCK 5C v1.1 schematic, RK806-1,
-RK860, Rayson LPDDR4X (JEDEC 200-ball map), Zetta eMMC. The RK3588S datasheet is marked
-"Rockchip Confidential" - fine in this private repo; remove it before the repo goes public.
+**References** (`reference/`): Radxa ROCK 5C v1.1 schematic, RK806-1, RK860, Rayson LPDDR4X
+(JEDEC 200-ball map), Zetta eMMC. The ball list also draws on the RK3588S datasheet Rev 1.6,
+which is not kept in this repository.
 
 | block | choice | why |
 |---|---|---|
